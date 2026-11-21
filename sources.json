@@ -1,13 +1,7 @@
 {
   "batches": {
     "mandatory_and_maritime": ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali", "_MartinKelly_", "CENTCOM", "CENTCOMFarsi"],
-    "travel_advisories_and_embassies": ["FCDOtravelGovUK", "TravelGov", "TravelGoC", "SafeTravelNZ", "Smartraveller", "USAinKSA", "usembassybeirut", "usembassyjordan", "USAbilAraby", "USAbehFarsi"],
-    "diplomatic_and_international": ["FaisalbinFarhan", "MBA_AlThani_", "majedalansari", "mofauae", "AnwarGargash", "IsraelMFA", "GermanyDiplo", "PorteParoleMEAE", "UN", "TheStudyofWar"],
-    "saudi_and_yemen": ["CJFCSpox", "SaudiDCD", "ksagaca", "Spa_Eng", "SPAregions", "Yah_Saree", "MMY1444", "FaresALhemyari", "abda_sharif", "Yemen_PM"],
-    "levant_israel_lebanon_syria": ["IDF", "IDFSpokesperson", "AvichayAdraee", "ILRedAlert", "manniefabian", "NNALeb", "LebarmyOfficial", "SANAEnOfficial", "Levant_24_", "syrianmofaex"],
-    "iran_and_iraq": ["IRIMFA_SPOX", "araghchi", "hatami_org", "iribnews_irib", "PressTV", "tasnimarabic1", "iranintl_en", "IraqiPMO", "RudawEnglish", "Kurdistan24"],
-    "wires_and_regional_outlets": ["Reuters", "araReuters", "ReutersIran", "AP", "AFP", "AFPar", "BBCArabic", "AJEnglish", "AlHadath", "AlarabyTV"],
-    "aggregators_leads_only": ["sentdefender", "InsiderGeo", "faytuksnetwork", "DefenceGeek", "MenchOsint", "ME_Observer_", "MATA_osint", "BarakRavid", "kaisos1987", "LOrientLeJour"]
+    "official_primary": ["IDF", "IDFSpokesperson", "AvichayAdraee", "CJFCSpox", "SaudiDCD", "Reuters", "AP", "AFP", "NNALeb", "IRIMFA_SPOX"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]

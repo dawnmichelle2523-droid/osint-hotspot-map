@@ -3,13 +3,18 @@
 # https://docs.x.ai/developers/tools/x-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-4.7. Tool type x_search with allowed_x_handles (no @) and
+# model grok-4.3. The Batch API docs use grok-4.3 with the x_search tool:
+# https://docs.x.ai/developers/advanced-api-usage/batch-api
+# Model card: https://docs.x.ai/developers/models/grok-4.3
+# Tool type x_search with allowed_x_handles (no @) and
 # from_date/to_date as YYYY-MM-DD. to_date is exclusive: posts from 00:00 UTC
 # on from_date up to, but not including, to_date. Full datetimes are not
 # applied, so the last-2-hours window is stated in the prompt and enforced
 # again on each timestamp. search_parameters is not used.
 # Structured output uses text.format json_schema on responses.create.
 # max_turns is sent via extra_body, as documented on the X Search page.
+# Responses API maps max_tokens to max_output_tokens:
+# https://docs.x.ai/developers/model-capabilities/text/comparison
 
 """Fetch recent physical-security posts from vetted X accounts into hotspots.json."""
 
@@ -31,12 +36,14 @@ HOTSPOTS = ROOT / "hotspots.json"
 ARCHIVE = ROOT / "archive.json"
 SOURCES = ROOT / "sources.json"
 
-MODEL = "grok-4.7"
+MODEL = "grok-4.3"
 BASE_URL = "https://api.x.ai/v1"
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
 HTTP_TIMEOUT = 10
 API_TIMEOUT = 25
+# Responses API name for max_tokens. Caps the visible answer.
+MAX_OUTPUT_TOKENS = 800
 HANDLE_LIMIT = 20
 ACTIVE_DAYS = 7
 LEAD_MATCH_KM = 100
@@ -726,6 +733,7 @@ def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, 
             }
         },
         extra_body={"max_turns": 4},
+        max_output_tokens=MAX_OUTPUT_TOKENS,
         timeout=API_TIMEOUT,
     )
     text = response_text(response)
