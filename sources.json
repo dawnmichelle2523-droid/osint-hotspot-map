@@ -1,8 +1,59 @@
+json
 {
   "batches": {
-    "mandatory_and_maritime": ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali", "_MartinKelly_", "CENTCOM", "CENTCOMFarsi"],
-    "official_primary": ["IDF", "IDFSpokesperson", "AvichayAdraee", "CJFCSpox", "SaudiDCD", "Reuters", "AP", "AFP", "NNALeb", "IRIMFA_SPOX"]
+    "batch_1_mandatory_and_maritime": [
+      "moi_bahrain",
+      "BDF_Bahrain",
+      "kuwaitarmyghq",
+      "MOInformation",
+      "MOFAQatar_EN",
+      "UK_MTO",
+      "Alsakaniali",
+      "_MartinKelly_",
+      "CENTCOM",
+      "CENTCOMFarsi"
+    ],
+    "batch_2_regional_security_and_officials": [
+      "CJFCSpox",
+      "SaudiDCD",
+      "ksagaca",
+      "Yah_Saree",
+      "IDF",
+      "AvichayAdraee",
+      "ILRedAlert",
+      "manniefabian",
+      "IRIMFA_SPOX",
+      "IraqiPMO"
+    ],
+    "batch_3_advisories_wires_and_leads": [
+      "FCDOtravelGovUK",
+      "TravelGov",
+      "USAinKSA",
+      "usembassybeirut",
+      "Reuters",
+      "AP",
+      "AFP",
+      "sentdefender",
+      "InsiderGeo",
+      "faytuksnetwork"
+    ]
   },
-  "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
-  "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]
+  "excluded_handles": [
+    "SEPAH_NEWS1",
+    "yahya_saree",
+    "Tasnimnews_EN",
+    "irantimes72"
+  ],
+  "unconfirmed_do_not_treat_as_official": [
+    "smajid__moosavi",
+    "saudiexpat"
+  ],
+  "website_checks_section_d": [
+    "https://ukmto.org",
+    "https://ukmto.org/partner-products/jmic-products",
+    "https://mofa.go.jp",
+    "https://www.gov.uk",
+    "https://state.gov",
+    "https://centcom.mil"
+  ]
 }
