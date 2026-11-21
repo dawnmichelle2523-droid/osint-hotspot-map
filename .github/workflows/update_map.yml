@@ -1,0 +1,49 @@
+name: Update map
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch X incidents
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: python fetch_x_osint.py
+
+      - name: Fetch web advisories
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: python fetch_web_advisories.py
+
+      - name: Commit hotspots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- hotspots.json
+          if [ -f archive.json ]; then
+            git add -- archive.json
+          fi
+          if git diff --staged --quiet; then
+            echo "hotspots.json unchanged"
+          else
+            git commit -m "Update hotspots"
+            git push
+          fi

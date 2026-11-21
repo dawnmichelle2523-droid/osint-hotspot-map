@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OSINT Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e1116;
+      --panel: rgba(12, 16, 22, 0.78);
+      --line: rgba(255, 255, 255, 0.1);
+      --text: #e8edf4;
+      --muted: #9aa3b2;
+      --active: #1c4f93;
+      --active-line: #8eb6ff;
+      --high: #ff3b30;
+      --incident: #ff9500;
+      --maritime: #00c7be;
+      --travel: #0a84ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; background: #0b0e13; }
+    #filter-toggle {
+      position: absolute; z-index: 950; top: 12px; left: 12px;
+      background: rgba(12, 16, 22, 0.9); color: var(--text);
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 7px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+    }
+    body.filters-open #filter-toggle { left: 12px; }
+    #sidebar {
+      position: absolute; z-index: 900; top: 0; left: 0; bottom: 0; width: 280px;
+      padding: 52px 14px 16px; overflow: auto;
+      background: var(--panel); border-right: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      transform: translateX(0); transition: transform 0.22s ease;
+    }
+    body.filters-closed #sidebar { transform: translateX(-100%); }
+    #sidebar h1 { margin: 0; font-size: 16px; }
+    #updated, #status, #search-count { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    #status:empty, #search-count:empty { display: none; }
+    #status { color: #f0b46a; }
+    .search-row {
+      display: flex; align-items: center; margin-top: 12px;
+      background: rgba(8, 10, 14, 0.55); border: 1px solid var(--line); border-radius: 9px;
+      padding: 0 4px 0 10px;
+    }
+    #search-input {
+      flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text);
+      font: inherit; font-size: 13px; padding: 8px 0; outline: none;
+    }
+    #search-input::placeholder { color: #8b95a7; }
+    #search-input::-webkit-search-cancel-button { display: none; }
+    #search-clear {
+      width: 28px; height: 28px; border: 0; border-radius: 7px;
+      background: transparent; color: #d5dbe6; font-size: 18px; cursor: pointer;
+    }
+    .chips, .row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chips { margin-top: 8px; }
+    .group { margin-top: 14px; }
+    .group h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+    button.pill, button.chip {
+      background: rgba(8, 10, 14, 0.45); color: #d5dbe6; border: 1px solid var(--line);
+      border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; cursor: pointer;
+    }
+    button.pill[aria-pressed="true"] { background: var(--active); border-color: var(--active-line); color: #fff; }
+    button.pill.sev-high[aria-pressed="true"] { background: #6d2424; border-color: var(--high); }
+    button.pill.sev-medium[aria-pressed="true"], button.pill.sev-low[aria-pressed="true"] { background: #6a4108; border-color: var(--incident); }
+    button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
+    .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
+    .legend {
+      position: absolute; z-index: 800; left: 292px; bottom: 12px;
+      display: flex; gap: 8px; align-items: center;
+      padding: 4px 8px; border-radius: 999px;
+      background: rgba(12, 16, 22, 0.82); border: 1px solid var(--line);
+      color: #d5dbe6; font-size: 11px; white-space: nowrap;
+    }
+    body.filters-closed .legend { left: 12px; }
+    .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; border: 1px solid #fff; vertical-align: 0; }
+    .pin-icon { background: transparent; border: none; }
+    .pin { position: relative; width: 22px; height: 22px; }
+    .pin .dot {
+      position: absolute; left: 5px; top: 5px; width: 12px; height: 12px; border-radius: 50%;
+      background: currentColor; border: 1.5px solid #fff;
+      box-shadow: 0 0 6px 1px currentColor, 0 0 12px currentColor;
+    }
+    .pin.is-old { opacity: 0.55; }
+    .pin .ring { position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
+    .pin.is-fresh .ring { animation: pulse 1.8s ease-out infinite; }
+    @keyframes pulse {
+      0% { transform: scale(0.7); opacity: 0.75; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pin.is-fresh .ring { animation: none; opacity: 0.8; }
+      #sidebar { transition: none; }
+    }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(142, 182, 255, 0.28); }
+    .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+      background: #161b22; color: var(--text); font-weight: 650;
+    }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #161b22; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+    .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid #2c3544; }
+    .leaflet-popup-content { margin: 10px 12px; max-width: 276px; }
+    .leaflet-popup-close-button { color: #c5ceda !important; }
+    .popup { width: 260px; max-width: 276px; }
+    .popup h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.3; }
+    .badge { display: inline-block; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
+    .badge-official { background: #12343a; color: #7ee7f7; border: 1px solid #1f8a99; }
+    .badge-claim { background: #2a2140; color: #d7b4ff; border: 1px solid #8b5cf6; }
+    .badge-lead { background: #3a2a18; color: #f0b46a; border: 1px solid #c47a2c; }
+    .badge-unknown { background: #222; color: var(--muted); border: 1px solid #2c3544; }
+    .summary { margin: 6px 0; font-size: 13px; }
+    .when { color: var(--muted); font-size: 12px; }
+    a.popup-link { display: inline-block; margin-top: 8px; color: #8eb6ff; text-decoration: none; font-size: 13px; font-weight: 650; }
+    .leaflet-bottom.leaflet-right { margin-bottom: 4px; }
+  </style>
+</head>
+<body class="filters-open">
+  <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
+  <aside id="sidebar">
+    <h1>OSINT Map</h1>
+    <p id="updated">Loading incidents…</p>
+    <p id="status" role="status"></p>
+    <form class="search-row" role="search" autocomplete="off">
+      <input id="search-input" type="search" placeholder="Search port, airport, UKMTO #, city, or @handle..." aria-label="Search hotspots">
+      <button id="search-clear" type="button" aria-label="Clear">×</button>
+    </form>
+    <div class="chips">
+      <button type="button" class="chip" data-chip="UKMTO">UKMTO</button>
+      <button type="button" class="chip" data-chip="Hormuz">Hormuz</button>
+      <button type="button" class="chip" data-chip="Airport">Airport</button>
+      <button type="button" class="chip" data-chip="Missile / Drone">Missile / Drone</button>
+      <button type="button" class="chip" data-chip="Embassy">Embassy</button>
+    </div>
+    <p id="search-count"></p>
+    <section class="group">
+      <h2>Region</h2>
+      <div class="row">
+        <button type="button" class="pill" data-region="all" aria-pressed="true">All Regions <span class="n" data-count="all">0</span></button>
+        <button type="button" class="pill" data-region="Gulf">Gulf <span class="n" data-count="Gulf">0</span></button>
+        <button type="button" class="pill" data-region="Saudi &amp; Yemen">Saudi &amp; Yemen <span class="n" data-count="Saudi &amp; Yemen">0</span></button>
+        <button type="button" class="pill" data-region="Levant">Levant <span class="n" data-count="Levant">0</span></button>
+        <button type="button" class="pill" data-region="Iran &amp; Iraq">Iran &amp; Iraq <span class="n" data-count="Iran &amp; Iraq">0</span></button>
+        <button type="button" class="pill" data-region="Maritime">Maritime <span class="n" data-count="Maritime">0</span></button>
+      </div>
+    </section>
+    <section class="group">
+      <h2>Time window</h2>
+      <div class="row">
+        <button type="button" class="pill" data-window="2h">Last 2 Hours</button>
+        <button type="button" class="pill" data-window="24h" aria-pressed="true">Last 24 Hours</button>
+        <button type="button" class="pill" data-window="7d">Last 7 Days</button>
+        <button type="button" class="pill" data-window="all">All Active</button>
+      </div>
+    </section>
+    <section class="group">
+      <h2>Severity</h2>
+      <div class="row">
+        <button type="button" class="pill" data-severity="all" aria-pressed="true">All</button>
+        <button type="button" class="pill sev-high" data-severity="high">High</button>
+        <button type="button" class="pill sev-medium" data-severity="medium">Medium</button>
+        <button type="button" class="pill sev-low" data-severity="low">Low</button>
+      </div>
+    </section>
+    <section class="group">
+      <h2>Category</h2>
+      <div class="row">
+        <button type="button" class="pill" data-category="all" aria-pressed="true">All</button>
+        <button type="button" class="pill" data-category="Security Incident">Security Incident</button>
+        <button type="button" class="pill" data-category="Maritime Advisory">Maritime Advisory</button>
+        <button type="button" class="pill" data-category="Travel / Embassy Advisory">Travel / Embassy Advisory</button>
+      </div>
+    </section>
+  </aside>
+  <div class="legend">
+    <span><i style="background:#ff3b30"></i>High</span>
+    <span><i style="background:#ff9500"></i>Med/Low</span>
+    <span><i style="background:#00c7be"></i>Maritime</span>
+    <span><i style="background:#0a84ff"></i>Travel</span>
+  </div>
+  <div id="map" role="application" aria-label="Incident map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    const WINDOWS = { "2h": 2 * 3600 * 1000, "24h": 24 * 3600 * 1000, "7d": 7 * 24 * 3600 * 1000, all: null };
+    const HOME = { center: [26.5, 47.0], zoom: 5 };
+    const BADGES = {
+      "Official / Primary": { label: "Official", cls: "badge-official" },
+      "State-Affiliated / Single-Source": { label: "Attributed", cls: "badge-claim" },
+      "Unverified Lead": { label: "Lead", cls: "badge-lead" }
+    };
+    const REGION_BOUNDS = {
+      "Gulf": L.latLngBounds([16.4, 46.3], [30.2, 59.9]),
+      "Saudi & Yemen": L.latLngBounds([12.1, 34.5], [32.2, 55.7]),
+      "Levant": L.latLngBounds([29.1, 34.2], [37.5, 42.4]),
+      "Iran & Iraq": L.latLngBounds([24.8, 38.4], [40.2, 63.4]),
+      "Maritime": L.latLngBounds([11.5, 42.5], [27.2, 62.5])
+    };
+
+    const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    map.createPane("labels");
+    map.getPane("labels").style.zIndex = 350;
+    map.getPane("labels").style.pointerEvents = "none";
+    const esriAttr = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      attribution: esriAttr,
+      maxZoom: 16
+    }).addTo(map);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 16,
+      pane: "labels"
+    }).addTo(map);
+    map.setView(HOME.center, HOME.zoom);
+
+    let features = [];
+    let clusterLayer = null;
+    let loadedOnce = false;
+    let timeWindow = "24h";
+    let severity = "all";
+    let category = "all";
+    let region = "all";
+    let searchQuery = "";
+    let searchTimer = null;
+    let focusSerial = 0;
+    const markers = new Map();
+
+    const updatedEl = document.getElementById("updated");
+    const statusEl = document.getElementById("status");
+    const searchInput = document.getElementById("search-input");
+    const searchCount = document.getElementById("search-count");
+    const filterToggle = document.getElementById("filter-toggle");
+
+    function setStatus(text) {
+      statusEl.textContent = text || "";
+    }
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    function safeUrl(url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") return parsed.href;
+      } catch (err) { /* leave the link off */ }
+      return "";
+    }
+
+    function ageMs(timestamp) {
+      const ms = Date.parse(timestamp);
+      return Number.isNaN(ms) ? null : Date.now() - ms;
+    }
+
+    function passesTime(timestamp, windowId) {
+      if (windowId === "all") return true;
+      const age = ageMs(timestamp);
+      if (age === null || age < -5 * 60 * 1000) return false;
+      return age <= WINDOWS[windowId];
+    }
+
+    function matchesQuery(props, query) {
+      if (!query) return true;
+      const needle = query.trim().toLowerCase();
+      if (!needle) return true;
+      const handleNeedle = needle.replace(/^@/, "");
+      const fields = [props.title, props.summary, props.region, props.source_handle, props.warning_number];
+      return fields.some((value) => {
+        if (value == null) return false;
+        const text = String(value).toLowerCase();
+        return text.includes(needle) || (handleNeedle !== needle && text.includes(handleNeedle));
+      });
+    }
+
+    function passes(feature, opts) {
+      const props = feature.properties || {};
+      if (opts.severity !== "all" && props.severity !== opts.severity) return false;
+      if (opts.category !== "all" && props.category !== opts.category) return false;
+      if (opts.region !== "all" && props.region !== opts.region) return false;
+      if (!passesTime(props.timestamp, opts.timeWindow)) return false;
+      return matchesQuery(props, opts.query || "");
+    }
+
+    function currentOpts(regionId) {
+      return { severity, category, region: regionId, timeWindow, query: searchQuery };
+    }
+
+    function countRegion(regionId) {
+      const id = regionId === "all" ? "all" : regionId;
+      return features.filter((feature) => passes(feature, currentOpts(id))).length;
+    }
+
+    function gmtStamp(timestamp) {
+      const ms = Date.parse(timestamp);
+      if (Number.isNaN(ms)) return "Unknown time";
+      const date = new Date(ms);
+      const hh = String(date.getUTCHours()).padStart(2, "0");
+      const mm = String(date.getUTCMinutes()).padStart(2, "0");
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return date.getUTCDate() + " " + months[date.getUTCMonth()] + " " + date.getUTCFullYear() + ", " + hh + ":" + mm + " GMT";
+    }
+
+    function pinColor(props) {
+      if (props.category === "Maritime Advisory") return "#00c7be";
+      if (props.category === "Travel / Embassy Advisory") return "#0a84ff";
+      if (props.severity === "high") return "#ff3b30";
+      return "#ff9500";
+    }
+
+    function popupHtml(props) {
+      const badge = BADGES[props.verification_tier] || { label: "Lead", cls: "badge-unknown" };
+      const headline = props.title || props.summary || "Incident";
+      const href = safeUrl(props.source);
+      const link = href
+        ? '<a class="popup-link" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">View Source ↗</a>'
+        : "";
+      return (
+        '<div class="popup">' +
+          "<h3>" + esc(headline) + "</h3>" +
+          '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span>" +
+          '<p class="summary">' + esc(props.summary || "") + "</p>" +
+          '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
+          link +
+        "</div>"
+      );
+    }
+
+    function markerFor(feature) {
+      const coords = feature.geometry.coordinates;
+      const props = feature.properties || {};
+      const age = ageMs(props.timestamp);
+      const fresh = age !== null && age >= 0 && age <= WINDOWS["2h"];
+      const old = age !== null && age > WINDOWS["24h"];
+      const classes = ["pin"];
+      if (fresh) classes.push("is-fresh");
+      if (old) classes.push("is-old");
+      const color = pinColor(props);
+      const icon = L.divIcon({
+        className: "pin-icon",
+        html: '<div class="' + classes.join(" ") + '" style="color:' + color + '"><span class="ring"></span><span class="dot"></span></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+        popupAnchor: [0, -10]
+      });
+      return L.marker([coords[1], coords[0]], { icon }).bindPopup(popupHtml(props), { maxWidth: 300, minWidth: 180 });
+    }
+
+    function syncControls(visibleCount) {
+      document.querySelectorAll("[data-window]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.window === timeWindow));
+      });
+      document.querySelectorAll("[data-severity]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.severity === severity));
+      });
+      document.querySelectorAll("[data-category]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.category === category));
+      });
+      document.querySelectorAll("[data-region]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.region === region));
+      });
+      document.querySelectorAll("[data-count]").forEach((node) => {
+        node.textContent = String(countRegion(node.dataset.count));
+      });
+      const newest = features.reduce((best, feature) => {
+        const ms = Date.parse((feature.properties || {}).timestamp);
+        if (Number.isNaN(ms)) return best;
+        return best === null || ms > best ? ms : best;
+      }, null);
+      const noun = visibleCount === 1 ? "incident" : "incidents";
+      updatedEl.textContent = (newest === null ? "No timestamps" : gmtStamp(new Date(newest).toISOString())) + " · " + visibleCount + " " + noun;
+    }
+
+    function updateSearchCount(visibleCount) {
+      if (!searchQuery) {
+        searchCount.textContent = "";
+        return;
+      }
+      const noun = visibleCount === 1 ? "hotspot" : "hotspots";
+      searchCount.textContent = "Showing " + visibleCount + " matching " + noun;
+    }
+
+    function focusMatches(visible) {
+      const serial = ++focusSerial;
+      if (visible.length === 1) {
+        const marker = markers.get((visible[0].properties || {}).source);
+        if (!marker) return;
+        const latlng = marker.getLatLng();
+        const open = () => {
+          if (serial !== focusSerial) return;
+          marker.openPopup();
+        };
+        map.flyTo(latlng, 8, { duration: 0.6 });
+        map.once("moveend", open);
+        window.setTimeout(open, 700);
+        return;
+      }
+      if (visible.length > 1) {
+        const bounds = L.latLngBounds(visible.map((feature) => [
+          feature.geometry.coordinates[1],
+          feature.geometry.coordinates[0]
+        ]));
+        map.fitBounds(bounds, { padding: [48, 48], duration: 0.6, maxZoom: 7 });
+      }
+    }
+
+    function flyToRegion(regionId) {
+      if (!regionId || regionId === "all") {
+        map.flyTo(HOME.center, HOME.zoom, { duration: 0.75 });
+        return;
+      }
+      const bounds = REGION_BOUNDS[regionId];
+      if (bounds) map.flyToBounds(bounds, { padding: [48, 48], duration: 0.75, maxZoom: 6 });
+    }
+
+    function returnToRegion() {
+      focusSerial += 1;
+      map.closePopup();
+      flyToRegion(region);
+    }
+
+    function render(focusMode) {
+      if (clusterLayer) map.removeLayer(clusterLayer);
+      markers.clear();
+      clusterLayer = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42, spiderfyOnMaxZoom: true });
+      const visible = features.filter((feature) => passes(feature, currentOpts(region)));
+      visible.forEach((feature) => {
+        const marker = markerFor(feature);
+        markers.set((feature.properties || {}).source, marker);
+        clusterLayer.addLayer(marker);
+      });
+      map.addLayer(clusterLayer);
+      syncControls(visible.length);
+      updateSearchCount(visible.length);
+      if (loadedOnce) {
+        setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
+      }
+      if (focusMode === "search") focusMatches(visible);
+      else if (focusMode === "clear") returnToRegion();
+      else if (focusMode === "region") flyToRegion(region);
+    }
+
+    function applyQuery(value, forcedMode) {
+      const previous = searchQuery;
+      searchQuery = String(value || "").trim();
+      let mode = forcedMode;
+      if (!mode) {
+        if (searchQuery) mode = "search";
+        else if (previous) mode = "clear";
+        else mode = "none";
+      }
+      render(mode);
+    }
+
+    function isPoint(feature) {
+      const coords = feature && feature.geometry && feature.geometry.coordinates;
+      return feature && feature.type === "Feature" && feature.geometry.type === "Point" &&
+        Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
+    }
+
+    async function loadHotspots() {
+      try {
+        const response = await fetch("hotspots.json?t=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        if (!data || data.type !== "FeatureCollection" || !Array.isArray(data.features)) {
+          throw new Error("invalid");
+        }
+        features = data.features.filter(isPoint);
+        loadedOnce = true;
+        setStatus(features.length ? "" : "No incidents in hotspots.json.");
+        render();
+      } catch (err) {
+        setStatus("Could not load hotspots.json.");
+        if (!loadedOnce) {
+          features = [];
+          render();
+        }
+      }
+    }
+
+    document.getElementById("sidebar").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button || button.id === "search-clear") return;
+      const chip = button.dataset.chip;
+      if (chip) {
+        clearTimeout(searchTimer);
+        searchInput.value = chip;
+        applyQuery(chip, "search");
+        return;
+      }
+      if (button.dataset.window) timeWindow = button.dataset.window;
+      if (button.dataset.severity) severity = button.dataset.severity;
+      if (button.dataset.category) category = button.dataset.category;
+      if (button.dataset.region) {
+        region = button.dataset.region;
+        render(searchQuery ? "search" : "region");
+        return;
+      }
+      if (button.dataset.window || button.dataset.severity || button.dataset.category) {
+        render(searchQuery ? "search" : "none");
+      }
+    });
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => applyQuery(searchInput.value), 200);
+    });
+    document.getElementById("search-clear").addEventListener("click", () => {
+      clearTimeout(searchTimer);
+      if (!searchInput.value && !searchQuery) return;
+      searchInput.value = "";
+      applyQuery("", "clear");
+    });
+    document.querySelector("#sidebar form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      clearTimeout(searchTimer);
+      applyQuery(searchInput.value, searchInput.value.trim() ? "search" : "clear");
+    });
+    filterToggle.addEventListener("click", () => {
+      const open = document.body.classList.toggle("filters-open");
+      document.body.classList.toggle("filters-closed", !open);
+      filterToggle.setAttribute("aria-expanded", String(open));
+    });
+
+    loadHotspots();
+    setInterval(loadHotspots, 60000);
+  </script>
+</body>
+</html>
