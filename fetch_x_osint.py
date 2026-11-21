@@ -33,6 +33,10 @@ SOURCES = ROOT / "sources.json"
 
 MODEL = "grok-4.7"
 BASE_URL = "https://api.x.ai/v1"
+# Plain HTTP (the OpenAI client's transport) stops at 10s.
+# The xAI Responses call itself stops at 25s, with no retries.
+HTTP_TIMEOUT = 10
+API_TIMEOUT = 25
 HANDLE_LIMIT = 20
 ACTIVE_DAYS = 7
 LEAD_MATCH_KM = 100
@@ -676,46 +680,61 @@ def parse_json_object(text: str) -> dict:
 
 def make_client(api_key: str):
     try:
+        import httpx
         from openai import OpenAI
     except ImportError:
         print("The openai package is not installed. Run: pip install -r requirements.txt")
         sys.exit(1)
-    return OpenAI(api_key=api_key, base_url=BASE_URL)
+    # Every HTTP request uses timeout=10. xAI calls pass timeout=25 themselves.
+    http_client = httpx.Client(timeout=HTTP_TIMEOUT)
+    return OpenAI(
+        api_key=api_key,
+        base_url=BASE_URL,
+        timeout=HTTP_TIMEOUT,
+        http_client=http_client,
+        max_retries=0,
+    )
+
+
+def source_status(name: str, exc: BaseException, secret: str = "") -> None:
+    detail = public_error(exc, secret).replace("\n", " ")
+    if len(detail) > 140:
+        detail = detail[:137] + "..."
+    print(f"{name}: {detail}; continuing")
+
+
+def run_source(name: str, fn, secret: str = ""):
+    """Run one source. A stall or error prints one line and does not stop the run."""
+    try:
+        return fn()
+    except Exception as exc:
+        source_status(name, exc, secret)
+        return None
 
 
 def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, api_key: str):
-    try:
-        response = client.responses.create(
-            model=MODEL,
-            input=prompt,
-            tools=[tool],
-            text={
-                "format": {
-                    "type": "json_schema",
-                    "name": schema_name,
-                    "schema": schema,
-                    "strict": True,
-                }
-            },
-            extra_body={"max_turns": 4},
-            timeout=120,
-        )
-    except Exception as exc:
-        print(f"xAI request failed: {public_error(exc, api_key)}", file=sys.stderr)
-        return None
+    response = client.responses.create(
+        model=MODEL,
+        input=prompt,
+        tools=[tool],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": schema_name,
+                "schema": schema,
+                "strict": True,
+            }
+        },
+        extra_body={"max_turns": 4},
+        timeout=API_TIMEOUT,
+    )
     text = response_text(response)
     if not text:
-        print("xAI response did not include output text.", file=sys.stderr)
-        return None
-    try:
-        payload = parse_json_object(text)
-    except (json.JSONDecodeError, ValueError):
-        print("xAI response was not valid JSON.", file=sys.stderr)
-        return None
+        raise RuntimeError("xAI response did not include output text")
+    payload = parse_json_object(text)
     incidents = payload.get("incidents")
     if not isinstance(incidents, list):
-        print("xAI response JSON did not contain an incidents array.", file=sys.stderr)
-        return None
+        raise RuntimeError("xAI response JSON did not contain an incidents array")
     return incidents
 
 
@@ -797,35 +816,41 @@ def main() -> None:
             continue
         for group in chunked(allowed, HANDLE_LIMIT):
             attempted += 1
-            print(f"Searching {batch_name} ({len(group)} handles)")
+            label = f"{batch_name} ({len(group)} handles)"
+            print(f"Searching {label}")
             tool = {
                 "type": "x_search",
                 "allowed_x_handles": group,
                 "from_date": from_date,
                 "to_date": to_date,
             }
-            incidents = call_model(
-                client,
-                tool,
-                x_prompt(str(batch_name), group, excluded_list, window_start, now),
-                "incident_batch",
-                INCIDENT_SCHEMA,
-                api_key,
-            )
-            if incidents is None:
+
+            def search_group(group=group, tool=tool, batch_name=batch_name):
+                incidents = call_model(
+                    client,
+                    tool,
+                    x_prompt(str(batch_name), group, excluded_list, window_start, now),
+                    "incident_batch",
+                    INCIDENT_SCHEMA,
+                    api_key,
+                )
+                prepared = prepare_incidents(
+                    incidents,
+                    batch=str(batch_name),
+                    allowed=group,
+                    excluded=excluded,
+                    window_start=window_start,
+                    window_end=now,
+                    batches_by_handle=batches_by_handle,
+                    require_recent=True,
+                )
+                print(f"{batch_name}: kept {len(prepared)} of {len(incidents)}")
+                return prepared
+
+            prepared = run_source(label, search_group, api_key)
+            if prepared is None:
                 continue
             succeeded += 1
-            prepared = prepare_incidents(
-                incidents,
-                batch=str(batch_name),
-                allowed=group,
-                excluded=excluded,
-                window_start=window_start,
-                window_end=now,
-                batches_by_handle=batches_by_handle,
-                require_recent=True,
-            )
-            print(f"{batch_name}: kept {len(prepared)} of {len(incidents)}")
             collected.extend(prepared)
 
     if attempted == 0:
@@ -833,7 +858,7 @@ def main() -> None:
         sys.exit(1)
     if succeeded == 0:
         print("All xAI searches failed. hotspots.json was not changed.")
-        sys.exit(1)
+        return
     if succeeded < attempted:
         print(f"{attempted - succeeded} batch search(es) failed. Merging the searches that succeeded.")
 
