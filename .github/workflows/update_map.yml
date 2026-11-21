@@ -1,4 +1,4 @@
-yaml
+agent $ yaml
 name: Update OSINT Hotspots
 on:
   schedule:
