@@ -3,7 +3,8 @@
 # https://docs.x.ai/developers/tools/web-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-4.7. Tool type web_search. The Python example on that page puts
+# model grok-4.3 (same call as fetch_x_osint, max_output_tokens 800).
+# Tool type web_search. The Python example on that page puts
 # domain limits under filters.allowed_domains (max 5). allowed_domains cannot
 # be combined with excluded_domains, so mofa.go.jp is kept off the allow list
 # and any result whose host matches website_only_checks_note is dropped.

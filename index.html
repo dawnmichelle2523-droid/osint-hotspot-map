@@ -466,7 +466,7 @@
 
     async function loadHotspots() {
       try {
-        const response = await fetch("hotspots.json?t=" + Date.now(), { cache: "no-store" });
+        const response = await fetch("hotspots.json?v=" + Date.now(), { cache: "no-store" });
         if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
         if (!data || data.type !== "FeatureCollection" || !Array.isArray(data.features)) {
