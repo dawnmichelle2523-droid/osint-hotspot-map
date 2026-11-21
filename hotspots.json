@@ -6,6 +6,56 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "US naval blockade of Iranian ports and coastlines remains in effect with SEVERE threat level; mariners must comply with blockading forces, maintain VHF watch, and report activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "summary": "US naval blockade of Iranian ports and coastlines remains in effect with SEVERE threat level; mariners must comply with blockading forces, maintain VHF watch, and report activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "timestamp": "2026-11-18T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Maritime security threat level remains SEVERE in the Strait of Hormuz due to ongoing attacks, naval presence, and risks including mines and IRGC activity.",
+        "summary": "Maritime security threat level remains SEVERE in the Strait of Hormuz due to ongoing attacks, naval presence, and risks including mines and IRGC activity.",
+        "timestamp": "2026-11-21T00:00:00Z",
+        "source": "https://www.ukmto.org/partner-products/jmic-products/jmic-advisories/2026",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           35.483,
           33.377
         ]
