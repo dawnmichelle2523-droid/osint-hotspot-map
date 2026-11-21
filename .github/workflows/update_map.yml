@@ -1,4 +1,5 @@
 name: Update OSINT Hotspots
+
 on:
   schedule:
     - cron: '*/15 * * * *'
@@ -7,23 +8,33 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: update-osint-hotspots
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+
       - run: pip install -r requirements.txt
+
       - env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: |
           python fetch_x_osint.py
           python fetch_web_advisories.py
+
       - run: |
           git config user.name "OSINT Bot"
-          git config user.email "bot@://github.com"
-          git add hotspots.json archive.json || git add hotspots.json
-          git commit -m "Update live hotspots" || exit 0
-          git push
+          git config user.email "41898282+github-actions[bot]@://github.com"
+          git pull --rebase origin main || git pull --rebase
+          git add hotspots.json
+          [ -f archive.json ] && git add archive.json
+          git diff --staged --quiet || (git commit -m "Update live hotspots" && git push)
