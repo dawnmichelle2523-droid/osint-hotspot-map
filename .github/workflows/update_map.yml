@@ -1,4 +1,3 @@
-
 name: Update OSINT Hotspots
 on:
   schedule:
@@ -28,4 +27,3 @@ jobs:
           git add hotspots.json archive.json || git add hotspots.json
           git commit -m "Update live hotspots" || exit 0
           git push
-
