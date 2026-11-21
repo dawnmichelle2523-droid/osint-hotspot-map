@@ -8,6 +8,9 @@
 # be combined with excluded_domains, so mofa.go.jp is kept off the allow list
 # and any result whose host matches website_only_checks_note is dropped.
 # This script never requests mofa.go.jp itself.
+# HTTP requests use fetch_x_osint.HTTP_TIMEOUT (10). xAI calls use
+# fetch_x_osint.API_TIMEOUT (25). Each source is isolated: a stall or
+# error prints one line and the next source still runs.
 
 """Fetch official travel and maritime advisories into the same hotspots GeoJSON."""
 
@@ -226,15 +229,25 @@ def main() -> None:
     collected: list[dict] = []
     succeeded = 0
     for domains, kind, category, batch in groups:
-        print(f"Searching {kind} on {', '.join(domains)}")
-        prepared = search_group(client, api_key, domains, kind, category, batch, blocked)
+        label = f"{kind} ({', '.join(domains)})"
+        print(f"Searching {label}")
+
+        def search_one(
+            domains=domains,
+            kind=kind,
+            category=category,
+            batch=batch,
+        ):
+            return search_group(client, api_key, domains, kind, category, batch, blocked)
+
+        prepared = osint.run_source(label, search_one, api_key)
         if prepared is None:
             continue
         succeeded += 1
         collected.extend(prepared)
     if succeeded == 0:
         print("All advisory searches failed. hotspots.json was not changed.")
-        sys.exit(1)
+        return
     if succeeded < len(groups):
         print(f"{len(groups) - succeeded} advisory search(es) failed. Merging the searches that succeeded.")
     now = datetime.now(timezone.utc)
