@@ -1,0 +1,80 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.483,
+          33.377
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Nabatieh rocket launcher strike",
+        "summary": "The IDF said it carried out a strike on a rocket launcher on the outskirts of Nabatieh in southern Lebanon.",
+        "timestamp": "2026-11-21T14:34:24Z",
+        "source": "https://x.com/IDF/status/1861000000000000001",
+        "account": "IDF",
+        "handle": "IDF",
+        "source_handle": "IDF",
+        "warning_number": null,
+        "batch": "levant_israel_lebanon_syria",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Security Incident"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          42.951,
+          14.802
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Missile / Drone claim off the Yemen coast",
+        "summary": "Ansarallah spokesman Yahya Saree claimed a drone struck a commercial vessel off the Red Sea coast of Yemen.",
+        "timestamp": "2026-11-21T09:14:24Z",
+        "source": "https://x.com/Yah_Saree/status/1861000000000000002",
+        "account": "Yah_Saree",
+        "handle": "Yah_Saree",
+        "source_handle": "Yah_Saree",
+        "warning_number": null,
+        "batch": "saudi_and_yemen",
+        "verification_tier": "State-Affiliated / Single-Source",
+        "region": "Saudi & Yemen",
+        "category": "Security Incident"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          50.586,
+          26.228
+        ]
+      },
+      "properties": {
+        "severity": "low",
+        "title": "Unconfirmed explosion near Bahrain",
+        "summary": "Sentdefender reported an unconfirmed explosion near the coast of Bahrain, with no official confirmation in the post.",
+        "timestamp": "2026-11-20T09:14:24Z",
+        "source": "https://x.com/sentdefender/status/1861000000000000003",
+        "account": "sentdefender",
+        "handle": "sentdefender",
+        "source_handle": "sentdefender",
+        "warning_number": null,
+        "batch": "aggregators_leads_only",
+        "verification_tier": "Unverified Lead",
+        "region": "Gulf",
+        "category": "Security Incident"
+      }
+    }
+  ]
+}
