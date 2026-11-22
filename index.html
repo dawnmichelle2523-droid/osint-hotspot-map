@@ -78,10 +78,21 @@
     button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
     #quick-jump {
-      position: absolute; z-index: 850; top: 12px; left: 292px;
-      display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 304px);
+      position: absolute; z-index: 850; top: 12px; left: 292px; right: 210px;
+      display: flex; flex-wrap: wrap; gap: 4px;
     }
-    body.filters-closed #quick-jump { left: 108px; max-width: calc(100% - 120px); }
+    body.filters-closed #quick-jump { left: 108px; }
+    #basemap {
+      position: absolute; z-index: 860; top: 12px; right: 12px;
+      display: flex; gap: 2px; padding: 3px;
+      background: #071316; border: 1px solid rgba(20, 184, 166, 0.18); border-radius: 999px;
+    }
+    #basemap button {
+      background: transparent; color: #ecfdf5; border: 1px solid transparent;
+      border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer;
+    }
+    #basemap button[aria-pressed="true"] { background: #0f766e; color: #fff; border-color: #2dd4bf; }
+    #basemap button:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 2px; }
     #quick-jump button {
       background: var(--bg); color: var(--text); border: 1px solid #2dd4bf;
       border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 650;
@@ -100,11 +111,11 @@
     body.filters-closed .legend { left: 12px; }
     .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; border: 1px solid #fff; vertical-align: 0; }
     .pin-icon { background: transparent; border: none; }
-    .pin { position: relative; width: 22px; height: 22px; }
+    .pin { position: relative; width: 28px; height: 28px; }
     .pin .dot {
-      position: absolute; left: 5px; top: 5px; width: 12px; height: 12px; border-radius: 50%;
-      background: currentColor; border: 1.5px solid #fff;
-      box-shadow: 0 0 6px 1px currentColor, 0 0 12px currentColor;
+      position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%;
+      background: currentColor; border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(7, 19, 22, 0.55), 0 0 8px currentColor;
     }
     .pin.is-old { opacity: 0.55; }
     .pin .ring { position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
@@ -118,9 +129,12 @@
       #sidebar, .headline-card, .brief-card { transition: none; }
       .headline-card:hover, .brief-card:hover { transform: none; }
     }
-    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(45, 212, 191, 0.28); }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(15, 118, 110, 0.35); }
     .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
-      background: #0a1a1f; color: var(--text); font-weight: 650;
+      width: 40px; height: 40px; margin-left: 3px; margin-top: 3px; line-height: 36px;
+      background: #0f766e; color: #fff; font-weight: 650;
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 3px 8px rgba(7, 19, 22, 0.5);
     }
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0a1a1f; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
     .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid var(--line); }
@@ -264,6 +278,10 @@
       </div>
     </section>
   </aside>
+  <div id="basemap" role="group" aria-label="Basemap">
+    <button type="button" data-basemap="voyager" aria-pressed="true">Clear Map</button>
+    <button type="button" data-basemap="dark">Dark Slate</button>
+  </div>
   <nav id="quick-jump" aria-label="Quick jump">
     <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
     <button type="button" data-jump="bahrain">Bahrain</button>
@@ -330,14 +348,35 @@
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
     const esriAttr = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+    const voyager = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: "abcd",
+      maxZoom: 20
+    });
+    const darkBase = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
       attribution: esriAttr,
       maxZoom: 16
-    }).addTo(map);
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+    });
+    const darkLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 16,
       pane: "labels"
-    }).addTo(map);
+    });
+    function setBasemap(name) {
+      const clear = name !== "dark";
+      if (clear) {
+        if (map.hasLayer(darkBase)) map.removeLayer(darkBase);
+        if (map.hasLayer(darkLabels)) map.removeLayer(darkLabels);
+        if (!map.hasLayer(voyager)) voyager.addTo(map);
+      } else {
+        if (map.hasLayer(voyager)) map.removeLayer(voyager);
+        if (!map.hasLayer(darkBase)) darkBase.addTo(map);
+        if (!map.hasLayer(darkLabels)) darkLabels.addTo(map);
+      }
+      document.querySelectorAll("#basemap button").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.basemap === (clear ? "voyager" : "dark")));
+      });
+    }
+    setBasemap("voyager");
     map.setView(HOME.center, HOME.zoom);
     window.addEventListener("resize", () => map.invalidateSize());
 
@@ -545,9 +584,9 @@
       const icon = L.divIcon({
         className: "pin-icon",
         html: '<div class="' + classes.join(" ") + '" style="color:' + color + '"><span class="ring"></span><span class="dot"></span></div>',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-        popupAnchor: [0, -10]
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14]
       });
       return L.marker([coords[1], coords[0]], { icon }).bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 });
     }
@@ -632,7 +671,20 @@
     function render(focusMode) {
       if (clusterLayer) map.removeLayer(clusterLayer);
       markers.clear();
-      clusterLayer = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 42, spiderfyOnMaxZoom: true });
+      clusterLayer = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 42,
+        spiderfyOnMaxZoom: true,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          const size = count < 10 ? "small" : count < 100 ? "medium" : "large";
+          return L.divIcon({
+            html: "<div><span>" + count + "</span></div>",
+            className: "marker-cluster marker-cluster-" + size,
+            iconSize: [46, 46]
+          });
+        }
+      });
       const visible = features.filter((feature) => passes(feature, currentOpts(region)));
       visible.forEach((feature) => {
         const marker = markerFor(feature);
@@ -835,6 +887,12 @@
       const open = document.body.classList.toggle("filters-open");
       document.body.classList.toggle("filters-closed", !open);
       filterToggle.setAttribute("aria-expanded", String(open));
+    });
+
+    document.getElementById("basemap").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-basemap]");
+      if (!button) return;
+      setBasemap(button.dataset.basemap);
     });
 
     document.getElementById("quick-jump").addEventListener("click", (event) => {
