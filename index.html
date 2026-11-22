@@ -10,7 +10,7 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #071316;
+      --bg: #0a1114;
       --panel: rgba(10, 26, 31, 0.88);
       --card-bg: linear-gradient(145deg, rgba(13, 33, 39, 0.96), rgba(8, 20, 24, 0.96));
       --line: rgba(20, 184, 166, 0.18);
@@ -25,6 +25,19 @@
     }
     * { box-sizing: border-box; }
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+    #live-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 8px 12px; background: #0a1114; border-bottom: 1px solid #1a2c35;
+    }
+    #fetch-live {
+      color: #0a1114; background: #19d3b8; border: 1px solid #19d3b8; border-radius: 8px;
+      padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #fetch-live:disabled { opacity: 0.7; cursor: wait; }
+    #last-updated {
+      color: #8fb3b8; border: 1px solid #1a2c35; border-radius: 999px;
+      padding: 4px 10px; font-size: 12px; font-weight: 650;
+    }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
     .leaflet-tooltip.coord-tip {
@@ -171,6 +184,7 @@
     .copy-pin { color: #fff; background: var(--active); border: 1px solid var(--active-line); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
     .headlines-note { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
     #headline-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    #headline-list[hidden], #headlines .headlines-note[hidden] { display: none !important; }
     .headline-card, .brief-card { position: relative; }
     .headline-card::before, .brief-card::before {
       content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 12px 12px 0 0;
@@ -226,7 +240,13 @@
     .bar-row { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
     .bar-row span:first-child { color: var(--muted); }
     .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 19, 22, 0.8); border: 1px solid var(--line); overflow: hidden; }
-    .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #14b8a6, #fb7185); }
+    .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #19d3b8, #ff7b89); }
+    .source-pill { display: inline-block; color: var(--muted); background: #0a1114; border: 1px solid #1a2c35; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
+    .update-place { margin: 0; color: var(--muted); font-size: 12px; }
+    #headlines.drawer { border-top: 1px solid #1a2c35; }
+    #updates-toggle { background: transparent; color: var(--text); border: 0; font: inherit; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; cursor: pointer; padding: 0; }
+    #updates-toggle::before { content: "▾ "; color: #19d3b8; }
+    #updates-toggle[aria-expanded="false"]::before { content: "▸ "; }
     @media (max-width: 720px) {
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
@@ -237,6 +257,10 @@
   </style>
 </head>
 <body class="filters-open">
+  <header id="live-bar">
+    <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
+    <span id="last-updated">Last updated: not yet</span>
+  </header>
   <div id="stage">
   <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
   <aside id="sidebar">
@@ -306,6 +330,7 @@
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
     <button type="button" data-jump="levant">Levant</button>
     <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
+    <button type="button" id="summarize-governorate">Summarize Governorate</button>
   </nav>
   <div class="legend">
     <span><i style="background:#fb7185"></i>High</span>
@@ -327,13 +352,13 @@
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
   </section>
-  <section id="headlines" aria-labelledby="headlines-title">
+  <section id="headlines" class="drawer" aria-labelledby="updates-toggle">
     <div class="headlines-inner">
       <div class="headlines-head">
-        <h2 id="headlines-title">Live X OSINT &amp; Advisory Headlines</h2>
+        <h2 id="headlines-title"><button type="button" id="updates-toggle" aria-expanded="true" aria-controls="headline-list">Newest Updates</button></h2>
         <button type="button" id="export-headlines">Export Filtered Headlines</button>
       </div>
-      <p class="headlines-note">Same incidents as the map, newest first.</p>
+      <p class="headlines-note">All live events, newest first.</p>
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
     </div>
   </section>
@@ -584,6 +609,15 @@
       return "#f59e0b";
     }
 
+    function sourceLabel(props) {
+      const labeled = String(props.source_label || "");
+      if (labeled.includes(" · ")) return labeled;
+      const handle = String(props.source_handle || props.handle || props.account || "").replace(/^@/, "");
+      if (handle.includes(" · ")) return handle;
+      if (handle) return "X · @" + handle;
+      return "Live";
+    }
+
     function popupHtml(props, id) {
       const badge = BADGES[props.verification_tier] || { label: "Lead", cls: "badge-unknown" };
       const headline = props.title || props.summary || "Incident";
@@ -591,10 +625,15 @@
       const link = href
         ? '<a class="popup-link" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">View Source ↗</a>'
         : "";
+      const place = props.location_name
+        ? '<div class="update-place">' + esc(props.location_name) + "</div>"
+        : "";
       return (
         '<div class="popup">' +
           "<h3>" + esc(headline) + "</h3>" +
+          '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
           '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span>" +
+          place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
           '<div class="popup-actions">' + link +
@@ -758,37 +797,40 @@
         return (Number.isNaN(bm) ? 0 : bm) - (Number.isNaN(am) ? 0 : am);
       });
       if (!sorted.length) {
-        headlineExport = "Live X OSINT & Advisory Headlines\n\nNo headlines match these filters.";
-        list.innerHTML = '<p class="headline-empty">No headlines match these filters.</p>';
+        headlineExport = "Newest Updates\n\nNo updates match these filters.";
+        list.innerHTML = '<p class="headline-empty">No updates match these filters.</p>';
         return;
       }
-      headlineExport = "Live X OSINT & Advisory Headlines\n\n" + sorted.map((feature) => {
+      headlineExport = "Newest Updates\n\n" + sorted.map((feature) => {
         const props = feature.properties || {};
-        const badge = headlineBadge(props);
         const href = safeUrl(props.source);
         return [
           props.title || props.summary || "Incident",
-          badge.label,
+          sourceLabel(props),
           gmtStamp(props.timestamp),
+          props.location_name || "",
           twoSentences(props.summary),
           href
         ].filter(Boolean).join("\n");
       }).join("\n\n");
       list.innerHTML = sorted.map((feature) => {
         const props = feature.properties || {};
-        const badge = headlineBadge(props);
         const href = safeUrl(props.source);
         const source = href
           ? '<a class="headline-source" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">View Source</a>'
           : "";
+        const place = props.location_name
+          ? '<p class="update-place">' + esc(props.location_name) + "</p>"
+          : "";
         return (
           '<article class="headline-card">' +
             '<div class="headline-meta">' +
-              '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span>" +
+              '<span class="source-pill">' + esc(sourceLabel(props)) + "</span>" +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
             "<h3>" + esc(props.title || props.summary || "Incident") + "</h3>" +
+            place +
             '<p class="summary">' + esc(twoSentences(props.summary)) + "</p>" +
             '<div class="headline-actions">' +
               source +
@@ -852,6 +894,39 @@
       const coords = feature && feature.geometry && feature.geometry.coordinates;
       return feature && feature.type === "Feature" && feature.geometry.type === "Point" &&
         Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
+    }
+
+    function showLastUpdated(stamp) {
+      const badge = document.getElementById("last-updated");
+      if (!badge) return;
+      if (!stamp) {
+        badge.textContent = "Last updated: not yet";
+        return;
+      }
+      const shown = gmtStamp(stamp);
+      badge.textContent = "Last updated: " + (shown === "Unknown time" ? stamp : shown);
+    }
+
+    async function loadLive() {
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        showLastUpdated(data.last_polled_at);
+        const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
+        if (incoming.length) {
+          features = incoming;
+          loadedOnce = true;
+          setStatus("");
+          render();
+          if (!hashApplied) {
+            hashApplied = true;
+            openHashedPin();
+          }
+          return;
+        }
+      } catch (err) {}
+      await loadHotspots();
     }
 
     async function loadHotspots() {
@@ -932,6 +1007,7 @@
 
     const SYRIA_GEOJSON_URL = "./syria_governorates.geojson";
     let syriaLayer = null;
+    let selectedGovernorate = "";
 
     function syriaGovernorateName(feature) {
       const props = (feature && feature.properties) || {};
@@ -961,6 +1037,7 @@
               syriaLayer.resetStyle(event.target);
             },
             click: (event) => {
+              selectedGovernorate = syriaGovernorateName(feature);
               map.fitBounds(event.target.getBounds(), { padding: [28, 28] });
             }
           });
@@ -995,6 +1072,35 @@
 
     document.getElementById("syria-governorates").addEventListener("click", () => {
       toggleSyriaGovernorates(document.getElementById("syria-governorates"));
+    });
+    document.getElementById("summarize-governorate").addEventListener("click", () => {
+      if (!selectedGovernorate) {
+        setStatus("Click a Syrian governorate first.");
+        return;
+      }
+      const name = selectedGovernorate;
+      const matches = features.filter((feature) => {
+        const props = feature.properties || {};
+        const place = String(props.governorate || props.location_name || props.title || "");
+        return place.toLowerCase().includes(name.toLowerCase());
+      });
+      const notes = matches.slice(0, 4).map((feature) => {
+        const props = feature.properties || {};
+        return (props.location_name ? props.location_name + ": " : "") + (props.title || props.summary || "Update");
+      });
+      const text = matches.length
+        ? name + " has " + matches.length + " recent update" + (matches.length === 1 ? "" : "s") + " on the live map."
+        : "No live updates are tagged to " + name + " yet.";
+      renderLiveSummary({ text: text, regional_notes: notes.map((note) => ({ region: name, note: note })) });
+      summaryPinned = true;
+      setStatus("");
+    });
+    document.getElementById("updates-toggle").addEventListener("click", () => {
+      const button = document.getElementById("updates-toggle");
+      const open = button.getAttribute("aria-expanded") !== "true";
+      button.setAttribute("aria-expanded", String(open));
+      document.getElementById("headline-list").hidden = !open;
+      document.querySelector("#headlines .headlines-note").hidden = !open;
     });
 
     document.getElementById("quick-jump").addEventListener("click", (event) => {
@@ -1190,12 +1296,25 @@
       copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
     });
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
+    document.getElementById("fetch-live").addEventListener("click", async () => {
+      const button = document.getElementById("fetch-live");
+      button.disabled = true;
+      try {
+        await fetch("/api/poll-now", { method: "POST", cache: "no-store" });
+        await loadLive();
+      } catch (err) {
+        setStatus("Live feed fetch failed.");
+      } finally {
+        button.disabled = false;
+        button.textContent = "↻ Fetch Live Feeds";
+      }
+    });
     window.addEventListener("hashchange", () => openHashedPin());
 
-    loadHotspots();
+    loadLive();
     showSyriaGovernorates(false);
     loadSummaryPanel();
-    setInterval(loadHotspots, 60000);
+    setInterval(loadLive, 60000);
     setInterval(loadSummaryPanel, 60000);
   </script>
 </body>
