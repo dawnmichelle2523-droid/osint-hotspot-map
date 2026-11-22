@@ -3,13 +3,13 @@
 # https://docs.x.ai/developers/tools/x-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-3-mini. If that model is rejected, the same call is retried
-# with grok-3. Tool type x_search. Handles go out as included_x_handles.
+# model grok-4-fast-reasoning. max_output_tokens is 1000.
+# Tool type x_search. Handles go out as included_x_handles.
 # Current X Search docs still filter with allowed_x_handles, so that field
 # is set to the same list: https://docs.x.ai/developers/tools/x-search
 # from_date/to_date as YYYY-MM-DD. to_date is exclusive: posts from 00:00 UTC
 # on from_date up to, but not including, to_date. Full datetimes are not
-# applied, so the last-36-hours window is stated in the prompt and enforced
+# applied, so the last-24-hours window is stated in the prompt and enforced
 # again on each timestamp. from_date is yesterday and to_date is tomorrow,
 # both YYYY-MM-DD, because to_date is exclusive at 00:00 UTC.
 # search_parameters is not used.
@@ -39,14 +39,14 @@ ARCHIVE = ROOT / "archive.json"
 SOURCES = ROOT / "sources.json"
 
 # First model, then the retry if the API rejects it.
-MODELS = ("grok-3-mini", "grok-3")
+MODEL = "grok-4-fast-reasoning"
 BASE_URL = "https://api.x.ai/v1"
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
 HTTP_TIMEOUT = 10
 API_TIMEOUT = 25
 # Responses API name for max_tokens. Caps the visible answer.
-MAX_OUTPUT_TOKENS = 800
+MAX_OUTPUT_TOKENS = 1000
 HANDLE_LIMIT = 20
 ACTIVE_DAYS = 7
 LEAD_MATCH_KM = 100
@@ -300,6 +300,101 @@ def format_timestamp(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+# Maritime chokepoints and regional capitals: (longitude, latitude, region).
+# Vague water names stay on these points instead of a geocoder centroid.
+PLACES = {
+    "strait of hormuz": (56.2667, 26.5667, "Maritime"),
+    "hormuz": (56.2667, 26.5667, "Maritime"),
+    "bab el mandeb": (43.3333, 12.5833, "Maritime"),
+    "bab al mandab": (43.3333, 12.5833, "Maritime"),
+    "red sea": (38.5000, 20.0000, "Maritime"),
+    "gulf of aden": (48.0000, 12.0000, "Maritime"),
+    "gulf of oman": (58.0000, 25.0000, "Maritime"),
+    "persian gulf": (51.5000, 26.5000, "Maritime"),
+    "arabian gulf": (51.5000, 26.5000, "Maritime"),
+    "arabian sea": (64.0000, 16.0000, "Maritime"),
+    "suez canal": (32.3500, 30.4500, "Maritime"),
+    "eastern mediterranean": (34.0000, 33.5000, "Maritime"),
+    "manama": (50.5860, 26.2285, "Gulf"),
+    "bahrain": (50.5577, 26.0667, "Gulf"),
+    "doha": (51.5310, 25.2854, "Gulf"),
+    "abu dhabi": (54.3773, 24.4539, "Gulf"),
+    "dubai": (55.2708, 25.2048, "Gulf"),
+    "muscat": (58.4059, 23.5880, "Gulf"),
+    "kuwait city": (47.9774, 29.3759, "Gulf"),
+    "riyadh": (46.6753, 24.7136, "Saudi & Yemen"),
+    "jeddah": (39.1925, 21.4858, "Saudi & Yemen"),
+    "sanaa": (44.1910, 15.3694, "Saudi & Yemen"),
+    "aden": (45.0187, 12.7855, "Saudi & Yemen"),
+    "hodeidah": (42.9511, 14.7978, "Saudi & Yemen"),
+    "yemen": (44.1910, 15.3694, "Saudi & Yemen"),
+    "damascus": (36.2765, 33.5138, "Levant"),
+    "beirut": (35.5018, 33.8938, "Levant"),
+    "nabatieh": (35.4830, 33.3770, "Levant"),
+    "amman": (35.9304, 31.9632, "Levant"),
+    "jerusalem": (35.2137, 31.7683, "Levant"),
+    "gaza": (34.4668, 31.5017, "Levant"),
+    "tehran": (51.3890, 35.6892, "Iran & Iraq"),
+    "baghdad": (44.3661, 33.3152, "Iran & Iraq"),
+    "bandar abbas": (56.2808, 27.1832, "Iran & Iraq"),
+    "cairo": (31.2357, 30.0444, "Other / International"),
+}
+VAGUE_PLACES = {
+    "strait of hormuz",
+    "hormuz",
+    "bab el mandeb",
+    "bab al mandab",
+    "red sea",
+    "gulf of aden",
+    "gulf of oman",
+    "persian gulf",
+    "arabian gulf",
+    "arabian sea",
+    "suez canal",
+    "eastern mediterranean",
+}
+REGION_CAPITALS = {
+    "Gulf": PLACES["manama"],
+    "Saudi & Yemen": PLACES["riyadh"],
+    "Levant": PLACES["damascus"],
+    "Iran & Iraq": PLACES["tehran"],
+    "Maritime": PLACES["strait of hormuz"],
+    "Other / International": PLACES["cairo"],
+}
+GEO_MODEL = "grok-3-mini"
+_missing_key_noted = False
+
+
+def place_key(value: object) -> str:
+    text = str(value or "").lower().replace("'", " ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def places_in(text: object) -> list[str]:
+    remaining = place_key(text)
+    found = []
+    for name in sorted(PLACES, key=len, reverse=True):
+        if name and name in remaining:
+            found.append(name)
+            remaining = remaining.replace(name, " ")
+    return found
+
+
+def is_vague_location(text: object) -> bool:
+    found = places_in(text)
+    return bool(found) and all(name in VAGUE_PLACES for name in found)
+
+
+def lookup_place(text: object) -> tuple[float, float, str] | None:
+    found = places_in(text)
+    specific = [name for name in found if name not in VAGUE_PLACES]
+    chosen = specific[0] if specific else (found[0] if found else "")
+    if not chosen:
+        return None
+    return PLACES[chosen]
+
+
 def valid_coord(lon: object, lat: object) -> tuple[float, float] | None:
     try:
         longitude = float(lon)
@@ -324,6 +419,133 @@ def normalize_region(value: object) -> str | None:
     if text in REGIONS:
         return text
     return REGION_ALIASES.get(text.lower())
+
+
+def extract_location(headline: str) -> dict | None:
+    """One grok-3-mini call. No live search. Does not write hotspot or brief files."""
+    global _missing_key_noted
+    key = read_api_key()
+    if not key:
+        if not _missing_key_noted:
+            print("XAI_API_KEY is missing. Location extract skipped. hotspots.json was not changed.")
+            _missing_key_noted = True
+        return None
+    prompt = (
+        "Extract the place from this headline. Do not use live search and do not invent a place "
+        "that the text does not support. region must be one of: "
+        + ", ".join(REGIONS)
+        + ". location_name is the most specific place named. "
+        "lat and lng are decimal degrees, or null when the text does not locate the event.\n\n"
+        + headline
+    )
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "region": {"type": "string", "enum": list(REGIONS)},
+            "location_name": {"type": "string"},
+            "lat": {"type": ["number", "null"]},
+            "lng": {"type": ["number", "null"]},
+        },
+        "required": ["region", "location_name", "lat", "lng"],
+    }
+    try:
+        response = make_client(key).responses.create(
+            model=GEO_MODEL,
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "incident_location",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+            max_output_tokens=300,
+            timeout=API_TIMEOUT,
+        )
+        text = response_text(response)
+        if not text:
+            raise RuntimeError("xAI response did not include output text")
+        payload = parse_json_object(text)
+    except Exception as exc:
+        print(f"Location extract failed: {public_error(exc, key)}.")
+        return None
+    if not isinstance(payload, dict):
+        print("Location extract failed: response was not an object.")
+        return None
+    return payload
+
+
+def geocode_name(location_name: str) -> tuple[float, float] | None:
+    name = one_sentence(location_name)
+    if not name:
+        return None
+    try:
+        from geopy.geocoders import Nominatim
+    except ImportError:
+        print(f"Geocode failed for {name}: geopy is not installed.")
+        return None
+    try:
+        geolocator = Nominatim(user_agent="osint_tracker", timeout=10)
+        found = geolocator.geocode(name)
+    except Exception as exc:
+        print(f"Geocode failed for {name}: {exc.__class__.__name__}.")
+        return None
+    if found is None:
+        print(f"Geocode failed for {name}: no result.")
+        return None
+    return valid_coord(found.longitude, found.latitude)
+
+
+def locate_event(
+    headline: str,
+    *,
+    location_name: str = "",
+    lat: object = None,
+    lng: object = None,
+    region: object = None,
+) -> dict:
+    """Place one incident. Missing key or a geocoder failure does not write files."""
+    text = one_sentence(location_name) or one_sentence(headline)
+    known = valid_coord(lng, lat)
+    known_region = normalize_region(region)
+    vague = is_vague_location(text) or is_vague_location(headline)
+    if known and known_region and not vague:
+        return {
+            "region": known_region,
+            "location_name": text,
+            "lat": known[1],
+            "lng": known[0],
+        }
+    extracted = extract_location(one_sentence(headline) or text)
+    if extracted:
+        known_region = normalize_region(extracted.get("region")) or known_region
+        named = one_sentence(extracted.get("location_name"))
+        if named:
+            text = named
+        extracted_coord = valid_coord(extracted.get("lng"), extracted.get("lat"))
+        if extracted_coord:
+            known = extracted_coord
+        vague = is_vague_location(text) or is_vague_location(headline)
+    if (known is None or vague) and text and not vague:
+        coded = geocode_name(text)
+        if coded:
+            known = coded
+    if vague or known is None:
+        place = lookup_place(text) or lookup_place(headline)
+        if place:
+            known = (place[0], place[1])
+            known_region = known_region or place[2]
+    if known is None and known_region in REGION_CAPITALS:
+        capital = REGION_CAPITALS[known_region]
+        known = (capital[0], capital[1])
+    return {
+        "region": known_region or "Other / International",
+        "location_name": text,
+        "lat": known[1] if known else None,
+        "lng": known[0] if known else None,
+    }
 
 
 def normalize_category(value: object, batch: str) -> str:
@@ -436,27 +658,32 @@ def build_feature(
     cites_primary: bool,
     title: str = "",
     warning_number: str | None = None,
+    location_name: str = "",
 ) -> dict:
     warning = one_sentence(warning_number) or extract_warning_number(summary)
+    properties = {
+        "severity": severity,
+        "title": one_sentence(title) or summary,
+        "summary": summary,
+        "timestamp": timestamp,
+        "source": source,
+        "account": handle,
+        "handle": handle,
+        "source_handle": handle,
+        "batch": batch,
+        "verification_tier": tier,
+        "region": region,
+        "category": category,
+        "warning_number": warning or None,
+        "_cites_primary": cites_primary,
+    }
+    named = one_sentence(location_name)
+    if named:
+        properties["location_name"] = named
     return {
         "type": "Feature",
         "geometry": {"type": "Point", "coordinates": [lon, lat]},
-        "properties": {
-            "severity": severity,
-            "title": one_sentence(title) or summary,
-            "summary": summary,
-            "timestamp": timestamp,
-            "source": source,
-            "account": handle,
-            "handle": handle,
-            "source_handle": handle,
-            "batch": batch,
-            "verification_tier": tier,
-            "region": region,
-            "category": category,
-            "warning_number": warning or None,
-            "_cites_primary": cites_primary,
-        },
+        "properties": properties,
     }
 
 
@@ -488,21 +715,31 @@ def prepare_incidents(
         source = f"https://x.com/{handle}/status/{parsed_url[1]}"
         if source in seen:
             continue
-        coords = valid_coord(item.get("longitude"), item.get("latitude"))
-        if coords is None:
-            continue
         severity = str(item.get("severity") or "").strip().lower()
         if severity not in SEVERITIES:
             continue
         summary = one_sentence(item.get("summary"))
         if not summary:
             continue
+        title = one_sentence(item.get("title") or "")
+        hint = item.get("location_name") if isinstance(item.get("location_name"), str) else ""
+        incoming = valid_coord(item.get("longitude"), item.get("latitude"))
+        placed = locate_event(
+            title or summary,
+            location_name=hint,
+            lat=incoming[1] if incoming else None,
+            lng=incoming[0] if incoming else None,
+            region=item.get("region"),
+        )
+        coords = valid_coord(placed.get("lng"), placed.get("lat"))
+        if coords is None:
+            continue
         moment = parse_timestamp(item.get("timestamp"))
         if moment is None:
             continue
         if require_recent and (moment < window_start or moment > window_end + timedelta(minutes=15)):
             continue
-        region = normalize_region(item.get("region"))
+        region = normalize_region(placed.get("region")) or normalize_region(item.get("region"))
         if region is None:
             continue
         category = normalize_category(item.get("category"), batch)
@@ -532,8 +769,9 @@ def prepare_incidents(
                 region=region,
                 category=category,
                 cites_primary=cites_primary or cites_named,
-                title=one_sentence(item.get("title") or ""),
+                title=title,
                 warning_number=item.get("warning_number") if isinstance(item.get("warning_number"), str) else None,
+                location_name=one_sentence(placed.get("location_name")),
             )
         )
     return features
@@ -752,61 +990,23 @@ def run_source(name: str, fn, secret: str = ""):
         return None
 
 
-def model_rejected(exc: BaseException) -> bool:
-    """True when the API refuses the model itself, not a timeout or auth error."""
-    if "timeout" in exc.__class__.__name__.lower():
-        return False
-    status = getattr(exc, "status_code", None)
-    if status in (401, 403, 408, 409, 429) or (isinstance(status, int) and status >= 500):
-        return False
-    text = str(exc).lower()
-    if not any(token in text for token in ("model", "grok-3-mini", "grok-3")):
-        return False
-    return any(
-        token in text
-        for token in (
-            "not found",
-            "does not exist",
-            "unknown",
-            "invalid",
-            "unsupported",
-            "not supported",
-            "does not support",
-            "unavailable",
-            "rejected",
-            "model_not_found",
-        )
-    )
-
-
 def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, api_key: str):
-    response = None
-    for index, model in enumerate(MODELS):
-        try:
-            response = client.responses.create(
-                model=model,
-                input=prompt,
-                tools=[tool],
-                text={
-                    "format": {
-                        "type": "json_schema",
-                        "name": schema_name,
-                        "schema": schema,
-                        "strict": True,
-                    }
-                },
-                extra_body={"max_turns": 4},
-                max_output_tokens=MAX_OUTPUT_TOKENS,
-                timeout=API_TIMEOUT,
-            )
-            break
-        except Exception as exc:
-            if index == 0 and model_rejected(exc):
-                print(f"{model} rejected; retrying with {MODELS[1]}")
-                continue
-            raise
-    if response is None:
-        raise RuntimeError("xAI model was rejected")
+    response = client.responses.create(
+        model=MODEL,
+        input=prompt,
+        tools=[tool],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": schema_name,
+                "schema": schema,
+                "strict": True,
+            }
+        },
+        extra_body={"max_turns": 4},
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        timeout=API_TIMEOUT,
+    )
     text = response_text(response)
     if not text:
         raise RuntimeError("xAI response did not include output text")
@@ -832,7 +1032,7 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
         f"Search only these X accounts: {handle_line}\n"
         f"Never include, cite, quote, or mention these accounts: {excluded_line}\n"
         f"UTC window: {format_timestamp(start)} through {format_timestamp(end)}. "
-        "Omit anything outside that window.\n"
+        "Keep posts from the last 24 hours only. Omit anything outside that window.\n"
         "Translate Arabic, Persian, and French into one concise factual English sentence.\n"
         "Do not invent coordinates. Omit an incident if the post does not locate it.\n"
         "severity is exactly high, medium, or low.\n"
@@ -873,7 +1073,7 @@ def main() -> None:
     excluded = excluded_set(excluded_list)
     batches_by_handle = handle_batches(batches)
     now_utc = datetime.now(timezone.utc)
-    window_start = now_utc - timedelta(hours=36)
+    window_start = now_utc - timedelta(hours=24)
     # to_date is exclusive at 00:00 UTC, so tomorrow includes all of today.
     from_date = (now_utc - timedelta(days=1)).strftime("%Y-%m-%d")
     to_date = (now_utc + timedelta(days=1)).strftime("%Y-%m-%d")
