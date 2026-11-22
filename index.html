@@ -915,7 +915,6 @@
 
     let briefText = "";
 
-    const BRIEF_SECTIONS = ["Gulf & Maritime Security", "Yemen & Red Sea", "Levant & Regional Politics"];
     const ADVISORY_TITLE = "Official Travel & Embassy Advisories";
 
     function briefBullets(text) {
@@ -953,23 +952,25 @@
       const stamp = gmtStamp(data.generated_at);
       if (data.generated_at) time.setAttribute("datetime", data.generated_at);
       time.textContent = stamp === "Unknown time" ? "" : stamp;
-      const byTitle = new Map();
-      (Array.isArray(data.regional_sections) ? data.regional_sections : []).forEach((item) => {
-        byTitle.set(item.region, briefBullets(item.summary));
-      });
+      const sections = (Array.isArray(data.regional_sections) ? data.regional_sections : []).map((item) => ({
+        title: item.region || "",
+        bullets: briefBullets(item.summary)
+      })).filter((item) => item.title);
       const highlights = (Array.isArray(data.advisory_highlights) ? data.advisory_highlights : []).flatMap(briefBullets);
       body.innerHTML =
         briefSection("Executive Summary", [data.executive_summary]) +
-        BRIEF_SECTIONS.map((title) => briefSection(title, byTitle.get(title) || [])).join("") +
-        briefSection(ADVISORY_TITLE, highlights);
+        sections.map((item) => briefSection(item.title, item.bullets)).join("") +
+        (highlights.length ? briefSection(ADVISORY_TITLE, highlights) : "");
       const lines = ["Daily Geopolitical Brief", stamp, "", "Executive Summary", data.executive_summary, ""];
-      BRIEF_SECTIONS.forEach((title) => {
-        lines.push(title);
-        (byTitle.get(title) || ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+      sections.forEach((item) => {
+        lines.push(item.title);
+        (item.bullets.length ? item.bullets : ["Nothing new in the last 24 hours."]).forEach((line) => lines.push("- " + line));
         lines.push("");
       });
-      lines.push(ADVISORY_TITLE);
-      (highlights.length ? highlights : ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+      if (highlights.length) {
+        lines.push(ADVISORY_TITLE);
+        highlights.forEach((item) => lines.push("- " + item));
+      }
       briefText = lines.join("\n").trim();
     }
 
