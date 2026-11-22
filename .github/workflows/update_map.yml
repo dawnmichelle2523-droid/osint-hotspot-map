@@ -4,6 +4,10 @@ on:
     - cron: '0 */4 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: osint-map-update
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -22,12 +26,6 @@ jobs:
           python fetch_x_osint.py
           python fetch_web_advisories.py
       - run: |
-          git config user.name "OSINT Bot"
-          git config user.email "bot@://github.com"
-          git add hotspots.json archive.json || git add hotspots.json
-          git commit -m "Update live hotspots" || exit 0
-          git push
-  - run: |
           git config user.name "OSINT Bot"
           git config user.email "bot@://github.com"
           git add hotspots.json archive.json || git add hotspots.json
