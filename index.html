@@ -38,6 +38,27 @@
       color: #8fb3b8; border: 1px solid #1a2c35; border-radius: 999px;
       padding: 4px 10px; font-size: 12px; font-weight: 650;
     }
+    #clock-strip {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-left: auto;
+      color: #d5e4e8; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
+    }
+    #feed-health-wrap { position: relative; }
+    #feed-health {
+      color: #19d3b8; background: #0e181d; border: 1px solid #1a2c35; border-radius: 999px;
+      padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    #feed-health.has-fail { color: #ffb703; }
+    #feed-popover {
+      position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: min(360px, 80vw);
+      background: #0e181d; color: #e7eef0; border: 1px solid #1a2c35; border-radius: 10px;
+      padding: 10px 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+    }
+    #feed-popover[hidden] { display: none; }
+    #feed-popover p { margin: 0; color: #8fb3b8; font-size: 12px; }
+    #feed-popover ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    #feed-popover li { font-size: 12px; line-height: 1.35; }
+    #feed-popover .fail-error { color: #ffb703; }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
     .leaflet-tooltip.coord-tip {
@@ -248,7 +269,15 @@
     .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
     button.bar-row { width: 100%; background: transparent; color: inherit; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
     .bar-row { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    button.bar-row[aria-pressed="true"] {
+      background: rgba(25, 211, 184, 0.12); border-radius: 8px; outline: 1px solid #19d3b8;
+    }
     button.bar-row[aria-pressed="true"] span:first-child { color: #19d3b8; }
+    #show-all-regions {
+      color: #19d3b8; background: transparent; border: 1px solid #1a2c35; border-radius: 999px;
+      padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer;
+    }
+    #show-all-regions[aria-pressed="true"] { background: #19d3b8; color: #0a1114; border-color: #19d3b8; }
     .bar-row span:first-child { color: var(--muted); }
     .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 19, 22, 0.8); border: 1px solid var(--line); overflow: hidden; }
     .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #19d3b8, #ff7b89); }
@@ -261,6 +290,7 @@
     #updates-toggle::before { content: "▾ "; color: #19d3b8; }
     #updates-toggle[aria-expanded="false"]::before { content: "▸ "; }
     @media (max-width: 720px) {
+      #clock-strip { margin-left: 0; }
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
@@ -273,6 +303,17 @@
   <header id="live-bar">
     <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
     <span id="last-updated">Last updated: not yet</span>
+    <div id="feed-health-wrap">
+      <button type="button" id="feed-health" aria-expanded="false" aria-controls="feed-popover">● 0/0 Feeds Online</button>
+      <div id="feed-popover" hidden>
+        <p>No failing sources.</p>
+      </div>
+    </div>
+    <div id="clock-strip">
+      <span id="clock-london">London --:--:--</span>
+      <span id="clock-utc">UTC --:--:--</span>
+      <span id="clock-brief">Next briefing --:--:--</span>
+    </div>
   </header>
   <div id="stage">
   <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
@@ -373,6 +414,7 @@
         <button type="button" data-summary-scope="Other / International">Other / International</button>
       </div>
       <p id="summary-updated">Last auto-updated: not yet</p>
+      <button type="button" id="show-all-regions" aria-pressed="true">Show All Regions</button>
       <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
@@ -702,7 +744,7 @@
       const props = feature.properties || {};
       const id = pinId(feature);
       const age = ageMs(props.timestamp);
-      const fresh = age !== null && age >= 0 && age <= WINDOWS["2h"];
+      const fresh = age !== null && age >= 0 && age <= 60 * 60 * 1000;
       const old = age !== null && age > WINDOWS["24h"];
       const classes = ["pin"];
       if (fresh) classes.push("is-fresh");
@@ -954,6 +996,84 @@
         Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
     }
 
+    function zonedParts(date, timeZone) {
+      const bag = {};
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(date).forEach((part) => { bag[part.type] = part.value; });
+      if (bag.hour === "24") bag.hour = "00";
+      return bag;
+    }
+
+    function clockLabel(parts) {
+      return parts.hour + ":" + parts.minute + ":" + parts.second;
+    }
+
+    function londonOffsetMs(date) {
+      const parts = zonedParts(date, "Europe/London");
+      const wall = Date.UTC(
+        Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+        Number(parts.hour), Number(parts.minute), Number(parts.second)
+      );
+      return wall - date.getTime();
+    }
+
+    function nextLondonBriefing(now) {
+      const parts = zonedParts(now, "Europe/London");
+      function at(dayShift) {
+        const year = Number(parts.year);
+        const month = Number(parts.month) - 1;
+        const day = Number(parts.day) + dayShift;
+        let instant = Date.UTC(year, month, day, 7, 0, 0);
+        for (let step = 0; step < 3; step += 1) {
+          instant = Date.UTC(year, month, day, 7, 0, 0) - londonOffsetMs(new Date(instant));
+        }
+        return instant;
+      }
+      let target = at(0);
+      if (target <= now.getTime()) target = at(1);
+      return Math.max(0, target - now.getTime());
+    }
+
+    function countdownLabel(ms) {
+      const total = Math.floor(ms / 1000);
+      const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+      const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+      const ss = String(total % 60).padStart(2, "0");
+      return hh + ":" + mm + ":" + ss;
+    }
+
+    function tickClocks() {
+      const now = new Date();
+      document.getElementById("clock-london").textContent = "London " + clockLabel(zonedParts(now, "Europe/London"));
+      document.getElementById("clock-utc").textContent = "UTC " + clockLabel(zonedParts(now, "UTC"));
+      document.getElementById("clock-brief").textContent = "Next briefing " + countdownLabel(nextLondonBriefing(now));
+    }
+
+    function renderFeedHealth(health) {
+      const button = document.getElementById("feed-health");
+      const popover = document.getElementById("feed-popover");
+      const online = health && Number.isFinite(Number(health.online)) ? Number(health.online) : 0;
+      const total = health && Number.isFinite(Number(health.total)) ? Number(health.total) : 0;
+      const failing = health && Array.isArray(health.failing) ? health.failing : [];
+      button.textContent = "● " + online + "/" + total + " Feeds Online";
+      button.classList.toggle("has-fail", failing.length > 0);
+      if (!failing.length) {
+        popover.innerHTML = "<p>No failing sources.</p>";
+        return;
+      }
+      popover.innerHTML = "<ul>" + failing.map((item) => (
+        "<li>" + esc(item.label || item.name || "Feed") + " <span class=\"fail-error\">" + esc(item.error || "error") + "</span></li>"
+      )).join("") + "</ul>";
+    }
+
     function showLastUpdated(stamp) {
       const badge = document.getElementById("last-updated");
       if (!badge) return;
@@ -971,6 +1091,7 @@
         if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
         showLastUpdated(data.last_polled_at);
+        renderFeedHealth(data.feed_health);
         const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
         features = incoming;
         loadedOnce = true;
@@ -1357,7 +1478,7 @@
         button.setAttribute("aria-pressed", String(button.dataset.summaryScope === summaryScope));
       });
       document.querySelectorAll("[data-region-bar]").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.regionBar === summaryScope));
+        button.setAttribute("aria-pressed", String(button.dataset.regionBar === region));
       });
       if (!text) return false;
       const body = document.getElementById("brief-body");
@@ -1447,10 +1568,12 @@
         counts[key] += 1;
       });
       const maxCount = Math.max(1, ...LIVE_REGIONS.map((name) => counts[name]));
+      const reset = document.getElementById("show-all-regions");
+      if (reset) reset.setAttribute("aria-pressed", String(region === "all"));
       document.getElementById("region-chart").innerHTML = LIVE_REGIONS.map((name) => {
         const count = counts[name];
         const width = Math.round((count / maxCount) * 100);
-        const pressed = name === summaryScope ? "true" : "false";
+        const pressed = name === region ? "true" : "false";
         return "<button type=\"button\" class=\"bar-row\" data-region-bar=\"" + esc(name) + "\" aria-pressed=\"" + pressed + "\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></button>";
       }).join("");
     }
@@ -1495,11 +1618,17 @@
       if (!button) return;
       selectSummaryScope(button.dataset.summaryScope);
     });
+    function applyRegionFilter(name) {
+      region = name || "all";
+      selectSummaryScope(region === "all" ? "overall" : region);
+      render(searchQuery ? "search" : (region === "all" ? "clear" : "region"));
+    }
     document.getElementById("region-chart").addEventListener("click", (event) => {
       const button = event.target.closest("[data-region-bar]");
       if (!button) return;
-      selectSummaryScope(button.dataset.regionBar);
+      applyRegionFilter(button.dataset.regionBar);
     });
+    document.getElementById("show-all-regions").addEventListener("click", () => applyRegionFilter("all"));
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     document.getElementById("fetch-live").addEventListener("click", async () => {
       const button = document.getElementById("fetch-live");
@@ -1516,6 +1645,22 @@
     });
     window.addEventListener("hashchange", () => openHashedPin());
 
+    tickClocks();
+    setInterval(tickClocks, 1000);
+    document.getElementById("feed-health").addEventListener("click", () => {
+      const popover = document.getElementById("feed-popover");
+      const open = popover.hasAttribute("hidden");
+      if (open) popover.removeAttribute("hidden");
+      else popover.setAttribute("hidden", "");
+      document.getElementById("feed-health").setAttribute("aria-expanded", String(open));
+    });
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("#feed-health-wrap")) return;
+      const popover = document.getElementById("feed-popover");
+      if (!popover || popover.hasAttribute("hidden")) return;
+      popover.setAttribute("hidden", "");
+      document.getElementById("feed-health").setAttribute("aria-expanded", "false");
+    });
     loadLive();
     showSyriaGovernorates(false);
     loadSummaryPanel();

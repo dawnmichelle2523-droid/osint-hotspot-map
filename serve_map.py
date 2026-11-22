@@ -642,7 +642,9 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
         parsed = feedparser.parse(response.content)
     except Exception as exc:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
+        note_feed("rss", name, False, exc.__class__.__name__)
         return []
+    note_feed("rss", name, True, "")
     found = []
     for entry in (parsed.entries or [])[:20]:
         title = plain_text(getattr(entry, "title", ""))
@@ -681,6 +683,7 @@ def fetch_telegram_channel(channel: str) -> list[dict]:
         soup = BeautifulSoup(response.text, "html.parser")
     except Exception as exc:
         print(f"Telegram {channel} failed: {exc.__class__.__name__}.")
+        note_feed("telegram", channel, False, exc.__class__.__name__)
         return []
     found = []
     for wrap in soup.select(".tgme_widget_message")[:20]:
@@ -705,6 +708,7 @@ def fetch_telegram_channel(channel: str) -> list[dict]:
                 "published_at": when,
             }
         )
+    note_feed("telegram", channel, True, "")
     return found
 
 
@@ -729,22 +733,23 @@ def canonical_x_url(handle: str, link: str, guid: str) -> str:
 
 
 def fetch_x_handle(handle: str) -> list[dict]:
+    last_error = "no entries"
     for template in X_FEED_URLS:
         url = template.format(handle=handle)
         host = url.split("/")[2]
         try:
             response = paced_get(url)
         except Exception as exc:
-            print(f"X {handle} via {host} failed: {exc.__class__.__name__}.")
-            continue
-        if response.status_code in X_RATE_LIMITS:
-            print(f"X {handle} via {host} failed: HTTP {response.status_code}.")
+            last_error = exc.__class__.__name__
+            print(f"X {handle} via {host} failed: {last_error}.")
             continue
         if response.status_code != 200:
-            print(f"X {handle} via {host} failed: HTTP {response.status_code}.")
+            last_error = f"HTTP {response.status_code}"
+            print(f"X {handle} via {host} failed: {last_error}.")
             continue
         parsed = feedparser.parse(response.content)
         if not parsed.entries:
+            last_error = "no entries"
             print(f"X {handle} via {host} failed: no entries.")
             continue
         found = []
@@ -768,7 +773,9 @@ def fetch_x_handle(handle: str) -> list[dict]:
                     "published_at": published,
                 }
             )
+        note_feed("x", handle, True, "")
         return found
+    note_feed("x", handle, False, last_error)
     return []
 
 
@@ -1236,6 +1243,44 @@ def thermal_payload() -> dict:
     return {"ok": True, "configured": True, "status": "ok", "points": points}
 
 
+_feed_health_lock = threading.Lock()
+_feed_health: dict[str, dict] = {}
+
+
+def note_feed(kind: str, name: str, ok: bool, error: str = "") -> None:
+    key = f"{kind}:{name}"
+    with _feed_health_lock:
+        _feed_health[key] = {
+            "ok": bool(ok),
+            "error": "" if ok else " ".join(str(error or "error").split())[:160],
+        }
+
+
+def feed_health_payload() -> dict:
+    catalog = [("telegram", channel) for channel in TELEGRAM_CHANNELS]
+    catalog.extend(("x", handle) for handle in X_HANDLES)
+    catalog.extend(("rss", name) for name, _url in RSS_FEEDS)
+    with _feed_health_lock:
+        recorded = dict(_feed_health)
+    failing = []
+    online = 0
+    for kind, name in catalog:
+        row = recorded.get(f"{kind}:{name}")
+        if row and row.get("ok"):
+            online += 1
+            continue
+        if row and not row.get("ok"):
+            failing.append(
+                {
+                    "kind": kind,
+                    "name": name,
+                    "label": source_label(kind, name),
+                    "error": row.get("error") or "error",
+                }
+            )
+    return {"online": online, "total": len(catalog), "failing": failing}
+
+
 def data_payload() -> dict:
     now = datetime.now(timezone.utc)
     features = [feature for feature in combined_features() if within_live_window(feature, now)]
@@ -1254,6 +1299,7 @@ def data_payload() -> dict:
         "summary": read_cache(),
         "summaries": read_summaries(),
         "last_polled_at": last_polled_at,
+        "feed_health": feed_health_payload(),
     }
 
 
