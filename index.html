@@ -27,6 +27,11 @@
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
+    .leaflet-tooltip.coord-tip {
+      background: #0e181d; color: #ecfdf5; border: 1px solid #19d3b8; border-radius: 6px;
+      box-shadow: none; font-size: 12px; font-weight: 650; padding: 3px 6px;
+    }
+    .leaflet-tooltip.coord-tip::before { display: none; }
     #filter-toggle {
       position: absolute; z-index: 950; top: 12px; left: 12px;
       background: rgba(10, 26, 31, 0.92); color: var(--text);
@@ -359,6 +364,21 @@
 
     const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
     L.control.zoom({ position: "bottomright" }).addTo(map);
+    let coordTip = null;
+    map.on("click", (event) => {
+      const raw = event.originalEvent && event.originalEvent.target;
+      if (raw && raw.closest && raw.closest(".leaflet-marker-icon, .marker-cluster, .leaflet-popup, .leaflet-interactive")) return;
+      if (coordTip) map.closeTooltip(coordTip);
+      const lat = event.latlng.lat.toFixed(5);
+      const lng = event.latlng.lng.toFixed(5);
+      coordTip = L.tooltip({
+        permanent: true,
+        direction: "top",
+        offset: [0, -4],
+        opacity: 1,
+        className: "coord-tip"
+      }).setLatLng(event.latlng).setContent(lat + ", " + lng).addTo(map);
+    });
     map.createPane("labels");
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
