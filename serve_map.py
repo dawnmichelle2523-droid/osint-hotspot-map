@@ -1388,8 +1388,20 @@ class MapHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         route = self._route()
         length = int(self.headers.get("Content-Length") or 0)
-        if length:
-            self.rfile.read(min(length, 1_000_000))
+        raw = self.rfile.read(min(length, 1_000_000)) if length else b""
+        if route == "/api/report":
+            try:
+                payload = json.loads(raw.decode("utf-8") or "{}")
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                payload = {}
+            report_type = str(payload.get("type") or "").strip().lower() if isinstance(payload, dict) else ""
+            try:
+                sent = generate_and_email_periodic_report(report_type)
+            except Exception as exc:
+                print(f"POST /api/report failed: {exc.__class__.__name__}.")
+                sent = False
+            self._json({"ok": True, "type": report_type, "result": "sent" if sent else "skipped"})
+            return
         if route == "/api/poll-now":
             try:
                 self._json(run_poll())
