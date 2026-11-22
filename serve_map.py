@@ -348,7 +348,20 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    init_db(conn)
     conn.commit()
+
+
+def init_db(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS summary_cache (
+            scope TEXT PRIMARY KEY,
+            updated_at TEXT,
+            summary TEXT
+        )
+        """
+    )
 
 
 def db_connect() -> sqlite3.Connection:
@@ -926,6 +939,201 @@ def poll_loop() -> None:
         time.sleep(POLL_SECONDS)
 
 
+EMPTY_REGION_TEXT = "No significant incidents recorded in the past 24 hours."
+SUMMARY_INTERVAL = 60 * 60
+_summary_lock = threading.Lock()
+_summary_started = False
+SUMMARY_24H_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "overall": {"type": "string"},
+        "regions": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {name: {"type": "string"} for name in REGIONS},
+            "required": list(REGIONS),
+        },
+    },
+    "required": ["overall", "regions"],
+}
+
+
+def grouped_24h(now: datetime) -> dict[str, list[dict]]:
+    cutoff = now - timedelta(hours=24)
+    groups = {name: [] for name in REGIONS}
+    for feature in combined_features():
+        props = feature.get("properties") or {}
+        moment = osint.parse_timestamp(props.get("timestamp"))
+        if moment is None or moment < cutoff:
+            continue
+        groups[region_name(props.get("region"))].append(
+            {
+                "headline": osint.one_sentence(props.get("title") or props.get("summary"))[:240],
+                "location": osint.one_sentence(props.get("location_name") or props.get("governorate"))[:120],
+                "severity": osint.live_severity(props.get("severity")),
+                "corroboration": int(props.get("corroboration_count") or 1),
+            }
+        )
+    for name in groups:
+        groups[name] = groups[name][:20]
+    return groups
+
+
+def save_summaries(overall: str, regions: dict[str, str], stamp: str) -> None:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = [("overall", stamp, overall)] + [(name, stamp, regions[name]) for name in REGIONS]
+            conn.executemany(
+                "INSERT INTO summary_cache (scope, updated_at, summary) VALUES (?, ?, ?) "
+                "ON CONFLICT(scope) DO UPDATE SET updated_at = excluded.updated_at, summary = excluded.summary",
+                rows,
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def read_summaries() -> dict:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute("SELECT scope, updated_at, summary FROM summary_cache").fetchall()
+        finally:
+            conn.close()
+    if not rows:
+        return {"overall": "", "regions": {name: "" for name in REGIONS}, "updated_at": ""}
+    regions = {name: EMPTY_REGION_TEXT for name in REGIONS}
+    overall = EMPTY_REGION_TEXT
+    updated = ""
+    for row in rows:
+        text = " ".join(str(row["summary"] or "").split())
+        scope = row["scope"]
+        if scope == "overall" and text:
+            overall = text
+        elif scope in regions and text:
+            regions[scope] = text
+        stamp = " ".join(str(row["updated_at"] or "").split())
+        if stamp > updated:
+            updated = stamp
+    return {"overall": overall, "regions": regions, "updated_at": updated}
+
+
+def summaries_due() -> bool:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            row = conn.execute("SELECT updated_at FROM summary_cache WHERE scope = 'overall'").fetchone()
+        finally:
+            conn.close()
+    if not row or not str(row["updated_at"] or "").strip():
+        return True
+    moment = osint.parse_timestamp(row["updated_at"])
+    if moment is None:
+        return True
+    return datetime.now(timezone.utc) - moment >= timedelta(minutes=60)
+
+
+def call_24h_summary(grouped: dict[str, list[dict]], now: datetime, key: str) -> tuple[str, dict[str, str]]:
+    prompt = (
+        "Write a 24-hour geopolitical summary in English. Use only the grouped incidents below. "
+        "Do not use live search and do not add events that are not listed.\n"
+        f"As of {osint.format_timestamp(now)} UTC.\n"
+        "overall is 2-4 sentences for the whole theater.\n"
+        "regions has one short paragraph for each of these keys exactly: "
+        + ", ".join(REGIONS)
+        + ".\n"
+        "If a region's list is empty, its text must be exactly: "
+        + EMPTY_REGION_TEXT
+        + "\n\n"
+        + json.dumps(grouped, ensure_ascii=False)
+    )
+    response = osint.make_client(key).responses.create(
+        model=MODEL,
+        input=prompt,
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "summary_24h",
+                "schema": SUMMARY_24H_SCHEMA,
+                "strict": True,
+            }
+        },
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        timeout=TIMEOUT,
+    )
+    text = osint.response_text(response)
+    if not text:
+        raise RuntimeError("xAI response did not include output text")
+    payload = osint.parse_json_object(text)
+    overall = " ".join(str(payload.get("overall") or "").split())
+    if not overall:
+        raise RuntimeError("xAI response had no overall summary")
+    raw_regions = payload.get("regions") if isinstance(payload.get("regions"), dict) else {}
+    regions = {}
+    for name in REGIONS:
+        note = " ".join(str(raw_regions.get(name) or "").split())
+        if not grouped.get(name) or not note:
+            note = EMPTY_REGION_TEXT
+        regions[name] = note
+    return overall, regions
+
+
+def generate_24h_summaries() -> dict:
+    """One grok-3-mini call. A missing key stores the fallback sentence and does not edit hotspot or brief files."""
+    with _summary_lock:
+        now = datetime.now(timezone.utc)
+        grouped = grouped_24h(now)
+        stamp = osint.format_timestamp(now)
+        key = osint.read_api_key()
+        fallback = False
+        if not key:
+            print(
+                "XAI_API_KEY is missing. Wrote fallback 24h summaries. "
+                "daily_brief.json and hotspots.json were not changed."
+            )
+            overall, regions = EMPTY_REGION_TEXT, {name: EMPTY_REGION_TEXT for name in REGIONS}
+            fallback = True
+        else:
+            try:
+                overall, regions = call_24h_summary(grouped, now, key)
+            except Exception as exc:
+                print(
+                    f"24h summary failed: {osint.public_error(exc, key)}. "
+                    "Wrote fallback sentences. daily_brief.json and hotspots.json were not changed."
+                )
+                overall, regions = EMPTY_REGION_TEXT, {name: EMPTY_REGION_TEXT for name in REGIONS}
+                fallback = True
+        save_summaries(overall, regions, stamp)
+        payload = {"overall": overall, "regions": regions, "updated_at": stamp, "fallback": fallback}
+        print(f"Saved 24h summaries at {stamp}.")
+        return payload
+
+
+def summary_loop() -> None:
+    try:
+        if summaries_due():
+            generate_24h_summaries()
+    except Exception as exc:
+        print(f"24h summary failed: {exc.__class__.__name__}.")
+    while True:
+        time.sleep(SUMMARY_INTERVAL)
+        try:
+            generate_24h_summaries()
+        except Exception as exc:
+            print(f"24h summary failed: {exc.__class__.__name__}.")
+
+
+def start_summary_daemon() -> None:
+    global _summary_started
+    with _start_lock:
+        if _summary_started:
+            return
+        _summary_started = True
+    threading.Thread(target=summary_loop, name="summary-24h", daemon=True).start()
+
+
 def start_poller() -> None:
     global _poll_started
     with _start_lock:
@@ -1035,6 +1243,7 @@ def data_payload() -> dict:
         "counts_by_region": region_counts(events),
         "counts_by_governorate": governorate_counts(events),
         "summary": read_cache(),
+        "summaries": read_summaries(),
         "last_polled_at": last_polled_at,
     }
 
@@ -1107,30 +1316,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
 
 
 def refresh_summary() -> dict:
-    now = datetime.now(timezone.utc)
-    events = live_events_from(
-        [feature for feature in combined_features() if within_live_window(feature, now)]
-    )
-    counts = region_counts(events)
-    key = osint.read_api_key()
-    if not key:
-        print("XAI_API_KEY is missing. Returned a fallback summary. daily_brief.json and hotspots.json were not changed.")
-        return fallback_summary(counts)
-    try:
-        summary = call_summary(
-            osint.make_client(key),
-            summary_prompt(events, counts, datetime.now(timezone.utc)),
-            datetime.now(timezone.utc),
-        )
-    except Exception as exc:
-        print(
-            f"Summary failed: {osint.public_error(exc, key)}. "
-            "Returned a fallback summary. daily_brief.json and hotspots.json were not changed."
-        )
-        return fallback_summary(counts)
-    write_cache(summary)
-    print(f"Wrote {CACHE.name}")
-    return summary
+    return generate_24h_summaries()
 
 
 class MapHandler(SimpleHTTPRequestHandler):
@@ -1184,6 +1370,7 @@ class MapHandler(SimpleHTTPRequestHandler):
                     "counts_by_region": {name: 0 for name in REGIONS},
                     "counts_by_governorate": {name: 0 for name in osint.SYRIA_GOVERNORATES},
                     "summary": read_cache(),
+                    "summaries": {"overall": "", "regions": {name: "" for name in REGIONS}, "updated_at": ""},
                     "last_polled_at": None,
                 })
             return
@@ -1208,8 +1395,14 @@ class MapHandler(SimpleHTTPRequestHandler):
             summary = refresh_summary()
         except Exception as exc:
             print(f"POST /api/summary failed: {exc.__class__.__name__}. Returned a fallback summary.")
-            summary = fallback_summary({name: 0 for name in REGIONS})
-        self._json({"summary": summary, "fallback": bool(summary.get("fallback"))})
+            stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            summary = {
+                "overall": EMPTY_REGION_TEXT,
+                "regions": {name: EMPTY_REGION_TEXT for name in REGIONS},
+                "updated_at": stamp,
+                "fallback": True,
+            }
+        self._json({"summaries": summary, "fallback": bool(summary.get("fallback"))})
 
     def log_message(self, fmt: str, *args) -> None:
         super().log_message(fmt, *args)
@@ -1220,6 +1413,7 @@ def main() -> None:
         conn = db_connect()
         conn.close()
     start_poller()
+    start_summary_daemon()
     server = ThreadingHTTPServer((HOST, PORT), MapHandler)
     print(f"Serving map and summary API on http://{HOST}:{PORT}")
     try:
