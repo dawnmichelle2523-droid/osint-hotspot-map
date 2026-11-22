@@ -10,7 +10,7 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #071316;
+      --bg: #0a1114;
       --panel: rgba(10, 26, 31, 0.88);
       --card-bg: linear-gradient(145deg, rgba(13, 33, 39, 0.96), rgba(8, 20, 24, 0.96));
       --line: rgba(20, 184, 166, 0.18);
@@ -25,6 +25,19 @@
     }
     * { box-sizing: border-box; }
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+    #live-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 8px 12px; background: #0a1114; border-bottom: 1px solid #1a2c35;
+    }
+    #fetch-live {
+      color: #0a1114; background: #19d3b8; border: 1px solid #19d3b8; border-radius: 8px;
+      padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    #fetch-live:disabled { opacity: 0.7; cursor: wait; }
+    #last-updated {
+      color: #8fb3b8; border: 1px solid #1a2c35; border-radius: 999px;
+      padding: 4px 10px; font-size: 12px; font-weight: 650;
+    }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
     .leaflet-tooltip.coord-tip {
@@ -237,6 +250,10 @@
   </style>
 </head>
 <body class="filters-open">
+  <header id="live-bar">
+    <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
+    <span id="last-updated">Last updated: not yet</span>
+  </header>
   <div id="stage">
   <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
   <aside id="sidebar">
@@ -854,6 +871,39 @@
         Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
     }
 
+    function showLastUpdated(stamp) {
+      const badge = document.getElementById("last-updated");
+      if (!badge) return;
+      if (!stamp) {
+        badge.textContent = "Last updated: not yet";
+        return;
+      }
+      const shown = gmtStamp(stamp);
+      badge.textContent = "Last updated: " + (shown === "Unknown time" ? stamp : shown);
+    }
+
+    async function loadLive() {
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        showLastUpdated(data.last_polled_at);
+        const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
+        if (incoming.length) {
+          features = incoming;
+          loadedOnce = true;
+          setStatus("");
+          render();
+          if (!hashApplied) {
+            hashApplied = true;
+            openHashedPin();
+          }
+          return;
+        }
+      } catch (err) {}
+      await loadHotspots();
+    }
+
     async function loadHotspots() {
       try {
         const response = await fetch("hotspots.json?v=" + Date.now(), { cache: "no-store" });
@@ -1190,12 +1240,25 @@
       copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
     });
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
+    document.getElementById("fetch-live").addEventListener("click", async () => {
+      const button = document.getElementById("fetch-live");
+      button.disabled = true;
+      try {
+        await fetch("/api/poll-now", { method: "POST", cache: "no-store" });
+        await loadLive();
+      } catch (err) {
+        setStatus("Live feed fetch failed.");
+      } finally {
+        button.disabled = false;
+        button.textContent = "↻ Fetch Live Feeds";
+      }
+    });
     window.addEventListener("hashchange", () => openHashedPin());
 
-    loadHotspots();
+    loadLive();
     showSyriaGovernorates(false);
     loadSummaryPanel();
-    setInterval(loadHotspots, 60000);
+    setInterval(loadLive, 60000);
     setInterval(loadSummaryPanel, 60000);
   </script>
 </body>

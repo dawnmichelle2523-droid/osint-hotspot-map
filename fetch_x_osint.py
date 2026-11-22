@@ -329,6 +329,22 @@ PLACES = {
     "hodeidah": (42.9511, 14.7978, "Saudi & Yemen"),
     "yemen": (44.1910, 15.3694, "Saudi & Yemen"),
     "damascus": (36.2765, 33.5138, "Levant"),
+    "aleppo": (37.1612, 36.2021, "Levant"),
+    "idlib": (36.6317, 35.9306, "Levant"),
+    "idleb": (36.6317, 35.9306, "Levant"),
+    "latakia": (35.7953, 35.5317, "Levant"),
+    "tartus": (35.8866, 34.8890, "Levant"),
+    "hama": (36.7552, 35.1318, "Levant"),
+    "homs": (36.7137, 34.7324, "Levant"),
+    "raqqa": (39.0094, 35.9594, "Levant"),
+    "deir ez zor": (40.1408, 35.3359, "Levant"),
+    "deir ezzor": (40.1408, 35.3359, "Levant"),
+    "hasakah": (40.7477, 36.5024, "Levant"),
+    "al hasakah": (40.7477, 36.5024, "Levant"),
+    "daraa": (36.1021, 32.6189, "Levant"),
+    "quneitra": (35.8244, 33.1259, "Levant"),
+    "suwayda": (36.5667, 32.7094, "Levant"),
+    "as suwayda": (36.5667, 32.7094, "Levant"),
     "beirut": (35.5018, 33.8938, "Levant"),
     "nabatieh": (35.4830, 33.3770, "Levant"),
     "amman": (35.9304, 31.9632, "Levant"),
@@ -363,6 +379,49 @@ REGION_CAPITALS = {
 }
 GEO_MODEL = "grok-3-mini"
 _missing_key_noted = False
+SYRIA_GOVERNORATES = (
+    "Damascus",
+    "Rif Dimashq",
+    "Aleppo",
+    "Idlib",
+    "Latakia",
+    "Tartus",
+    "Hama",
+    "Homs",
+    "Raqqa",
+    "Deir ez-Zor",
+    "Al-Hasakah",
+    "Daraa",
+    "Quneitra",
+    "As-Suwayda",
+)
+GOVERNORATE_ALIASES = {
+    "damascus": "Damascus",
+    "rif dimashq": "Rif Dimashq",
+    "rural damascus": "Rif Dimashq",
+    "damascus countryside": "Rif Dimashq",
+    "aleppo": "Aleppo",
+    "idlib": "Idlib",
+    "idleb": "Idlib",
+    "latakia": "Latakia",
+    "lattakia": "Latakia",
+    "tartus": "Tartus",
+    "tartous": "Tartus",
+    "hama": "Hama",
+    "homs": "Homs",
+    "raqqa": "Raqqa",
+    "deir ez zor": "Deir ez-Zor",
+    "deir ezzor": "Deir ez-Zor",
+    "deir al zor": "Deir ez-Zor",
+    "al hasakah": "Al-Hasakah",
+    "hasakah": "Al-Hasakah",
+    "hasaka": "Al-Hasakah",
+    "daraa": "Daraa",
+    "quneitra": "Quneitra",
+    "as suwayda": "As-Suwayda",
+    "suwayda": "As-Suwayda",
+    "sweida": "As-Suwayda",
+}
 
 
 def place_key(value: object) -> str:
@@ -421,6 +480,17 @@ def normalize_region(value: object) -> str | None:
     return REGION_ALIASES.get(text.lower())
 
 
+def match_governorate(text: object) -> str:
+    padded = f" {place_key(text)} "
+    best = ""
+    best_len = 0
+    for alias, name in GOVERNORATE_ALIASES.items():
+        if f" {alias} " in padded and len(alias) > best_len:
+            best = name
+            best_len = len(alias)
+    return best
+
+
 def extract_location(headline: str) -> dict | None:
     """One grok-3-mini call. No live search. Does not write hotspot or brief files."""
     global _missing_key_noted
@@ -435,6 +505,10 @@ def extract_location(headline: str) -> dict | None:
         "that the text does not support. region must be one of: "
         + ", ".join(REGIONS)
         + ". location_name is the most specific place named. "
+        "governorate is one of "
+        + ", ".join(SYRIA_GOVERNORATES)
+        + ", or an empty string when the event is not in a Syrian governorate. "
+        "title is a concise English headline. Translate Arabic into English and do not add facts. "
         "lat and lng are decimal degrees, or null when the text does not locate the event.\n\n"
         + headline
     )
@@ -442,12 +516,14 @@ def extract_location(headline: str) -> dict | None:
         "type": "object",
         "additionalProperties": False,
         "properties": {
+            "title": {"type": "string"},
             "region": {"type": "string", "enum": list(REGIONS)},
             "location_name": {"type": "string"},
+            "governorate": {"type": "string"},
             "lat": {"type": ["number", "null"]},
             "lng": {"type": ["number", "null"]},
         },
-        "required": ["region", "location_name", "lat", "lng"],
+        "required": ["title", "region", "location_name", "governorate", "lat", "lng"],
     }
     try:
         response = make_client(key).responses.create(
@@ -510,20 +586,28 @@ def locate_event(
     text = one_sentence(location_name) or one_sentence(headline)
     known = valid_coord(lng, lat)
     known_region = normalize_region(region)
+    governorate = match_governorate(text) or match_governorate(headline)
+    english_title = ""
     vague = is_vague_location(text) or is_vague_location(headline)
     if known and known_region and not vague:
         return {
             "region": known_region,
+            "governorate": governorate,
             "location_name": text,
+            "title": english_title,
             "lat": known[1],
             "lng": known[0],
         }
     extracted = extract_location(one_sentence(headline) or text)
     if extracted:
+        english_title = one_sentence(extracted.get("title"))
         known_region = normalize_region(extracted.get("region")) or known_region
         named = one_sentence(extracted.get("location_name"))
         if named:
             text = named
+        named_governorate = match_governorate(extracted.get("governorate")) or match_governorate(text)
+        if named_governorate:
+            governorate = named_governorate
         extracted_coord = valid_coord(extracted.get("lng"), extracted.get("lat"))
         if extracted_coord:
             known = extracted_coord
@@ -537,12 +621,20 @@ def locate_event(
         if place:
             known = (place[0], place[1])
             known_region = known_region or place[2]
+    if known_region is None and any(token in f"{headline} {text}".lower() for token in ("syria", "syrian")):
+        known_region = "Levant"
+    if known_region is None and any(token in f"{headline} {text}" for token in ("سوريا", "سورية")):
+        known_region = "Levant"
     if known is None and known_region in REGION_CAPITALS:
         capital = REGION_CAPITALS[known_region]
         known = (capital[0], capital[1])
+    if not governorate:
+        governorate = match_governorate(text) or match_governorate(headline)
     return {
         "region": known_region or "Other / International",
+        "governorate": governorate,
         "location_name": text,
+        "title": english_title,
         "lat": known[1] if known else None,
         "lng": known[0] if known else None,
     }
