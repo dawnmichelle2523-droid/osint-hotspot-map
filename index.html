@@ -219,6 +219,7 @@
     map.setView(HOME.center, HOME.zoom);
 
     let features = [];
+    let generatedAt = null;
     let clusterLayer = null;
     let loadedOnce = false;
     let timeWindow = "24h";
@@ -307,6 +308,14 @@
       return date.getUTCDate() + " " + months[date.getUTCMonth()] + " " + date.getUTCFullYear() + ", " + hh + ":" + mm + " GMT";
     }
 
+    function readGeneratedAt(data) {
+      const raw = data && data.generated_at;
+      if (raw == null || raw === "") return null;
+      const ms = typeof raw === "number" ? raw : Date.parse(raw);
+      if (!Number.isFinite(ms)) return null;
+      return new Date(ms).toISOString();
+    }
+
     function pinColor(props) {
       if (props.category === "Maritime Advisory") return "#00c7be";
       if (props.category === "Travel / Embassy Advisory") return "#0a84ff";
@@ -374,7 +383,11 @@
         return best === null || ms > best ? ms : best;
       }, null);
       const noun = visibleCount === 1 ? "incident" : "incidents";
-      updatedEl.textContent = (newest === null ? "No timestamps" : gmtStamp(new Date(newest).toISOString())) + " · " + visibleCount + " " + noun;
+      const generated = generatedAt ? gmtStamp(generatedAt) : "Unknown time";
+      const stamp = generated !== "Unknown time"
+        ? generated
+        : (newest === null ? "No timestamps" : gmtStamp(new Date(newest).toISOString()));
+      updatedEl.textContent = stamp + " · " + visibleCount + " " + noun;
     }
 
     function updateSearchCount(visibleCount) {
@@ -473,6 +486,7 @@
           throw new Error("invalid");
         }
         features = data.features.filter(isPoint);
+        generatedAt = readGeneratedAt(data);
         loadedOnce = true;
         setStatus(features.length ? "" : "No incidents in hotspots.json.");
         render();
