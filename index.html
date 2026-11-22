@@ -146,6 +146,18 @@
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid #8eb6ff; outline-offset: 2px; }
     .badge-corroborated { background: #1c4f93; color: #fff; border: 1px solid #8eb6ff; }
     .headline-empty { margin: 0; color: var(--muted); }
+    .brief-card { background: #0e1116; border: 1px solid #ffffff1a; border-left: 3px solid #1c4f93; border-radius: 12px; padding: 12px 14px; margin: 0 0 22px; }
+    .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #brief-toggle { background: transparent; color: var(--text); border: 0; padding: 0; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; text-align: left; }
+    #brief-toggle::before { content: "▾ "; color: #1c4f93; }
+    #brief-toggle[aria-expanded="false"]::before { content: "▸ "; }
+    #brief-time { color: var(--muted); font-size: 12px; }
+    #copy-brief { margin-left: auto; color: #fff; background: #1c4f93; border: 1px solid #1c4f93; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    #brief-body { margin-top: 12px; }
+    #brief-body[hidden] { display: none; }
+    #brief-body h3 { margin: 12px 0 4px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: #8eb6ff; }
+    #brief-body p { margin: 0; color: #d5dbe6; }
+    #brief-body ul { margin: 4px 0 0; padding-left: 18px; color: #d5dbe6; }
     @media (max-width: 720px) {
       #headlines { padding: 20px 14px 36px; }
       #headlines h2 { font-size: 18px; }
@@ -221,6 +233,14 @@
   </div>
   <section id="headlines" aria-labelledby="headlines-title">
     <div class="headlines-inner">
+      <article id="daily-brief" class="brief-card">
+        <div class="brief-bar">
+          <button type="button" id="brief-toggle" aria-expanded="true" aria-controls="brief-body">Daily Geopolitical Brief</button>
+          <time id="brief-time"></time>
+          <button type="button" id="copy-brief">Copy Brief</button>
+        </div>
+        <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
+      </article>
       <h2 id="headlines-title">Live X OSINT &amp; Advisory Headlines</h2>
       <p class="headlines-note">Same incidents as the map, newest first.</p>
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
@@ -674,8 +694,76 @@
       locateFeature(button.dataset.locate);
     });
 
+    let briefText = "";
+
+    function renderBrief(data) {
+      const body = document.getElementById("brief-body");
+      const time = document.getElementById("brief-time");
+      if (!data || !data.executive_summary) {
+        time.textContent = "";
+        time.removeAttribute("datetime");
+        briefText = "";
+        body.innerHTML = '<p class="headline-empty">No daily brief yet.</p>';
+        return;
+      }
+      const stamp = gmtStamp(data.generated_at);
+      if (data.generated_at) time.setAttribute("datetime", data.generated_at);
+      time.textContent = stamp === "Unknown time" ? "" : stamp;
+      const sections = Array.isArray(data.regional_sections) ? data.regional_sections : [];
+      const highlights = Array.isArray(data.advisory_highlights) ? data.advisory_highlights : [];
+      body.innerHTML =
+        "<h3>Executive summary</h3><p>" + esc(data.executive_summary) + "</p>" +
+        sections.map((item) => "<h3>" + esc(item.region || "") + "</h3><p>" + esc(item.summary || "") + "</p>").join("") +
+        (highlights.length
+          ? "<h3>Advisory highlights</h3><ul>" + highlights.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>"
+          : "");
+      const lines = ["Daily Geopolitical Brief", stamp, "", "Executive summary", data.executive_summary, ""];
+      sections.forEach((item) => lines.push(item.region || "", item.summary || "", ""));
+      if (highlights.length) {
+        lines.push("Advisory highlights");
+        highlights.forEach((item) => lines.push("- " + item));
+      }
+      briefText = lines.join("\n").trim();
+    }
+
+    async function loadBrief() {
+      try {
+        const response = await fetch("daily_brief.json?v=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        renderBrief(await response.json());
+      } catch (err) {
+        renderBrief(null);
+      }
+    }
+
+    document.getElementById("brief-toggle").addEventListener("click", () => {
+      const body = document.getElementById("brief-body");
+      const open = body.hasAttribute("hidden");
+      if (open) body.removeAttribute("hidden");
+      else body.setAttribute("hidden", "");
+      document.getElementById("brief-toggle").setAttribute("aria-expanded", String(open));
+    });
+    document.getElementById("copy-brief").addEventListener("click", async () => {
+      if (!briefText) return;
+      const button = document.getElementById("copy-brief");
+      try {
+        await navigator.clipboard.writeText(briefText);
+      } catch (err) {
+        const area = document.createElement("textarea");
+        area.value = briefText;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      button.textContent = "Copied";
+      window.setTimeout(() => { button.textContent = "Copy Brief"; }, 1200);
+    });
+
     loadHotspots();
+    loadBrief();
     setInterval(loadHotspots, 60000);
+    setInterval(loadBrief, 60000);
   </script>
 </body>
 </html>
