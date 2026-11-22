@@ -73,6 +73,18 @@
     button.pill.sev-medium[aria-pressed="true"], button.pill.sev-low[aria-pressed="true"] { background: #6a4108; border-color: var(--incident); }
     button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
+    #quick-jump {
+      position: absolute; z-index: 850; top: 12px; left: 292px;
+      display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 304px);
+    }
+    body.filters-closed #quick-jump { left: 108px; max-width: calc(100% - 120px); }
+    #quick-jump button {
+      background: #0e1116; color: #e8edf4; border: 1px solid #1c4f93;
+      border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 650;
+      cursor: pointer; white-space: nowrap;
+    }
+    #quick-jump button[aria-pressed="true"] { background: #1c4f93; color: #fff; }
+    #quick-jump button:focus-visible, #copy-brief:focus-visible, #export-headlines:focus-visible, .copy-pin:focus-visible { outline: 2px solid #8eb6ff; outline-offset: 2px; }
     .legend {
       position: absolute; z-index: 800; left: 292px; bottom: 12px;
       display: flex; gap: 8px; align-items: center;
@@ -124,7 +136,12 @@
       border: 1px solid #ffffff1a; padding: 28px 20px 48px; overflow-y: auto;
     }
     .headlines-inner { width: 100%; margin: 0 auto; }
-    #headlines h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em; border-bottom: 2px solid #1c4f93; padding-bottom: 8px; }
+    .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid #1c4f93; padding-bottom: 8px; }
+    #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; }
+    #export-headlines, #copy-brief { color: #fff; background: #1c4f93; border: 1px solid #1c4f93; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+    .popup-actions .popup-link { margin-top: 0; }
+    .copy-pin { color: #fff; background: #1c4f93; border: 1px solid #1c4f93; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
     .headlines-note { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
     #headline-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
     .headline-card {
@@ -151,7 +168,7 @@
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     #brief-title { margin: 0; font-size: 18px; font-weight: 700; }
     #brief-time { color: var(--muted); font-size: 12px; }
-    #copy-brief { margin-left: auto; color: #fff; background: #1c4f93; border: 1px solid #1c4f93; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    #copy-brief { margin-left: auto; }
     #brief-body { margin-top: 8px; }
     .brief-section { border-top: 1px solid #ffffff1a; }
     .brief-section-toggle { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; color: #8eb6ff; border: 0; padding: 10px 0; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
@@ -166,7 +183,7 @@
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
-      #copy-brief { margin-left: 0; }
+      #copy-brief, #export-headlines { margin-left: 0; }
     }
   </style>
 </head>
@@ -228,6 +245,13 @@
       </div>
     </section>
   </aside>
+  <nav id="quick-jump" aria-label="Quick jump">
+    <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
+    <button type="button" data-jump="bahrain">Bahrain</button>
+    <button type="button" data-jump="hormuz">Strait of Hormuz</button>
+    <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
+    <button type="button" data-jump="levant">Levant</button>
+  </nav>
   <div class="legend">
     <span><i style="background:#ff3b30"></i>High</span>
     <span><i style="background:#ff9500"></i>Med/Low</span>
@@ -248,7 +272,10 @@
   </section>
   <section id="headlines" aria-labelledby="headlines-title">
     <div class="headlines-inner">
-      <h2 id="headlines-title">Live X OSINT &amp; Advisory Headlines</h2>
+      <div class="headlines-head">
+        <h2 id="headlines-title">Live X OSINT &amp; Advisory Headlines</h2>
+        <button type="button" id="export-headlines">Export Filtered Headlines</button>
+      </div>
       <p class="headlines-note">Same incidents as the map, newest first.</p>
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
     </div>
@@ -258,6 +285,13 @@
   <script>
     const WINDOWS = { "2h": 2 * 3600 * 1000, "24h": 24 * 3600 * 1000, "7d": 7 * 24 * 3600 * 1000, all: null };
     const HOME = { center: [26.5, 47.0], zoom: 5 };
+    const JUMPS = {
+      theater: { center: [26.5, 47.0], zoom: 5 },
+      bahrain: { center: [26.07, 50.55], zoom: 8 },
+      hormuz: { center: [26.56, 56.25], zoom: 7 },
+      redsea: { center: [15.3, 42.6], zoom: 6 },
+      levant: { center: [33.5, 36.0], zoom: 6 }
+    };
     const BADGES = {
       "Official / Primary": { label: "Official", cls: "badge-official" },
       "State-Affiliated / Single-Source": { label: "Attributed", cls: "badge-claim" },
@@ -300,6 +334,8 @@
     let searchTimer = null;
     let focusSerial = 0;
     const markers = new Map();
+    let headlineExport = "Live X OSINT & Advisory Headlines\n\nNo headlines match these filters.";
+    let hashApplied = false;
 
     const updatedEl = document.getElementById("updated");
     const statusEl = document.getElementById("status");
@@ -315,6 +351,46 @@
       return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[ch]));
+    }
+
+    function pinId(feature) {
+      const props = feature.properties || {};
+      if (feature.id != null && String(feature.id) !== "") return String(feature.id);
+      if (props.id != null && String(props.id) !== "") return String(props.id);
+      const source = String(props.source || "");
+      const status = source.match(/status\/(\d+)/);
+      if (status) return status[1];
+      if (source) return source;
+      const coords = (feature.geometry && feature.geometry.coordinates) || [];
+      return [props.timestamp || "", props.title || "", coords.join(",")].join("|");
+    }
+
+    function hashPinId() {
+      const match = window.location.hash.replace(/^#/, "").match(/^pin=(.*)$/);
+      if (!match) return "";
+      try { return decodeURIComponent(match[1]); } catch (err) { return match[1]; }
+    }
+
+    function pinShareUrl(id) {
+      const url = new URL(window.location.href);
+      url.hash = "pin=" + id;
+      return url.href;
+    }
+
+    async function copyText(text, button, label) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const area = document.createElement("textarea");
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      if (!button) return;
+      button.textContent = "Copied!";
+      window.setTimeout(() => { button.textContent = label; }, 1200);
     }
 
     function safeUrl(url) {
@@ -416,7 +492,7 @@
       return "#ff9500";
     }
 
-    function popupHtml(props) {
+    function popupHtml(props, id) {
       const badge = BADGES[props.verification_tier] || { label: "Lead", cls: "badge-unknown" };
       const headline = props.title || props.summary || "Incident";
       const href = safeUrl(props.source);
@@ -429,7 +505,9 @@
           '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span>" +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
-          link +
+          '<div class="popup-actions">' + link +
+            '<button type="button" class="copy-pin" data-pin="' + esc(id) + '">Copy Link</button>' +
+          "</div>" +
         "</div>"
       );
     }
@@ -437,6 +515,7 @@
     function markerFor(feature) {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
+      const id = pinId(feature);
       const age = ageMs(props.timestamp);
       const fresh = age !== null && age >= 0 && age <= WINDOWS["2h"];
       const old = age !== null && age > WINDOWS["24h"];
@@ -451,7 +530,7 @@
         iconAnchor: [11, 11],
         popupAnchor: [0, -10]
       });
-      return L.marker([coords[1], coords[0]], { icon }).bindPopup(popupHtml(props), { maxWidth: 300, minWidth: 180 });
+      return L.marker([coords[1], coords[0]], { icon }).bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 });
     }
 
     function syncControls(visibleCount) {
@@ -573,9 +652,22 @@
         return (Number.isNaN(bm) ? 0 : bm) - (Number.isNaN(am) ? 0 : am);
       });
       if (!sorted.length) {
+        headlineExport = "Live X OSINT & Advisory Headlines\n\nNo headlines match these filters.";
         list.innerHTML = '<p class="headline-empty">No headlines match these filters.</p>';
         return;
       }
+      headlineExport = "Live X OSINT & Advisory Headlines\n\n" + sorted.map((feature) => {
+        const props = feature.properties || {};
+        const badge = headlineBadge(props);
+        const href = safeUrl(props.source);
+        return [
+          props.title || props.summary || "Incident",
+          badge.label,
+          gmtStamp(props.timestamp),
+          twoSentences(props.summary),
+          href
+        ].filter(Boolean).join("\n");
+      }).join("\n\n");
       list.innerHTML = sorted.map((feature) => {
         const props = feature.properties || {};
         const badge = headlineBadge(props);
@@ -623,6 +715,33 @@
       }, 450);
     }
 
+    function openHashedPin() {
+      const id = hashPinId();
+      if (!id) return;
+      const feature = features.find((item) => pinId(item) === id);
+      if (!feature) return;
+      const marker = markers.get((feature.properties || {}).source);
+      const latlng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+      const stage = document.getElementById("stage");
+      const top = stage ? stage.getBoundingClientRect().top + window.scrollY : 0;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      const open = () => {
+        if (!marker) return;
+        const parent = clusterLayer && clusterLayer.getVisibleParent(marker);
+        if (parent && parent !== marker && typeof clusterLayer.zoomToShowLayer === "function") {
+          clusterLayer.zoomToShowLayer(marker, () => marker.openPopup());
+          return;
+        }
+        marker.openPopup();
+      };
+      window.setTimeout(() => {
+        map.invalidateSize();
+        map.flyTo(latlng, 8, { duration: 0.6 });
+        map.once("moveend", open);
+        window.setTimeout(open, 750);
+      }, 200);
+    }
+
     function isPoint(feature) {
       const coords = feature && feature.geometry && feature.geometry.coordinates;
       return feature && feature.type === "Feature" && feature.geometry.type === "Point" &&
@@ -642,6 +761,10 @@
         loadedOnce = true;
         setStatus(features.length ? "" : "No incidents in hotspots.json.");
         render();
+        if (!hashApplied) {
+          hashApplied = true;
+          openHashedPin();
+        }
       } catch (err) {
         setStatus("Could not load hotspots.json.");
         if (!loadedOnce) {
@@ -693,6 +816,19 @@
       const open = document.body.classList.toggle("filters-open");
       document.body.classList.toggle("filters-closed", !open);
       filterToggle.setAttribute("aria-expanded", String(open));
+    });
+
+    document.getElementById("quick-jump").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-jump]");
+      if (!button) return;
+      const jump = JUMPS[button.dataset.jump];
+      if (!jump) return;
+      focusSerial += 1;
+      map.closePopup();
+      map.flyTo(jump.center, jump.zoom, { duration: 0.6 });
+      document.querySelectorAll("#quick-jump button").forEach((item) => {
+        item.setAttribute("aria-pressed", String(item === button));
+      });
     });
 
     document.getElementById("headline-list").addEventListener("click", (event) => {
@@ -781,22 +917,23 @@
       else panel.setAttribute("hidden", "");
       button.setAttribute("aria-expanded", String(open));
     });
-    document.getElementById("copy-brief").addEventListener("click", async () => {
-      if (!briefText) return;
-      const button = document.getElementById("copy-brief");
-      try {
-        await navigator.clipboard.writeText(briefText);
-      } catch (err) {
-        const area = document.createElement("textarea");
-        area.value = briefText;
-        document.body.appendChild(area);
-        area.select();
-        document.execCommand("copy");
-        area.remove();
-      }
-      button.textContent = "Copied";
-      window.setTimeout(() => { button.textContent = "Copy Brief"; }, 1200);
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest(".copy-pin");
+      if (!button) return;
+      event.preventDefault();
+      const id = button.getAttribute("data-pin") || "";
+      const url = pinShareUrl(id);
+      if (window.location.href !== url) history.replaceState(null, "", url);
+      copyText(url, button, "Copy Link");
     });
+    document.getElementById("export-headlines").addEventListener("click", () => {
+      copyText(headlineExport, document.getElementById("export-headlines"), "Export Filtered Headlines");
+    });
+    document.getElementById("copy-brief").addEventListener("click", () => {
+      if (!briefText) return;
+      copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
+    });
+    window.addEventListener("hashchange", () => openHashedPin());
 
     loadHotspots();
     loadBrief();
