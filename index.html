@@ -10,18 +10,18 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #080f1a;
-      --panel: rgba(13, 23, 38, 0.86);
-      --card-bg: linear-gradient(145deg, rgba(17, 29, 48, 0.95), rgba(11, 19, 32, 0.95));
-      --line: rgba(56, 189, 248, 0.16);
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --active: #1d4ed8;
-      --active-line: #38bdf8;
-      --high: #f43f5e;
+      --bg: #071316;
+      --panel: rgba(10, 26, 31, 0.88);
+      --card-bg: linear-gradient(145deg, rgba(13, 33, 39, 0.96), rgba(8, 20, 24, 0.96));
+      --line: rgba(20, 184, 166, 0.18);
+      --text: #ecfdf5;
+      --muted: #8fb3b8;
+      --active: #0f766e;
+      --active-line: #2dd4bf;
+      --high: #fb7185;
       --incident: #f59e0b;
-      --maritime: #06b6d4;
-      --travel: #3b82f6;
+      --maritime: #14b8a6;
+      --travel: #38bdf8;
     }
     * { box-sizing: border-box; }
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
@@ -29,7 +29,7 @@
     #map { position: absolute; inset: 0; background: var(--bg); }
     #filter-toggle {
       position: absolute; z-index: 950; top: 12px; left: 12px;
-      background: rgba(13, 23, 38, 0.92); color: var(--text);
+      background: rgba(10, 26, 31, 0.92); color: var(--text);
       border: 1px solid var(--line); border-radius: 8px;
       padding: 7px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
     }
@@ -48,7 +48,7 @@
     #status { color: var(--incident); }
     .search-row {
       display: flex; align-items: center; margin-top: 12px;
-      background: rgba(8, 15, 26, 0.55); border: 1px solid var(--line); border-radius: 9px;
+      background: rgba(7, 19, 22, 0.55); border: 1px solid var(--line); border-radius: 9px;
       padding: 0 4px 0 10px;
     }
     #search-input {
@@ -66,12 +66,15 @@
     .group { margin-top: 14px; }
     .group h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
     button.pill, button.chip {
-      background: rgba(8, 15, 26, 0.45); color: var(--text); border: 1px solid var(--line);
+      background: rgba(7, 19, 22, 0.45); color: var(--text); border: 1px solid var(--line);
       border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; cursor: pointer;
     }
-    button.pill[aria-pressed="true"] { background: var(--active); border-color: var(--active-line); color: #fff; }
-    button.pill.sev-high[aria-pressed="true"] { background: #4c0519; border-color: var(--high); }
-    button.pill.sev-medium[aria-pressed="true"], button.pill.sev-low[aria-pressed="true"] { background: #451a03; border-color: var(--incident); }
+    button.pill[aria-pressed="true"] {
+      background: var(--active); border-color: #2dd4bf; color: #fff;
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 0 10px rgba(45, 212, 191, 0.45);
+    }
+    button.pill.sev-high[aria-pressed="true"] { background: #4c0519; border-color: #2dd4bf; }
+    button.pill.sev-medium[aria-pressed="true"], button.pill.sev-low[aria-pressed="true"] { background: #451a03; border-color: #2dd4bf; }
     button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
     #quick-jump {
@@ -80,9 +83,10 @@
     }
     body.filters-closed #quick-jump { left: 108px; max-width: calc(100% - 120px); }
     #quick-jump button {
-      background: var(--bg); color: var(--text); border: 1px solid var(--active-line);
+      background: var(--bg); color: var(--text); border: 1px solid #2dd4bf;
       border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 650;
       cursor: pointer; white-space: nowrap;
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.28), 0 0 10px rgba(45, 212, 191, 0.35);
     }
     #quick-jump button[aria-pressed="true"] { background: var(--active); color: #fff; }
     #quick-jump button:focus-visible, #copy-brief:focus-visible, #export-headlines:focus-visible, .copy-pin:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
@@ -90,7 +94,7 @@
       position: absolute; z-index: 800; left: 292px; bottom: 12px;
       display: flex; gap: 8px; align-items: center;
       padding: 4px 8px; border-radius: 999px;
-      background: rgba(13, 23, 38, 0.9); border: 1px solid var(--line);
+      background: rgba(10, 26, 31, 0.9); border: 1px solid var(--line);
       color: var(--text); font-size: 11px; white-space: nowrap;
     }
     body.filters-closed .legend { left: 12px; }
@@ -114,20 +118,20 @@
       #sidebar, .headline-card, .brief-card { transition: none; }
       .headline-card:hover, .brief-card:hover { transform: none; }
     }
-    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(56, 189, 248, 0.28); }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(45, 212, 191, 0.28); }
     .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
-      background: #0d1726; color: var(--text); font-weight: 650;
+      background: #0a1a1f; color: var(--text); font-weight: 650;
     }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0d1726; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0a1a1f; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
     .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid var(--line); }
     .leaflet-popup-content { margin: 10px 12px; max-width: 276px; }
     .leaflet-popup-close-button { color: #c5ceda !important; }
     .popup { width: 260px; max-width: 276px; }
     .popup h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.3; }
     .badge { display: inline-block; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
-    .badge-official { background: #10b981; color: #042f1f; border: 1px solid #10b981; }
+    .badge-official { background: #14b8a6; color: #042f2e; border: 1px solid #14b8a6; }
     .badge-claim { background: #f59e0b; color: #451a03; border: 1px solid #f59e0b; }
-    .badge-lead { background: #a855f7; color: #faf5ff; border: 1px solid #a855f7; }
+    .badge-lead { background: #c084fc; color: #2e1065; border: 1px solid #c084fc; }
     .badge-corroborated { background: #38bdf8; color: #082f49; border: 1px solid #38bdf8; }
     .badge-unknown { background: #1e293b; color: var(--muted); border: 1px solid var(--line); }
     .summary { margin: 6px 0; font-size: 13px; }
@@ -142,13 +146,19 @@
     .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid var(--active-line); padding-bottom: 8px; }
     #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; }
     #export-headlines, #copy-brief { color: #fff; background: var(--active); border: 1px solid var(--active-line); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    #copy-brief, .copy-pin { border-color: #2dd4bf; box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 0 10px rgba(45, 212, 191, 0.45); }
     .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .popup-actions .popup-link { margin-top: 0; }
     .copy-pin { color: #fff; background: var(--active); border: 1px solid var(--active-line); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
     .headlines-note { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
     #headline-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .headline-card, .brief-card { position: relative; }
+    .headline-card::before, .brief-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 12px 12px 0 0;
+      background: linear-gradient(90deg, rgba(20, 184, 166, 0.85), rgba(251, 113, 133, 0.7));
+    }
     .headline-card {
-      background: var(--card-bg); border: 1px solid var(--line); border-top: 1px solid rgba(56, 189, 248, 0.55);
+      background: var(--card-bg); border: 1px solid var(--line); border-top: 0;
       border-radius: 12px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 8px;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
     }
@@ -169,7 +179,7 @@
     .headline-empty { margin: 0; color: var(--muted); }
     #daily-brief { width: 100%; background: var(--bg); color: var(--text); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 20px 8px; }
     .brief-card {
-      background: var(--card-bg); border: 1px solid var(--line); border-top: 1px solid rgba(56, 189, 248, 0.55);
+      background: var(--card-bg); border: 1px solid var(--line); border-top: 0;
       border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
     }
@@ -262,10 +272,10 @@
     <button type="button" data-jump="levant">Levant</button>
   </nav>
   <div class="legend">
-    <span><i style="background:#f43f5e"></i>High</span>
+    <span><i style="background:#fb7185"></i>High</span>
     <span><i style="background:#f59e0b"></i>Med/Low</span>
-    <span><i style="background:#06b6d4"></i>Maritime</span>
-    <span><i style="background:#3b82f6"></i>Travel</span>
+    <span><i style="background:#14b8a6"></i>Maritime</span>
+    <span><i style="background:#38bdf8"></i>Travel</span>
   </div>
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
@@ -495,9 +505,9 @@
     }
 
     function pinColor(props) {
-      if (props.category === "Maritime Advisory") return "#06b6d4";
-      if (props.category === "Travel / Embassy Advisory") return "#3b82f6";
-      if (props.severity === "high") return "#f43f5e";
+      if (props.category === "Maritime Advisory") return "#14b8a6";
+      if (props.category === "Travel / Embassy Advisory") return "#38bdf8";
+      if (props.severity === "high") return "#fb7185";
       return "#f59e0b";
     }
 
