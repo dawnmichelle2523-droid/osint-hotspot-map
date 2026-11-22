@@ -279,7 +279,7 @@
     </section>
   </aside>
   <div id="basemap" role="group" aria-label="Basemap">
-    <button type="button" data-basemap="voyager" aria-pressed="true">Clear Map</button>
+    <button type="button" data-basemap="clear" aria-pressed="true">Clear Map</button>
     <button type="button" data-basemap="dark">Dark Slate</button>
   </div>
   <nav id="quick-jump" aria-label="Quick jump">
@@ -348,10 +348,9 @@
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
     const esriAttr = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
-    const voyager = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: "abcd",
-      maxZoom: 20
+    const clearMap = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: esriAttr,
+      maxZoom: 19
     });
     const darkBase = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
       attribution: esriAttr,
@@ -366,17 +365,17 @@
       if (clear) {
         if (map.hasLayer(darkBase)) map.removeLayer(darkBase);
         if (map.hasLayer(darkLabels)) map.removeLayer(darkLabels);
-        if (!map.hasLayer(voyager)) voyager.addTo(map);
+        if (!map.hasLayer(clearMap)) clearMap.addTo(map);
       } else {
-        if (map.hasLayer(voyager)) map.removeLayer(voyager);
+        if (map.hasLayer(clearMap)) map.removeLayer(clearMap);
         if (!map.hasLayer(darkBase)) darkBase.addTo(map);
         if (!map.hasLayer(darkLabels)) darkLabels.addTo(map);
       }
       document.querySelectorAll("#basemap button").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.basemap === (clear ? "voyager" : "dark")));
+        button.setAttribute("aria-pressed", String(button.dataset.basemap === (clear ? "clear" : "dark")));
       });
     }
-    setBasemap("voyager");
+    setBasemap("clear");
     map.setView(HOME.center, HOME.zoom);
     window.addEventListener("resize", () => map.invalidateSize());
 
