@@ -166,6 +166,9 @@
     .badge-lead { background: #c084fc; color: #2e1065; border: 1px solid #c084fc; }
     .badge-corroborated { background: #38bdf8; color: #082f49; border: 1px solid #38bdf8; }
     .badge-unknown { background: #1e293b; color: var(--muted); border: 1px solid var(--line); }
+    .badge-high { background: #ff4d6d; color: #1a0509; border: 1px solid #ff4d6d; }
+    .badge-medium { background: #ffb703; color: #1a1200; border: 1px solid #ffb703; }
+    .badge-low { background: #19d3b8; color: #04221e; border: 1px solid #19d3b8; }
     .summary { margin: 6px 0; font-size: 13px; }
     .when { color: var(--muted); font-size: 12px; }
     a.popup-link { display: inline-block; margin-top: 8px; color: var(--active-line); text-decoration: none; font-size: 13px; font-weight: 650; }
@@ -313,9 +316,10 @@
       <h2>Category</h2>
       <div class="row">
         <button type="button" class="pill" data-category="all" aria-pressed="true">All</button>
-        <button type="button" class="pill" data-category="Security Incident">Security Incident</button>
-        <button type="button" class="pill" data-category="Maritime Advisory">Maritime Advisory</button>
-        <button type="button" class="pill" data-category="Travel / Embassy Advisory">Travel / Embassy Advisory</button>
+        <button type="button" class="pill" data-category="Kinetic/Military">Kinetic/Military</button>
+        <button type="button" class="pill" data-category="Maritime">Maritime</button>
+        <button type="button" class="pill" data-category="Security/Clashes">Security/Clashes</button>
+        <button type="button" class="pill" data-category="Political/Other">Political/Other</button>
       </div>
     </section>
   </aside>
@@ -333,10 +337,9 @@
     <button type="button" id="summarize-governorate">Summarize Governorate</button>
   </nav>
   <div class="legend">
-    <span><i style="background:#fb7185"></i>High</span>
-    <span><i style="background:#f59e0b"></i>Med/Low</span>
-    <span><i style="background:#14b8a6"></i>Maritime</span>
-    <span><i style="background:#38bdf8"></i>Travel</span>
+    <span><i style="background:#ff4d6d"></i>High</span>
+    <span><i style="background:#ffb703"></i>Medium</span>
+    <span><i style="background:#19d3b8"></i>Low</span>
   </div>
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
@@ -550,7 +553,7 @@
 
     function passes(feature, opts) {
       const props = feature.properties || {};
-      if (opts.severity !== "all" && props.severity !== opts.severity) return false;
+      if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
       if (opts.category !== "all" && props.category !== opts.category) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
@@ -602,11 +605,18 @@
       return parts.slice(0, 2).join(" ").trim();
     }
 
+    function severityBadge(props) {
+      const rank = String(props.severity || "").toLowerCase();
+      if (rank === "high") return { label: "High", cls: "badge-high" };
+      if (rank === "low") return { label: "Low", cls: "badge-low" };
+      return { label: "Medium", cls: "badge-medium" };
+    }
+
     function pinColor(props) {
-      if (props.category === "Maritime Advisory") return "#14b8a6";
-      if (props.category === "Travel / Embassy Advisory") return "#38bdf8";
-      if (props.severity === "high") return "#fb7185";
-      return "#f59e0b";
+      const rank = String(props.severity || "").toLowerCase();
+      if (rank === "high") return "#ff4d6d";
+      if (rank === "low") return "#19d3b8";
+      return "#ffb703";
     }
 
     function sourceLabel(props) {
@@ -619,7 +629,7 @@
     }
 
     function popupHtml(props, id) {
-      const badge = BADGES[props.verification_tier] || { label: "Lead", cls: "badge-unknown" };
+      const badge = severityBadge(props);
       const headline = props.title || props.summary || "Incident";
       const href = safeUrl(props.source);
       const link = href
@@ -746,7 +756,8 @@
       markers.clear();
       clusterLayer = L.markerClusterGroup({
         showCoverageOnHover: false,
-        maxClusterRadius: 42,
+        maxClusterRadius: 48,
+        disableClusteringAtZoom: 8,
         spiderfyOnMaxZoom: true,
         iconCreateFunction: (cluster) => {
           const count = cluster.getChildCount();
@@ -826,6 +837,7 @@
           '<article class="headline-card">' +
             '<div class="headline-meta">' +
               '<span class="source-pill">' + esc(sourceLabel(props)) + "</span>" +
+              '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
@@ -914,17 +926,15 @@
         const data = await response.json();
         showLastUpdated(data.last_polled_at);
         const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
-        if (incoming.length) {
-          features = incoming;
-          loadedOnce = true;
-          setStatus("");
-          render();
-          if (!hashApplied) {
-            hashApplied = true;
-            openHashedPin();
-          }
-          return;
+        features = incoming;
+        loadedOnce = true;
+        setStatus(incoming.length ? "" : "No incidents in the last 72 hours.");
+        render();
+        if (!hashApplied) {
+          hashApplied = true;
+          openHashedPin();
         }
+        return;
       } catch (err) {}
       await loadHotspots();
     }
