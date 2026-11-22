@@ -170,6 +170,7 @@
     .badge-high { background: #ff4d6d; color: #1a0509; border: 1px solid #ff4d6d; }
     .badge-medium { background: #ffb703; color: #1a1200; border: 1px solid #ffb703; }
     .badge-low { background: #19d3b8; color: #04221e; border: 1px solid #19d3b8; }
+    .badge-sources { background: #04221e; color: #19d3b8; border: 1px solid #19d3b8; box-shadow: 0 0 8px rgba(25, 211, 184, 0.85); }
     .summary { margin: 6px 0; font-size: 13px; }
     .when { color: var(--muted); font-size: 12px; }
     a.popup-link { display: inline-block; margin-top: 8px; color: var(--active-line); text-decoration: none; font-size: 13px; font-weight: 650; }
@@ -248,6 +249,8 @@
     .source-pill { display: inline-block; color: var(--muted); background: #0a1114; border: 1px solid #1a2c35; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
     .update-place { margin: 0; color: var(--muted); font-size: 12px; }
     #headlines.drawer { border-top: 1px solid #1a2c35; }
+    #updates-filter { width: 100%; margin: 0 0 10px; background: #0a1114; color: var(--text); border: 1px solid #1a2c35; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
+    #updates-filter::placeholder { color: var(--muted); }
     #updates-toggle { background: transparent; color: var(--text); border: 0; font: inherit; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; cursor: pointer; padding: 0; }
     #updates-toggle::before { content: "▾ "; color: #19d3b8; }
     #updates-toggle[aria-expanded="false"]::before { content: "▸ "; }
@@ -351,14 +354,16 @@
         <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
         <button type="button" id="copy-brief">Copy Brief</button>
+        <button type="button" id="copy-briefing">📋 Copy Briefing</button>
         <button type="button" id="refresh-summary">Refresh Summary</button>
       </div>
       <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
   </section>
-  <section id="headlines" class="drawer" aria-labelledby="updates-toggle">
+    <section id="headlines" class="drawer" aria-labelledby="updates-toggle">
     <div class="headlines-inner">
+      <input id="updates-filter" type="search" placeholder="Filter pins &amp; updates..." aria-label="Filter pins and updates">
       <div class="headlines-head">
         <h2 id="headlines-title"><button type="button" id="updates-toggle" aria-expanded="true" aria-controls="headline-list">Newest Updates</button></h2>
         <button type="button" id="export-headlines">Export Filtered Headlines</button>
@@ -452,6 +457,7 @@
     let loadedOnce = false;
     let timeWindow = "all";
     let severity = "all";
+    let updatesQuery = "";
     let category = "all";
     let region = "all";
     let searchQuery = "";
@@ -501,7 +507,7 @@
       return url.href;
     }
 
-    async function copyText(text, button, label) {
+    async function copyText(text, button, label, copiedLabel) {
       try {
         await navigator.clipboard.writeText(text);
       } catch (err) {
@@ -513,7 +519,7 @@
         area.remove();
       }
       if (!button) return;
-      button.textContent = "Copied!";
+      button.textContent = copiedLabel || "Copied!";
       window.setTimeout(() => { button.textContent = label; }, 1200);
     }
 
@@ -542,6 +548,19 @@
       return age <= WINDOWS[windowId];
     }
 
+    function matchesUpdates(props, query) {
+      const needle = String(query || "").trim().toLowerCase();
+      if (!needle) return true;
+      const fields = [props.title, props.summary, props.location_name, props.governorate, props.region];
+      return fields.some((value) => String(value || "").toLowerCase().includes(needle));
+    }
+
+    function corroborationBadge(props) {
+      const count = Number(props.corroboration_count);
+      if (!Number.isFinite(count) || count <= 1) return "";
+      return '<span class="badge badge-sources">✓ ' + count + ' sources</span>';
+    }
+
     function matchesQuery(props, query) {
       if (!query) return true;
       const needle = query.trim().toLowerCase();
@@ -561,6 +580,7 @@
       if (opts.category !== "all" && props.category !== opts.category) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
+      if (!matchesUpdates(props, updatesQuery)) return false;
       return matchesQuery(props, opts.query || "");
     }
 
@@ -646,7 +666,8 @@
         '<div class="popup">' +
           "<h3>" + esc(headline) + "</h3>" +
           '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
-          '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span>" +
+          '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
+          corroborationBadge(props) +
           place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
@@ -843,6 +864,7 @@
             '<div class="headline-meta">' +
               '<span class="source-pill">' + esc(sourceLabel(props)) + "</span>" +
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
+              corroborationBadge(props) +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
@@ -1390,6 +1412,15 @@
     document.getElementById("copy-brief").addEventListener("click", () => {
       if (!briefText) return;
       copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
+    });
+    document.getElementById("copy-briefing").addEventListener("click", () => {
+      const text = briefText || document.getElementById("brief-body").innerText.trim();
+      if (!text) return;
+      copyText(text, document.getElementById("copy-briefing"), "📋 Copy Briefing", "✓ Copied!");
+    });
+    document.getElementById("updates-filter").addEventListener("input", (event) => {
+      updatesQuery = event.target.value;
+      render("none");
     });
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     document.getElementById("fetch-live").addEventListener("click", async () => {

@@ -308,6 +308,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
             lng REAL,
             severity TEXT,
             category TEXT,
+            corroboration_count INTEGER NOT NULL DEFAULT 1,
             published_at TEXT,
             ingested_at TEXT NOT NULL
         )
@@ -324,6 +325,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "lng": "REAL",
         "severity": "TEXT",
         "category": "TEXT",
+        "corroboration_count": "INTEGER NOT NULL DEFAULT 1",
         "published_at": "TEXT",
         "ingested_at": "TEXT",
         "headline_hash": "TEXT",
@@ -371,11 +373,15 @@ def url_hash(url: str) -> str:
 
 
 def recent_titles(conn: sqlite3.Connection, limit: int = SIMILAR_TITLE_LIMIT) -> list[str]:
-    rows = conn.execute(
-        "SELECT title FROM items WHERE title IS NOT NULL AND title != '' ORDER BY id DESC LIMIT ?",
+    return [str(row["title"]) for row in recent_story_rows(conn, limit)]
+
+
+def recent_story_rows(conn: sqlite3.Connection, limit: int = SIMILAR_TITLE_LIMIT) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT id, title, source_name, source_kind FROM items "
+        "WHERE title IS NOT NULL AND title != '' ORDER BY id DESC LIMIT ?",
         (limit,),
     ).fetchall()
-    return [str(row["title"]) for row in rows]
 
 
 def similar_to_recent(title: str, titles: list[str]) -> bool:
@@ -390,6 +396,45 @@ def similar_to_recent(title: str, titles: list[str]) -> bool:
         if SequenceMatcher(None, folded, right.casefold()).ratio() > SIMILAR_TITLE_RATIO:
             return True
     return False
+
+
+def best_title_match(title: str, rows: list[sqlite3.Row]) -> sqlite3.Row | None:
+    left = " ".join(str(title or "").split())
+    if not left:
+        return None
+    folded = left.casefold()
+    best = None
+    best_ratio = SIMILAR_TITLE_RATIO
+    for row in rows:
+        right = " ".join(str(row["title"] or "").split())
+        if not right:
+            continue
+        ratio = SequenceMatcher(None, folded, right.casefold()).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best = row
+    return best
+
+
+def same_channel(item: dict, row: sqlite3.Row) -> bool:
+    incoming = source_label(item.get("source_kind") or "", item.get("source_name") or "")
+    stored = source_label(row["source_kind"] or "", row["source_name"] or "")
+    return incoming.casefold() == stored.casefold()
+
+
+def seen_url(conn: sqlite3.Connection, source_url: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM items WHERE source_url = ? OR url_hash = ? LIMIT 1",
+        (source_url, url_hash(source_url)),
+    ).fetchone()
+    return row is not None
+
+
+def bump_corroboration(conn: sqlite3.Connection, row_id: int) -> None:
+    conn.execute(
+        "UPDATE items SET corroboration_count = COALESCE(corroboration_count, 1) + 1 WHERE id = ?",
+        (row_id,),
+    )
 
 
 def titles_near(left: str, right: str) -> bool:
@@ -537,6 +582,7 @@ def feed_features() -> list[dict]:
             "category": osint.live_category(row["category"]),
             "warning_number": None,
             "location_name": row["location_name"] or "",
+            "corroboration_count": int(row["corroboration_count"] or 1),
         }
         if row["governorate"]:
             props["governorate"] = row["governorate"]
@@ -739,8 +785,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 """
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, source_name, source_kind,
-                    region, governorate, location_name, lat, lng, severity, category, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    region, governorate, location_name, lat, lng, severity, category,
+                    corroboration_count, published_at, ingested_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -757,6 +804,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     coords[0],
                     osint.live_severity(placed.get("severity")),
                     osint.live_category(placed.get("category")),
+                    1,
                     osint.format_timestamp(moment),
                     osint.format_timestamp(now),
                 ),
@@ -778,26 +826,25 @@ def store_new_items(candidates: list[dict], now: datetime) -> int:
     for item in candidates:
         if inserted >= MAX_NEW_PER_CYCLE:
             break
-        digest = headline_hash(item["title"])
         with _db_lock:
             conn = db_connect()
             try:
-                if seen_item(conn, item["source_url"], digest, item["title"]):
+                if seen_url(conn, item["source_url"]):
+                    continue
+                match = best_title_match(item["title"], recent_story_rows(conn))
+                if match is not None:
+                    if same_channel(item, match):
+                        print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
+                    else:
+                        bump_corroboration(conn, match["id"])
+                        conn.commit()
+                        print(f"Corroborated story {match['id']} from another channel: {item['title'][:80]}")
                     continue
             finally:
                 conn.close()
         if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
             f"{item.get('title') or ''} {item.get('summary') or ''}"
         ):
-            continue
-        with _db_lock:
-            conn = db_connect()
-            try:
-                titles = recent_titles(conn)
-            finally:
-                conn.close()
-        if similar_to_recent(item["title"], titles):
-            print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
             continue
         placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
         english = osint.one_sentence(placed.get("title") or "")
