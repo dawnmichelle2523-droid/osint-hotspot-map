@@ -191,17 +191,22 @@
     .locate { color: #fff; background: var(--active); border: 1px solid var(--active-line); }
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .headline-empty { margin: 0; color: var(--muted); }
-    #daily-brief { width: 100%; background: var(--bg); color: var(--text); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 20px 8px; }
+    #daily-brief { width: 100%; background: #0e181d; color: var(--text); border-top: 1px solid #1a2c35; border-bottom: 1px solid #1a2c35; padding: 20px 20px 8px; }
     .brief-card {
-      background: var(--card-bg); border: 1px solid var(--line); border-top: 0;
+      background: #0e181d; border: 1px solid #1a2c35; border-top: 1px solid #1a2c35;
       border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
     }
+    #daily-brief .brief-card::before { display: none; }
     .brief-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #brief-title { margin: 0; font-size: 18px; font-weight: 700; }
+    #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #19d3b8; }
     #brief-time { color: var(--muted); font-size: 12px; }
     #copy-brief { margin-left: auto; }
+    #refresh-summary { color: #0e181d; background: #19d3b8; border: 1px solid #19d3b8; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+    #refresh-summary:disabled { opacity: 0.7; cursor: wait; }
+    .summary-lead { margin: 8px 0; }
+    .summary-note { margin: 0 0 8px; color: var(--text); }
     #brief-body { margin-top: 8px; }
     .brief-section { border-top: 1px solid var(--line); }
     .brief-section-toggle { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; color: var(--active-line); border: 0; padding: 10px 0; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
@@ -221,7 +226,7 @@
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
-      #copy-brief, #export-headlines { margin-left: 0; }
+      #copy-brief, #export-headlines, #refresh-summary { margin-left: 0; }
       .bar-row { grid-template-columns: 108px 1fr 28px; }
     }
   </style>
@@ -311,6 +316,7 @@
         <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
         <button type="button" id="copy-brief">Copy Brief</button>
+        <button type="button" id="refresh-summary">Refresh Summary</button>
       </div>
       <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
@@ -1061,6 +1067,64 @@
       }
     }
 
+    let summaryPinned = false;
+
+    function renderLiveSummary(summary) {
+      const body = document.getElementById("brief-body");
+      const time = document.getElementById("brief-time");
+      const text = summary && summary.text ? String(summary.text) : "";
+      if (!text) return false;
+      const stamp = gmtStamp(summary.generated_at);
+      if (summary.generated_at) time.setAttribute("datetime", summary.generated_at);
+      time.textContent = stamp === "Unknown time" ? "" : stamp;
+      const notes = Array.isArray(summary.regional_notes) ? summary.regional_notes : [];
+      body.innerHTML =
+        "<p class=\"summary-lead\">" + esc(text) + "</p>" +
+        notes.map((item) => "<p class=\"summary-note\"><strong>" + esc(item.region || "") + ".</strong> " + esc(item.note || "") + "</p>").join("");
+      const lines = ["Geopolitical Summary", stamp, "", text];
+      notes.forEach((item) => lines.push("", (item.region || "") + ": " + (item.note || "")));
+      briefText = lines.join("\n").trim();
+      return true;
+    }
+
+    async function loadSummaryPanel() {
+      if (summaryPinned) return;
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.summary && renderLiveSummary(data.summary)) return;
+          await loadBrief();
+          return;
+        }
+      } catch (err) {}
+      try {
+        const cached = await fetch(`summary_cache.json?v=${Date.now()}`, { cache: "no-store" });
+        if (cached.ok && renderLiveSummary(await cached.json())) return;
+      } catch (err) {}
+      await loadBrief();
+    }
+
+    async function refreshSummary() {
+      const button = document.getElementById("refresh-summary");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/summary", { method: "POST", cache: "no-store" });
+        const data = response.ok ? await response.json() : null;
+        const summary = data && data.summary && data.summary.text ? data.summary : data;
+        if (!renderLiveSummary(summary)) {
+          renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
+        }
+        summaryPinned = true;
+      } catch (err) {
+        renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
+        summaryPinned = true;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Refresh Summary";
+      }
+    }
+
     const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Other / International"];
 
     function renderRegionBars() {
@@ -1105,13 +1169,14 @@
       if (!briefText) return;
       copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
     });
+    document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     window.addEventListener("hashchange", () => openHashedPin());
 
     loadHotspots();
     showSyriaGovernorates(false);
-    loadBrief();
+    loadSummaryPanel();
     setInterval(loadHotspots, 60000);
-    setInterval(loadBrief, 60000);
+    setInterval(loadSummaryPanel, 60000);
   </script>
 </body>
 </html>
