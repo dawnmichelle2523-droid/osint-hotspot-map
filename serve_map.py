@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 import sqlite3
+from difflib import SequenceMatcher
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +33,9 @@ CACHE = ROOT / "summary_cache.json"
 FEEDS_DB = ROOT / "feeds.sqlite"
 POLL_SECONDS = 300
 POLL_LIMIT = 5
+LIVE_WINDOW = timedelta(hours=72)
+SIMILAR_TITLE_LIMIT = 40
+SIMILAR_TITLE_RATIO = 0.65
 FETCH_TIMEOUT = 8
 USER_AGENT = "osint_tracker"
 # Configurable public feeds. Google News RSS stands in for Reuters and AP.
@@ -157,9 +161,11 @@ def event_row(feature: dict) -> dict | None:
         "title": title[:240],
         "summary": osint.one_sentence(props.get("summary"))[:500],
         "region": region_name(props.get("region")),
-        "category": osint.one_sentence(props.get("category"))[:80],
+        "category": osint.live_category(props.get("category")),
         "timestamp": osint.format_timestamp(moment) if moment else "",
-        "severity": osint.one_sentence(props.get("severity"))[:20],
+        "severity": osint.live_severity(props.get("severity")),
+        "governorate": osint.match_governorate(props.get("governorate"))
+        or osint.match_governorate(props.get("location_name")),
         "verification_tier": osint.one_sentence(props.get("verification_tier"))[:80],
         "_ms": moment.timestamp() if moment else 0,
     }
@@ -192,6 +198,23 @@ def region_counts(events: list[dict]) -> dict[str, int]:
     for event in events:
         counts[region_name(event.get("region"))] += 1
     return counts
+
+
+def governorate_counts(events: list[dict]) -> dict[str, int]:
+    counts = {name: 0 for name in osint.SYRIA_GOVERNORATES}
+    for event in events:
+        name = event.get("governorate") or ""
+        if name in counts:
+            counts[name] += 1
+    return counts
+
+
+def within_live_window(feature: dict, now: datetime | None = None) -> bool:
+    moment = osint.parse_timestamp((feature.get("properties") or {}).get("timestamp"))
+    if moment is None:
+        return False
+    cutoff = (now or datetime.now(timezone.utc)) - LIVE_WINDOW
+    return moment >= cutoff
 
 
 def read_cache() -> dict | None:
@@ -250,6 +273,8 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
             location_name TEXT,
             lat REAL,
             lng REAL,
+            severity TEXT,
+            category TEXT,
             published_at TEXT,
             ingested_at TEXT NOT NULL
         )
@@ -264,6 +289,8 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "location_name": "TEXT",
         "lat": "REAL",
         "lng": "REAL",
+        "severity": "TEXT",
+        "category": "TEXT",
         "published_at": "TEXT",
         "ingested_at": "TEXT",
         "headline_hash": "TEXT",
@@ -308,6 +335,28 @@ def headline_hash(title: str) -> str:
 
 def url_hash(url: str) -> str:
     return hashlib.sha256(" ".join(str(url or "").strip().lower().split()).encode("utf-8")).hexdigest()
+
+
+def recent_titles(conn: sqlite3.Connection, limit: int = SIMILAR_TITLE_LIMIT) -> list[str]:
+    rows = conn.execute(
+        "SELECT title FROM items WHERE title IS NOT NULL AND title != '' ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [str(row["title"]) for row in rows]
+
+
+def similar_to_recent(title: str, titles: list[str]) -> bool:
+    left = " ".join(str(title or "").split())
+    if not left:
+        return False
+    folded = left.casefold()
+    for other in titles:
+        right = " ".join(str(other or "").split())
+        if not right:
+            continue
+        if SequenceMatcher(None, folded, right.casefold()).ratio() > SIMILAR_TITLE_RATIO:
+            return True
+    return False
 
 
 def titles_near(left: str, right: str) -> bool:
@@ -408,7 +457,7 @@ def feed_features() -> list[dict]:
         if not osint.valid_coord(lng, lat):
             continue
         props = {
-            "severity": "medium",
+            "severity": osint.live_severity(row["severity"]),
             "title": row["title"],
             "summary": row["summary"] or row["title"],
             "timestamp": row["published_at"] or row["ingested_at"],
@@ -420,7 +469,7 @@ def feed_features() -> list[dict]:
             "batch": "live_feed",
             "verification_tier": "Unverified Lead" if row["source_kind"] == "telegram" else "State-Affiliated / Single-Source",
             "region": region_name(row["region"]),
-            "category": "Security Incident",
+            "category": osint.live_category(row["category"]),
             "warning_number": None,
             "location_name": row["location_name"] or "",
         }
@@ -625,8 +674,8 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 """
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, source_name, source_kind,
-                    region, governorate, location_name, lat, lng, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    region, governorate, location_name, lat, lng, severity, category, published_at, ingested_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -641,6 +690,8 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     placed.get("location_name") or "",
                     coords[1],
                     coords[0],
+                    osint.live_severity(placed.get("severity")),
+                    osint.live_category(placed.get("category")),
                     osint.format_timestamp(moment),
                     osint.format_timestamp(now),
                 ),
@@ -676,6 +727,15 @@ def run_poll() -> dict:
             if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
                 f"{item.get('title') or ''} {item.get('summary') or ''}"
             ):
+                continue
+            with _db_lock:
+                conn = db_connect()
+                try:
+                    titles = recent_titles(conn)
+                finally:
+                    conn.close()
+            if similar_to_recent(item["title"], titles):
+                print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
                 continue
             placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
             english = osint.one_sentence(placed.get("title") or "")
@@ -715,7 +775,8 @@ def start_poller() -> None:
 
 
 def data_payload() -> dict:
-    features = combined_features()
+    now = datetime.now(timezone.utc)
+    features = [feature for feature in combined_features() if within_live_window(feature, now)]
     events = live_events_from(features)
     with _db_lock:
         conn = db_connect()
@@ -727,6 +788,7 @@ def data_payload() -> dict:
         "events": events,
         "features": features,
         "counts_by_region": region_counts(events),
+        "counts_by_governorate": governorate_counts(events),
         "summary": read_cache(),
         "last_polled_at": last_polled_at,
     }
@@ -800,7 +862,10 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
 
 
 def refresh_summary() -> dict:
-    events = live_events()
+    now = datetime.now(timezone.utc)
+    events = live_events_from(
+        [feature for feature in combined_features() if within_live_window(feature, now)]
+    )
     counts = region_counts(events)
     key = osint.read_api_key()
     if not key:
@@ -860,6 +925,7 @@ class MapHandler(SimpleHTTPRequestHandler):
                     "events": [],
                     "features": [],
                     "counts_by_region": {name: 0 for name in REGIONS},
+                    "counts_by_governorate": {name: 0 for name in osint.SYRIA_GOVERNORATES},
                     "summary": read_cache(),
                     "last_polled_at": None,
                 })

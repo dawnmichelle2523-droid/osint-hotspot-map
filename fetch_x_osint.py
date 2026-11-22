@@ -480,6 +480,46 @@ def normalize_region(value: object) -> str | None:
     return REGION_ALIASES.get(text.lower())
 
 
+LIVE_SEVERITIES = ("High", "Medium", "Low")
+LIVE_CATEGORIES = (
+    "Kinetic/Military",
+    "Maritime",
+    "Security/Clashes",
+    "Political/Other",
+)
+
+
+def live_severity(value: object) -> str:
+    text = one_sentence(value).lower()
+    if text == "high":
+        return "High"
+    if text == "low":
+        return "Low"
+    return "Medium"
+
+
+def live_category(value: object) -> str:
+    text = one_sentence(value)
+    if text in LIVE_CATEGORIES:
+        return text
+    aliases = {
+        "kinetic": "Kinetic/Military",
+        "kinetic/military": "Kinetic/Military",
+        "military": "Kinetic/Military",
+        "maritime": "Maritime",
+        "maritime advisory": "Maritime",
+        "security": "Security/Clashes",
+        "security/clashes": "Security/Clashes",
+        "clashes": "Security/Clashes",
+        "security incident": "Security/Clashes",
+        "political": "Political/Other",
+        "political/other": "Political/Other",
+        "other": "Political/Other",
+        "travel / embassy advisory": "Political/Other",
+    }
+    return aliases.get(text.lower(), "Political/Other")
+
+
 def match_governorate(text: object) -> str:
     padded = f" {place_key(text)} "
     best = ""
@@ -509,6 +549,8 @@ def extract_location(headline: str) -> dict | None:
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
         "title is a concise English headline. Translate Arabic into English and do not add facts. "
+        "severity is exactly High, Medium, or Low. "
+        "category is exactly one of: Kinetic/Military, Maritime, Security/Clashes, Political/Other. "
         "lat and lng are decimal degrees, or null when the text does not locate the event.\n\n"
         + headline
     )
@@ -522,8 +564,10 @@ def extract_location(headline: str) -> dict | None:
             "governorate": {"type": "string"},
             "lat": {"type": ["number", "null"]},
             "lng": {"type": ["number", "null"]},
+            "severity": {"type": "string", "enum": list(LIVE_SEVERITIES)},
+            "category": {"type": "string", "enum": list(LIVE_CATEGORIES)},
         },
-        "required": ["title", "region", "location_name", "governorate", "lat", "lng"],
+        "required": ["title", "region", "location_name", "governorate", "lat", "lng", "severity", "category"],
     }
     try:
         response = make_client(key).responses.create(
@@ -537,7 +581,7 @@ def extract_location(headline: str) -> dict | None:
                     "strict": True,
                 }
             },
-            max_output_tokens=300,
+            max_output_tokens=400,
             timeout=API_TIMEOUT,
         )
         text = response_text(response)
@@ -589,6 +633,8 @@ def locate_event(
     governorate = match_governorate(text) or match_governorate(headline)
     english_title = ""
     vague = is_vague_location(text) or is_vague_location(headline)
+    severity = "Medium"
+    category = "Political/Other"
     if known and known_region and not vague:
         return {
             "region": known_region,
@@ -597,6 +643,8 @@ def locate_event(
             "title": english_title,
             "lat": known[1],
             "lng": known[0],
+            "severity": severity,
+            "category": category,
         }
     extracted = extract_location(one_sentence(headline) or text)
     if extracted:
@@ -611,6 +659,8 @@ def locate_event(
         extracted_coord = valid_coord(extracted.get("lng"), extracted.get("lat"))
         if extracted_coord:
             known = extracted_coord
+        severity = live_severity(extracted.get("severity"))
+        category = live_category(extracted.get("category"))
         vague = is_vague_location(text) or is_vague_location(headline)
     if (known is None or vague) and text and not vague:
         coded = geocode_name(text)
@@ -637,6 +687,8 @@ def locate_event(
         "title": english_title,
         "lat": known[1] if known else None,
         "lng": known[0] if known else None,
+        "severity": severity,
+        "category": category,
     }
 
 
