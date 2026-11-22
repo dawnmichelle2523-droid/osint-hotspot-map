@@ -13,7 +13,9 @@ import csv
 import hashlib
 import io
 import json
+import math
 import os
+import random
 import re
 import sqlite3
 from difflib import SequenceMatcher
@@ -34,8 +36,11 @@ import fetch_x_osint as osint
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "summary_cache.json"
 FEEDS_DB = ROOT / "feeds.sqlite"
-POLL_SECONDS = 300
-POLL_LIMIT = 5
+POLL_SECONDS = 120
+BATCH_SIZE = 7
+X_BATCH_SIZE = 2
+RSS_BATCH_SIZE = 2
+MAX_NEW_PER_CYCLE = 6
 LIVE_WINDOW = timedelta(hours=72)
 SIMILAR_TITLE_LIMIT = 40
 SIMILAR_TITLE_RATIO = 0.65
@@ -114,7 +119,10 @@ X_RATE_LIMITS = {401, 403, 429, 503}
 _start_lock = threading.Lock()
 _poll_lock = threading.Lock()
 _db_lock = threading.Lock()
+_pace_lock = threading.Lock()
 _poll_started = False
+_pacing = False
+_pace_pending = False
 MODEL = "grok-3-mini"
 TIMEOUT = 25
 MAX_OUTPUT_TOKENS = 800
@@ -459,11 +467,43 @@ def read_last_polled(conn: sqlite3.Connection) -> str | None:
 
 
 def write_last_polled(conn: sqlite3.Connection, stamp: str) -> None:
+    write_meta(conn, "last_polled_at", stamp)
+
+
+def write_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     conn.execute(
-        "INSERT INTO feed_meta (key, value) VALUES ('last_polled_at', ?) "
+        "INSERT INTO feed_meta (key, value) VALUES (?, ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        (stamp,),
+        (key, value),
     )
+
+
+def read_meta_int(conn: sqlite3.Connection, key: str) -> int:
+    row = conn.execute("SELECT value FROM feed_meta WHERE key = ?", (key,)).fetchone()
+    if not row:
+        return 0
+    try:
+        return int(str(row["value"]).strip() or 0)
+    except ValueError:
+        return 0
+
+
+def rotate_slice(items: list, index: int, size: int) -> list:
+    if not items or size <= 0:
+        return []
+    count = min(size, len(items))
+    start = index % len(items)
+    return [items[(start + offset) % len(items)] for offset in range(count)]
+
+
+def paced_get(url: str):
+    global _pace_pending
+    if _pacing:
+        with _pace_lock:
+            if _pace_pending:
+                time.sleep(random.uniform(1.0, 2.5))
+            _pace_pending = True
+    return requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
 
 
 def feed_features() -> list[dict]:
@@ -532,7 +572,7 @@ def combined_features() -> list[dict]:
 
 def fetch_rss_feed(name: str, url: str) -> list[dict]:
     try:
-        response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+        response = paced_get(url)
         response.raise_for_status()
         parsed = feedparser.parse(response.content)
     except Exception as exc:
@@ -571,7 +611,7 @@ def fetch_rss_candidates() -> list[dict]:
 def fetch_telegram_channel(channel: str) -> list[dict]:
     url = f"https://t.me/s/{channel}"
     try:
-        response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+        response = paced_get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
     except Exception as exc:
@@ -628,7 +668,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
         url = template.format(handle=handle)
         host = url.split("/")[2]
         try:
-            response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+            response = paced_get(url)
         except Exception as exc:
             print(f"X {handle} via {host} failed: {exc.__class__.__name__}.")
             continue
@@ -729,62 +769,111 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     return True
 
 
-def run_poll() -> dict:
-    with _poll_lock:
-        now = datetime.now(timezone.utc)
-        candidates = fetch_rss_candidates() + fetch_telegram_candidates() + fetch_x_candidates()
-        candidates.sort(
-            key=lambda item: parse_when(item.get("published_at")) or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True,
-        )
-        inserted = 0
-        for item in candidates:
-            if inserted >= POLL_LIMIT:
-                break
-            digest = headline_hash(item["title"])
-            with _db_lock:
-                conn = db_connect()
-                try:
-                    if seen_item(conn, item["source_url"], digest, item["title"]):
-                        continue
-                finally:
-                    conn.close()
-            if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
-                f"{item.get('title') or ''} {item.get('summary') or ''}"
-            ):
-                continue
-            with _db_lock:
-                conn = db_connect()
-                try:
-                    titles = recent_titles(conn)
-                finally:
-                    conn.close()
-            if similar_to_recent(item["title"], titles):
-                print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
-                continue
-            placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
-            english = osint.one_sentence(placed.get("title") or "")
-            if english:
-                item = dict(item)
-                item["title"] = english[:240]
-            if insert_item(item, placed, now):
-                inserted += 1
-        stamp = osint.format_timestamp(now)
+def store_new_items(candidates: list[dict], now: datetime) -> int:
+    candidates.sort(
+        key=lambda item: parse_when(item.get("published_at")) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    inserted = 0
+    for item in candidates:
+        if inserted >= MAX_NEW_PER_CYCLE:
+            break
+        digest = headline_hash(item["title"])
         with _db_lock:
             conn = db_connect()
             try:
-                write_last_polled(conn, stamp)
-                conn.commit()
+                if seen_item(conn, item["source_url"], digest, item["title"]):
+                    continue
             finally:
                 conn.close()
-        print(f"Feed poll stored {inserted} new item(s). last_polled_at {stamp}. hotspots.json was not changed.")
-        return {"ok": True, "inserted": inserted, "last_polled_at": stamp}
+        if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
+            f"{item.get('title') or ''} {item.get('summary') or ''}"
+        ):
+            continue
+        with _db_lock:
+            conn = db_connect()
+            try:
+                titles = recent_titles(conn)
+            finally:
+                conn.close()
+        if similar_to_recent(item["title"], titles):
+            print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
+            continue
+        placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
+        english = osint.one_sentence(placed.get("title") or "")
+        if english:
+            item = dict(item)
+            item["title"] = english[:240]
+        if insert_item(item, placed, now):
+            inserted += 1
+    return inserted
+
+
+def ingest_feeds() -> dict:
+    """One rotated batch: 7 Telegram channels, 2 X handles, and 2 RSS feeds."""
+    global _pacing, _pace_pending
+    with _poll_lock:
+        _pacing = True
+        _pace_pending = False
+        inserted = 0
+        checked = 0
+        batch_no = 1
+        total_batches = 1
+        try:
+            with _db_lock:
+                conn = db_connect()
+                try:
+                    batch_index = read_meta_int(conn, "batch_index")
+                    x_index = read_meta_int(conn, "x_batch_index")
+                    rss_index = read_meta_int(conn, "rss_batch_index")
+                finally:
+                    conn.close()
+            telegram = rotate_slice(TELEGRAM_CHANNELS, batch_index, BATCH_SIZE)
+            handles = rotate_slice(X_HANDLES, x_index, X_BATCH_SIZE)
+            feeds = rotate_slice(RSS_FEEDS, rss_index, RSS_BATCH_SIZE)
+            checked = len(telegram)
+            total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
+            batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
+            candidates = []
+            for channel in telegram:
+                candidates.extend(fetch_telegram_channel(channel))
+            for handle in handles:
+                candidates.extend(fetch_x_handle(handle))
+            for name, url in feeds:
+                candidates.extend(fetch_rss_feed(name, url))
+            now = datetime.now(timezone.utc)
+            inserted = store_new_items(candidates, now)
+            stamp = osint.format_timestamp(now)
+            next_batch = (batch_index + BATCH_SIZE) % len(TELEGRAM_CHANNELS) if TELEGRAM_CHANNELS else 0
+            next_x = (x_index + X_BATCH_SIZE) % len(X_HANDLES) if X_HANDLES else 0
+            next_rss = (rss_index + RSS_BATCH_SIZE) % len(RSS_FEEDS) if RSS_FEEDS else 0
+            with _db_lock:
+                conn = db_connect()
+                try:
+                    write_meta(conn, "batch_index", str(next_batch))
+                    write_meta(conn, "x_batch_index", str(next_x))
+                    write_meta(conn, "rss_batch_index", str(next_rss))
+                    write_last_polled(conn, stamp)
+                    conn.commit()
+                finally:
+                    conn.close()
+            print(
+                f"[Poller] Batch {batch_no}/{total_batches} | Checked {checked} Telegram channels | "
+                f"Ingested {inserted} new events"
+            )
+            return {"ok": True, "inserted": inserted, "last_polled_at": stamp}
+        finally:
+            _pacing = False
+
+
+def run_poll() -> dict:
+    return ingest_feeds()
 
 
 def poll_loop() -> None:
     while True:
         try:
-            run_poll()
+            ingest_feeds()
         except Exception as exc:
             print(f"Feed poll failed: {exc.__class__.__name__}.")
         time.sleep(POLL_SECONDS)
