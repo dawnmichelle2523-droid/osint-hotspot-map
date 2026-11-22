@@ -1,21 +1,91 @@
 #!/usr/bin/env python3
-"""Serve the static map plus the live summary API on port 8000.
+"""Serve the static map, the summary API, and live RSS/Telegram ingestion on port 8000.
 
 POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search).
-GET /api/data returns the live hotspots, six region counts, and the cached summary.
+GET /api/data returns live events, six region counts, the cached summary, and last_polled_at.
+POST /api/poll-now fetches RSS and public Telegram once.
+The poll never writes hotspots.json or daily_brief.json.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
+import sqlite3
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+import feedparser
+import requests
+from bs4 import BeautifulSoup
 
 import fetch_x_osint as osint
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "summary_cache.json"
+FEEDS_DB = ROOT / "feeds.sqlite"
+POLL_SECONDS = 300
+POLL_LIMIT = 5
+FETCH_TIMEOUT = 8
+USER_AGENT = "osint_tracker"
+# Configurable public feeds. Google News RSS stands in for Reuters and AP.
+RSS_FEEDS = [
+    ("Al Jazeera Middle East", "https://www.aljazeera.com/xml/rss/middleeast.xml"),
+    ("BBC Middle East", "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"),
+    ("Reuters Middle East & Syria", "https://news.google.com/rss/search?q=site:reuters.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
+    ("AP Middle East & Syria", "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
+    ("Enab Baladi", "https://english.enabbaladi.net/feed/"),
+    ("Syria Direct", "https://syriadirect.org/feed/"),
+]
+# Configurable public OSINT channels, read from the t.me/s preview page.
+TELEGRAM_CHANNELS = [
+    "conflictarchive",
+    "Suriyak_maps",
+    "Liveuamap",
+    "hawran_osint",
+    "osint613",
+    "npasyria",
+    "SANANewsEnglish",
+    "televisionsyria",
+    "AlekhbariahSY",
+    "SyrianArabNewsAgency",
+    "sn4hr",
+    "D24net",
+    "SweidaGov1",
+    "syrianinfowar",
+    "OsintTv",
+    "syriahr",
+    "EnabBaladi",
+]
+X_HANDLES = [
+    "syr_television",
+    "SyriacOSINT",
+    "QalaatAlMudiq",
+    "Charles_Lister",
+    "GregoryPWaters",
+    "OSINTWarfare",
+    "Osinttechnical",
+    "AfriMEOSINT",
+]
+# Tried in order for each handle. {handle} is replaced. A timeout or rate limit uses the next one.
+X_FEED_URLS = [
+    "https://nitter.poast.org/{handle}/rss",
+    "https://nitter.privacydev.net/{handle}/rss",
+    "https://nitter.woodland.cafe/{handle}/rss",
+    "https://xcancel.com/{handle}/rss",
+    "https://rss-bridge.org/bridge01/?action=display&bridge=TwitterBridge&context=By+username&u={handle}&format=Atom",
+]
+X_RATE_LIMITS = {401, 403, 429, 503}
+_start_lock = threading.Lock()
+_poll_lock = threading.Lock()
+_db_lock = threading.Lock()
+_poll_started = False
 MODEL = "grok-3-mini"
 TIMEOUT = 25
 MAX_OUTPUT_TOKENS = 800
@@ -95,9 +165,15 @@ def event_row(feature: dict) -> dict | None:
     }
 
 
-def live_events() -> list[dict]:
+def is_point(feature: dict) -> bool:
+    geometry = feature.get("geometry") or {}
+    coords = geometry.get("coordinates")
+    return geometry.get("type") == "Point" and isinstance(coords, list) and len(coords) >= 2
+
+
+def live_events_from(features: list[dict]) -> list[dict]:
     rows = []
-    for feature in load_features():
+    for feature in features:
         row = event_row(feature)
         if row:
             rows.append(row)
@@ -105,6 +181,10 @@ def live_events() -> list[dict]:
     for row in rows:
         row.pop("_ms", None)
     return rows
+
+
+def live_events() -> list[dict]:
+    return live_events_from(combined_features())
 
 
 def region_counts(events: list[dict]) -> dict[str, int]:
@@ -153,12 +233,449 @@ def write_cache(summary: dict) -> None:
     temporary.replace(CACHE)
 
 
+def ensure_feed_db(conn: sqlite3.Connection) -> None:
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_url TEXT NOT NULL,
+            headline_hash TEXT NOT NULL,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            source_name TEXT NOT NULL DEFAULT '',
+            source_kind TEXT NOT NULL DEFAULT '',
+            region TEXT,
+            governorate TEXT,
+            location_name TEXT,
+            lat REAL,
+            lng REAL,
+            published_at TEXT,
+            ingested_at TEXT NOT NULL
+        )
+        """
+    )
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+    additions = {
+        "source_name": "TEXT NOT NULL DEFAULT ''",
+        "source_kind": "TEXT NOT NULL DEFAULT ''",
+        "region": "TEXT",
+        "governorate": "TEXT",
+        "location_name": "TEXT",
+        "lat": "REAL",
+        "lng": "REAL",
+        "published_at": "TEXT",
+        "ingested_at": "TEXT",
+        "headline_hash": "TEXT",
+        "source_url": "TEXT",
+        "title": "TEXT",
+        "summary": "TEXT",
+    }
+    for name, typedef in additions.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE items ADD COLUMN {name} {typedef}")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_source_url ON items(source_url)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_headline_hash ON items(headline_hash)")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feed_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """
+    )
+    conn.commit()
+
+
+def db_connect() -> sqlite3.Connection:
+    conn = sqlite3.connect(FEEDS_DB, timeout=15)
+    conn.row_factory = sqlite3.Row
+    ensure_feed_db(conn)
+    return conn
+
+
+def headline_hash(title: str) -> str:
+    normalized = " ".join(title.lower().split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def parse_when(value: object) -> datetime | None:
+    text = " ".join(str(value or "").split())
+    if not text:
+        return None
+    parsed = osint.parse_timestamp(text)
+    if parsed:
+        return parsed
+    try:
+        moment = parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
+
+
+def plain_text(value: object) -> str:
+    raw = str(value or "")
+    if "<" in raw and ">" in raw:
+        raw = BeautifulSoup(raw, "html.parser").get_text(" ", strip=True)
+    return osint.one_sentence(raw)
+
+
+def seen_item(conn: sqlite3.Connection, source_url: str, digest: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM items WHERE source_url = ? OR headline_hash = ? LIMIT 1",
+        (source_url, digest),
+    ).fetchone()
+    return row is not None
+
+
+def read_last_polled(conn: sqlite3.Connection) -> str | None:
+    row = conn.execute("SELECT value FROM feed_meta WHERE key = 'last_polled_at'").fetchone()
+    if not row:
+        return None
+    text = " ".join(str(row["value"] or "").split())
+    return text or None
+
+
+def write_last_polled(conn: sqlite3.Connection, stamp: str) -> None:
+    conn.execute(
+        "INSERT INTO feed_meta (key, value) VALUES ('last_polled_at', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (stamp,),
+    )
+
+
+def feed_features() -> list[dict]:
+    features = []
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT * FROM items WHERE lat IS NOT NULL AND lng IS NOT NULL ORDER BY published_at DESC"
+            ).fetchall()
+        finally:
+            conn.close()
+    for row in rows:
+        lng = row["lng"]
+        lat = row["lat"]
+        if not osint.valid_coord(lng, lat):
+            continue
+        props = {
+            "severity": "medium",
+            "title": row["title"],
+            "summary": row["summary"] or row["title"],
+            "timestamp": row["published_at"] or row["ingested_at"],
+            "source": row["source_url"],
+            "account": row["source_name"],
+            "handle": row["source_name"],
+            "source_handle": row["source_name"],
+            "batch": "live_feed",
+            "verification_tier": "Unverified Lead" if row["source_kind"] == "telegram" else "State-Affiliated / Single-Source",
+            "region": region_name(row["region"]),
+            "category": "Security Incident",
+            "warning_number": None,
+            "location_name": row["location_name"] or "",
+        }
+        if row["governorate"]:
+            props["governorate"] = row["governorate"]
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [lng, lat]},
+                "properties": props,
+            }
+        )
+    return features
+
+
+def combined_features() -> list[dict]:
+    features = []
+    seen: set[str] = set()
+    for feature in load_features() + feed_features():
+        if not is_point(feature):
+            continue
+        source = str((feature.get("properties") or {}).get("source") or "")
+        if source and source in seen:
+            continue
+        if source:
+            seen.add(source)
+        features.append(feature)
+    return features
+
+
+def fetch_rss_feed(name: str, url: str) -> list[dict]:
+    try:
+        response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+        response.raise_for_status()
+        parsed = feedparser.parse(response.content)
+    except Exception as exc:
+        print(f"RSS {name} failed: {exc.__class__.__name__}.")
+        return []
+    found = []
+    for entry in (parsed.entries or [])[:20]:
+        title = plain_text(getattr(entry, "title", ""))
+        link = plain_text(getattr(entry, "link", ""))
+        if not title or not link.startswith("http"):
+            continue
+        summary = plain_text(getattr(entry, "summary", "") or getattr(entry, "description", "") or title)
+        published = getattr(entry, "published", "") or getattr(entry, "updated", "")
+        found.append(
+            {
+                "title": title[:240],
+                "summary": (summary or title)[:500],
+                "source_url": link,
+                "source_name": name,
+                "source_kind": "rss",
+                "published_at": published,
+            }
+        )
+    return found
+
+
+def fetch_rss_candidates() -> list[dict]:
+    found = []
+    with ThreadPoolExecutor(max_workers=len(RSS_FEEDS) or 1) as pool:
+        futures = [pool.submit(fetch_rss_feed, name, url) for name, url in RSS_FEEDS]
+        for future in futures:
+            found.extend(future.result())
+    return found
+
+
+def fetch_telegram_channel(channel: str) -> list[dict]:
+    url = f"https://t.me/s/{channel}"
+    try:
+        response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+    except Exception as exc:
+        print(f"Telegram {channel} failed: {exc.__class__.__name__}.")
+        return []
+    found = []
+    for wrap in soup.select(".tgme_widget_message")[:20]:
+        post = " ".join(str(wrap.get("data-post") or "").split())
+        node = wrap.select_one(".tgme_widget_message_text")
+        if not post or node is None:
+            continue
+        text = plain_text(node.get_text(" ", strip=True))
+        if not text:
+            continue
+        when = ""
+        clock = wrap.select_one("time")
+        if clock is not None:
+            when = clock.get("datetime") or ""
+        found.append(
+            {
+                "title": text[:180],
+                "summary": text[:500],
+                "source_url": f"https://t.me/{post}",
+                "source_name": channel,
+                "source_kind": "telegram",
+                "published_at": when,
+            }
+        )
+    return found
+
+
+def mentions_syria_or_middle_east(text: str) -> bool:
+    lowered = text.lower()
+    latin = (
+        "syria", "syrian", "middle east", "middle-east", "aleppo", "damascus", "idlib", "idleb",
+        "homs", "hama", "latakia", "tartus", "raqqa", "deir ez-zor", "deir ezzor", "hasakah",
+        "daraa", "suwayda", "sweida", "quneitra", "rif dimashq",
+    )
+    if any(term in lowered for term in latin):
+        return True
+    return any(term in text for term in ("سوريا", "سورية", "الشرق الأوسط", "الشرق الاوسط", "حلب", "دمشق", "إدلب", "حمص"))
+
+
+def canonical_x_url(handle: str, link: str, guid: str) -> str:
+    match = re.search(r"/status/(\d+)", f"{link} {guid}")
+    if match:
+        return f"https://x.com/{handle}/status/{match.group(1)}"
+    cleaned = plain_text(link)
+    return cleaned if cleaned.startswith("http") else ""
+
+
+def fetch_x_handle(handle: str) -> list[dict]:
+    for template in X_FEED_URLS:
+        url = template.format(handle=handle)
+        host = url.split("/")[2]
+        try:
+            response = requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+        except Exception as exc:
+            print(f"X {handle} via {host} failed: {exc.__class__.__name__}.")
+            continue
+        if response.status_code in X_RATE_LIMITS:
+            print(f"X {handle} via {host} failed: HTTP {response.status_code}.")
+            continue
+        if response.status_code != 200:
+            print(f"X {handle} via {host} failed: HTTP {response.status_code}.")
+            continue
+        parsed = feedparser.parse(response.content)
+        if not parsed.entries:
+            print(f"X {handle} via {host} failed: no entries.")
+            continue
+        found = []
+        for entry in parsed.entries[:20]:
+            title = plain_text(getattr(entry, "title", ""))
+            summary = plain_text(getattr(entry, "summary", "") or getattr(entry, "description", "") or title)
+            blob = f"{title} {summary}"
+            if not title or not mentions_syria_or_middle_east(blob):
+                continue
+            source_url = canonical_x_url(handle, getattr(entry, "link", ""), getattr(entry, "id", "") or getattr(entry, "guid", ""))
+            if not source_url:
+                continue
+            published = getattr(entry, "published", "") or getattr(entry, "updated", "")
+            found.append(
+                {
+                    "title": title[:240],
+                    "summary": (summary or title)[:500],
+                    "source_url": source_url,
+                    "source_name": handle,
+                    "source_kind": "x",
+                    "published_at": published,
+                }
+            )
+        return found
+    return []
+
+
+def fetch_x_candidates() -> list[dict]:
+    found = []
+    with ThreadPoolExecutor(max_workers=min(4, len(X_HANDLES) or 1)) as pool:
+        futures = [pool.submit(fetch_x_handle, handle) for handle in X_HANDLES]
+        for future in futures:
+            found.extend(future.result())
+    return found
+
+
+def fetch_telegram_candidates() -> list[dict]:
+    found = []
+    with ThreadPoolExecutor(max_workers=len(TELEGRAM_CHANNELS) or 1) as pool:
+        futures = [pool.submit(fetch_telegram_channel, channel) for channel in TELEGRAM_CHANNELS]
+        for future in futures:
+            found.extend(future.result())
+    return found
+
+
+def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
+    source_url = item["source_url"]
+    if coords is None:
+        print(f"Skipped {source_url}: no coordinates.")
+        return False
+    moment = parse_when(item.get("published_at")) or now
+    with _db_lock:
+        conn = db_connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO items (
+                    source_url, headline_hash, title, summary, source_name, source_kind,
+                    region, governorate, location_name, lat, lng, published_at, ingested_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    source_url,
+                    headline_hash(item["title"]),
+                    item["title"],
+                    item.get("summary") or item["title"],
+                    item.get("source_name") or "",
+                    item.get("source_kind") or "",
+                    placed.get("region") or "Other / International",
+                    placed.get("governorate") or "",
+                    placed.get("location_name") or "",
+                    coords[1],
+                    coords[0],
+                    osint.format_timestamp(moment),
+                    osint.format_timestamp(now),
+                ),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            return False
+        finally:
+            conn.close()
+    return True
+
+
+def run_poll() -> dict:
+    with _poll_lock:
+        now = datetime.now(timezone.utc)
+        candidates = fetch_rss_candidates() + fetch_telegram_candidates() + fetch_x_candidates()
+        candidates.sort(
+            key=lambda item: parse_when(item.get("published_at")) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        inserted = 0
+        for item in candidates:
+            if inserted >= POLL_LIMIT:
+                break
+            digest = headline_hash(item["title"])
+            with _db_lock:
+                conn = db_connect()
+                try:
+                    if seen_item(conn, item["source_url"], digest):
+                        continue
+                finally:
+                    conn.close()
+            if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
+                f"{item.get('title') or ''} {item.get('summary') or ''}"
+            ):
+                continue
+            placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
+            english = osint.one_sentence(placed.get("title") or "")
+            if english:
+                item = dict(item)
+                item["title"] = english[:240]
+            if insert_item(item, placed, now):
+                inserted += 1
+        stamp = osint.format_timestamp(now)
+        with _db_lock:
+            conn = db_connect()
+            try:
+                write_last_polled(conn, stamp)
+                conn.commit()
+            finally:
+                conn.close()
+        print(f"Feed poll stored {inserted} new item(s). last_polled_at {stamp}. hotspots.json was not changed.")
+        return {"ok": True, "inserted": inserted, "last_polled_at": stamp}
+
+
+def poll_loop() -> None:
+    while True:
+        try:
+            run_poll()
+        except Exception as exc:
+            print(f"Feed poll failed: {exc.__class__.__name__}.")
+        time.sleep(POLL_SECONDS)
+
+
+def start_poller() -> None:
+    global _poll_started
+    with _start_lock:
+        if _poll_started:
+            return
+        _poll_started = True
+    threading.Thread(target=poll_loop, name="feed-poller", daemon=True).start()
+
+
 def data_payload() -> dict:
-    events = live_events()
+    features = combined_features()
+    events = live_events_from(features)
+    with _db_lock:
+        conn = db_connect()
+        try:
+            last_polled_at = read_last_polled(conn)
+        finally:
+            conn.close()
     return {
         "events": events,
+        "features": features,
         "counts_by_region": region_counts(events),
         "summary": read_cache(),
+        "last_polled_at": last_polled_at,
     }
 
 
@@ -266,7 +783,8 @@ class MapHandler(SimpleHTTPRequestHandler):
 
     def _blocked(self) -> bool:
         route = self._route()
-        return route == "/.env" or route.endswith("/.env")
+        name = route.rsplit("/", 1)[-1]
+        return name == ".env" or name == "feeds.sqlite" or name.endswith(".sqlite")
 
     def _json(self, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -285,17 +803,31 @@ class MapHandler(SimpleHTTPRequestHandler):
                 self._json(data_payload())
             except Exception as exc:
                 print(f"GET /api/data failed: {exc.__class__.__name__}")
-                self._json({"events": [], "counts_by_region": {name: 0 for name in REGIONS}, "summary": read_cache()})
+                self._json({
+                    "events": [],
+                    "features": [],
+                    "counts_by_region": {name: 0 for name in REGIONS},
+                    "summary": read_cache(),
+                    "last_polled_at": None,
+                })
             return
         super().do_GET()
 
     def do_POST(self) -> None:
-        if self._route() != "/api/summary":
-            self.send_error(404)
-            return
+        route = self._route()
         length = int(self.headers.get("Content-Length") or 0)
         if length:
             self.rfile.read(min(length, 1_000_000))
+        if route == "/api/poll-now":
+            try:
+                self._json(run_poll())
+            except Exception as exc:
+                print(f"POST /api/poll-now failed: {exc.__class__.__name__}.")
+                self._json({"ok": False, "inserted": 0, "last_polled_at": None})
+            return
+        if route != "/api/summary":
+            self.send_error(404)
+            return
         try:
             summary = refresh_summary()
         except Exception as exc:
@@ -308,6 +840,10 @@ class MapHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
+    with _db_lock:
+        conn = db_connect()
+        conn.close()
+    start_poller()
     server = ThreadingHTTPServer((HOST, PORT), MapHandler)
     print(f"Serving map and summary API on http://{HOST}:{PORT}")
     try:
