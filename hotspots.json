@@ -6,6 +6,81 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "US enforcing naval blockade of all Iranian ports and coastlines with SEVERE threat level and risk of interception or attack in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "summary": "US enforcing naval blockade of all Iranian ports and coastlines with SEVERE threat level and risk of interception or attack in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "timestamp": "2026-11-18T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Maritime security threat level in the Strait of Hormuz raised to SUBSTANTIAL due to projectile attacks on tankers; mariners advised of mine risk, naval presence, and to use widened southern transit route.",
+        "summary": "Maritime security threat level in the Strait of Hormuz raised to SUBSTANTIAL due to projectile attacks on tankers; mariners advised of mine risk, naval presence, and to use widened southern transit route.",
+        "timestamp": "2026-11-19T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_115_19-nov.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44.0,
+          13.0
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "No confirmed attacks on shipping reported in the Red Sea or Bab el-Mandeb since August 2026; threat level assessed as SUBSTANTIAL with ongoing Houthi-related blockade impacts on Saudi-linked vessels.",
+        "summary": "No confirmed attacks on shipping reported in the Red Sea or Bab el-Mandeb since August 2026; threat level assessed as SUBSTANTIAL with ongoing Houthi-related blockade impacts on Saudi-linked vessels.",
+        "timestamp": "2026-11-20T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/20261120-ukmto_vra_overview_u.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Saudi & Yemen",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           46.7219,
           24.7136
         ]
@@ -31,31 +106,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          56.3,
-          26.4
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "JMIC assesses the maritime security threat level as SEVERE in the Strait of Hormuz due to continued Iranian attacks, with deliberate hostile action highly likely, navigation interference, and IRGC monitoring.",
-        "summary": "JMIC assesses the maritime security threat level as SEVERE in the Strait of Hormuz due to continued Iranian attacks, with deliberate hostile action highly likely, navigation interference, and IRGC monitoring.",
-        "timestamp": "2026-11-19T13:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_115_19-nov.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           52.0,
           25.0
         ]
@@ -66,31 +116,6 @@
         "summary": "JMIC assesses the regional maritime security threat level as SEVERE in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea due to the ongoing U.S. naval blockade of Iranian ports and recent incidents.",
         "timestamp": "2026-11-18T00:00:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf?rev=ca07d9284c0d484db848d59387f671d0",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          56.5,
-          26.5
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "US naval blockade of Iranian ports and coastlines remains in effect with SEVERE threat level; mariners must comply with blockading forces, maintain VHF watch, and report activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "summary": "US naval blockade of Iranian ports and coastlines remains in effect with SEVERE threat level; mariners must comply with blockading forces, maintain VHF watch, and report activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
         "account": "UK_MTO",
         "handle": "UK_MTO",
         "source_handle": "UK_MTO",
