@@ -288,6 +288,7 @@
     <button type="button" data-jump="hormuz">Strait of Hormuz</button>
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
     <button type="button" data-jump="levant">Levant</button>
+    <button type="button" id="syria-governorates" aria-pressed="false">Syria Governorates</button>
   </nav>
   <div class="legend">
     <span><i style="background:#fb7185"></i>High</span>
@@ -894,6 +895,68 @@
       setBasemap(button.dataset.basemap);
     });
 
+    // The GitHub raw URL redirects here. That redirect has no CORS header, so the browser loads this file directly.
+    const SYRIA_GEOJSON_URL = "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/SYR/ADM1/geoBoundaries-SYR-ADM1_simplified.geojson";
+    let syriaLayer = null;
+
+    function syriaGovernorateName(feature) {
+      const props = (feature && feature.properties) || {};
+      return props.shapeName || "Governorate";
+    }
+
+    async function loadSyriaGovernorates() {
+      if (syriaLayer) return syriaLayer;
+      const response = await fetch(SYRIA_GEOJSON_URL);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const data = await response.json();
+      syriaLayer = L.geoJSON(data, {
+        style: {
+          color: "#0f766e",
+          weight: 1.8,
+          opacity: 0.85,
+          fillColor: "#14b8a6",
+          fillOpacity: 0.06
+        },
+        onEachFeature: (feature, layer) => {
+          layer.bindTooltip(syriaGovernorateName(feature), { sticky: true });
+          layer.on({
+            mouseover: (event) => {
+              event.target.setStyle({ fillOpacity: 0.18 });
+            },
+            mouseout: (event) => {
+              syriaLayer.resetStyle(event.target);
+            },
+            click: (event) => {
+              map.fitBounds(event.target.getBounds(), { padding: [28, 28] });
+            }
+          });
+        }
+      });
+      return syriaLayer;
+    }
+
+    async function toggleSyriaGovernorates(button) {
+      const turnOn = button.getAttribute("aria-pressed") !== "true";
+      if (!turnOn) {
+        if (syriaLayer && map.hasLayer(syriaLayer)) map.removeLayer(syriaLayer);
+        button.setAttribute("aria-pressed", "false");
+        return;
+      }
+      button.setAttribute("aria-pressed", "true");
+      try {
+        const layer = await loadSyriaGovernorates();
+        if (!map.hasLayer(layer)) layer.addTo(map);
+        map.fitBounds(layer.getBounds(), { padding: [28, 28] });
+      } catch (err) {
+        button.setAttribute("aria-pressed", "false");
+        setStatus("Could not load Syria governorates.");
+      }
+    }
+
+    document.getElementById("syria-governorates").addEventListener("click", () => {
+      toggleSyriaGovernorates(document.getElementById("syria-governorates"));
+    });
+
     document.getElementById("quick-jump").addEventListener("click", (event) => {
       const button = event.target.closest("[data-jump]");
       if (!button) return;
@@ -902,7 +965,7 @@
       focusSerial += 1;
       map.closePopup();
       map.flyTo(jump.center, jump.zoom, { duration: 0.6 });
-      document.querySelectorAll("#quick-jump button").forEach((item) => {
+      document.querySelectorAll("#quick-jump button[data-jump]").forEach((item) => {
         item.setAttribute("aria-pressed", String(item === button));
       });
     });
@@ -915,7 +978,6 @@
 
     let briefText = "";
 
-    const BRIEF_SECTIONS = ["Gulf & Maritime Security", "Yemen & Red Sea", "Levant & Regional Politics"];
     const ADVISORY_TITLE = "Official Travel & Embassy Advisories";
 
     function briefBullets(text) {
@@ -953,23 +1015,25 @@
       const stamp = gmtStamp(data.generated_at);
       if (data.generated_at) time.setAttribute("datetime", data.generated_at);
       time.textContent = stamp === "Unknown time" ? "" : stamp;
-      const byTitle = new Map();
-      (Array.isArray(data.regional_sections) ? data.regional_sections : []).forEach((item) => {
-        byTitle.set(item.region, briefBullets(item.summary));
-      });
+      const sections = (Array.isArray(data.regional_sections) ? data.regional_sections : []).map((item) => ({
+        title: item.region || "",
+        bullets: briefBullets(item.summary)
+      })).filter((item) => item.title);
       const highlights = (Array.isArray(data.advisory_highlights) ? data.advisory_highlights : []).flatMap(briefBullets);
       body.innerHTML =
         briefSection("Executive Summary", [data.executive_summary]) +
-        BRIEF_SECTIONS.map((title) => briefSection(title, byTitle.get(title) || [])).join("") +
-        briefSection(ADVISORY_TITLE, highlights);
+        sections.map((item) => briefSection(item.title, item.bullets)).join("") +
+        (highlights.length ? briefSection(ADVISORY_TITLE, highlights) : "");
       const lines = ["Daily Geopolitical Brief", stamp, "", "Executive Summary", data.executive_summary, ""];
-      BRIEF_SECTIONS.forEach((title) => {
-        lines.push(title);
-        (byTitle.get(title) || ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+      sections.forEach((item) => {
+        lines.push(item.title);
+        (item.bullets.length ? item.bullets : ["Nothing new in the last 24 hours."]).forEach((line) => lines.push("- " + line));
         lines.push("");
       });
-      lines.push(ADVISORY_TITLE);
-      (highlights.length ? highlights : ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+      if (highlights.length) {
+        lines.push(ADVISORY_TITLE);
+        highlights.forEach((item) => lines.push("- " + item));
+      }
       briefText = lines.join("\n").trim();
     }
 
