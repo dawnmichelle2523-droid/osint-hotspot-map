@@ -16,7 +16,7 @@ import sqlite3
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -267,6 +267,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "published_at": "TEXT",
         "ingested_at": "TEXT",
         "headline_hash": "TEXT",
+        "url_hash": "TEXT",
         "source_url": "TEXT",
         "title": "TEXT",
         "summary": "TEXT",
@@ -276,6 +277,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE items ADD COLUMN {name} {typedef}")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_source_url ON items(source_url)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_headline_hash ON items(headline_hash)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_url_hash ON items(url_hash)")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS feed_meta (
@@ -294,9 +296,42 @@ def db_connect() -> sqlite3.Connection:
     return conn
 
 
+def normalize_title(title: str) -> str:
+    text = str(title or "").lower()
+    text = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", text)
+    return " ".join(text.split())
+
+
 def headline_hash(title: str) -> str:
-    normalized = " ".join(title.lower().split())
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return hashlib.sha256(normalize_title(title).encode("utf-8")).hexdigest()
+
+
+def url_hash(url: str) -> str:
+    return hashlib.sha256(" ".join(str(url or "").strip().lower().split()).encode("utf-8")).hexdigest()
+
+
+def titles_near(left: str, right: str) -> bool:
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    if len(left) >= 24 and len(right) >= 24 and (left in right or right in left):
+        return True
+    left_words, right_words = set(left.split()), set(right.split())
+    if len(left_words) < 4 or len(right_words) < 4:
+        return False
+    return len(left_words & right_words) / len(left_words | right_words) >= 0.82
+
+
+def source_label(kind: str, name: str) -> str:
+    clean = str(name or "").strip()
+    if " · " in clean:
+        return clean
+    if kind == "telegram":
+        return f"Telegram · @{clean.lstrip('@')}"
+    if kind == "x":
+        return f"X · @{clean.lstrip('@')}"
+    return f"RSS · {clean or 'feed'}"
 
 
 def parse_when(value: object) -> datetime | None:
@@ -322,12 +357,23 @@ def plain_text(value: object) -> str:
     return osint.one_sentence(raw)
 
 
-def seen_item(conn: sqlite3.Connection, source_url: str, digest: str) -> bool:
+def seen_item(conn: sqlite3.Connection, source_url: str, digest: str, title: str = "") -> bool:
+    digest_url = url_hash(source_url)
     row = conn.execute(
-        "SELECT 1 FROM items WHERE source_url = ? OR headline_hash = ? LIMIT 1",
-        (source_url, digest),
+        "SELECT 1 FROM items WHERE source_url = ? OR headline_hash = ? OR url_hash = ? LIMIT 1",
+        (source_url, digest, digest_url),
     ).fetchone()
-    return row is not None
+    if row is not None:
+        return True
+    normalized = normalize_title(title)
+    if not normalized:
+        return False
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=72)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    recent = conn.execute(
+        "SELECT title FROM items WHERE COALESCE(published_at, ingested_at, '') >= ?",
+        (cutoff,),
+    ).fetchall()
+    return any(titles_near(normalized, normalize_title(item["title"])) for item in recent)
 
 
 def read_last_polled(conn: sqlite3.Connection) -> str | None:
@@ -367,9 +413,10 @@ def feed_features() -> list[dict]:
             "summary": row["summary"] or row["title"],
             "timestamp": row["published_at"] or row["ingested_at"],
             "source": row["source_url"],
-            "account": row["source_name"],
-            "handle": row["source_name"],
-            "source_handle": row["source_name"],
+            "account": source_label(row["source_kind"], row["source_name"]),
+            "handle": source_label(row["source_kind"], row["source_name"]),
+            "source_handle": source_label(row["source_kind"], row["source_name"]),
+            "source_label": source_label(row["source_kind"], row["source_name"]),
             "batch": "live_feed",
             "verification_tier": "Unverified Lead" if row["source_kind"] == "telegram" else "State-Affiliated / Single-Source",
             "region": region_name(row["region"]),
@@ -401,6 +448,11 @@ def combined_features() -> list[dict]:
         if source:
             seen.add(source)
         features.append(feature)
+    features.sort(
+        key=lambda feature: osint.parse_timestamp((feature.get("properties") or {}).get("timestamp"))
+        or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
     return features
 
 
@@ -425,7 +477,7 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
                 "title": title[:240],
                 "summary": (summary or title)[:500],
                 "source_url": link,
-                "source_name": name,
+                "source_name": source_label("rss", name),
                 "source_kind": "rss",
                 "published_at": published,
             }
@@ -469,7 +521,7 @@ def fetch_telegram_channel(channel: str) -> list[dict]:
                 "title": text[:180],
                 "summary": text[:500],
                 "source_url": f"https://t.me/{post}",
-                "source_name": channel,
+                "source_name": source_label("telegram", channel),
                 "source_kind": "telegram",
                 "published_at": when,
             }
@@ -532,7 +584,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
                     "title": title[:240],
                     "summary": (summary or title)[:500],
                     "source_url": source_url,
-                    "source_name": handle,
+                    "source_name": source_label("x", handle),
                     "source_kind": "x",
                     "published_at": published,
                 }
@@ -572,12 +624,13 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
             conn.execute(
                 """
                 INSERT INTO items (
-                    source_url, headline_hash, title, summary, source_name, source_kind,
+                    source_url, url_hash, headline_hash, title, summary, source_name, source_kind,
                     region, governorate, location_name, lat, lng, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
+                    url_hash(source_url),
                     headline_hash(item["title"]),
                     item["title"],
                     item.get("summary") or item["title"],
@@ -616,7 +669,7 @@ def run_poll() -> dict:
             with _db_lock:
                 conn = db_connect()
                 try:
-                    if seen_item(conn, item["source_url"], digest):
+                    if seen_item(conn, item["source_url"], digest, item["title"]):
                         continue
                 finally:
                     conn.close()
