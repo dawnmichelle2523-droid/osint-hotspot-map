@@ -153,9 +153,9 @@
       <h2>Time window</h2>
       <div class="row">
         <button type="button" class="pill" data-window="2h">Last 2 Hours</button>
-        <button type="button" class="pill" data-window="24h" aria-pressed="true">Last 24 Hours</button>
+        <button type="button" class="pill" data-window="24h">Last 24 Hours</button>
         <button type="button" class="pill" data-window="7d">Last 7 Days</button>
-        <button type="button" class="pill" data-window="all">All Active</button>
+        <button type="button" class="pill" data-window="all" aria-pressed="true">All Active</button>
       </div>
     </section>
     <section class="group">
@@ -219,9 +219,10 @@
     map.setView(HOME.center, HOME.zoom);
 
     let features = [];
+    let generatedAt = null;
     let clusterLayer = null;
     let loadedOnce = false;
-    let timeWindow = "24h";
+    let timeWindow = "all";
     let severity = "all";
     let category = "all";
     let region = "all";
@@ -255,14 +256,19 @@
     }
 
     function ageMs(timestamp) {
-      const ms = Date.parse(timestamp);
-      return Number.isNaN(ms) ? null : Date.now() - ms;
+      const incident = new Date(timestamp);
+      const incidentMs = incident.getTime();
+      if (Number.isNaN(incidentMs)) return null;
+      return new Date().getTime() - incidentMs;
     }
 
     function passesTime(timestamp, windowId) {
       if (windowId === "all") return true;
-      const age = ageMs(timestamp);
-      if (age === null || age < -5 * 60 * 1000) return false;
+      const incident = new Date(timestamp);
+      const now = new Date();
+      if (Number.isNaN(incident.getTime())) return false;
+      const age = now.getTime() - incident.getTime();
+      if (age < -5 * 60 * 1000) return false;
       return age <= WINDOWS[windowId];
     }
 
@@ -305,6 +311,14 @@
       const mm = String(date.getUTCMinutes()).padStart(2, "0");
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       return date.getUTCDate() + " " + months[date.getUTCMonth()] + " " + date.getUTCFullYear() + ", " + hh + ":" + mm + " GMT";
+    }
+
+    function readGeneratedAt(data) {
+      const raw = data && data.generated_at;
+      if (raw == null || raw === "") return null;
+      const ms = typeof raw === "number" ? raw : Date.parse(raw);
+      if (!Number.isFinite(ms)) return null;
+      return new Date(ms).toISOString();
     }
 
     function pinColor(props) {
@@ -374,7 +388,11 @@
         return best === null || ms > best ? ms : best;
       }, null);
       const noun = visibleCount === 1 ? "incident" : "incidents";
-      updatedEl.textContent = (newest === null ? "No timestamps" : gmtStamp(new Date(newest).toISOString())) + " · " + visibleCount + " " + noun;
+      const generated = generatedAt ? gmtStamp(generatedAt) : "Unknown time";
+      const stamp = generated !== "Unknown time"
+        ? generated
+        : (newest === null ? "No timestamps" : gmtStamp(new Date(newest).toISOString()));
+      updatedEl.textContent = stamp + " · " + visibleCount + " " + noun;
     }
 
     function updateSearchCount(visibleCount) {
@@ -473,6 +491,7 @@
           throw new Error("invalid");
         }
         features = data.features.filter(isPoint);
+        generatedAt = readGeneratedAt(data);
         loadedOnce = true;
         setStatus(features.length ? "" : "No incidents in hotspots.json.");
         render();
