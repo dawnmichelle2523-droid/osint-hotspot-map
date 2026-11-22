@@ -41,7 +41,9 @@ import fetch_x_osint as osint
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "summary_cache.json"
-FEEDS_DB = ROOT / "feeds.sqlite"
+DB_PATH = os.environ.get("DB_PATH", "osint_events.db")
+_db_file = Path(DB_PATH)
+FEEDS_DB = _db_file if _db_file.is_absolute() else ROOT / _db_file
 POLL_SECONDS = 120
 BATCH_SIZE = 7
 X_BATCH_SIZE = 2
@@ -957,6 +959,7 @@ SUMMARY_INTERVAL = 60 * 60
 _summary_lock = threading.Lock()
 _summary_started = False
 _briefing_started = False
+_threads_started = False
 _briefing_slots: set[str] = set()
 LONDON = ZoneInfo("Europe/London")
 SUMMARY_24H_SCHEMA = {
@@ -1374,6 +1377,92 @@ def refresh_summary() -> dict:
     return generate_24h_summaries()
 
 
+def blocked_static(name: str) -> bool:
+    db_name = Path(DB_PATH).name
+    return name == ".env" or name == db_name or name.endswith(".sqlite") or name.endswith(".db")
+
+
+def thermal_response() -> dict:
+    try:
+        return thermal_payload()
+    except Exception as exc:
+        print(f"GET /api/thermal failed: {exc.__class__.__name__}.")
+        return {
+            "ok": False,
+            "configured": False,
+            "status": "Satellite heat is unavailable.",
+            "points": [],
+        }
+
+
+def data_response() -> dict:
+    try:
+        return data_payload()
+    except Exception as exc:
+        print(f"GET /api/data failed: {exc.__class__.__name__}")
+        return {
+            "events": [],
+            "features": [],
+            "counts_by_region": {name: 0 for name in REGIONS},
+            "counts_by_governorate": {name: 0 for name in osint.SYRIA_GOVERNORATES},
+            "summary": read_cache(),
+            "summaries": {"overall": "", "regions": {name: "" for name in REGIONS}, "updated_at": ""},
+            "last_polled_at": None,
+        }
+
+
+def report_response(raw: bytes) -> dict:
+    try:
+        payload = json.loads(raw.decode("utf-8") or "{}")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        payload = {}
+    report_type = str(payload.get("type") or "").strip().lower() if isinstance(payload, dict) else ""
+    try:
+        sent = generate_and_email_periodic_report(report_type)
+    except Exception as exc:
+        print(f"POST /api/report failed: {exc.__class__.__name__}.")
+        sent = False
+    return {"ok": True, "type": report_type, "result": "sent" if sent else "skipped"}
+
+
+def poll_response() -> dict:
+    try:
+        return run_poll()
+    except Exception as exc:
+        print(f"POST /api/poll-now failed: {exc.__class__.__name__}.")
+        return {"ok": False, "inserted": 0, "last_polled_at": None}
+
+
+def summary_response() -> dict:
+    try:
+        summary = refresh_summary()
+    except Exception as exc:
+        print(f"POST /api/summary failed: {exc.__class__.__name__}. Returned a fallback summary.")
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        summary = {
+            "overall": EMPTY_REGION_TEXT,
+            "regions": {name: EMPTY_REGION_TEXT for name in REGIONS},
+            "updated_at": stamp,
+            "fallback": True,
+        }
+    return {"summaries": summary, "fallback": bool(summary.get("fallback"))}
+
+
+def start_background() -> None:
+    """Open the database and start ingest plus the London mailer once per process."""
+    global _threads_started
+    with _start_lock:
+        if _threads_started:
+            return
+        with _db_lock:
+            conn = db_connect()
+            conn.close()
+        _threads_started = True
+    start_poller()
+    start_summary_daemon()
+    start_briefing_daemon()
+
+
 class MapHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -1386,9 +1475,7 @@ class MapHandler(SimpleHTTPRequestHandler):
         return self.path.split("?", 1)[0]
 
     def _blocked(self) -> bool:
-        route = self._route()
-        name = route.rsplit("/", 1)[-1]
-        return name == ".env" or name == "feeds.sqlite" or name.endswith(".sqlite")
+        return blocked_static(self._route().rsplit("/", 1)[-1])
 
     def _json(self, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -1402,32 +1489,12 @@ class MapHandler(SimpleHTTPRequestHandler):
         if self._blocked():
             self.send_error(404)
             return
-        if self._route() == "/api/thermal":
-            try:
-                self._json(thermal_payload())
-            except Exception as exc:
-                print(f"GET /api/thermal failed: {exc.__class__.__name__}.")
-                self._json({
-                    "ok": False,
-                    "configured": False,
-                    "status": "Satellite heat is unavailable.",
-                    "points": [],
-                })
+        route = self._route()
+        if route == "/api/thermal":
+            self._json(thermal_response())
             return
-        if self._route() == "/api/data":
-            try:
-                self._json(data_payload())
-            except Exception as exc:
-                print(f"GET /api/data failed: {exc.__class__.__name__}")
-                self._json({
-                    "events": [],
-                    "features": [],
-                    "counts_by_region": {name: 0 for name in REGIONS},
-                    "counts_by_governorate": {name: 0 for name in osint.SYRIA_GOVERNORATES},
-                    "summary": read_cache(),
-                    "summaries": {"overall": "", "regions": {name: "" for name in REGIONS}, "updated_at": ""},
-                    "last_polled_at": None,
-                })
+        if route == "/api/data":
+            self._json(data_response())
             return
         super().do_GET()
 
@@ -1436,40 +1503,15 @@ class MapHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(min(length, 1_000_000)) if length else b""
         if route == "/api/report":
-            try:
-                payload = json.loads(raw.decode("utf-8") or "{}")
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                payload = {}
-            report_type = str(payload.get("type") or "").strip().lower() if isinstance(payload, dict) else ""
-            try:
-                sent = generate_and_email_periodic_report(report_type)
-            except Exception as exc:
-                print(f"POST /api/report failed: {exc.__class__.__name__}.")
-                sent = False
-            self._json({"ok": True, "type": report_type, "result": "sent" if sent else "skipped"})
+            self._json(report_response(raw))
             return
         if route == "/api/poll-now":
-            try:
-                self._json(run_poll())
-            except Exception as exc:
-                print(f"POST /api/poll-now failed: {exc.__class__.__name__}.")
-                self._json({"ok": False, "inserted": 0, "last_polled_at": None})
+            self._json(poll_response())
             return
         if route != "/api/summary":
             self.send_error(404)
             return
-        try:
-            summary = refresh_summary()
-        except Exception as exc:
-            print(f"POST /api/summary failed: {exc.__class__.__name__}. Returned a fallback summary.")
-            stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            summary = {
-                "overall": EMPTY_REGION_TEXT,
-                "regions": {name: EMPTY_REGION_TEXT for name in REGIONS},
-                "updated_at": stamp,
-                "fallback": True,
-            }
-        self._json({"summaries": summary, "fallback": bool(summary.get("fallback"))})
+        self._json(summary_response())
 
     def log_message(self, fmt: str, *args) -> None:
         super().log_message(fmt, *args)
@@ -1880,12 +1922,7 @@ def start_briefing_daemon() -> None:
 
 
 def main() -> None:
-    with _db_lock:
-        conn = db_connect()
-        conn.close()
-    start_poller()
-    start_summary_daemon()
-    start_briefing_daemon()
+    start_background()
     server = ThreadingHTTPServer((HOST, PORT), MapHandler)
     print(f"Serving map and summary API on http://{HOST}:{PORT}")
     try:

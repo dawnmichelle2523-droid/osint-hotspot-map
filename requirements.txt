@@ -6,3 +6,5 @@ beautifulsoup4==4.12.3
 requests==2.32.3
 staticmap==0.5.7
 Pillow==13.0.0
+gunicorn==27.0.1
+Flask-BasicAuth==0.2.0
