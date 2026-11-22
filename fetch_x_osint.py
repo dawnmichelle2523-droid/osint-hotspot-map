@@ -9,8 +9,10 @@
 # is set to the same list: https://docs.x.ai/developers/tools/x-search
 # from_date/to_date as YYYY-MM-DD. to_date is exclusive: posts from 00:00 UTC
 # on from_date up to, but not including, to_date. Full datetimes are not
-# applied, so the last-2-hours window is stated in the prompt and enforced
-# again on each timestamp. search_parameters is not used.
+# applied, so the last-36-hours window is stated in the prompt and enforced
+# again on each timestamp. from_date is yesterday and to_date is tomorrow,
+# both YYYY-MM-DD, because to_date is exclusive at 00:00 UTC.
+# search_parameters is not used.
 # Structured output uses text.format json_schema on responses.create.
 # max_turns is sent via extra_body, as documented on the X Search page.
 # Responses API maps max_tokens to max_output_tokens:
@@ -120,6 +122,8 @@ STATE_AFFILIATED = {
     "mmy1444",
     "iribnews_irib",
 }
+# Always searched and kept, even if they also appear in excluded_handles.
+BAHRAIN_HANDLES = {"moi_bahrain", "bdf_bahrain"}
 AGGREGATOR_HANDLES = {
     "sentdefender",
     "insidergeo",
@@ -476,7 +480,7 @@ def prepare_incidents(
         if not parsed_url:
             continue
         handle = canonical_handle(parsed_url[0], allowed)
-        if not handle or handle.lower() in excluded:
+        if not handle or (handle.lower() in excluded and handle.lower() not in BAHRAIN_HANDLES):
             continue
         account = canonical_handle(item.get("account"), allowed)
         if account and account.lower() != handle.lower():
@@ -588,10 +592,14 @@ def feature_handle(feature: dict) -> str:
 
 
 def feature_excluded(feature: dict, excluded: set[str]) -> bool:
-    if feature_handle(feature) in excluded:
-        return True
+    handle = feature_handle(feature)
     parsed = status_parts(source_of(feature))
-    return bool(parsed and parsed[0].lower() in excluded)
+    source_handle = parsed[0].lower() if parsed else ""
+    if handle in BAHRAIN_HANDLES or source_handle in BAHRAIN_HANDLES:
+        return False
+    if handle in excluded:
+        return True
+    return bool(source_handle and source_handle in excluded)
 
 
 def read_collection(path: Path) -> list:
@@ -609,8 +617,10 @@ def read_collection(path: Path) -> list:
     return features
 
 
-def write_collection(path: Path, features: list) -> None:
+def write_collection(path: Path, features: list, generated_at: str | None = None) -> None:
     payload = {"type": "FeatureCollection", "features": features}
+    if generated_at:
+        payload = {"type": "FeatureCollection", "generated_at": generated_at, "features": features}
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -621,6 +631,7 @@ def merge_active_and_archive(
     hotspots_path: Path = HOTSPOTS,
     archive_path: Path = ARCHIVE,
     excluded: set[str] | None = None,
+    generated_at: str | None = None,
 ) -> dict[str, int]:
     """Keep incidents from the last 7 days and append older ones to archive.json.
 
@@ -667,7 +678,7 @@ def merge_active_and_archive(
             archive.append(feature)
             archived_keys.add(key)
             added += 1
-    write_collection(hotspots_path, active)
+    write_collection(hotspots_path, active, generated_at=generated_at)
     if archive_path.exists() or added:
         write_collection(archive_path, archive)
     return {"active": len(active), "archived": added}
@@ -861,11 +872,11 @@ def main() -> None:
     excluded_list = [clean_handle(handle) for handle in sources.get("excluded_handles") or []]
     excluded = excluded_set(excluded_list)
     batches_by_handle = handle_batches(batches)
-    now = datetime.now(timezone.utc)
-    window_start = now - timedelta(hours=2)
-    # Day bounds only. to_date is exclusive, so tomorrow includes all of today.
-    from_date = window_start.date().isoformat()
-    to_date = (now.date() + timedelta(days=1)).isoformat()
+    now_utc = datetime.now(timezone.utc)
+    window_start = now_utc - timedelta(hours=36)
+    # to_date is exclusive at 00:00 UTC, so tomorrow includes all of today.
+    from_date = (now_utc - timedelta(days=1)).strftime("%Y-%m-%d")
+    to_date = (now_utc + timedelta(days=1)).strftime("%Y-%m-%d")
     client = make_client(api_key)
 
     collected: list[dict] = []
@@ -878,7 +889,8 @@ def main() -> None:
         allowed = []
         for handle in raw_handles:
             cleaned = clean_handle(handle)
-            if cleaned and cleaned.lower() not in excluded and cleaned not in allowed:
+            kept = cleaned.lower() in BAHRAIN_HANDLES or cleaned.lower() not in excluded
+            if cleaned and kept and cleaned not in allowed:
                 allowed.append(cleaned)
         if not allowed:
             continue
@@ -899,7 +911,7 @@ def main() -> None:
                 incidents = call_model(
                     client,
                     tool,
-                    x_prompt(str(batch_name), group, excluded_list, window_start, now),
+                    x_prompt(str(batch_name), group, excluded_list, window_start, now_utc),
                     "incident_batch",
                     INCIDENT_SCHEMA,
                     api_key,
@@ -910,7 +922,7 @@ def main() -> None:
                     allowed=group,
                     excluded=excluded,
                     window_start=window_start,
-                    window_end=now,
+                    window_end=now_utc,
                     batches_by_handle=batches_by_handle,
                     require_recent=True,
                 )
@@ -934,7 +946,12 @@ def main() -> None:
 
     features = apply_lead_rule(collected)
     try:
-        stats = merge_active_and_archive(features, now=now, excluded=excluded)
+        stats = merge_active_and_archive(
+            features,
+            now=now_utc,
+            excluded=excluded,
+            generated_at=now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
     except RuntimeError as exc:
         print(f"{exc}. hotspots.json was not changed.")
         sys.exit(1)
