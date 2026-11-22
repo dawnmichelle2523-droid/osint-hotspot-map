@@ -3,7 +3,7 @@
 # https://docs.x.ai/developers/tools/web-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-4.3 (same call as fetch_x_osint, max_output_tokens 800).
+# model grok-4-fast-reasoning, max_output_tokens 1000, via fetch_x_osint.call_model.
 # Tool type web_search. The Python example on that page puts
 # domain limits under filters.allowed_domains (max 5). allowed_domains cannot
 # be combined with excluded_domains, so mofa.go.jp is kept off the allow list
@@ -22,6 +22,9 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import fetch_x_osint as osint
+
+osint.MODEL = "grok-4-fast-reasoning"
+osint.MAX_OUTPUT_TOKENS = 1000
 
 # Five domains is the documented maximum for one web_search call.
 TRAVEL_DOMAINS = [

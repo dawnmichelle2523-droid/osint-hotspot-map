@@ -3,13 +3,13 @@
 # https://docs.x.ai/developers/tools/x-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-3-mini. If that model is rejected, the same call is retried
-# with grok-3. Tool type x_search. Handles go out as included_x_handles.
+# model grok-4-fast-reasoning. max_output_tokens is 1000.
+# Tool type x_search. Handles go out as included_x_handles.
 # Current X Search docs still filter with allowed_x_handles, so that field
 # is set to the same list: https://docs.x.ai/developers/tools/x-search
 # from_date/to_date as YYYY-MM-DD. to_date is exclusive: posts from 00:00 UTC
 # on from_date up to, but not including, to_date. Full datetimes are not
-# applied, so the last-36-hours window is stated in the prompt and enforced
+# applied, so the last-24-hours window is stated in the prompt and enforced
 # again on each timestamp. from_date is yesterday and to_date is tomorrow,
 # both YYYY-MM-DD, because to_date is exclusive at 00:00 UTC.
 # search_parameters is not used.
@@ -39,14 +39,14 @@ ARCHIVE = ROOT / "archive.json"
 SOURCES = ROOT / "sources.json"
 
 # First model, then the retry if the API rejects it.
-MODELS = ("grok-3-mini", "grok-3")
+MODEL = "grok-4-fast-reasoning"
 BASE_URL = "https://api.x.ai/v1"
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
 HTTP_TIMEOUT = 10
 API_TIMEOUT = 25
 # Responses API name for max_tokens. Caps the visible answer.
-MAX_OUTPUT_TOKENS = 800
+MAX_OUTPUT_TOKENS = 1000
 HANDLE_LIMIT = 20
 ACTIVE_DAYS = 7
 LEAD_MATCH_KM = 100
@@ -752,61 +752,23 @@ def run_source(name: str, fn, secret: str = ""):
         return None
 
 
-def model_rejected(exc: BaseException) -> bool:
-    """True when the API refuses the model itself, not a timeout or auth error."""
-    if "timeout" in exc.__class__.__name__.lower():
-        return False
-    status = getattr(exc, "status_code", None)
-    if status in (401, 403, 408, 409, 429) or (isinstance(status, int) and status >= 500):
-        return False
-    text = str(exc).lower()
-    if not any(token in text for token in ("model", "grok-3-mini", "grok-3")):
-        return False
-    return any(
-        token in text
-        for token in (
-            "not found",
-            "does not exist",
-            "unknown",
-            "invalid",
-            "unsupported",
-            "not supported",
-            "does not support",
-            "unavailable",
-            "rejected",
-            "model_not_found",
-        )
-    )
-
-
 def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, api_key: str):
-    response = None
-    for index, model in enumerate(MODELS):
-        try:
-            response = client.responses.create(
-                model=model,
-                input=prompt,
-                tools=[tool],
-                text={
-                    "format": {
-                        "type": "json_schema",
-                        "name": schema_name,
-                        "schema": schema,
-                        "strict": True,
-                    }
-                },
-                extra_body={"max_turns": 4},
-                max_output_tokens=MAX_OUTPUT_TOKENS,
-                timeout=API_TIMEOUT,
-            )
-            break
-        except Exception as exc:
-            if index == 0 and model_rejected(exc):
-                print(f"{model} rejected; retrying with {MODELS[1]}")
-                continue
-            raise
-    if response is None:
-        raise RuntimeError("xAI model was rejected")
+    response = client.responses.create(
+        model=MODEL,
+        input=prompt,
+        tools=[tool],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": schema_name,
+                "schema": schema,
+                "strict": True,
+            }
+        },
+        extra_body={"max_turns": 4},
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        timeout=API_TIMEOUT,
+    )
     text = response_text(response)
     if not text:
         raise RuntimeError("xAI response did not include output text")
@@ -832,7 +794,7 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
         f"Search only these X accounts: {handle_line}\n"
         f"Never include, cite, quote, or mention these accounts: {excluded_line}\n"
         f"UTC window: {format_timestamp(start)} through {format_timestamp(end)}. "
-        "Omit anything outside that window.\n"
+        "Keep posts from the last 24 hours only. Omit anything outside that window.\n"
         "Translate Arabic, Persian, and French into one concise factual English sentence.\n"
         "Do not invent coordinates. Omit an incident if the post does not locate it.\n"
         "severity is exactly high, medium, or low.\n"
@@ -873,7 +835,7 @@ def main() -> None:
     excluded = excluded_set(excluded_list)
     batches_by_handle = handle_batches(batches)
     now_utc = datetime.now(timezone.utc)
-    window_start = now_utc - timedelta(hours=36)
+    window_start = now_utc - timedelta(hours=24)
     # to_date is exclusive at 00:00 UTC, so tomorrow includes all of today.
     from_date = (now_utc - timedelta(days=1)).strftime("%Y-%m-%d")
     to_date = (now_utc + timedelta(days=1)).strftime("%Y-%m-%d")
