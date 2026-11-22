@@ -224,6 +224,10 @@
     #daily-brief .brief-card::before { display: none; }
     .brief-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #summary-scopes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    #summary-scopes button { background: #0a1114; color: var(--text); border: 1px solid #1a2c35; border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+    #summary-scopes button[aria-pressed="true"] { background: #19d3b8; color: #0a1114; border-color: #19d3b8; }
+    #summary-updated { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
     #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #19d3b8; }
     #brief-time { color: var(--muted); font-size: 12px; }
     #copy-brief { margin-left: auto; }
@@ -242,7 +246,9 @@
     .brief-section-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
     .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
+    button.bar-row { width: 100%; background: transparent; color: inherit; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
     .bar-row { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    button.bar-row[aria-pressed="true"] span:first-child { color: #19d3b8; }
     .bar-row span:first-child { color: var(--muted); }
     .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 19, 22, 0.8); border: 1px solid var(--line); overflow: hidden; }
     .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #19d3b8, #ff7b89); }
@@ -355,8 +361,18 @@
         <time id="brief-time"></time>
         <button type="button" id="copy-brief">Copy Brief</button>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
-        <button type="button" id="refresh-summary">Refresh Summary</button>
+        <button type="button" id="refresh-summary">↻ Refresh Now</button>
       </div>
+      <div id="summary-scopes" role="group" aria-label="24 hour summary">
+        <button type="button" data-summary-scope="overall" aria-pressed="true">Overall (24h)</button>
+        <button type="button" data-summary-scope="Gulf">Gulf</button>
+        <button type="button" data-summary-scope="Saudi &amp; Yemen">Saudi &amp; Yemen</button>
+        <button type="button" data-summary-scope="Levant">Levant</button>
+        <button type="button" data-summary-scope="Iran &amp; Iraq">Iran &amp; Iraq</button>
+        <button type="button" data-summary-scope="Maritime">Maritime</button>
+        <button type="button" data-summary-scope="Other / International">Other / International</button>
+      </div>
+      <p id="summary-updated">Last auto-updated: not yet</p>
       <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
@@ -458,6 +474,9 @@
     let timeWindow = "all";
     let severity = "all";
     let updatesQuery = "";
+    let summaryScope = "overall";
+    let governorateSummary = false;
+    let storedSummaries = null;
     let category = "all";
     let region = "all";
     let searchQuery = "";
@@ -1210,6 +1229,7 @@
         ? name + " has " + matches.length + " recent update" + (matches.length === 1 ? "" : "s") + " on the live map."
         : "No live updates are tagged to " + name + " yet.";
       renderLiveSummary({ text: text, regional_notes: notes.map((note) => ({ region: name, note: note })) });
+      governorateSummary = true;
       summaryPinned = true;
       setStatus("");
     });
@@ -1313,6 +1333,47 @@
 
     let summaryPinned = false;
 
+    function summaryTextFor(scope) {
+      const data = storedSummaries || {};
+      if (scope === "overall") return String(data.overall || "");
+      const regions = data.regions || {};
+      return String(regions[scope] || "");
+    }
+
+    function showSummaryUpdated(stamp) {
+      const node = document.getElementById("summary-updated");
+      if (!stamp) {
+        node.textContent = "Last auto-updated: not yet";
+        return;
+      }
+      const shown = gmtStamp(stamp);
+      node.textContent = "Last auto-updated: " + (shown === "Unknown time" ? stamp : shown);
+    }
+
+    function renderSelectedSummary() {
+      if (governorateSummary) return false;
+      const text = summaryTextFor(summaryScope);
+      document.querySelectorAll("[data-summary-scope]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.summaryScope === summaryScope));
+      });
+      document.querySelectorAll("[data-region-bar]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.regionBar === summaryScope));
+      });
+      if (!text) return false;
+      const body = document.getElementById("brief-body");
+      body.innerHTML = "<p class=\"summary-lead\">" + esc(text) + "</p>";
+      const updated = (storedSummaries && storedSummaries.updated_at) || "";
+      briefText = ["Geopolitical Summary", summaryScope, gmtStamp(updated), "", text].join("\n").trim();
+      return true;
+    }
+
+    function selectSummaryScope(scope) {
+      governorateSummary = false;
+      summaryPinned = false;
+      summaryScope = scope || "overall";
+      renderSelectedSummary();
+    }
+
     function renderLiveSummary(summary) {
       const body = document.getElementById("brief-body");
       const time = document.getElementById("brief-time");
@@ -1332,16 +1393,20 @@
     }
 
     async function loadSummaryPanel() {
-      if (summaryPinned) return;
       try {
         const response = await fetch("/api/data", { cache: "no-store" });
         if (response.ok) {
           const data = await response.json();
-          if (data && data.summary && renderLiveSummary(data.summary)) return;
-          await loadBrief();
-          return;
+          if (data && data.summaries) {
+            storedSummaries = data.summaries;
+            showSummaryUpdated(data.summaries.updated_at);
+            if (!governorateSummary && renderSelectedSummary()) return;
+            if (governorateSummary) return;
+          }
+          if (!governorateSummary && data && data.summary && renderLiveSummary(data.summary)) return;
         }
       } catch (err) {}
+      if (governorateSummary) return;
       try {
         const cached = await fetch(`summary_cache.json?v=${Date.now()}`, { cache: "no-store" });
         if (cached.ok && renderLiveSummary(await cached.json())) return;
@@ -1355,17 +1420,19 @@
       try {
         const response = await fetch("/api/summary", { method: "POST", cache: "no-store" });
         const data = response.ok ? await response.json() : null;
-        const summary = data && data.summary && data.summary.text ? data.summary : data;
-        if (!renderLiveSummary(summary)) {
-          renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
+        const summaries = data && data.summaries ? data.summaries : null;
+        if (summaries) {
+          storedSummaries = summaries;
+          showSummaryUpdated(summaries.updated_at);
+          governorateSummary = false;
+          summaryPinned = false;
+          renderSelectedSummary();
         }
-        summaryPinned = true;
       } catch (err) {
-        renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
-        summaryPinned = true;
+        setStatus("Summary refresh failed.");
       } finally {
         button.disabled = false;
-        button.textContent = "Refresh Summary";
+        button.textContent = "↻ Refresh Now";
       }
     }
 
@@ -1383,7 +1450,8 @@
       document.getElementById("region-chart").innerHTML = LIVE_REGIONS.map((name) => {
         const count = counts[name];
         const width = Math.round((count / maxCount) * 100);
-        return "<div class=\"bar-row\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
+        const pressed = name === summaryScope ? "true" : "false";
+        return "<button type=\"button\" class=\"bar-row\" data-region-bar=\"" + esc(name) + "\" aria-pressed=\"" + pressed + "\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></button>";
       }).join("");
     }
 
@@ -1421,6 +1489,16 @@
     document.getElementById("updates-filter").addEventListener("input", (event) => {
       updatesQuery = event.target.value;
       render("none");
+    });
+    document.getElementById("summary-scopes").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-summary-scope]");
+      if (!button) return;
+      selectSummaryScope(button.dataset.summaryScope);
+    });
+    document.getElementById("region-chart").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-region-bar]");
+      if (!button) return;
+      selectSummaryScope(button.dataset.regionBar);
     });
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     document.getElementById("fetch-live").addEventListener("click", async () => {
