@@ -9,8 +9,11 @@ The poll never writes hotspots.json or daily_brief.json.
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
+import os
 import re
 import sqlite3
 from difflib import SequenceMatcher
@@ -37,7 +40,19 @@ LIVE_WINDOW = timedelta(hours=72)
 SIMILAR_TITLE_LIMIT = 40
 SIMILAR_TITLE_RATIO = 0.65
 FETCH_TIMEOUT = 8
+FIRMS_TIMEOUT = 10
+FIRMS_CACHE_SECONDS = 15 * 60
+FIRMS_URL = (
+    "https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}"
+    "/VIIRS_NOAA21_NRT/25.0,12.0,63.0,38.0/1"
+)
+FIRMS_PLACEHOLDERS = {
+    "your_32_character_nasa_map_key_here",
+    "your_nasa_firms_map_key_here",
+}
 USER_AGENT = "osint_tracker"
+_thermal_lock = threading.Lock()
+_thermal_cache: dict = {"at": 0.0, "points": None}
 # Configurable public feeds. Google News RSS stands in for Reuters and AP.
 RSS_FEEDS = [
     ("Al Jazeera Middle East", "https://www.aljazeera.com/xml/rss/middleeast.xml"),
@@ -53,7 +68,6 @@ TELEGRAM_CHANNELS = [
     "Suriyak_maps",
     "Liveuamap",
     "hawran_osint",
-    "osint613",
     "npasyria",
     "SANANewsEnglish",
     "televisionsyria",
@@ -66,6 +80,17 @@ TELEGRAM_CHANNELS = [
     "OsintTv",
     "syriahr",
     "EnabBaladi",
+    "OSINTdefender",
+    "osint613",
+    "OsintUpdates",
+    "warmonitors",
+    "gulfnewsUAE",
+    "AlArabiya_Brk",
+    "almasirah",
+    "almanarnews",
+    "SabereenNews22",
+    "IranIntl_En",
+    "rudaw_english",
 ]
 X_HANDLES = [
     "syr_television",
@@ -774,6 +799,90 @@ def start_poller() -> None:
     threading.Thread(target=poll_loop, name="feed-poller", daemon=True).start()
 
 
+def firms_key() -> str:
+    osint.load_dotenv(osint.ROOT / ".env")
+    return (os.environ.get("FIRMS_MAP_KEY") or "").strip()
+
+
+def firms_unconfigured(key: str) -> bool:
+    cleaned = key.strip()
+    if not cleaned or cleaned in FIRMS_PLACEHOLDERS:
+        return True
+    return cleaned.lower().startswith("your_")
+
+
+def parse_firms_csv(text: str) -> list[dict]:
+    points = []
+    for row in csv.DictReader(io.StringIO(text)):
+        try:
+            latitude = float(row["latitude"])
+            longitude = float(row["longitude"])
+        except (KeyError, TypeError, ValueError):
+            continue
+
+        def number(name: str) -> float | None:
+            raw = " ".join(str(row.get(name) or "").split())
+            if not raw:
+                return None
+            try:
+                return float(raw)
+            except ValueError:
+                return None
+
+        points.append(
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+                "bright_ti4": number("bright_ti4"),
+                "frp": number("frp"),
+                "acq_date": " ".join(str(row.get("acq_date") or "").split()),
+                "acq_time": " ".join(str(row.get("acq_time") or "").split()),
+                "confidence": " ".join(str(row.get("confidence") or "").split()),
+            }
+        )
+    return points
+
+
+def thermal_payload() -> dict:
+    key = firms_key()
+    if firms_unconfigured(key):
+        return {
+            "ok": False,
+            "configured": False,
+            "status": (
+                "NASA FIRMS is not configured. Add a real FIRMS_MAP_KEY to .env. "
+                "Satellite heat was not requested."
+            ),
+            "points": [],
+        }
+    now = time.monotonic()
+    with _thermal_lock:
+        cached = _thermal_cache.get("points")
+        cached_at = float(_thermal_cache.get("at") or 0)
+    if isinstance(cached, list) and now - cached_at < FIRMS_CACHE_SECONDS:
+        return {"ok": True, "configured": True, "status": "cached", "points": cached}
+    try:
+        response = requests.get(
+            FIRMS_URL.format(key=key),
+            timeout=FIRMS_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+        )
+        response.raise_for_status()
+        points = parse_firms_csv(response.text)
+    except Exception as exc:
+        print(f"FIRMS fetch failed: {exc.__class__.__name__}.")
+        return {
+            "ok": False,
+            "configured": True,
+            "status": "NASA FIRMS could not be reached.",
+            "points": [],
+        }
+    with _thermal_lock:
+        _thermal_cache["at"] = time.monotonic()
+        _thermal_cache["points"] = points
+    return {"ok": True, "configured": True, "status": "ok", "points": points}
+
+
 def data_payload() -> dict:
     now = datetime.now(timezone.utc)
     features = [feature for feature in combined_features() if within_live_window(feature, now)]
@@ -915,6 +1024,18 @@ class MapHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         if self._blocked():
             self.send_error(404)
+            return
+        if self._route() == "/api/thermal":
+            try:
+                self._json(thermal_payload())
+            except Exception as exc:
+                print(f"GET /api/thermal failed: {exc.__class__.__name__}.")
+                self._json({
+                    "ok": False,
+                    "configured": False,
+                    "status": "Satellite heat is unavailable.",
+                    "points": [],
+                })
             return
         if self._route() == "/api/data":
             try:
