@@ -11,21 +11,27 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import html
 import io
 import json
 import math
 import os
 import random
 import re
+import smtplib
 import sqlite3
 from difflib import SequenceMatcher
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import feedparser
 import requests
@@ -943,6 +949,9 @@ EMPTY_REGION_TEXT = "No significant incidents recorded in the past 24 hours."
 SUMMARY_INTERVAL = 60 * 60
 _summary_lock = threading.Lock()
 _summary_started = False
+_briefing_started = False
+_briefing_slots: set[str] = set()
+LONDON = ZoneInfo("Europe/London")
 SUMMARY_24H_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -1408,12 +1417,417 @@ class MapHandler(SimpleHTTPRequestHandler):
         super().log_message(fmt, *args)
 
 
+def severity_color(value: object) -> str:
+    rank = str(value or "").strip().lower()
+    if rank == "high":
+        return "#ff4d6d"
+    if rank == "low":
+        return "#19d3b8"
+    return "#ffb703"
+
+
+def dark_map_png() -> bytes:
+    from PIL import Image
+
+    image = Image.new("RGB", (800, 480), (10, 17, 20))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def render_period_map_png(events: list[dict]) -> bytes:
+    """Draw the briefing map. A tile failure still returns a dark PNG."""
+    try:
+        from staticmap import CircleMarker, StaticMap
+
+        canvas = StaticMap(
+            800,
+            480,
+            url_template="https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            tile_request_timeout=8,
+            delay_between_retries=0,
+        )
+        for event in events:
+            lng = event.get("lng")
+            lat = event.get("lat")
+            if lng is None or lat is None:
+                continue
+            canvas.add_marker(CircleMarker((float(lng), float(lat)), severity_color(event.get("severity")), 8))
+        image = canvas.render(zoom=4, center=(48.0, 27.5))
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+    except Exception as exc:
+        print(f"Briefing map tiles failed: {exc.__class__.__name__}. Using a dark fallback image.")
+        return dark_map_png()
+
+
+def briefing_window(report_type: str, now: datetime | None = None) -> tuple[datetime, datetime]:
+    moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+    end = moment.replace(hour=7, minute=0, second=0, microsecond=0)
+    if moment < end:
+        end -= timedelta(days=1)
+    if report_type == "daily":
+        start = end - timedelta(days=1)
+    elif report_type == "weekly":
+        thursday = (end - timedelta(days=(end.weekday() - 3) % 7)).replace(
+            hour=7, minute=0, second=0, microsecond=0
+        )
+        start = thursday - timedelta(days=7) if thursday == end else thursday
+    elif report_type == "monthly":
+        first = end.replace(day=1, hour=7, minute=0, second=0, microsecond=0)
+        if first == end:
+            start = (first - timedelta(days=1)).replace(day=1, hour=7, minute=0, second=0, microsecond=0)
+        else:
+            start = first
+    else:
+        raise ValueError(report_type)
+    return start, end
+
+
+def format_briefing_window(start: datetime, end: datetime) -> str:
+    pattern = "%d %b %Y, %H:%M"
+    return f"{start.strftime(pattern)} → {end.strftime(pattern)} Europe/London"
+
+
+def event_source(props: dict) -> str:
+    labeled = str(props.get("source_label") or "")
+    if " · " in labeled:
+        return labeled
+    handle = str(props.get("source_handle") or props.get("handle") or props.get("account") or "").lstrip("@")
+    kind = str(props.get("source_kind") or "")
+    if kind:
+        return source_label(kind, handle)
+    if handle:
+        return f"X · @{handle}"
+    return "Live"
+
+
+def period_events(start: datetime, end: datetime) -> list[dict]:
+    start_utc = start.astimezone(timezone.utc)
+    end_utc = end.astimezone(timezone.utc)
+    found = []
+    for feature in combined_features():
+        props = feature.get("properties") or {}
+        moment = osint.parse_timestamp(props.get("timestamp"))
+        if moment is None or moment < start_utc or moment >= end_utc:
+            continue
+        geometry = feature.get("geometry") or {}
+        coords = geometry.get("coordinates") if isinstance(geometry, dict) else None
+        lng = lat = None
+        if isinstance(coords, list) and len(coords) >= 2:
+            placed = osint.valid_coord(coords[0], coords[1])
+            if placed:
+                lng, lat = placed
+        found.append(
+            {
+                "title": osint.one_sentence(props.get("title") or props.get("summary"))[:240],
+                "location_name": osint.one_sentence(props.get("location_name"))[:160],
+                "governorate": osint.match_governorate(props.get("governorate"))
+                or osint.match_governorate(props.get("location_name")),
+                "region": region_name(props.get("region")),
+                "severity": osint.live_severity(props.get("severity")),
+                "corroboration": int(props.get("corroboration_count") or 1),
+                "source": event_source(props),
+                "lat": lat,
+                "lng": lng,
+                "timestamp": moment,
+            }
+        )
+    found.sort(key=lambda item: item["timestamp"], reverse=True)
+    return found
+
+
+def smtp_settings() -> dict | None:
+    osint.load_dotenv(osint.ROOT / ".env")
+    host = (os.environ.get("SMTP_HOST") or "").strip()
+    sender = (os.environ.get("SMTP_FROM") or "").strip()
+    recipient = (os.environ.get("SMTP_TO") or "").strip()
+    if not host or not sender or not recipient:
+        return None
+    try:
+        port = int((os.environ.get("SMTP_PORT") or "587").strip() or "587")
+    except ValueError:
+        port = 587
+    return {
+        "host": host,
+        "port": port,
+        "user": (os.environ.get("SMTP_USER") or "").strip(),
+        "password": os.environ.get("SMTP_PASSWORD") or "",
+        "sender": sender,
+        "recipient": recipient,
+    }
+
+
+BRIEFING_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "overall": {"type": "string"},
+        "regions": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {name: {"type": "string"} for name in REGIONS},
+            "required": list(REGIONS),
+        },
+        "syria": {"type": "string"},
+    },
+    "required": ["overall", "regions", "syria"],
+}
+
+
+def briefing_narrative(events: list[dict], report_type: str, start: datetime, end: datetime) -> dict:
+    fallback = {
+        "overall": "Analysis is unavailable for this briefing window.",
+        "regions": {name: "No regional summary is available." for name in REGIONS},
+        "syria": "No Syria field summary is available.",
+    }
+    key = osint.read_api_key()
+    if not key:
+        print(
+            "XAI_API_KEY is missing. The briefing will use a short fallback. "
+            "daily_brief.json and hotspots.json were not changed."
+        )
+        return fallback
+    sample = [
+        {
+            "title": item["title"],
+            "location": item["location_name"],
+            "region": item["region"],
+            "governorate": item["governorate"],
+            "severity": item["severity"],
+            "corroboration": item["corroboration"],
+        }
+        for item in events[:40]
+    ]
+    prompt = (
+        "Write an English OSINT briefing from only the incidents below. "
+        "Do not use live search and do not add events that are not listed.\n"
+        f"{report_type} window {format_briefing_window(start, end)}.\n"
+        "overall is 2-4 sentences. regions has one short paragraph for each region key. "
+        "syria is a short field summary of Syrian governorates mentioned.\n\n"
+        + json.dumps({"regions": list(REGIONS), "incidents": sample}, ensure_ascii=False)
+    )
+    try:
+        response = osint.make_client(key).responses.create(
+            model=MODEL,
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "periodic_briefing",
+                    "schema": BRIEFING_SCHEMA,
+                    "strict": True,
+                }
+            },
+            max_output_tokens=MAX_OUTPUT_TOKENS,
+            timeout=TIMEOUT,
+        )
+        text = osint.response_text(response)
+        payload = osint.parse_json_object(text) if text else None
+        if not isinstance(payload, dict):
+            raise RuntimeError("xAI response was not an object")
+        overall = " ".join(str(payload.get("overall") or "").split()) or fallback["overall"]
+        raw_regions = payload.get("regions") if isinstance(payload.get("regions"), dict) else {}
+        regions = {}
+        for name in REGIONS:
+            regions[name] = " ".join(str(raw_regions.get(name) or "").split()) or fallback["regions"][name]
+        syria = " ".join(str(payload.get("syria") or "").split()) or fallback["syria"]
+        return {"overall": overall, "regions": regions, "syria": syria}
+    except Exception as exc:
+        print(f"Briefing summary failed: {osint.public_error(exc, key)}. Using a short fallback.")
+        return fallback
+
+
+def briefing_html(report_type: str, start: datetime, end: datetime, events: list[dict], narrative: dict) -> str:
+    counts = {name: 0 for name in REGIONS}
+    governorates = {name: 0 for name in osint.SYRIA_GOVERNORATES}
+    for event in events:
+        counts[region_name(event.get("region"))] += 1
+        if event.get("governorate") in governorates:
+            governorates[event["governorate"]] += 1
+    widest = max(counts.values() or [1]) or 1
+    bars = []
+    for name in REGIONS:
+        width = round(counts[name] / widest * 100)
+        bars.append(
+            "<div style=\"margin:8px 0;\">"
+            f"<div style=\"color:#d5e4e8;font-size:13px;\">{html.escape(name)} {counts[name]}</div>"
+            "<div style=\"background:#1a2c35;border-radius:999px;height:10px;\">"
+            f"<div style=\"width:{width}%;height:10px;border-radius:999px;background:linear-gradient(90deg,#19d3b8,#ff7b89);\"></div>"
+            "</div></div>"
+        )
+    region_notes = []
+    for name in REGIONS:
+        region_notes.append(
+            "<h3 style=\"color:#19d3b8;font-size:15px;margin:16px 0 6px;\">"
+            f"{html.escape(name)}</h3><p style=\"margin:0;\">{html.escape(narrative['regions'][name])}</p>"
+        )
+    gov_lines = "".join(
+        f"<li>{html.escape(name)}: {count}</li>" for name, count in governorates.items()
+    )
+    highlighted = [
+        item for item in events if str(item.get("severity") or "").lower() == "high" or int(item.get("corroboration") or 1) > 1
+    ]
+    highlighted = highlighted[:8]
+    if highlighted:
+        incident_html = []
+        for item in highlighted:
+            if item.get("lat") is None:
+                coords = "Coordinates unavailable"
+            else:
+                coords = f"{item['lat']:.4f}, {item['lng']:.4f}"
+            incident_html.append(
+                "<div style=\"border-top:1px solid #1a2c35;padding:8px 0;\">"
+                f"<strong>{html.escape(item.get('title') or 'Incident')}</strong><br>"
+                f"{html.escape(item.get('location_name') or 'Location unavailable')}<br>"
+                f"{html.escape(coords)}<br>"
+                "<span style=\"display:inline-block;margin-top:4px;color:#19d3b8;border:1px solid #19d3b8;"
+                f"border-radius:999px;padding:1px 8px;font-size:12px;\">{html.escape(item.get('source') or 'Live')}</span>"
+                "</div>"
+            )
+        incidents = "".join(incident_html)
+    else:
+        incidents = "<p>No high-severity or corroborated incidents in this window.</p>"
+    title = f"{report_type.upper()} OSINT INTELLIGENCE BRIEFING"
+    return (
+        "<html><body style=\"margin:0;background:#0a1114;color:#e7eef0;font-family:Segoe UI,sans-serif;\">"
+        "<div style=\"max-width:720px;margin:0 auto;padding:24px;\">"
+        "<div style=\"background:#0e181d;border:1px solid #1a2c35;border-radius:12px;padding:16px 18px;\">"
+        f"<h1 style=\"color:#19d3b8;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
+        f"<p style=\"margin:0 0 12px;color:#d5e4e8;\">{html.escape(format_briefing_window(start, end))}</p>"
+        "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
+        "<h2 style=\"color:#19d3b8;font-size:16px;\">Regions</h2>"
+        + "".join(bars)
+        + f"<h2 style=\"color:#19d3b8;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
+        + "".join(region_notes)
+        + "<h2 style=\"color:#19d3b8;font-size:16px;\">Syria</h2>"
+        + f"<p>{html.escape(narrative['syria'])}</p><ul>{gov_lines}</ul>"
+        + "<h2 style=\"color:#19d3b8;font-size:16px;\">High-severity and corroborated incidents</h2>"
+        + incidents
+        + "</div></div></body></html>"
+    )
+
+
+def send_briefing_message(subject: str, body: str, png: bytes, settings: dict) -> bool:
+    message = MIMEMultipart("related")
+    message["Subject"] = subject
+    message["From"] = settings["sender"]
+    message["To"] = settings["recipient"]
+    message.attach(MIMEText(body, "html", "utf-8"))
+    image = MIMEImage(png, _subtype="png")
+    image.add_header("Content-ID", "<incident_map>")
+    image.add_header("Content-Disposition", "inline", filename="incident_map.png")
+    message.attach(image)
+    try:
+        if settings["port"] == 465:
+            smtp = smtplib.SMTP_SSL(settings["host"], settings["port"], timeout=30)
+        else:
+            smtp = smtplib.SMTP(settings["host"], settings["port"], timeout=30)
+        with smtp:
+            smtp.ehlo()
+            if settings["port"] != 465:
+                smtp.starttls()
+                smtp.ehlo()
+            if settings["user"]:
+                smtp.login(settings["user"], settings["password"])
+            smtp.send_message(message)
+    except Exception as exc:
+        print(f"Briefing email failed: {exc.__class__.__name__}.")
+        return False
+    return True
+
+
+def generate_and_email_periodic_report(report_type: str) -> bool:
+    kind = str(report_type or "").strip().lower()
+    if kind not in {"daily", "weekly", "monthly"}:
+        print(f"Unknown briefing type. Skipped sending.")
+        return False
+    settings = smtp_settings()
+    if settings is None:
+        print(f"SMTP is not configured. Skipped sending the {kind} OSINT briefing.")
+        return False
+    start, end = briefing_window(kind)
+    events = period_events(start, end)
+    png = render_period_map_png(events)
+    narrative = briefing_narrative(events, kind, start, end)
+    body = briefing_html(kind, start, end, events, narrative)
+    subject = f"{kind.upper()} OSINT INTELLIGENCE BRIEFING"
+    sent = send_briefing_message(subject, body, png, settings)
+    if sent:
+        print(f"Sent the {kind} OSINT briefing. daily_brief.json and hotspots.json were not changed.")
+    return sent
+
+
+def briefing_already_sent(slot: str) -> bool:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            row = conn.execute("SELECT value FROM feed_meta WHERE key = ?", (slot,)).fetchone()
+        finally:
+            conn.close()
+    return bool(row and str(row["value"]) == "sent")
+
+
+def mark_briefing_sent(slot: str) -> None:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            write_meta(conn, slot, "sent")
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def maybe_send_briefings() -> None:
+    now = datetime.now(LONDON)
+    if not (now.hour == 7 and now.minute < 5):
+        return
+    day = now.strftime("%Y-%m-%d")
+    jobs = [("daily", f"briefing-daily-{day}")]
+    if now.weekday() == 3:
+        jobs.append(("weekly", f"briefing-weekly-{day}"))
+    if now.day == 1:
+        jobs.append(("monthly", f"briefing-monthly-{now.strftime('%Y-%m')}"))
+    for report_type, slot in jobs:
+        if slot in _briefing_slots or briefing_already_sent(slot):
+            _briefing_slots.add(slot)
+            continue
+        _briefing_slots.add(slot)
+        try:
+            sent = generate_and_email_periodic_report(report_type)
+        except Exception as exc:
+            print(f"Briefing {report_type} failed: {exc.__class__.__name__}.")
+            sent = False
+        if sent:
+            mark_briefing_sent(slot)
+
+
+def briefing_loop() -> None:
+    while True:
+        try:
+            maybe_send_briefings()
+        except Exception as exc:
+            print(f"Briefing scheduler failed: {exc.__class__.__name__}.")
+        time.sleep(20)
+
+
+def start_briefing_daemon() -> None:
+    global _briefing_started
+    with _start_lock:
+        if _briefing_started:
+            return
+        _briefing_started = True
+    threading.Thread(target=briefing_loop, name="briefing-mail", daemon=True).start()
+
+
 def main() -> None:
     with _db_lock:
         conn = db_connect()
         conn.close()
     start_poller()
     start_summary_daemon()
+    start_briefing_daemon()
     server = ThreadingHTTPServer((HOST, PORT), MapHandler)
     print(f"Serving map and summary API on http://{HOST}:{PORT}")
     try:
