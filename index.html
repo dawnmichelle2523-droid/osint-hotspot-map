@@ -146,10 +146,27 @@
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid #8eb6ff; outline-offset: 2px; }
     .badge-corroborated { background: #1c4f93; color: #fff; border: 1px solid #8eb6ff; }
     .headline-empty { margin: 0; color: var(--muted); }
+    #daily-brief { width: 100%; background: #0e1116; color: var(--text); border-top: 1px solid #ffffff1a; border-bottom: 1px solid #ffffff1a; padding: 20px 20px 8px; }
+    .brief-card { background: #0e1116; border: 1px solid #ffffff1a; border-left: 3px solid #1c4f93; border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px; }
+    .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #brief-title { margin: 0; font-size: 18px; font-weight: 700; }
+    #brief-time { color: var(--muted); font-size: 12px; }
+    #copy-brief { margin-left: auto; color: #fff; background: #1c4f93; border: 1px solid #1c4f93; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+    #brief-body { margin-top: 8px; }
+    .brief-section { border-top: 1px solid #ffffff1a; }
+    .brief-section-toggle { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; color: #8eb6ff; border: 0; padding: 10px 0; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+    .brief-section-toggle::before { content: "▾"; color: #1c4f93; }
+    .brief-section-toggle[aria-expanded="false"]::before { content: "▸"; }
+    .brief-section-body { padding: 0 0 10px 18px; color: #d5dbe6; }
+    .brief-section-body[hidden] { display: none; }
+    .brief-section-body p { margin: 0; }
+    .brief-section-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
     @media (max-width: 720px) {
-      #headlines { padding: 20px 14px 36px; }
-      #headlines h2 { font-size: 18px; }
+      #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
+      #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
+      #copy-brief { margin-left: 0; }
     }
   </style>
 </head>
@@ -219,6 +236,16 @@
   </div>
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
+  <section id="daily-brief" aria-labelledby="brief-title">
+    <article class="brief-card">
+      <div class="brief-bar">
+        <h2 id="brief-title">Daily Geopolitical Brief</h2>
+        <time id="brief-time"></time>
+        <button type="button" id="copy-brief">Copy Brief</button>
+      </div>
+      <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
+    </article>
+  </section>
   <section id="headlines" aria-labelledby="headlines-title">
     <div class="headlines-inner">
       <h2 id="headlines-title">Live X OSINT &amp; Advisory Headlines</h2>
@@ -674,8 +701,107 @@
       locateFeature(button.dataset.locate);
     });
 
+    let briefText = "";
+
+    const BRIEF_SECTIONS = ["Gulf & Maritime Security", "Yemen & Red Sea", "Levant & Regional Politics"];
+    const ADVISORY_TITLE = "Official Travel & Embassy Advisories";
+
+    function briefBullets(text) {
+      return String(text || "").split(/\n|•/).map((line) => line.trim()).filter(Boolean);
+    }
+
+    function bulletHtml(text) {
+      const match = /^(Verified Official|Corroborated|Attributed)\s*[—–:-]\s*/i.exec(text);
+      if (!match) return "<li><span>" + esc(text) + "</span></li>";
+      const tag = match[1].toLowerCase().startsWith("verified")
+        ? "Verified Official"
+        : match[1].toLowerCase().startsWith("corrobor")
+          ? "Corroborated"
+          : "Attributed";
+      const cls = tag === "Verified Official" ? "badge-official" : tag === "Corroborated" ? "badge-corroborated" : "badge-claim";
+      return "<li><span class=\"badge " + cls + "\">" + esc(tag) + "</span><span>" + esc(text.slice(match[0].length)) + "</span></li>";
+    }
+
+    function briefSection(title, bullets) {
+      const id = "brief-sec-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const items = bullets.length ? bullets : ["Nothing new in the last 24 hours."];
+      return "<div class=\"brief-section\"><button type=\"button\" class=\"brief-section-toggle\" aria-expanded=\"true\" aria-controls=\"" + id + "\">" + esc(title) + "</button><div class=\"brief-section-body\" id=\"" + id + "\"><ul>" + items.map(bulletHtml).join("") + "</ul></div></div>";
+    }
+
+    function renderBrief(data) {
+      const body = document.getElementById("brief-body");
+      const time = document.getElementById("brief-time");
+      if (!data || !data.executive_summary) {
+        time.textContent = "";
+        time.removeAttribute("datetime");
+        briefText = "";
+        body.innerHTML = '<p class="headline-empty">No daily brief yet.</p>';
+        return;
+      }
+      const stamp = gmtStamp(data.generated_at);
+      if (data.generated_at) time.setAttribute("datetime", data.generated_at);
+      time.textContent = stamp === "Unknown time" ? "" : stamp;
+      const byTitle = new Map();
+      (Array.isArray(data.regional_sections) ? data.regional_sections : []).forEach((item) => {
+        byTitle.set(item.region, briefBullets(item.summary));
+      });
+      const highlights = (Array.isArray(data.advisory_highlights) ? data.advisory_highlights : []).flatMap(briefBullets);
+      body.innerHTML =
+        briefSection("Executive Summary", [data.executive_summary]) +
+        BRIEF_SECTIONS.map((title) => briefSection(title, byTitle.get(title) || [])).join("") +
+        briefSection(ADVISORY_TITLE, highlights);
+      const lines = ["Daily Geopolitical Brief", stamp, "", "Executive Summary", data.executive_summary, ""];
+      BRIEF_SECTIONS.forEach((title) => {
+        lines.push(title);
+        (byTitle.get(title) || ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+        lines.push("");
+      });
+      lines.push(ADVISORY_TITLE);
+      (highlights.length ? highlights : ["Nothing new in the last 24 hours."]).forEach((item) => lines.push("- " + item));
+      briefText = lines.join("\n").trim();
+    }
+
+    async function loadBrief() {
+      try {
+        const response = await fetch(`daily_brief.json?v=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        renderBrief(await response.json());
+      } catch (err) {
+        renderBrief(null);
+      }
+    }
+
+    document.getElementById("daily-brief").addEventListener("click", (event) => {
+      const button = event.target.closest(".brief-section-toggle");
+      if (!button) return;
+      const panel = document.getElementById(button.getAttribute("aria-controls"));
+      if (!panel) return;
+      const open = panel.hasAttribute("hidden");
+      if (open) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+      button.setAttribute("aria-expanded", String(open));
+    });
+    document.getElementById("copy-brief").addEventListener("click", async () => {
+      if (!briefText) return;
+      const button = document.getElementById("copy-brief");
+      try {
+        await navigator.clipboard.writeText(briefText);
+      } catch (err) {
+        const area = document.createElement("textarea");
+        area.value = briefText;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      button.textContent = "Copied";
+      window.setTimeout(() => { button.textContent = "Copy Brief"; }, 1200);
+    });
+
     loadHotspots();
+    loadBrief();
     setInterval(loadHotspots, 60000);
+    setInterval(loadBrief, 60000);
   </script>
 </body>
 </html>
