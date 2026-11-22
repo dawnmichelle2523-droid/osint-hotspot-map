@@ -191,17 +191,22 @@
     .locate { color: #fff; background: var(--active); border: 1px solid var(--active-line); }
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .headline-empty { margin: 0; color: var(--muted); }
-    #daily-brief { width: 100%; background: var(--bg); color: var(--text); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 20px 8px; }
+    #daily-brief { width: 100%; background: #0e181d; color: var(--text); border-top: 1px solid #1a2c35; border-bottom: 1px solid #1a2c35; padding: 20px 20px 8px; }
     .brief-card {
-      background: var(--card-bg); border: 1px solid var(--line); border-top: 0;
+      background: #0e181d; border: 1px solid #1a2c35; border-top: 1px solid #1a2c35;
       border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
     }
+    #daily-brief .brief-card::before { display: none; }
     .brief-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #brief-title { margin: 0; font-size: 18px; font-weight: 700; }
+    #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #19d3b8; }
     #brief-time { color: var(--muted); font-size: 12px; }
     #copy-brief { margin-left: auto; }
+    #refresh-summary { color: #0e181d; background: #19d3b8; border: 1px solid #19d3b8; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+    #refresh-summary:disabled { opacity: 0.7; cursor: wait; }
+    .summary-lead { margin: 8px 0; }
+    .summary-note { margin: 0 0 8px; color: var(--text); }
     #brief-body { margin-top: 8px; }
     .brief-section { border-top: 1px solid var(--line); }
     .brief-section-toggle { width: 100%; display: flex; align-items: center; gap: 8px; background: transparent; color: var(--active-line); border: 0; padding: 10px 0; font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
@@ -212,46 +217,16 @@
     .brief-section-body p { margin: 0; }
     .brief-section-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
-    [hidden] { display: none !important; }
-    .report-tabs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .report-tabs button {
-      background: transparent; color: var(--text); border: 1px solid transparent;
-      border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
-    }
-    .report-tabs button[aria-selected="true"] {
-      background: var(--active); color: #fff; border-color: #2dd4bf;
-      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 0 10px rgba(45, 212, 191, 0.35);
-    }
-    .tab-sep { color: var(--muted); font-weight: 700; }
-    #copy-report, #download-pdf { color: #fff; background: var(--active); border: 1px solid #2dd4bf; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 0 10px rgba(45, 212, 191, 0.45); }
-    #download-pdf { margin-left: 0; }
-    #copy-report { margin-left: auto; }
-    .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-    .kpi { background: rgba(7, 19, 22, 0.55); border: 1px solid var(--line); border-top: 2px solid #14b8a6; border-radius: 10px; padding: 8px 10px; }
-    .kpi span { display: block; color: var(--muted); font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase; }
-    .kpi strong { display: block; margin-top: 2px; font-size: 18px; color: var(--text); }
-    .kpi em { display: block; margin-top: 2px; font-style: normal; color: #fb7185; font-size: 12px; font-weight: 700; }
-    .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+    .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
     .bar-row { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
     .bar-row span:first-child { color: var(--muted); }
     .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 19, 22, 0.8); border: 1px solid var(--line); overflow: hidden; }
     .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #14b8a6, #fb7185); }
-    .report-narrative h3 { margin: 12px 0 4px; font-size: 13px; color: var(--active-line); }
-    .report-narrative p { margin: 0; color: var(--text); }
-    @media print {
-      #stage, #map, #sidebar, #headlines, #brief-controls, #brief-body, #copy-report, #download-pdf, .report-tabs, .tab-sep { display: none !important; }
-      #daily-brief, #report-controls, #report-body, #report-time { display: block !important; }
-      #report-controls { border: 0; }
-      body, #daily-brief, .brief-card { background: #fff !important; color: #111 !important; }
-      .brief-card { box-shadow: none !important; transform: none !important; }
-      .kpi, .report-narrative p, .bar-row span { color: #111 !important; }
-    }
     @media (max-width: 720px) {
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
-      #copy-brief, #export-headlines, #copy-report { margin-left: 0; }
-      .kpi-row { grid-template-columns: 1fr 1fr; }
+      #copy-brief, #export-headlines, #refresh-summary { margin-left: 0; }
       .bar-row { grid-template-columns: 108px 1fr 28px; }
     }
   </style>
@@ -284,6 +259,7 @@
         <button type="button" class="pill" data-region="Levant">Levant <span class="n" data-count="Levant">0</span></button>
         <button type="button" class="pill" data-region="Iran &amp; Iraq">Iran &amp; Iraq <span class="n" data-count="Iran &amp; Iraq">0</span></button>
         <button type="button" class="pill" data-region="Maritime">Maritime <span class="n" data-count="Maritime">0</span></button>
+        <button type="button" class="pill" data-region="Other / International">Other / International <span class="n" data-count="Other / International">0</span></button>
       </div>
     </section>
     <section class="group">
@@ -337,23 +313,12 @@
   <section id="daily-brief" aria-labelledby="brief-title">
     <article class="brief-card">
       <div class="brief-bar" id="brief-controls">
-        <h2 id="brief-title">Daily Geopolitical Brief</h2>
+        <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
         <button type="button" id="copy-brief">Copy Brief</button>
+        <button type="button" id="refresh-summary">Refresh Summary</button>
       </div>
-      <div class="brief-bar" id="report-controls" hidden>
-        <div class="report-tabs" role="tablist" aria-label="Daily | Weekly | Monthly">
-          <button type="button" role="tab" id="tab-daily" data-cadence="daily" aria-selected="true">Daily</button>
-          <span class="tab-sep" aria-hidden="true">|</span>
-          <button type="button" role="tab" id="tab-weekly" data-cadence="weekly" aria-selected="false">Weekly</button>
-          <span class="tab-sep" aria-hidden="true">|</span>
-          <button type="button" role="tab" id="tab-monthly" data-cadence="monthly" aria-selected="false">Monthly</button>
-        </div>
-        <time id="report-time"></time>
-        <button type="button" id="copy-report">Copy Report</button>
-        <button type="button" id="download-pdf">Download PDF</button>
-      </div>
-      <div id="report-body" hidden></div>
+      <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
   </section>
@@ -744,6 +709,7 @@
       syncControls(visible.length);
       updateSearchCount(visible.length);
       renderHeadlines(visible);
+      renderRegionBars();
       if (loadedOnce) {
         setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
       }
@@ -1078,7 +1044,7 @@
         briefSection("Executive Summary", [data.executive_summary]) +
         sections.map((item) => briefSection(item.title, item.bullets)).join("") +
         (highlights.length ? briefSection(ADVISORY_TITLE, highlights) : "");
-      const lines = ["Daily Geopolitical Brief", stamp, "", "Executive Summary", data.executive_summary, ""];
+      const lines = ["Geopolitical Summary", stamp, "", "Executive Summary", data.executive_summary, ""];
       sections.forEach((item) => {
         lines.push(item.title);
         (item.bullets.length ? item.bullets : ["Nothing new in the last 24 hours."]).forEach((line) => lines.push("- " + line));
@@ -1101,104 +1067,80 @@
       }
     }
 
-    let reportData = null;
-    let reportCadence = "daily";
-    let reportText = "";
+    let summaryPinned = false;
 
-    function showBriefFallback() {
-      reportData = null;
-      document.getElementById("report-controls").hidden = true;
-      document.getElementById("report-body").hidden = true;
-      document.getElementById("brief-controls").hidden = false;
-      document.getElementById("brief-body").hidden = false;
-    }
-
-    function changeLabel(block) {
-      if (!block || block.percent_change === null || block.percent_change === undefined) return "n/a";
-      const value = Number(block.percent_change);
-      if (!Number.isFinite(value)) return "n/a";
-      const shown = Number.isInteger(value) ? String(value) : String(value);
-      return (value > 0 ? "+" : "") + shown + "%";
-    }
-
-    function topCategory(block) {
-      const counts = block.counts_by_category || {};
-      const names = Object.keys(counts);
-      if (!names.length) return { name: "None", count: 0 };
-      names.sort((a, b) => (counts[b] - counts[a]) || a.localeCompare(b));
-      return { name: names[0], count: counts[names[0]] || 0 };
-    }
-
-    function renderReports() {
-      const block = reportData && reportData[reportCadence];
-      const body = document.getElementById("report-body");
-      const time = document.getElementById("report-time");
-      if (!block) {
-        showBriefFallback();
-        return;
-      }
-      document.getElementById("brief-controls").hidden = true;
-      document.getElementById("brief-body").hidden = true;
-      document.getElementById("report-controls").hidden = false;
-      body.hidden = false;
-      const stamp = gmtStamp(reportData.generated_at);
-      if (reportData.generated_at) time.setAttribute("datetime", reportData.generated_at);
+    function renderLiveSummary(summary) {
+      const body = document.getElementById("brief-body");
+      const time = document.getElementById("brief-time");
+      const text = summary && summary.text ? String(summary.text) : "";
+      if (!text) return false;
+      const stamp = gmtStamp(summary.generated_at);
+      if (summary.generated_at) time.setAttribute("datetime", summary.generated_at);
       time.textContent = stamp === "Unknown time" ? "" : stamp;
-      document.querySelectorAll(".report-tabs button").forEach((button) => {
-        button.setAttribute("aria-selected", String(button.dataset.cadence === reportCadence));
-      });
-      const category = topCategory(block);
-      const verified = (block.verification_tier && block.verification_tier["Verified Official"]) || 0;
-      const regions = block.counts_by_region || {};
-      const maxCount = Math.max(1, ...Object.values(regions).map((count) => Number(count) || 0));
-      const bars = Object.keys(regions).map((region) => {
-        const count = Number(regions[region]) || 0;
-        const width = Math.round((count / maxCount) * 100);
-        return "<div class=\"bar-row\"><span>" + esc(region) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
-      }).join("");
-      const notes = Array.isArray(block.regional_notes) ? block.regional_notes : [];
+      const notes = Array.isArray(summary.regional_notes) ? summary.regional_notes : [];
       body.innerHTML =
-        "<div class=\"kpi-row\">" +
-          "<article class=\"kpi\"><span>Total incidents</span><strong id=\"kpi-total\">" + esc(block.total) + "</strong></article>" +
-          "<article class=\"kpi\"><span>Change vs previous period</span><strong id=\"kpi-change\">" + esc(changeLabel(block)) + "</strong><em>previous " + esc(block.previous_total) + "</em></article>" +
-          "<article class=\"kpi\"><span>Top category</span><strong id=\"kpi-category\">" + esc(category.name) + "</strong><em id=\"kpi-category-count\">" + esc(category.count) + "</em></article>" +
-          "<article class=\"kpi\"><span>Verified official</span><strong id=\"kpi-verified\">" + esc(verified) + "</strong></article>" +
-        "</div>" +
-        "<div class=\"region-chart\" id=\"region-chart\">" + bars + "</div>" +
-        "<div class=\"report-narrative\"><h3 id=\"report-cadence\">" + esc(reportCadence.charAt(0).toUpperCase() + reportCadence.slice(1)) + "</h3>" +
-          "<p>" + esc(block.executive_assessment || "") + "</p>" +
-          notes.map((item) => "<h3>" + esc(item.region || "") + "</h3><p>" + esc(item.note || "") + "</p>").join("") +
-        "</div>";
-      const lines = [
-        reportCadence.charAt(0).toUpperCase() + reportCadence.slice(1) + " intelligence report",
-        stamp,
-        "",
-        "Total incidents: " + block.total,
-        "Change vs previous period: " + changeLabel(block) + " (previous " + block.previous_total + ")",
-        "Top category: " + category.name + " (" + category.count + ")",
-        "Verified official: " + verified,
-        "",
-        "Regions"
-      ];
-      Object.keys(regions).forEach((region) => lines.push(region + ": " + regions[region]));
-      lines.push("", "Executive assessment", block.executive_assessment || "");
-      notes.forEach((item) => {
-        lines.push("", item.region || "", item.note || "");
-      });
-      reportText = lines.join("\n").trim();
+        "<p class=\"summary-lead\">" + esc(text) + "</p>" +
+        notes.map((item) => "<p class=\"summary-note\"><strong>" + esc(item.region || "") + ".</strong> " + esc(item.note || "") + "</p>").join("");
+      const lines = ["Geopolitical Summary", stamp, "", text];
+      notes.forEach((item) => lines.push("", (item.region || "") + ": " + (item.note || "")));
+      briefText = lines.join("\n").trim();
+      return true;
     }
 
-    async function loadReports() {
+    async function loadSummaryPanel() {
+      if (summaryPinned) return;
       try {
-        const response = await fetch(`reports.json?v=${Date.now()}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        const data = await response.json();
-        if (!data || !data.daily || !data.weekly || !data.monthly) throw new Error("shape");
-        reportData = data;
-        renderReports();
+        const response = await fetch("/api/data", { cache: "no-store" });
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.summary && renderLiveSummary(data.summary)) return;
+          await loadBrief();
+          return;
+        }
+      } catch (err) {}
+      try {
+        const cached = await fetch(`summary_cache.json?v=${Date.now()}`, { cache: "no-store" });
+        if (cached.ok && renderLiveSummary(await cached.json())) return;
+      } catch (err) {}
+      await loadBrief();
+    }
+
+    async function refreshSummary() {
+      const button = document.getElementById("refresh-summary");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/summary", { method: "POST", cache: "no-store" });
+        const data = response.ok ? await response.json() : null;
+        const summary = data && data.summary && data.summary.text ? data.summary : data;
+        if (!renderLiveSummary(summary)) {
+          renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
+        }
+        summaryPinned = true;
       } catch (err) {
-        showBriefFallback();
+        renderLiveSummary({ text: "Analysis is unavailable.", regional_notes: [] });
+        summaryPinned = true;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Refresh Summary";
       }
+    }
+
+    const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Other / International"];
+
+    function renderRegionBars() {
+      const counts = {};
+      LIVE_REGIONS.forEach((name) => { counts[name] = 0; });
+      features.forEach((feature) => {
+        const name = (feature.properties || {}).region;
+        const key = Object.prototype.hasOwnProperty.call(counts, name) ? name : "Other / International";
+        counts[key] += 1;
+      });
+      const maxCount = Math.max(1, ...LIVE_REGIONS.map((name) => counts[name]));
+      document.getElementById("region-chart").innerHTML = LIVE_REGIONS.map((name) => {
+        const count = counts[name];
+        const width = Math.round((count / maxCount) * 100);
+        return "<div class=\"bar-row\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
+      }).join("");
     }
 
     document.getElementById("daily-brief").addEventListener("click", (event) => {
@@ -1227,26 +1169,14 @@
       if (!briefText) return;
       copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
     });
-    document.getElementById("report-controls").addEventListener("click", (event) => {
-      const tab = event.target.closest("[data-cadence]");
-      if (!tab || !reportData) return;
-      reportCadence = tab.dataset.cadence;
-      renderReports();
-    });
-    document.getElementById("copy-report").addEventListener("click", () => {
-      if (!reportText) return;
-      copyText(reportText, document.getElementById("copy-report"), "Copy Report");
-    });
-    document.getElementById("download-pdf").addEventListener("click", () => window.print());
+    document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     window.addEventListener("hashchange", () => openHashedPin());
 
     loadHotspots();
     showSyriaGovernorates(false);
-    loadBrief();
-    loadReports();
+    loadSummaryPanel();
     setInterval(loadHotspots, 60000);
-    setInterval(loadBrief, 60000);
-    setInterval(loadReports, 60000);
+    setInterval(loadSummaryPanel, 60000);
   </script>
 </body>
 </html>
