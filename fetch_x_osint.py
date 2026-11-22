@@ -3,10 +3,10 @@
 # https://docs.x.ai/developers/tools/x-search
 # https://docs.x.ai/developers/model-capabilities/text/structured-outputs
 # Client: OpenAI-compatible Responses API, base URL https://api.x.ai/v1,
-# model grok-4.3. The Batch API docs use grok-4.3 with the x_search tool:
-# https://docs.x.ai/developers/advanced-api-usage/batch-api
-# Model card: https://docs.x.ai/developers/models/grok-4.3
-# Tool type x_search with allowed_x_handles (no @) and
+# model grok-3-mini. If that model is rejected, the same call is retried
+# with grok-3. Tool type x_search. Handles go out as included_x_handles.
+# Current X Search docs still filter with allowed_x_handles, so that field
+# is set to the same list: https://docs.x.ai/developers/tools/x-search
 # from_date/to_date as YYYY-MM-DD. to_date is exclusive: posts from 00:00 UTC
 # on from_date up to, but not including, to_date. Full datetimes are not
 # applied, so the last-2-hours window is stated in the prompt and enforced
@@ -36,7 +36,8 @@ HOTSPOTS = ROOT / "hotspots.json"
 ARCHIVE = ROOT / "archive.json"
 SOURCES = ROOT / "sources.json"
 
-MODEL = "grok-4.3"
+# First model, then the retry if the API rejects it.
+MODELS = ("grok-3-mini", "grok-3")
 BASE_URL = "https://api.x.ai/v1"
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
@@ -65,6 +66,7 @@ CATEGORIES = (
 SEVERITIES = ("high", "medium", "low")
 TIERS = (
     "Official / Primary",
+    "Attributed",
     "State-Affiliated / Single-Source",
     "Unverified Lead",
 )
@@ -103,14 +105,32 @@ OFFICIAL_HANDLES = {
 }
 WIRES = {"reuters", "arareuters", "reutersiran", "ap", "afp", "afpar"}
 REGIONAL_OUTLETS = {"bbcarabic", "ajenglish", "alhadath", "alarabytv"}
+# State broadcasters. Tagged "Attributed", not the Ansarallah accounts below.
+STATE_MEDIA = {
+    "presstv",
+    "tasnimarabic1",
+    "iribnews_irib",
+}
 # Named state media and Ansarallah accounts. IRIB is the state broadcaster
-# that operates Press TV, so it uses the same single-source tier.
+# that operates Press TV.
 STATE_AFFILIATED = {
     "presstv",
     "tasnimarabic1",
     "yah_saree",
     "mmy1444",
     "iribnews_irib",
+}
+AGGREGATOR_HANDLES = {
+    "sentdefender",
+    "insidergeo",
+    "faytuksnetwork",
+    "defencegeek",
+    "menchosint",
+    "me_observer_",
+    "mata_osint",
+    "barakravid",
+    "kaisos1987",
+    "lorientlejour",
 }
 OUTLET_LABELS = {
     "presstv": "Press TV",
@@ -335,8 +355,10 @@ def is_primary_handle(handle: str, batches_by_handle: dict[str, str]) -> bool:
 
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
     key = handle.lower()
-    if batch == AGGREGATOR_BATCH:
+    if batch == AGGREGATOR_BATCH or key in AGGREGATOR_HANDLES:
         return "Unverified Lead"
+    if key in STATE_MEDIA:
+        return "Attributed"
     if key in REGIONAL_OUTLETS:
         if cites_official:
             return "Official / Primary"
@@ -489,7 +511,7 @@ def prepare_incidents(
             cites_named = True
             cites_primary = True
         tier = assign_tier(handle, batch, cites_named or cites_primary)
-        if tier == "State-Affiliated / Single-Source":
+        if tier in ("State-Affiliated / Single-Source", "Attributed"):
             summary = ensure_named(summary, handle, str(item.get("claimant") or ""))
         seen.add(source)
         features.append(
@@ -719,23 +741,61 @@ def run_source(name: str, fn, secret: str = ""):
         return None
 
 
-def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, api_key: str):
-    response = client.responses.create(
-        model=MODEL,
-        input=prompt,
-        tools=[tool],
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": schema_name,
-                "schema": schema,
-                "strict": True,
-            }
-        },
-        extra_body={"max_turns": 4},
-        max_output_tokens=MAX_OUTPUT_TOKENS,
-        timeout=API_TIMEOUT,
+def model_rejected(exc: BaseException) -> bool:
+    """True when the API refuses the model itself, not a timeout or auth error."""
+    if "timeout" in exc.__class__.__name__.lower():
+        return False
+    status = getattr(exc, "status_code", None)
+    if status in (401, 403, 408, 409, 429) or (isinstance(status, int) and status >= 500):
+        return False
+    text = str(exc).lower()
+    if not any(token in text for token in ("model", "grok-3-mini", "grok-3")):
+        return False
+    return any(
+        token in text
+        for token in (
+            "not found",
+            "does not exist",
+            "unknown",
+            "invalid",
+            "unsupported",
+            "not supported",
+            "does not support",
+            "unavailable",
+            "rejected",
+            "model_not_found",
+        )
     )
+
+
+def call_model(client, tool: dict, prompt: str, schema_name: str, schema: dict, api_key: str):
+    response = None
+    for index, model in enumerate(MODELS):
+        try:
+            response = client.responses.create(
+                model=model,
+                input=prompt,
+                tools=[tool],
+                text={
+                    "format": {
+                        "type": "json_schema",
+                        "name": schema_name,
+                        "schema": schema,
+                        "strict": True,
+                    }
+                },
+                extra_body={"max_turns": 4},
+                max_output_tokens=MAX_OUTPUT_TOKENS,
+                timeout=API_TIMEOUT,
+            )
+            break
+        except Exception as exc:
+            if index == 0 and model_rejected(exc):
+                print(f"{model} rejected; retrying with {MODELS[1]}")
+                continue
+            raise
+    if response is None:
+        raise RuntimeError("xAI model was rejected")
     text = response_text(response)
     if not text:
         raise RuntimeError("xAI response did not include output text")
@@ -828,6 +888,8 @@ def main() -> None:
             print(f"Searching {label}")
             tool = {
                 "type": "x_search",
+                "included_x_handles": group,
+                # Current X Search docs still filter on allowed_x_handles.
                 "allowed_x_handles": group,
                 "from_date": from_date,
                 "to_date": to_date,
