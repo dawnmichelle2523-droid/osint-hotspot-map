@@ -27,3 +27,10 @@ jobs:
           git add hotspots.json archive.json || git add hotspots.json
           git commit -m "Update live hotspots" || exit 0
           git push
+  - run: |
+          git config user.name "OSINT Bot"
+          git config user.email "bot@://github.com"
+          git add hotspots.json archive.json || git add hotspots.json
+          git commit -m "Update live hotspots" || exit 0
+          git pull --rebase -X ours origin main
+          git push
