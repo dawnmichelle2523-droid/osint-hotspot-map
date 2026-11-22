@@ -20,6 +20,25 @@ MODEL = "grok-4-fast-reasoning"
 TIMEOUT = 25
 MAX_OUTPUT_TOKENS = 1000
 
+SECTION_TITLES = (
+    "Gulf & Maritime Security",
+    "Yemen & Red Sea",
+    "Levant & Regional Politics",
+)
+ADVISORY_TITLE = "Official Travel & Embassy Advisories"
+SECTION_ALIASES = {
+    "gulf": "Gulf & Maritime Security",
+    "maritime": "Gulf & Maritime Security",
+    "gulf & maritime": "Gulf & Maritime Security",
+    "gulf & maritime security": "Gulf & Maritime Security",
+    "saudi & yemen": "Yemen & Red Sea",
+    "yemen": "Yemen & Red Sea",
+    "red sea": "Yemen & Red Sea",
+    "yemen & red sea": "Yemen & Red Sea",
+    "levant": "Levant & Regional Politics",
+    "levant & regional politics": "Levant & Regional Politics",
+}
+
 BRIEF_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -83,33 +102,56 @@ def brief_prompt(incidents: list[dict], now: datetime) -> str:
         "Write a Daily Geopolitical Brief for the Middle East from the incidents below only. "
         "Do not use live search and do not add events that are not listed.\n"
         f"As of {osint.format_timestamp(now)}. Window: the last 24 hours.\n"
-        "executive_summary is 2-4 sentences of plain English.\n"
-        "regional_sections is one object per region that has an incident or advisory. "
-        "region is exactly one of: Gulf, Saudi & Yemen, Levant, Iran & Iraq, Maritime, Other / International. "
-        "summary is 1-2 sentences.\n"
-        "advisory_highlights lists maritime and travel or embassy advisories as short sentences. "
-        "Use an empty array when there are none.\n"
-        "Name the verification tier when a claim is not an official or primary source.\n\n"
+        "executive_summary is the Executive Summary: 2-4 sentences of plain English.\n"
+        "regional_sections uses these region titles, in this order: "
+        + "; ".join(SECTION_TITLES)
+        + ". Omit a title only when that section has no incident.\n"
+        "summary is concise bullets separated by newlines. "
+        "Each bullet starts with exactly one of: Verified Official, Corroborated, Attributed, then an em dash. "
+        "Map Official / Primary to Verified Official, a claim backed by more than one listed source to Corroborated, "
+        "and State-Affiliated / Single-Source to Attributed.\n"
+        f"advisory_highlights is the {ADVISORY_TITLE} section: "
+        "the same tagged bullets for travel and embassy advisories. Use an empty array when there are none.\n\n"
         f"{body}"
     )
 
 
+def brief_lines(value: object) -> str:
+    text = str(value or "").replace("\r\n", "\n").strip()
+    lines = [" ".join(line.split()) for line in text.split("\n")]
+    return "\n".join(line for line in lines if line)
+
+
+def canonical_section(name: str) -> str:
+    compact = " ".join(name.split())
+    return SECTION_ALIASES.get(compact.lower(), compact)
+
+
 def normalize_brief(payload: dict) -> dict:
-    summary = osint.one_sentence(payload.get("executive_summary"))
+    summary = brief_lines(payload.get("executive_summary")).replace("\n", " ")
     if not summary:
         raise ValueError("brief had no executive summary")
-    sections = []
+    merged: dict[str, list[str]] = {}
+    extras: list[str] = []
     for item in payload.get("regional_sections") or []:
         if not isinstance(item, dict):
             continue
-        region = osint.one_sentence(item.get("region"))
-        text = osint.one_sentence(item.get("summary"))
-        if region and text:
-            sections.append({"region": region, "summary": text})
+        region = canonical_section(str(item.get("region") or ""))
+        text = brief_lines(item.get("summary"))
+        if not region or not text:
+            continue
+        bucket = merged.setdefault(region, [])
+        for line in text.split("\n"):
+            if line not in bucket:
+                bucket.append(line)
+        if region not in SECTION_TITLES and region not in extras:
+            extras.append(region)
+    order = [title for title in SECTION_TITLES if title in merged] + extras
+    sections = [{"region": title, "summary": "\n".join(merged[title])} for title in order]
     highlights = []
     for item in payload.get("advisory_highlights") or []:
-        text = osint.one_sentence(item)
-        if text:
+        text = brief_lines(item)
+        if text and text not in highlights:
             highlights.append(text)
     return {
         "executive_summary": summary,

@@ -1,11 +1,21 @@
 {
-  "generated_at": "2026-11-22T10:35:00Z",
-  "executive_summary": "The last day includes an official IDF report of a strike on a rocket launcher on the outskirts of Nabatieh in southern Lebanon. No maritime or travel advisories were in the 24-hour window.",
+  "generated_at": "2026-11-22T10:38:00Z",
+  "executive_summary": "Overnight Iranian aerial attacks struck a civilian industrial facility in Bahrain while Saudi air defenses intercepted multiple Houthi ballistic missiles across the Kingdom and two commercial tankers sustained projectile hits in the Strait of Hormuz.",
   "regional_sections": [
     {
-      "region": "Levant",
-      "summary": "The IDF said it struck a rocket launcher on the outskirts of Nabatieh. The report is an official primary account."
+      "region": "Gulf & Maritime Security",
+      "summary": "Corroborated — Overnight Iranian aerial attacks struck a civilian industrial facility in Bahrain.\nCorroborated — Two commercial tankers sustained projectile hits in the Strait of Hormuz."
+    },
+    {
+      "region": "Yemen & Red Sea",
+      "summary": "Attributed — Saudi air defenses intercepted multiple Houthi ballistic missiles across the Kingdom."
+    },
+    {
+      "region": "Levant & Regional Politics",
+      "summary": "Verified Official — The IDF said it struck a rocket launcher on the outskirts of Nabatieh in southern Lebanon."
     }
   ],
-  "advisory_highlights": []
+  "advisory_highlights": [
+    "No new official travel or embassy advisories were recorded in the last 24 hours."
+  ]
 }
