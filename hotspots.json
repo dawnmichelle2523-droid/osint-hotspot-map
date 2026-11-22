@@ -6,40 +6,15 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          56.5,
-          26.5
+          56.27,
+          26.32
         ]
       },
       "properties": {
         "severity": "high",
-        "title": "US enforcing naval blockade of all Iranian ports and coastlines with SEVERE threat level and risk of interception or attack in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "summary": "US enforcing naval blockade of all Iranian ports and coastlines with SEVERE threat level and risk of interception or attack in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          56.5,
-          26.5
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "Maritime security threat level in the Strait of Hormuz raised to SUBSTANTIAL due to projectile attacks on tankers; mariners advised of mine risk, naval presence, and to use widened southern transit route.",
-        "summary": "Maritime security threat level in the Strait of Hormuz raised to SUBSTANTIAL due to projectile attacks on tankers; mariners advised of mine risk, naval presence, and to use widened southern transit route.",
-        "timestamp": "2026-11-19T00:00:00Z",
+        "title": "JMIC Advisory Note 115 reports multiple projectile attacks on tankers in the Strait of Hormuz with SEVERE regional threat level; vessels advised to transit with extreme caution.",
+        "summary": "JMIC Advisory Note 115 reports multiple projectile attacks on tankers in the Strait of Hormuz with SEVERE regional threat level; vessels advised to transit with extreme caution.",
+        "timestamp": "2026-11-19T14:28:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_115_19-nov.pdf",
         "account": "UK_MTO",
         "handle": "UK_MTO",
@@ -56,15 +31,65 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          44.0,
-          13.0
+          56.27,
+          26.32
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "JMIC Advisory 017-26 updates US naval blockade of Iranian ports and coastlines with SEVERE threat level persisting in Gulf, Strait of Hormuz, Gulf of Oman and North Arabian Sea.",
+        "summary": "JMIC Advisory 017-26 updates US naval blockade of Iranian ports and coastlines with SEVERE threat level persisting in Gulf, Strait of Hormuz, Gulf of Oman and North Arabian Sea.",
+        "timestamp": "2026-11-18T15:48:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.27,
+          26.32
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "UKMTO Warning 216-26 reports tanker struck by unknown projectile in engine room 17 NM east of Khasab, Oman in Strait of Hormuz; no casualties, investigate and transit with caution.",
+        "summary": "UKMTO Warning 216-26 reports tanker struck by unknown projectile in engine room 17 NM east of Khasab, Oman in Strait of Hormuz; no casualties, investigate and transit with caution.",
+        "timestamp": "2026-11-21T05:50:00Z",
+        "source": "https://www.ukmto.org/recent-incidents",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": "UKMTO Warning 216-26"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          42.5,
+          12.5
         ]
       },
       "properties": {
         "severity": "medium",
-        "title": "No confirmed attacks on shipping reported in the Red Sea or Bab el-Mandeb since August 2026; threat level assessed as SUBSTANTIAL with ongoing Houthi-related blockade impacts on Saudi-linked vessels.",
-        "summary": "No confirmed attacks on shipping reported in the Red Sea or Bab el-Mandeb since August 2026; threat level assessed as SUBSTANTIAL with ongoing Houthi-related blockade impacts on Saudi-linked vessels.",
-        "timestamp": "2026-11-20T00:00:00Z",
+        "title": "VRA Overview 20 Nov 2026 notes no attacks in Southern Red Sea and Bab el-Mandeb since 24 Aug but SUBSTANTIAL threat level persists with volatile conditions and reduced transits.",
+        "summary": "VRA Overview 20 Nov 2026 notes no attacks in Southern Red Sea and Bab el-Mandeb since 24 Aug but SUBSTANTIAL threat level persists with volatile conditions and reduced transits.",
+        "timestamp": "2026-11-20T14:39:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/20261120-ukmto_vra_overview_u.pdf",
         "account": "UK_MTO",
         "handle": "UK_MTO",
