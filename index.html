@@ -136,6 +136,7 @@
       box-shadow: 0 2px 6px rgba(7, 19, 22, 0.55), 0 0 8px currentColor;
     }
     .pin.is-old { opacity: 0.55; }
+    path.thermal-heat { filter: drop-shadow(0 0 4px #ff6b00); }
     .pin .ring { position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
     .pin.is-fresh .ring { animation: pulse 1.8s ease-out infinite; }
     @keyframes pulse {
@@ -334,6 +335,7 @@
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
     <button type="button" data-jump="levant">Levant</button>
     <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
+    <button type="button" id="thermal-toggle" aria-pressed="false">🔥 Satellite Heat (24h)</button>
     <button type="button" id="summarize-governorate">Summarize Governorate</button>
   </nav>
   <div class="legend">
@@ -445,6 +447,8 @@
     let features = [];
     let generatedAt = null;
     let clusterLayer = null;
+    let thermalOn = false;
+    const thermalLayer = L.layerGroup();
     let loadedOnce = false;
     let timeWindow = "all";
     let severity = "all";
@@ -776,6 +780,7 @@
         clusterLayer.addLayer(marker);
       });
       map.addLayer(clusterLayer);
+      if (thermalOn && !map.hasLayer(thermalLayer)) thermalLayer.addTo(map);
       syncControls(visible.length);
       updateSearchCount(visible.length);
       renderHeadlines(visible);
@@ -1082,6 +1087,87 @@
 
     document.getElementById("syria-governorates").addEventListener("click", () => {
       toggleSyriaGovernorates(document.getElementById("syria-governorates"));
+      if (thermalOn && !map.hasLayer(thermalLayer)) thermalLayer.addTo(map);
+    });
+    function thermalRadius(frp) {
+      const value = Number(frp);
+      if (!Number.isFinite(value) || value <= 0) return 5;
+      return Math.max(5, Math.min(12, 5 + Math.log10(value + 1) * 2.5));
+    }
+
+    function thermalWhen(point) {
+      const date = String(point.acq_date || "").trim();
+      const raw = String(point.acq_time || "").trim();
+      let clock = raw;
+      if (/^\d{1,4}$/.test(raw)) {
+        const digits = raw.padStart(4, "0");
+        clock = digits.slice(0, 2) + ":" + digits.slice(2);
+      }
+      const stamp = (date + " " + clock).trim();
+      return stamp ? stamp + " UTC" : "Unknown";
+    }
+
+    function thermalPopup(point) {
+      const lat = Number(point.latitude);
+      const lng = Number(point.longitude);
+      const frp = Number(point.frp);
+      const power = Number.isFinite(frp) ? frp.toFixed(1) : "Unknown";
+      return (
+        '<div class="popup">' +
+          "<h3>Satellite heat</h3>" +
+          "<p>Detection Time (UTC): " + esc(thermalWhen(point).replace(/ UTC$/, "")) + "</p>" +
+          "<p>Fire Radiative Power (MW): " + esc(power) + "</p>" +
+          "<p>Confidence: " + esc(point.confidence || "Unknown") + "</p>" +
+          "<p>Coordinates: " + esc(lat.toFixed(4) + ", " + lng.toFixed(4)) + "</p>" +
+        "</div>"
+      );
+    }
+
+    async function setThermal(on) {
+      thermalOn = on;
+      const button = document.getElementById("thermal-toggle");
+      button.setAttribute("aria-pressed", String(on));
+      if (!on) {
+        thermalLayer.clearLayers();
+        if (map.hasLayer(thermalLayer)) map.removeLayer(thermalLayer);
+        return;
+      }
+      if (!map.hasLayer(thermalLayer)) thermalLayer.addTo(map);
+      try {
+        const response = await fetch("/api/thermal", { cache: "no-store" });
+        const data = await response.json();
+        if (!thermalOn) return;
+        thermalLayer.clearLayers();
+        if (!data.configured) {
+          setStatus(data.status || "NASA FIRMS is not configured. Satellite heat was not requested.");
+          return;
+        }
+        const points = Array.isArray(data.points) ? data.points : [];
+        points.forEach((point) => {
+          const lat = Number(point.latitude);
+          const lng = Number(point.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          L.circleMarker([lat, lng], {
+            radius: thermalRadius(point.frp),
+            color: "#ff6b00",
+            weight: 1,
+            fillColor: "#ff6b00",
+            fillOpacity: 0.82,
+            className: "thermal-heat"
+          }).bindPopup(thermalPopup(point)).addTo(thermalLayer);
+        });
+        if (!points.length) {
+          setStatus(data.status && data.status !== "ok" && data.status !== "cached" ? data.status : "No satellite heat detections in the last 24 hours.");
+        } else {
+          setStatus("");
+        }
+      } catch (err) {
+        if (thermalOn) setStatus("Satellite heat could not be loaded.");
+      }
+    }
+
+    document.getElementById("thermal-toggle").addEventListener("click", () => {
+      setThermal(!thermalOn);
     });
     document.getElementById("summarize-governorate").addEventListener("click", () => {
       if (!selectedGovernorate) {
