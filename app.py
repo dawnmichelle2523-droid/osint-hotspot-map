@@ -79,7 +79,13 @@ def static_file(filename: str) -> Response:
 
 
 _enable_basic_auth()
-serve_map.start_background()
+if hasattr(serve_map, "start_background"):
+    serve_map.start_background()
+elif hasattr(serve_map, "start_background_threads"):
+    serve_map.start_background_threads()
+elif hasattr(serve_map, "init_db"):
+    serve_map.init_db()
+
 
 
 if __name__ == "__main__":
