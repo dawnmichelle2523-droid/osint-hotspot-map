@@ -47,7 +47,7 @@ _db_file = Path(DB_PATH)
 FEEDS_DB = _db_file if _db_file.is_absolute() else ROOT / _db_file
 POLL_SECONDS = 120
 BATCH_SIZE = 7
-X_BATCH_SIZE = 2
+X_BATCH_SIZE = 8
 RSS_BATCH_SIZE = 2
 MAX_NEW_PER_CYCLE = 6
 LIVE_WINDOW = timedelta(hours=72)
@@ -85,7 +85,17 @@ RSS_FEEDS = [
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
     ("Sudan Tribune", "https://sudantribune.com/feed/"),
     ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
+    ("Middle East Monitor", "https://www.middleeastmonitor.com/feed/"),
+    ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
+    ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
+    ("Kurdistan24", "https://www.kurdistan24.net/en/rss"),
+    ("ISW", "https://www.understandingwar.org/rss.xml"),
 ]
+# These two pages are notices, not always RSS. Never fetch https://mofa.go.jp itself.
+HTML_NOTICE_FEEDS = {
+    "https://www.ukmto.org/partner-products/jmic-products": "UKMTO JMIC",
+    "https://www.anzen.mofa.go.jp/": "MOFA Japan Anzen",
+}
 # Configurable public OSINT channels, read from the t.me/s preview page.
 TELEGRAM_CHANNELS = [
     "conflictarchive",
@@ -140,36 +150,56 @@ TELEGRAM_CHANNELS = [
     "alrakoba_sudan",
     "SudanTribune",
 ]
-X_HANDLES = [
-    "syr_television",
-    "SyriacOSINT",
-    "QalaatAlMudiq",
-    "Charles_Lister",
-    "GregoryPWaters",
-    "OSINTWarfare",
-    "Osinttechnical",
-    "AfriMEOSINT",
-    "AuroraIntel",
-    "OSINTdefender",
-    "sentdefender",
-    "IntelCrab",
-    "clashreport",
-    "CENTCOM",
-    "UK_MTO",
-    "IranIntl_En",
-    "RudawEnglish",
-    "IraqiOsint",
-    "K24English",
-    "ShafaqNews",
-    "Tammuz_Intel",
-    "IraqSecurity",
-    "Levant_24_",
-    "SudanWarMonitor",
-    "DabangaSudan",
-    "SudanTribune_EN",
-    "PatrickHeinisc1",
-    "vista_sudan",
+# The first seven are the start of every rotation. Later names are added once.
+_X_HANDLE_GROUPS = [
+    ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali"],
+    [
+        "CJFCSpox", "SaudiDCD", "kbsalsaud", "FaisalbinFarhan", "KKIASA", "ksagaca", "Spa_Eng", "SPAregions",
+        "SaudiNews50", "saudiexpat", "Yah_Saree", "MMY1444", "FaresALhemyari", "abda_sharif", "Yemen_PM",
+    ],
+    [
+        "MKhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "IRIMFA_SPOX", "ir_rezaee",
+        "mmohammadii61", "hatami_org", "Gharibabadi", "IRAN_in_KUWAIT", "smajid__moosavi", "iribnews_irib",
+        "PressTV", "tasnimarabic1", "iranintl_en", "ReutersIran", "s_m_marandi", "IRNA_English", "FarsNews_Agency",
+    ],
+    ["IraqiPMO", "thenewregion", "RudawEnglish", "Kurdistan24", "shafaqnewsarb"],
+    ["_MartinKelly_", "MBA_AlThani_", "majedalansari", "mofauae", "AnwarGargash"],
+    ["syrianmofaex", "Levant_24_", "SANAEnOfficial", "Sana__gov", "AlekhbariahSY", "AsharqNewsSYR"],
+    [
+        "IDF", "idfonline", "IDFSpokesperson", "AvichayAdraee", "netanyahu", "IsraelPresident", "IsraelMFA",
+        "israel_katz", "gadi_eisenkot", "gantzbe", "yairlapid", "NaftaliBennett", "AvigdorLiberman",
+        "yairgolan10", "ILRedAlert", "manniefabian", "BarakRavid", "kaisos1987", "ME_Observer_",
+        "LBpresidency", "NNALeb", "LebarmyOfficial", "KingAbdullahII", "usembassybeirut", "usembassyjordan",
+        "LOrientLeJour",
+    ],
+    [
+        "RTErdogan", "usambturkiye", "CENTCOM", "CENTCOMFarsi", "StateDeptSpox", "TravelGov", "RapidResponse47",
+        "JDVance", "SecScottBessent", "SecRubio", "RepJoeWilson", "UN", "antonioguterres", "USUN", "USAinKSA",
+        "USAbilAraby", "USAbehFarsi", "GermanyDiplo", "PorteParoleMEAE", "TheStudyofWar", "FCDOtravelGovUK",
+        "TravelGoC", "SafeTravelNZ", "Smartraveller", "sentdefender", "InsiderGeo", "MATA_osint",
+        "faytuksnetwork", "MenchOsint", "DefenceGeek", "WSJ", "uniindianews", "AlarabyTV", "AlHadath",
+        "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "AFP", "anadoluagency", "BBCWorld", "CNN",
+        "SkyNews", "AJEnglish", "aawsat_News", "timesofisrael", "Jerusalem_Post", "ynetnews",
+    ],
+    [
+        "syr_television", "SyriacOSINT", "QalaatAlMudiq", "Charles_Lister", "GregoryPWaters", "OSINTWarfare",
+        "Osinttechnical", "AfriMEOSINT", "AuroraIntel", "OSINTdefender", "IntelCrab", "clashreport",
+        "IraqiOsint", "K24English", "ShafaqNews", "Tammuz_Intel", "IraqSecurity", "SudanWarMonitor",
+        "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
+    ],
 ]
+EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72"}
+X_HANDLES = []
+_seen_x_handles = set()
+for _group in _X_HANDLE_GROUPS:
+    for _handle in _group:
+        _key = _handle.lower()
+        if _key in EXCLUDED_SOURCE_HANDLES or _key in _seen_x_handles:
+            continue
+        _seen_x_handles.add(_key)
+        X_HANDLES.append(_handle)
+del _group, _handle, _key, _seen_x_handles
+BROAD_X_HANDLES = {handle.lower() for group in _X_HANDLE_GROUPS[:-1] for handle in group}
 SUDAN_X_HANDLES = {
     "sudanwarmonitor",
     "dabangasudan",
@@ -184,6 +214,10 @@ IRAQ_X_HANDLES = {
     "shafaqnews",
     "tammuz_intel",
     "iraqsecurity",
+    "iraqipmo",
+    "thenewregion",
+    "kurdistan24",
+    "shafaqnewsarb",
 }
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
@@ -580,23 +614,6 @@ def region_name(value: object) -> str:
     return "Other / International"
 
 
-_OFFICIAL_MARKERS = (
-    "sananewsenglish",
-    "syrianarabnewsagency",
-    "televisionsyria",
-    "alekhbariahsy",
-    "irna",
-    "kuna",
-    "bna",
-    "petra",
-    "centcom",
-    "ukmto",
-    "sweidagov",
-    "syrtelevision",
-    "reuters",
-    "apnews",
-    "associatedpress",
-)
 _OSINT_MARKERS = (
     "osintdefender",
     "auroraintel",
@@ -638,22 +655,160 @@ def source_identity(kind: str = "", name: str = "", url: str = "") -> str:
     return " ".join(parts)
 
 
-def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
-    """Official for state wires, OSINT for known accounts, otherwise Regional Media."""
+_LEAD_HANDLES = {
+    "sentdefender", "faytuksnetwork", "menchosint", "me_observer_", "insidergeo", "mata_osint",
+    "defencegeek", "_martinkelly_", "mmy1444", "smajid__moosavi",
+}
+_WIRE_NAMES = {
+    "reuters", "arareuters", "reutersiran", "ap", "afp", "afpar", "bbc", "bbcarabic", "bbcworld",
+    "cnn", "sky", "skynews", "anadolu", "anadoluagency", "aljazeera", "ajenglish", "alarabiya",
+    "alarabytv", "alhadath", "asharq", "aawsat", "aawsat_news", "timesofisrael", "jerusalem_post",
+    "ynet", "ynetnews", "rudaw", "rudawenglish", "kurdistan24", "k24english", "shafaq", "shafaqnews",
+    "shafaqnewsarb", "nna", "nnaleb", "thenewregion", "wsj", "uniindianews", "lorientlejour",
+    "iranintl", "iranintl_en", "middleeastmonitor", "thestudyofwar", "understandingwar", "isw",
+    "levant_24_", "levant24",
+}
+_OFFICIAL_HANDLES = {
+    "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en", "uk_mto",
+    "alsakaniali", "cjfcspox", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
+    "yemen_pm", "mkhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "irimfa_spox",
+    "ir_rezaee", "mmohammadii61", "hatami_org", "gharibabadi", "iran_in_kuwait", "iraqipmo",
+    "mba_althani_", "majedalansari", "mofauae", "anwargargash", "syrianmofaex", "idf", "idfonline",
+    "idfspokesperson", "avichayadraee", "netanyahu", "israelpresident", "israelmfa", "israel_katz",
+    "gadi_eisenkot", "gantzbe", "yairlapid", "naftalibennett", "avigdorliberman", "yairgolan10",
+    "kaisos1987", "lbpresidency", "lebarmyofficial", "kingabdullahii", "usembassybeirut",
+    "usembassyjordan", "rterdogan", "usambturkiye", "centcom", "centcomfarsi", "statedeptspox",
+    "travelgov", "rapidresponse47", "jdvance", "secscottbessent", "secrubio", "repjoewilson",
+    "un", "antonioguterres", "usun", "usainksa", "usabilaraby", "usabehfarsi", "germanydiplo",
+    "porteparolemeae", "fcdottravelgovuk", "travelgoc", "safetravelnz", "smartraveller",
+}
+_STATE_LABELS = (
+    ("presstv", "Press TV"),
+    ("irna", "IRNA"),
+    ("tasnim", "Tasnim"),
+    ("farsnews", "Fars"),
+    ("irib", "IRIB"),
+    ("sana", "SANA"),
+    ("alekhbariah", "Alekhbariah Syria"),
+    ("almasirah", "Al Masirah"),
+    ("sabanews", "Saba"),
+)
+
+
+def _identity_parts(kind: str = "", name: str = "", url: str = "") -> tuple[str, set[str], str]:
     raw = source_identity(kind, name, url).lower()
+    tokens = set(re.findall(r"[a-z0-9_]+", raw))
     compact = re.sub(r"[^a-z0-9]+", "", raw)
-    words = set(re.findall(r"[a-z0-9]+", raw))
+    return raw, tokens, compact
+
+
+def _named(tokens: set[str], compact: str, names: set[str]) -> bool:
+    for name in names:
+        key = name.lower().strip("@")
+        squashed = re.sub(r"[^a-z0-9]+", "", key)
+        if key in tokens or (squashed and squashed in tokens):
+            return True
+        if len(squashed) >= 5 and squashed in compact:
+            return True
+    return False
+
+
+def is_excluded_source(*parts: object) -> bool:
+    """True for the blocked accounts. Yah_Saree is a different handle and stays."""
+    tokens: set[str] = set()
+    for part in parts:
+        tokens.update(re.findall(r"[a-z0-9_]+", str(part or "").lower()))
+    squashed = {token.replace("_", "") for token in tokens}
+    for handle in EXCLUDED_SOURCE_HANDLES:
+        if handle in tokens or handle.replace("_", "") in squashed:
+            return True
+    return False
+
+
+def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
+    """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
+    raw, tokens, compact = _identity_parts(kind, name, url)
+    if _named(tokens, compact, _LEAD_HANDLES):
+        return "Lead (Unverified)"
+    state_prefix = ("sana", "irna", "irib", "presstv", "tasnim", "alekhbariah", "almasirah", "farsnews")
+    if any(token == prefix or token.startswith(prefix) for token in tokens for prefix in state_prefix):
+        return "State Media"
+    if "fars" in tokens or "saba" in tokens or "sabanews" in compact or "saba.ye" in raw:
+        return "State Media"
+    if any(host in raw for host in (
+        "reuters.com", "apnews.com", "bbc.co.uk", "bbc.com", "cnn.com", "sky.com", "aa.com.tr",
+        "aljazeera.com", "alarabiya.net", "aawsat.com", "timesofisrael.com", "rudaw.net",
+        "kurdistan24.net", "shafaq.com", "nna-leb", "middleeastmonitor.com", "iranintl.com",
+        "jpost.com", "ynetnews.com", "understandingwar.org", "lorientlejour.com",
+    )):
+        return "Wire / Outlet"
+    if _named(tokens, compact, _WIRE_NAMES):
+        return "Wire / Outlet"
+    if "anzen.mofa.go.jp" in raw or "ukmto.org" in raw:
+        return "Official"
+    if _named(tokens, compact, _OFFICIAL_HANDLES):
+        return "Official"
+    if tokens & {"embassy", "centcom", "ukmto"} or "ministry" in tokens or "mofa" in tokens:
+        return "Official"
     if "osint" in compact or any(marker in compact for marker in _OSINT_MARKERS):
         return "OSINT"
-    if any(marker in compact for marker in _OFFICIAL_MARKERS):
-        return "Official"
-    if "associated" in words and "press" in words:
-        return "Official"
-    if words & {"sana", "irna", "kuna", "bna", "petra", "centcom", "ukmto", "reuters"}:
-        return "Official"
-    if "ap" in words and ("news" in words or "middle" in words):
-        return "Official"
     return "Regional Media"
+
+
+def claim_outlet(kind: str = "", name: str = "", url: str = "") -> str:
+    """State media and ISW need the outlet named in the English title or summary."""
+    raw, tokens, compact = _identity_parts(kind, name, url)
+    if "understandingwar" in compact or "thestudyofwar" in compact or "isw" in tokens:
+        return "ISW"
+    if "fars" in tokens or "farsnews" in compact:
+        return "Fars"
+    if "saba" in tokens or "sabanews" in compact:
+        return "Saba"
+    for key, label in _STATE_LABELS:
+        if key in ("farsnews", "sabanews"):
+            continue
+        if key in compact:
+            return label
+    return ""
+
+
+def enemy_forces_source(kind: str = "", name: str = "", url: str = "") -> bool:
+    _raw, _tokens, compact = _identity_parts(kind, name, url)
+    return "alekhbariah" in compact or "nnaleb" in compact
+
+
+_LATENESS = re.compile(
+    r"\b(?:about\s+|some\s+|several\s+|a few\s+)?(?:\d+\s+)?(?:hours?|minutes?|days?)\s+later\b"
+    r"|\blate(?:\s+on)?\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|last night|tonight|yesterday|today)\b",
+    re.IGNORECASE,
+)
+_ENEMY_FORCES = re.compile(r"\benemy forces\b", re.IGNORECASE)
+_HOUTHI = re.compile(r"\bHouthi(?:s)?\b", re.IGNORECASE)
+
+
+def strip_lateness(text: str) -> str:
+    cleaned = _LATENESS.sub("", str(text or ""))
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.;:])", r"\1", cleaned)
+    return cleaned.strip(" ,;:-")
+
+
+def apply_house_style(title: str, summary: str, kind: str = "", name: str = "", url: str = "") -> tuple[str, str]:
+    """English house style. The original post text is left untouched."""
+    next_title = strip_lateness(title)
+    next_summary = strip_lateness(summary)
+    next_title = _HOUTHI.sub("Ansarallah", next_title)
+    next_summary = _HOUTHI.sub("Ansarallah", next_summary)
+    if enemy_forces_source(kind, name, url):
+        next_title = _ENEMY_FORCES.sub("Israeli forces", next_title)
+        next_summary = _ENEMY_FORCES.sub("Israeli forces", next_summary)
+    outlet = claim_outlet(kind, name, url)
+    blob = f"{next_title} {next_summary}".lower()
+    attributed = outlet and (outlet.lower() in blob or (outlet == "ISW" and "institute for the study of war" in blob))
+    if outlet and not attributed:
+        sentence = next_summary or next_title
+        next_summary = f"{outlet}: {sentence}".strip()
+    return next_title.strip(), next_summary.strip()
 
 
 def backfill_source_tiers(conn: sqlite3.Connection) -> None:
@@ -661,12 +816,12 @@ def backfill_source_tiers(conn: sqlite3.Connection) -> None:
     if "source_tier" not in columns:
         return
     rows = conn.execute(
-        "SELECT id, source_url, source_name, source_kind, source_tier FROM items "
-        "WHERE source_tier IS NULL OR source_tier = ''"
+        "SELECT id, source_url, source_name, source_kind, source_tier FROM items"
     ).fetchall()
     for row in rows:
         tier = source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
-        conn.execute("UPDATE items SET source_tier = ? WHERE id = ?", (tier, row["id"]))
+        if tier != (row["source_tier"] or ""):
+            conn.execute("UPDATE items SET source_tier = ? WHERE id = ?", (tier, row["id"]))
 
 
 def load_features() -> list[dict]:
@@ -1093,6 +1248,8 @@ def feed_features() -> list[dict]:
         lat = row["lat"]
         if not osint.valid_coord(lng, lat):
             continue
+        if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"]):
+            continue
         props = {
             "severity": osint.live_severity(row["severity"]),
             "title": row["title"],
@@ -1151,16 +1308,70 @@ def parse_feed(content: bytes):
     return feedparser.parse(content)
 
 
-def fetch_rss_feed(name: str, url: str) -> list[dict]:
+def looks_like_feed(content: bytes) -> bool:
+    sample = content.lstrip()[:800].lower()
+    return sample.startswith((b"<?xml", b"<rss", b"<feed")) or b"<rss" in sample or b"<feed" in sample
+
+
+def notice_page(url: str) -> bool:
+    cleaned = url.rstrip("/")
+    return any(cleaned == candidate.rstrip("/") for candidate in HTML_NOTICE_FEEDS)
+
+
+def html_notice_items(name: str, url: str, content: bytes) -> list[dict]:
+    """Visible notice titles from one HTML page. A bad page is skipped."""
     try:
-        response = paced_get(url)
-        response.raise_for_status()
+        soup = BeautifulSoup(content, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header"]):
+            tag.decompose()
+        found = []
+        seen = set()
+        for node in soup.select("article h1, article h2, article h3, h2, h3, li a, article a"):
+            text = " ".join(node.get_text(" ", strip=True).split())
+            if not 25 <= len(text) <= 220:
+                continue
+            key = text.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+            found.append(
+                {
+                    "title": text[:240],
+                    "summary": text[:500],
+                    "source_url": f"{url}#notice-{digest}",
+                    "source_name": source_label("rss", name),
+                    "source_kind": "rss",
+                    "published_at": "",
+                }
+            )
+            if len(found) >= 12:
+                break
     except Exception as exc:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
         note_feed("rss", name, False, exc.__class__.__name__)
         return []
+    if not found:
+        print(f"RSS {name} failed: no notices.")
+        note_feed("rss", name, False, "no notices")
+        return []
+    note_feed("rss", name, True, "")
+    return found
+
+
+def fetch_rss_feed(name: str, url: str) -> list[dict]:
     try:
-        parsed = parse_feed(response.content)
+        response = paced_get(url)
+        response.raise_for_status()
+        content = response.content or b""
+    except Exception as exc:
+        print(f"RSS {name} failed: {exc.__class__.__name__}.")
+        note_feed("rss", name, False, exc.__class__.__name__)
+        return []
+    if notice_page(url) and not looks_like_feed(content):
+        return html_notice_items(name, url, content)
+    try:
+        parsed = parse_feed(content)
     except Exception as exc:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
         note_feed("rss", name, False, exc.__class__.__name__)
@@ -1266,14 +1477,39 @@ def x_handle_from_item(item: dict) -> str:
     return ""
 
 
+def mentions_broad_theater(text: str) -> bool:
+    """Gulf, Levant, Iran, maritime, Sudan, or Iraq. Used for the widened X sweep."""
+    if mentions_syria_or_middle_east(text) or mentions_sudan_or_horn(text) or iraq_mention(text):
+        return True
+    lowered = text.lower()
+    latin = (
+        "bahrain", "kuwait", "qatar", "uae", "emirates", "oman", "saudi", "yemen", "houthi",
+        "ansarallah", "iran", "tehran", "israel", "gaza", "palestine", "west bank", "lebanon",
+        "beirut", "hezbollah", "jordan", "amman", "hormuz", "red sea", "bab el-mandeb",
+        "bab al-mandab", "ukmto", "jmic", "gulf of oman", "persian gulf", "arabian sea",
+        "turkey", "turkiye", "ankara",
+    )
+    if any(term in lowered for term in latin):
+        return True
+    return any(term in text for term in (
+        "البحرين", "الكويت", "قطر", "الإمارات", "الامارات", "عمان", "السعود", "اليمن", "الحوث",
+        "أنصار الله", "انصار الله", "إيران", "ايران", "إسرائيل", "اسرائيل", "غزة", "فلسطين",
+        "لبنان", "بيروت", "حزب الله", "الأردن", "الاردن", "هرمز", "البحر الأحمر", "تركيا",
+    ))
+
+
 def keep_x_post(handle: str, text: str) -> bool:
     """Syria and Middle East posts stay. Sudan and Iraq accounts also keep their own regions."""
+    if is_excluded_source(handle):
+        return False
     if mentions_syria_or_middle_east(text):
         return True
     lowered = handle.lower()
     if lowered in SUDAN_X_HANDLES and mentions_sudan_or_horn(text):
         return True
-    return lowered in IRAQ_X_HANDLES and iraq_mention(text)
+    if lowered in IRAQ_X_HANDLES and iraq_mention(text):
+        return True
+    return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
 
 
 def canonical_x_url(handle: str, link: str, guid: str) -> str:
@@ -1731,7 +1967,41 @@ def backfill_iraq_rows() -> int:
     return updated
 
 
+def drop_excluded_items() -> int:
+    """Remove rows from the blocked accounts. Yah_Saree rows stay."""
+    removed = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute("SELECT id, source_name, source_url, source_kind FROM items").fetchall()
+            ids = [
+                row["id"]
+                for row in rows
+                if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"])
+            ]
+            if ids:
+                conn.executemany("DELETE FROM items WHERE id = ?", [(item_id,) for item_id in ids])
+                conn.commit()
+                removed = len(ids)
+                print(f"Dropped {removed} excluded source item(s).")
+        finally:
+            conn.close()
+    return removed
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
+        return False
+    styled_title, styled_summary = apply_house_style(
+        item.get("title") or "",
+        item.get("summary") or "",
+        item.get("source_kind") or "",
+        item.get("source_name") or "",
+        item.get("source_url") or "",
+    )
+    item = dict(item)
+    item["title"] = styled_title or item.get("title") or ""
+    item["summary"] = styled_summary or item.get("summary") or ""
     blob = " ".join(
         str(part or "")
         for part in (
@@ -1827,6 +2097,13 @@ def save_classified_item(item: dict, now: datetime) -> bool:
         stored["title"] = english_title[:240]
     if english_summary and not needs_english(english_summary):
         stored["summary"] = english_summary[:500]
+    stored["title"], stored["summary"] = apply_house_style(
+        stored.get("title") or "",
+        stored.get("summary") or "",
+        stored.get("source_kind") or "",
+        stored.get("source_name") or "",
+        stored.get("source_url") or "",
+    )
     return insert_item(stored, placed, now)
 
 
@@ -1888,6 +2165,7 @@ def ingest_feeds() -> dict:
             backfill_coordinates(now)
             backfill_sudan_rows()
             backfill_iraq_rows()
+            drop_excluded_items()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
             )
@@ -2045,7 +2323,10 @@ def summaries_due() -> bool:
 def call_24h_summary(grouped: dict[str, list[dict]], now: datetime, key: str) -> tuple[str, dict[str, str]]:
     prompt = (
         "Write a 24-hour geopolitical summary in English. Use only the grouped incidents below. "
-        "Do not use live search and do not add events that are not listed.\n"
+        "Do not use live search and do not add events that are not listed. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "Attribute state media and ISW assessments to the outlet. "
+        "Do not add timing or lateness markers such as late or hours later.\n"
         f"As of {osint.format_timestamp(now)} UTC.\n"
         "overall is 2-4 sentences for the whole theater.\n"
         "regions has one short paragraph for each of these keys exactly: "
@@ -2074,13 +2355,13 @@ def call_24h_summary(grouped: dict[str, list[dict]], now: datetime, key: str) ->
     if not text:
         raise RuntimeError("xAI response did not include output text")
     payload = osint.parse_json_object(text)
-    overall = " ".join(str(payload.get("overall") or "").split())
+    overall = strip_lateness(" ".join(str(payload.get("overall") or "").split()))
     if not overall:
         raise RuntimeError("xAI response had no overall summary")
     raw_regions = payload.get("regions") if isinstance(payload.get("regions"), dict) else {}
     regions = {}
     for name in REGIONS:
-        note = " ".join(str(raw_regions.get(name) or "").split())
+        note = strip_lateness(" ".join(str(raw_regions.get(name) or "").split()))
         if not grouped.get(name) or not note:
             note = EMPTY_REGION_TEXT
         regions[name] = note
@@ -2368,7 +2649,10 @@ def summary_prompt(events: list[dict], counts: dict[str, int], now: datetime) ->
     return (
         "Write a concise real-time geopolitical situation summary in English. "
         "Use only the live incidents and counts below. Do not use live search and do not add events "
-        "that are not in this list.\n"
+        "that are not in this list. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "Attribute state media and ISW assessments to the outlet. "
+        "Do not add timing or lateness markers such as late or hours later.\n"
         f"As of {osint.format_timestamp(now)} UTC.\n"
         "Cover " + ", ".join(REGIONS) + ".\n"
         "summary is 2-4 sentences for the whole theater.\n"
@@ -2397,7 +2681,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
     if not text:
         raise RuntimeError("xAI response did not include output text")
     payload = osint.parse_json_object(text)
-    summary = " ".join(str(payload.get("summary") or "").split())
+    summary = strip_lateness(" ".join(str(payload.get("summary") or "").split()))
     if not summary:
         raise RuntimeError("xAI response had no summary")
     notes = []
@@ -2405,7 +2689,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
         if not isinstance(item, dict):
             continue
         region = " ".join(str(item.get("region") or "").split())
-        note = " ".join(str(item.get("note") or "").split())
+        note = strip_lateness(" ".join(str(item.get("note") or "").split()))
         if region and note:
             notes.append({"region": region, "note": note})
     return {
@@ -2591,6 +2875,7 @@ def start_background() -> None:
         backfill_coordinates()
         backfill_sudan_rows()
         backfill_iraq_rows()
+        drop_excluded_items()
         _threads_started = True
     start_translation_pass()
     start_poller()
@@ -2841,7 +3126,10 @@ def briefing_narrative(events: list[dict], report_type: str, start: datetime, en
     ]
     prompt = (
         "Write an English OSINT briefing from only the incidents below. "
-        "Do not use live search and do not add events that are not listed.\n"
+        "Do not use live search and do not add events that are not listed. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "Attribute state media and ISW assessments to the outlet. "
+        "Do not add timing or lateness markers such as late or hours later.\n"
         f"{report_type} window {format_briefing_window(start, end)}.\n"
         "overall is 2-4 sentences. regions has one short paragraph for each region key. "
         "syria is a short field summary of Syrian governorates mentioned.\n\n"
@@ -2866,12 +3154,12 @@ def briefing_narrative(events: list[dict], report_type: str, start: datetime, en
         payload = osint.parse_json_object(text) if text else None
         if not isinstance(payload, dict):
             raise RuntimeError("xAI response was not an object")
-        overall = " ".join(str(payload.get("overall") or "").split()) or fallback["overall"]
+        overall = strip_lateness(" ".join(str(payload.get("overall") or "").split())) or fallback["overall"]
         raw_regions = payload.get("regions") if isinstance(payload.get("regions"), dict) else {}
         regions = {}
         for name in REGIONS:
-            regions[name] = " ".join(str(raw_regions.get(name) or "").split()) or fallback["regions"][name]
-        syria = " ".join(str(payload.get("syria") or "").split()) or fallback["syria"]
+            regions[name] = strip_lateness(" ".join(str(raw_regions.get(name) or "").split())) or fallback["regions"][name]
+        syria = strip_lateness(" ".join(str(payload.get("syria") or "").split())) or fallback["syria"]
         return {"overall": overall, "regions": regions, "syria": syria}
     except Exception as exc:
         print(f"Briefing summary failed: {osint.public_error(exc, key)}. Using a short fallback.")

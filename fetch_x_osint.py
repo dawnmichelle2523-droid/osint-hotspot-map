@@ -271,7 +271,9 @@ def clean_handle(value: object) -> str:
 
 
 def excluded_set(handles: list) -> set[str]:
-    return {clean_handle(handle).lower() for handle in handles if clean_handle(handle)}
+    found = {clean_handle(handle).lower() for handle in handles if clean_handle(handle)}
+    found.update(BLOCKED_HANDLES)
+    return found
 
 
 def canonical_handle(value: object, allowed: list[str]) -> str | None:
@@ -616,7 +618,11 @@ def extract_location(headline: str) -> dict | None:
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the title or summary is Arabic, including Sudanese or Iraqi Arabic, Kurdish, Farsi, or Hebrew, title and summary must be clear English. "
+        "When the title or summary is Arabic, including Sudanese or Iraqi Arabic, Kurdish, Persian, Farsi, or Hebrew, or when it is French, title and summary must be concise English. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "When AlekhbariahSY or NNALeb says enemy forces, write Israeli forces. "
+        "Attribute state media and ISW assessments to the outlet in the title or summary. "
+        "Do not add timing or lateness markers such as late or hours later. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
         "Preserve place names, governorates, and unit names accurately. "
@@ -1121,10 +1127,15 @@ def feature_handle(feature: dict) -> str:
     return clean_handle(props.get("handle") or props.get("account")).lower()
 
 
+BLOCKED_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72"}
+
+
 def feature_excluded(feature: dict, excluded: set[str]) -> bool:
     handle = feature_handle(feature)
     parsed = status_parts(source_of(feature))
     source_handle = parsed[0].lower() if parsed else ""
+    if handle in BLOCKED_HANDLES or source_handle in BLOCKED_HANDLES:
+        return True
     if handle in BAHRAIN_HANDLES or source_handle in BAHRAIN_HANDLES:
         return False
     if handle in excluded:
@@ -1325,7 +1336,11 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
         f"Never include, cite, quote, or mention these accounts: {excluded_line}\n"
         f"UTC window: {format_timestamp(start)} through {format_timestamp(end)}. "
         "Keep posts from the last 24 hours only. Omit anything outside that window.\n"
-        "Translate Arabic, Persian, and French into one concise factual English sentence.\n"
+        "Translate Arabic, Persian, and French into one concise factual English sentence. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "When AlekhbariahSY or NNALeb says enemy forces, write Israeli forces. "
+        "Attribute state media and ISW assessments to the outlet. "
+        "Do not add timing or lateness markers such as late or hours later.\n"
         "Do not invent coordinates. Omit an incident if the post does not locate it.\n"
         "severity is exactly high, medium, or low.\n"
         "timestamp is UTC ISO 8601 with a Z suffix, for example 2026-11-21T15:00:00Z.\n"

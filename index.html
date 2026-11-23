@@ -360,7 +360,11 @@
     .region-delta.up { color: #e07a72; }
     .region-delta.down, .region-delta.flat { color: #8b97a3; }
     .badge-tier-official { background: #1c1810; color: #F3C64F; border: 1px solid #8a6d29; }
+    .badge-tier-state { background: #1a1214; color: #e7b3b0; border: 1px solid #6e3d3d; }
+    .badge-tier-lead { background: #16140f; color: #d9c48a; border: 1px solid #6d5a32; }
+    .badge-tier-wire { background: #10161c; color: #b9c7d6; border: 1px solid #3d4d5c; }
     .badge-tier-osint { background: #11151a; color: #d5e4e8; border: 1px solid #3a4650; }
+    .badge-tier-regional { background: #121614; color: #c5d2c4; border: 1px solid #3d4a40; }
     .badge-tier-corroborated { background: #1a1504; color: #F3C64F; border: 1px solid #F3C64F; }
     .chokepoint-label { background: transparent; border: 0; color: #F3C64F; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
     button.bar-row[aria-pressed="true"] {
@@ -775,14 +779,23 @@
     }
 
     function trustBadge(props) {
+      const labels = {
+        "Official": ["Official", "badge-tier-official"],
+        "State Media": ["State Media", "badge-tier-state"],
+        "Lead (Unverified)": ["Lead (Unverified)", "badge-tier-lead"],
+        "Wire / Outlet": ["Wire / Outlet", "badge-tier-wire"],
+        "OSINT": ["OSINT", "badge-tier-osint"],
+        "Regional Media": ["Regional Media", "badge-tier-regional"]
+      };
+      const tier = labels[String(props.source_tier || "")];
+      const badge = tier
+        ? '<span class="badge ' + tier[1] + '">' + esc(tier[0]) + "</span>"
+        : "";
       const count = Number(props.corroboration_count);
-      if (Number.isFinite(count) && count > 1) {
-        return '<span class="badge badge-tier-corroborated">Corroborated (' + count + 'x)</span>';
-      }
-      const tier = String(props.source_tier || "");
-      if (tier === "Official") return '<span class="badge badge-tier-official">Official</span>';
-      if (tier === "OSINT") return '<span class="badge badge-tier-osint">OSINT</span>';
-      return "";
+      const corroborated = Number.isFinite(count) && count > 1
+        ? '<span class="badge badge-tier-corroborated">Corroborated (' + count + 'x)</span>'
+        : "";
+      return badge + corroborated;
     }
 
     function originalPostLink(props) {
