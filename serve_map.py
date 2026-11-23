@@ -134,6 +134,7 @@ TELEGRAM_CHANNELS = [
     "darfur24",
     "sudannews24",
     "alrakoba_sudan",
+    "SudanTribune",
 ]
 X_HANDLES = [
     "syr_television",
@@ -157,11 +158,15 @@ X_HANDLES = [
     "SudanWarMonitor",
     "DabangaSudan",
     "SudanTribune_EN",
+    "PatrickHeinisc1",
+    "vista_sudan",
 ]
 SUDAN_X_HANDLES = {
     "sudanwarmonitor",
     "dabangasudan",
     "sudantribune_en",
+    "patrickheinisc1",
+    "vista_sudan",
 }
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
@@ -277,6 +282,98 @@ GEO_FALLBACKS = {
     "kordofan": (13.1833, 30.2167),
     "sennar": (13.569, 33.5672),
 }
+# Sudan places, (latitude, longitude). Longer names are matched first.
+SUDAN_GEO_FALLBACKS = {
+    "adre border crossing": (13.4667, 22.2000),
+    "khartoum north": (15.6150, 32.5480),
+    "khartoum bahri": (15.6150, 32.5480),
+    "red sea state": (19.6158, 37.2164),
+    "port sudan": (19.6158, 37.2164),
+    "north darfur": (13.6279, 25.3494),
+    "south darfur": (12.0489, 24.8807),
+    "west darfur": (13.4526, 22.4472),
+    "central darfur": (12.9096, 23.4741),
+    "east darfur": (11.4619, 26.1258),
+    "north kordofan": (13.1842, 30.2167),
+    "south kordofan": (11.0111, 29.7183),
+    "west kordofan": (11.7329, 28.3579),
+    "al ubayyid": (13.1842, 30.2167),
+    "el fasher": (13.6279, 25.3494),
+    "al fashir": (13.6279, 25.3494),
+    "el geneina": (13.4526, 22.4472),
+    "geneina": (13.4526, 22.4472),
+    "el obeid": (13.1842, 30.2167),
+    "al obeid": (13.1842, 30.2167),
+    "wad madani": (14.4012, 33.5199),
+    "wad medani": (14.4012, 33.5199),
+    "al jazirah": (14.4012, 33.5199),
+    "al jazeera state": (14.4012, 33.5199),
+    "al fulah": (11.7329, 28.3579),
+    "ed daein": (11.4619, 26.1258),
+    "river nile": (17.7022, 33.9864),
+    "northern state": (19.1698, 30.4749),
+    "al qadarif": (14.0349, 35.3834),
+    "rapid support forces": (15.5000, 30.2000),
+    "zalingei": (12.9096, 23.4741),
+    "omdurman": (15.6445, 32.4777),
+    "khartoum": (15.5007, 32.5599),
+    "kadugli": (11.0111, 29.7183),
+    "kassala": (15.4510, 36.4000),
+    "gedaref": (14.0349, 35.3834),
+    "dongola": (19.1698, 30.4749),
+    "kordofan": (13.1842, 30.2167),
+    "sennar": (13.5691, 33.5672),
+    "nyala": (12.0489, 24.8807),
+    "atbara": (17.7022, 33.9864),
+    "sinja": (13.5691, 33.5672),
+    "bahri": (15.6150, 32.5480),
+    "darfur": (13.6279, 25.3494),
+    "adre": (13.4667, 22.2000),
+    "sudan": (15.5000, 30.2000),
+    "rsf": (15.5000, 30.2000),
+    "saf": (15.5000, 30.2000),
+    "الخرطوم بحري": (15.6150, 32.5480),
+    "أم درمان": (15.6445, 32.4777),
+    "ام درمان": (15.6445, 32.4777),
+    "بورتسودان": (19.6158, 37.2164),
+    "بورت سودان": (19.6158, 37.2164),
+    "ولاية البحر الأحمر": (19.6158, 37.2164),
+    "شمال دارفور": (13.6279, 25.3494),
+    "جنوب دارفور": (12.0489, 24.8807),
+    "غرب دارفور": (13.4526, 22.4472),
+    "وسط دارفور": (12.9096, 23.4741),
+    "شرق دارفور": (11.4619, 26.1258),
+    "شمال كردفان": (13.1842, 30.2167),
+    "جنوب كردفان": (11.0111, 29.7183),
+    "غرب كردفان": (11.7329, 28.3579),
+    "ولاية الجزيرة": (14.4012, 33.5199),
+    "نهر النيل": (17.7022, 33.9864),
+    "الولاية الشمالية": (19.1698, 30.4749),
+    "معبر أدري": (13.4667, 22.2000),
+    "الدعم السريع": (15.5000, 30.2000),
+    "الخرطوم": (15.5007, 32.5599),
+    "الفاشر": (13.6279, 25.3494),
+    "زالنجي": (12.9096, 23.4741),
+    "الجنينة": (13.4526, 22.4472),
+    "الأبيض": (13.1842, 30.2167),
+    "الابيض": (13.1842, 30.2167),
+    "كادقلي": (11.0111, 29.7183),
+    "الفولة": (11.7329, 28.3579),
+    "ود مدني": (14.4012, 33.5199),
+    "القضارف": (14.0349, 35.3834),
+    "دارفور": (13.6279, 25.3494),
+    "كردفان": (13.1842, 30.2167),
+    "السودان": (15.5000, 30.2000),
+    "نيالا": (12.0489, 24.8807),
+    "كسلا": (15.4510, 36.4000),
+    "سنجة": (13.5691, 33.5672),
+    "سنار": (13.5691, 33.5672),
+    "عطبرة": (17.7022, 33.9864),
+    "دنقلا": (19.1698, 30.4749),
+    "الضعين": (11.4619, 26.1258),
+    "أدري": (13.4667, 22.2000),
+}
+_SUDAN_FALLBACK_ORDER = tuple(sorted(SUDAN_GEO_FALLBACKS, key=len, reverse=True))
 _GEO_FALLBACK_ORDER = tuple(sorted(GEO_FALLBACKS, key=len, reverse=True))
 _COUNTRY_STEMS = {
     "iran", "iraq", "syria", "yemen", "sudan", "oman", "qatar", "kuwait",
@@ -985,23 +1082,13 @@ def mentions_syria_or_middle_east(text: str) -> bool:
 
 
 def mentions_sudan_or_horn(text: str) -> bool:
+    if sudan_mention(text):
+        return True
     lowered = text.lower()
-    latin = (
-        "sudan", "khartoum", "omdurman", "port sudan", "el fasher", "el-fashir", "al fashir",
-        "nyala", "el geneina", "geneina", "el obeid", "el-obeid", "al obeid", "wad madani",
-        "wad medani", "kassala", "gedaref", "qadarif", "atbara", "kadugli", "darfur",
-        "kordofan", "horn of africa", "eritrea", "ethiopia", "djibouti", "somalia", "south sudan",
-    )
+    latin = ("horn of africa", "eritrea", "ethiopia", "djibouti", "somalia", "south sudan")
     if any(term in lowered for term in latin):
         return True
-    return any(
-        term in text
-        for term in (
-            "السودان", "الخرطوم", "أم درمان", "ام درمان", "بورتسودان", "بورت سودان",
-            "الفاشر", "نيالا", "الجنينة", "الأبيض", "الابيض", "ود مدني", "كسلا",
-            "القضارف", "عطبرة", "كادقلي", "دارفور", "كردفان", "القرن الأفريقي", "القرن الافريقي",
-        )
-    )
+    return "القرن الأفريقي" in text or "القرن الافريقي" in text
 
 
 def x_handle_from_item(item: dict) -> str:
@@ -1155,6 +1242,40 @@ def geo_blob(*parts: object) -> str:
     return " ".join(text.split())
 
 
+def _arabic_keyword(keyword: str) -> bool:
+    return any("\u0600" <= char <= "\u06FF" for char in keyword)
+
+
+def match_sudan_fallback(text: str) -> tuple[str, float, float] | None:
+    """Longest Sudan place, including Arabic names. None when the text names none of them."""
+    raw = str(text or "")
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword in _SUDAN_FALLBACK_ORDER:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword in tokens:
+            lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+            return keyword, lat, lng
+    return None
+
+
+def sudan_mention(text: str) -> bool:
+    """Sudan, RSF, SAF, Darfur, Kordofan, or a listed city."""
+    if match_sudan_fallback(text):
+        return True
+    raw = str(text or "")
+    return "الدعم السريع" in raw or "القوات المسلحة السودانية" in raw
+
+
 def match_geo_fallback(text: str) -> tuple[str, float, float] | None:
     """Longest place keyword in the text, or None when nothing in GEO_FALLBACKS matches."""
     padded = f" {geo_blob(text)} "
@@ -1194,8 +1315,25 @@ def _near_center(lat: float, lng: float, center: tuple[float, float], tolerance:
 
 
 def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | None]:
-    """Use a real model point. Otherwise a GEO_FALLBACKS center with a stable tiny offset."""
+    """Use a real model point. Otherwise a place-list center with a stable tiny offset."""
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
+    raw_blob = " ".join(
+        str(part or "")
+        for part in (
+            placed.get("location_name"),
+            placed.get("governorate"),
+            item.get("title"),
+            item.get("summary"),
+            item.get("original_text"),
+        )
+    )
+    event_id = item.get("source_url") or item.get("id") or item.get("title")
+    if not coords:
+        sudan_hit = match_sudan_fallback(raw_blob)
+        if sudan_hit:
+            shifted = offset_fallback(sudan_hit[1], sudan_hit[2], event_id)
+            if shifted:
+                return shifted
     blob = geo_blob(
         placed.get("location_name"),
         placed.get("governorate"),
@@ -1204,7 +1342,6 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         item.get("original_text"),
     )
     hit = match_geo_fallback(blob)
-    event_id = item.get("source_url") or item.get("id") or item.get("title")
     if coords and hit and hit[0] in _COUNTRY_OR_SEA and _near_center(coords[1], coords[0], (hit[1], hit[2])):
         shifted = offset_fallback(hit[1], hit[2], event_id)
         if shifted:
@@ -1235,9 +1372,11 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                 stamp = parse_when(row["published_at"]) or parse_when(row["ingested_at"])
                 if stamp is None or stamp < cutoff:
                     continue
-                hit = match_geo_fallback(
-                    geo_blob(row["location_name"], row["governorate"], row["title"], row["summary"], row["original_text"])
+                raw = " ".join(
+                    str(part or "")
+                    for part in (row["location_name"], row["governorate"], row["title"], row["summary"], row["original_text"])
                 )
+                hit = match_sudan_fallback(raw) or match_geo_fallback(geo_blob(raw))
                 if not hit:
                     continue
                 shifted = offset_fallback(hit[1], hit[2], row["id"])
@@ -1279,7 +1418,72 @@ def coordinate_counts(now: datetime | None = None) -> tuple[int, int]:
     return mapped, total
 
 
+def backfill_sudan_rows() -> int:
+    """Give existing Sudan rows coordinates and move Other / International Sudan rows into Sudan & Horn."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, location_name, governorate, region, lat, lng "
+                "FROM items"
+            ).fetchall()
+            for row in rows:
+                blob = " ".join(
+                    str(part or "")
+                    for part in (
+                        row["location_name"],
+                        row["governorate"],
+                        row["title"],
+                        row["summary"],
+                        row["original_text"],
+                    )
+                )
+                mentioned = sudan_mention(blob)
+                if not mentioned and (row["region"] or "") != "Sudan & Horn":
+                    continue
+                missing = row["lat"] is None or row["lng"] is None or row["lat"] == 0 or row["lng"] == 0
+                other = (row["region"] or "") in ("", "Other / International")
+                if not missing and not other:
+                    continue
+                new_region = "Sudan & Horn" if mentioned or (row["region"] or "") == "Sudan & Horn" else row["region"]
+                if other and not mentioned:
+                    continue
+                new_lat, new_lng = row["lat"], row["lng"]
+                if missing and mentioned:
+                    hit = match_sudan_fallback(blob)
+                    shifted = offset_fallback(hit[1], hit[2], row["id"]) if hit else None
+                    if shifted:
+                        new_lat, new_lng = shifted
+                if new_region == row["region"] and new_lat == row["lat"] and new_lng == row["lng"]:
+                    continue
+                conn.execute(
+                    "UPDATE items SET region = ?, lat = ?, lng = ? WHERE id = ?",
+                    (new_region, new_lat, new_lng, row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Backfilled {updated} Sudan event(s).")
+        finally:
+            conn.close()
+    return updated
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    blob = " ".join(
+        str(part or "")
+        for part in (
+            placed.get("location_name"),
+            placed.get("governorate"),
+            item.get("title"),
+            item.get("summary"),
+            item.get("original_text"),
+        )
+    )
+    if sudan_mention(blob):
+        placed = dict(placed)
+        placed["region"] = "Sudan & Horn"
     lat, lng = placed_coordinates(item, placed)
     source_url = item["source_url"]
     if lat is None or lng is None:
@@ -1418,6 +1622,7 @@ def ingest_feeds() -> dict:
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
             now = datetime.now(timezone.utc)
             backfill_coordinates(now)
+            backfill_sudan_rows()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
             )
@@ -2119,6 +2324,7 @@ def start_background() -> None:
             conn = db_connect()
             conn.close()
         backfill_coordinates()
+        backfill_sudan_rows()
         _threads_started = True
     start_translation_pass()
     start_poller()
