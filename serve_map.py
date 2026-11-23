@@ -3267,6 +3267,7 @@ def render_period_map_png(events: list[dict]) -> bytes:
             480,
             url_template="https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
             tile_request_timeout=8,
+            headers={"User-Agent": BROWSER_USER_AGENT},
             delay_between_retries=0,
         )
         for event in events:
