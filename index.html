@@ -218,7 +218,7 @@
     button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
     #quick-jump {
-      position: absolute; z-index: 850; top: 12px; left: 292px; right: 210px;
+      position: absolute; z-index: 850; top: 12px; left: 292px; right: 340px;
       display: flex; flex-wrap: wrap; gap: 4px;
     }
     body.filters-closed #quick-jump { left: 108px; }
@@ -699,8 +699,9 @@
     </details>
   </aside>
   <div id="basemap" role="group" aria-label="Basemap">
-    <button type="button" data-basemap="clear">Clear Map</button>
-    <button type="button" data-basemap="dark" aria-pressed="true">Dark Slate</button>
+    <button type="button" data-basemap="tactical" aria-pressed="true">Tactical Dark</button>
+    <button type="button" data-basemap="maritime">Maritime Dark</button>
+    <button type="button" data-basemap="satellite">Satellite</button>
   </div>
   <nav id="quick-jump" aria-label="Quick jump">
     <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
@@ -807,7 +808,7 @@
       "Sudan & Horn": L.latLngBounds([3.4, 21.8], [22.2, 51.5])
     };
 
-    const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
+    const map = L.map("map", { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true });
     L.control.zoom({ position: "bottomright" }).addTo(map);
     const brandControl = L.control({ position: "bottomright" });
     brandControl.onAdd = function () {
@@ -835,35 +836,50 @@
     map.createPane("labels");
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
-    const esriAttr = 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ';
-    const clearMap = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-      attribution: esriAttr,
+    const cartoAttr = '&copy; OpenStreetMap contributors &copy; CARTO';
+    const esriAttr = 'Tiles &copy; Esri';
+    const tacticalDark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: cartoAttr,
+      subdomains: "abcd",
       maxZoom: 19
     });
-    const darkBase = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-      attribution: esriAttr,
-      maxZoom: 16
-    });
-    const darkLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 16,
-      pane: "labels"
-    });
+    const maritimeDark = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+        attribution: esriAttr,
+        maxZoom: 19,
+        maxNativeZoom: 16
+      }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19,
+        maxNativeZoom: 16,
+        pane: "labels"
+      })
+    ]);
+    const satellite = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        attribution: esriAttr,
+        maxZoom: 19
+      }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 19,
+        pane: "labels"
+      })
+    ]);
+    const basemaps = { tactical: tacticalDark, maritime: maritimeDark, satellite: satellite };
     function setBasemap(name) {
-      const clear = name !== "dark";
-      if (clear) {
-        if (map.hasLayer(darkBase)) map.removeLayer(darkBase);
-        if (map.hasLayer(darkLabels)) map.removeLayer(darkLabels);
-        if (!map.hasLayer(clearMap)) clearMap.addTo(map);
-      } else {
-        if (map.hasLayer(clearMap)) map.removeLayer(clearMap);
-        if (!map.hasLayer(darkBase)) darkBase.addTo(map);
-        if (!map.hasLayer(darkLabels)) darkLabels.addTo(map);
-      }
+      const key = Object.prototype.hasOwnProperty.call(basemaps, name) ? name : "tactical";
+      Object.entries(basemaps).forEach(([id, layer]) => {
+        if (id === key) {
+          if (!map.hasLayer(layer)) layer.addTo(map);
+        } else if (map.hasLayer(layer)) {
+          map.removeLayer(layer);
+        }
+      });
       document.querySelectorAll("#basemap button").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.basemap === (clear ? "clear" : "dark")));
+        button.setAttribute("aria-pressed", String(button.dataset.basemap === key));
       });
     }
-    setBasemap("dark");
+    setBasemap("tactical");
     map.setView(HOME.center, HOME.zoom);
     window.addEventListener("resize", () => map.invalidateSize());
 
