@@ -597,6 +597,12 @@ def extract_location(headline: str) -> dict | None:
         + ", ".join(REGIONS)
         + ". Map the region exactly: UAE, Bahrain, Kuwait, Oman, and Qatar are Gulf. "
         "Saudi Arabia and Yemen are Saudi & Yemen. Iran and Iraq are Iran & Iraq. "
+        "Iraq and the Kurdistan Region, including Baghdad, the Green Zone, Baghdad Airport, Erbil, "
+        "Al-Harir, Ain al-Asad, Al-Anbar, Al-Qaim, Fallujah, Ramadi, Basra, Umm Qasr, Mosul, Nineveh, "
+        "Sinjar, Kirkuk, Sulaymaniyah, Duhok, Zakho, Jurf al-Sakhar, Babil, Diyala, Baqubah, "
+        "Salah al-Din, Tikrit, Balad Air Base, Najaf, Karbala, the Peshmerga, and the PMF, are Iran & Iraq. "
+        "Do not use Other / International for Iraq, Kurdistan, or those places. "
+        "Do not label a Sudan event as Iran & Iraq. "
         "Jordan, Syria, Lebanon, Israel, and Palestine are Levant. "
         "The Red Sea, Strait of Hormuz, Persian Gulf, and Gulf of Oman are Maritime. "
         "Sudan, including Khartoum, Omdurman, Bahri, Port Sudan, El Fasher, Nyala, El Geneina, "
@@ -610,7 +616,7 @@ def extract_location(headline: str) -> dict | None:
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the title or summary is Arabic, including Sudanese Arabic, Farsi, or Hebrew, title and summary must be clear English. "
+        "When the title or summary is Arabic, including Sudanese or Iraqi Arabic, Kurdish, Farsi, or Hebrew, title and summary must be clear English. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
         "Preserve place names, governorates, and unit names accurately. "
@@ -621,7 +627,7 @@ def extract_location(headline: str) -> dict | None:
         "Every regional event must return numeric decimal lat and lng plus location_name. "
         "When the text names a city, governorate, port, airbase, border crossing, or maritime chokepoint, use that place. "
         "When only a country or sea is named, use that country or sea center. "
-        "Do not return null or 0,0 for Iran, Sudan, Kuwait, Bahrain, the UAE, Jordan, Saudi Arabia, Iraq, "
+        "Do not return null or 0,0 for Iran, Iraq, the Kurdistan Region, Sudan, Kuwait, Bahrain, the UAE, Jordan, Saudi Arabia, "
         "the Red Sea, or the Strait of Hormuz. "
         "Use null for lat and lng only when the text names no place at all.\n\n"
         + headline

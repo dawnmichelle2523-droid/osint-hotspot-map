@@ -77,6 +77,7 @@ RSS_FEEDS = [
     ("Syria Direct", "https://syriadirect.org/feed/"),
     ("Shafaq English", "https://shafaq.com/en/rss"),
     ("Iraqi News", "https://www.iraqinews.com/feed/"),
+    ("Rudaw English", "https://www.rudaw.net/english/rss"),
     ("Iran International", "https://www.iranintl.com/en/rss"),
     ("Arab News", "https://www.arabnews.com/rss.xml"),
     ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
@@ -115,6 +116,9 @@ TELEGRAM_CHANNELS = [
     "IranIntl_En",
     "rudaw_english",
     "shafaqnews",
+    "almaalomah",
+    "INA_Iraq",
+    "kurdistan24",
     "IRNA_en",
     "Mehrnews_en",
     "presstv",
@@ -154,6 +158,11 @@ X_HANDLES = [
     "UK_MTO",
     "IranIntl_En",
     "RudawEnglish",
+    "IraqiOsint",
+    "K24English",
+    "ShafaqNews",
+    "Tammuz_Intel",
+    "IraqSecurity",
     "Levant_24_",
     "SudanWarMonitor",
     "DabangaSudan",
@@ -167,6 +176,14 @@ SUDAN_X_HANDLES = {
     "sudantribune_en",
     "patrickheinisc1",
     "vista_sudan",
+}
+IRAQ_X_HANDLES = {
+    "iraqiosint",
+    "rudawenglish",
+    "k24english",
+    "shafaqnews",
+    "tammuz_intel",
+    "iraqsecurity",
 }
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
@@ -374,6 +391,153 @@ SUDAN_GEO_FALLBACKS = {
     "أدري": (13.4667, 22.2000),
 }
 _SUDAN_FALLBACK_ORDER = tuple(sorted(SUDAN_GEO_FALLBACKS, key=len, reverse=True))
+# Iraq and Kurdistan places, (latitude, longitude). Longer names are matched first.
+IRAQ_GEO_FALLBACKS = {
+    "kurdistan regional government": (36.1911, 44.0092),
+    "al qaim border crossing": (34.3917, 41.0717),
+    "popular mobilization forces": (33.2232, 43.6793),
+    "ain al asad air base": (33.7856, 42.4411),
+    "al harir air base": (36.1911, 44.0092),
+    "iraqi security forces": (33.2232, 43.6793),
+    "hashd al shaabi": (33.2232, 43.6793),
+    "popular mobilization": (33.2232, 43.6793),
+    "baghdad airport": (33.3152, 44.3661),
+    "jurf al sakhar": (32.8789, 44.1731),
+    "jurf al sakhr": (32.8789, 44.1731),
+    "balad air base": (34.6158, 43.6786),
+    "umm qasr port": (30.5085, 47.7804),
+    "kurdistan region": (36.1911, 44.0092),
+    "iraqi kurdistan": (36.1911, 44.0092),
+    "harir air base": (36.1911, 44.0092),
+    "ain al asad": (33.7856, 42.4411),
+    "al asad air base": (33.7856, 42.4411),
+    "salah al din": (34.6158, 43.6786),
+    "salah ad din": (34.6158, 43.6786),
+    "city of hit": (33.7856, 42.4411),
+    "hit anbar": (33.7856, 42.4411),
+    "green zone": (33.3152, 44.3661),
+    "al qaim": (34.3917, 41.0717),
+    "umm qasr": (30.5085, 47.7804),
+    "sulaymaniyah": (35.5558, 45.4351),
+    "sulaimaniyah": (35.5558, 45.4351),
+    "suleimaniyah": (35.5558, 45.4351),
+    "fallujah": (33.3558, 43.7861),
+    "kurdistan": (36.1911, 44.0092),
+    "peshmerga": (36.1911, 44.0092),
+    "pesmerge": (36.1911, 44.0092),
+    "nineveh": (36.3489, 43.1577),
+    "ninewa": (36.3489, 43.1577),
+    "ninawa": (36.3489, 43.1577),
+    "baqubah": (33.7486, 44.6436),
+    "baquba": (33.7486, 44.6436),
+    "shingal": (36.3209, 41.8754),
+    "shengal": (36.3209, 41.8754),
+    "sinjar": (36.3209, 41.8754),
+    "singal": (36.3209, 41.8754),
+    "silemani": (35.5558, 45.4351),
+    "slemani": (35.5558, 45.4351),
+    "baghdad": (33.3152, 44.3661),
+    "kirkuk": (35.4681, 44.3922),
+    "kerkuk": (35.4681, 44.3922),
+    "ramadi": (33.3558, 43.7861),
+    "diyala": (33.7486, 44.6436),
+    "tikrit": (34.6158, 43.6786),
+    "karbala": (32.6160, 44.0249),
+    "kurdish": (36.1911, 44.0092),
+    "asayish": (36.1911, 44.0092),
+    "asayesh": (36.1911, 44.0092),
+    "anbar": (33.7856, 42.4411),
+    "mosul": (36.3489, 43.1577),
+    "musil": (36.3489, 43.1577),
+    "erbil": (36.1911, 44.0092),
+    "hewler": (36.1911, 44.0092),
+    "hawler": (36.1911, 44.0092),
+    "duhok": (36.8669, 42.9503),
+    "dohuk": (36.8669, 42.9503),
+    "dahuk": (36.8669, 42.9503),
+    "dihok": (36.8669, 42.9503),
+    "zakho": (36.8669, 42.9503),
+    "zaxo": (36.8669, 42.9503),
+    "basra": (30.5085, 47.7804),
+    "besra": (30.5085, 47.7804),
+    "bexda": (33.3152, 44.3661),
+    "najaf": (31.9996, 44.3267),
+    "babil": (32.8789, 44.1731),
+    "kurds": (36.1911, 44.0092),
+    "iraqi": (33.2232, 43.6793),
+    "iraqis": (33.2232, 43.6793),
+    "hashd": (33.2232, 43.6793),
+    "iraq": (33.2232, 43.6793),
+    "pmf": (33.2232, 43.6793),
+    "krg": (36.1911, 44.0092),
+    "isf": (33.2232, 43.6793),
+    "المنطقة الخضراء": (33.3152, 44.3661),
+    "مطار بغداد": (33.3152, 44.3661),
+    "قاعدة عين الأسد": (33.7856, 42.4411),
+    "عين الأسد": (33.7856, 42.4411),
+    "عين الاسد": (33.7856, 42.4411),
+    "إقليم كردستان": (36.1911, 44.0092),
+    "اقليم كردستان": (36.1911, 44.0092),
+    "الحشد الشعبي": (33.2232, 43.6793),
+    "الجيش العراقي": (33.2232, 43.6793),
+    "جرف الصخر": (32.8789, 44.1731),
+    "صلاح الدين": (34.6158, 43.6786),
+    "قاعدة بلد": (34.6158, 43.6786),
+    "السليمانية": (35.5558, 45.4351),
+    "سلێمانی": (35.5558, 45.4351),
+    "الفلوجة": (33.3558, 43.7861),
+    "الرمادي": (33.3558, 43.7861),
+    "نەینەوا": (36.3489, 43.1577),
+    "نينوى": (36.3489, 43.1577),
+    "کەرکووک": (35.4681, 44.3922),
+    "كوردستان": (36.1911, 44.0092),
+    "کوردستان": (36.1911, 44.0092),
+    "كردستان": (36.1911, 44.0092),
+    "پێشمەرگە": (36.1911, 44.0092),
+    "بيشمركة": (36.1911, 44.0092),
+    "البشمركة": (36.1911, 44.0092),
+    "هەولێر": (36.1911, 44.0092),
+    "بعقوبة": (33.7486, 44.6436),
+    "الأنبار": (33.7856, 42.4411),
+    "الانبار": (33.7856, 42.4411),
+    "كربلاء": (32.6160, 44.0249),
+    "کەربەلا": (32.6160, 44.0249),
+    "أم قصر": (30.5085, 47.7804),
+    "ام قصر": (30.5085, 47.7804),
+    "الموصل": (36.3489, 43.1577),
+    "مووسڵ": (36.3489, 43.1577),
+    "أربيل": (36.1911, 44.0092),
+    "اربيل": (36.1911, 44.0092),
+    "بغداد": (33.3152, 44.3661),
+    "بەغدا": (33.3152, 44.3661),
+    "البصرة": (30.5085, 47.7804),
+    "بەسرە": (30.5085, 47.7804),
+    "كركوك": (35.4681, 44.3922),
+    "شنگال": (36.3209, 41.8754),
+    "سنجار": (36.3209, 41.8754),
+    "ديالى": (33.7486, 44.6436),
+    "دیالە": (33.7486, 44.6436),
+    "تكريت": (34.6158, 43.6786),
+    "النجف": (31.9996, 44.3267),
+    "نەجەف": (31.9996, 44.3267),
+    "دهۆک": (36.8669, 42.9503),
+    "دهوك": (36.8669, 42.9503),
+    "زاخۆ": (36.8669, 42.9503),
+    "زاخو": (36.8669, 42.9503),
+    "ئاسایش": (36.1911, 44.0092),
+    "العراق": (33.2232, 43.6793),
+    "عێراق": (33.2232, 43.6793),
+    "بابل": (32.8789, 44.1731),
+    "هيت": (33.7856, 42.4411),
+    "هیت": (33.7856, 42.4411),
+}
+_IRAQ_FALLBACK_ORDER = tuple(sorted(IRAQ_GEO_FALLBACKS, key=len, reverse=True))
+_KURDISH_FOLD = str.maketrans({
+    "ê": "e", "Ê": "e", "î": "i", "Î": "i", "û": "u", "Û": "u",
+    "ş": "s", "Ş": "s", "ç": "c", "Ç": "c",
+    "ẍ": "x", "Ẍ": "x", "ḧ": "h", "Ḧ": "h",
+    "ı": "i", "İ": "i",
+})
 _GEO_FALLBACK_ORDER = tuple(sorted(GEO_FALLBACKS, key=len, reverse=True))
 _COUNTRY_STEMS = {
     "iran", "iraq", "syria", "yemen", "sudan", "oman", "qatar", "kuwait",
@@ -1103,10 +1267,13 @@ def x_handle_from_item(item: dict) -> str:
 
 
 def keep_x_post(handle: str, text: str) -> bool:
-    """Sudan accounts keep Horn posts. Every other handle keeps the Syria and Middle East filter."""
+    """Syria and Middle East posts stay. Sudan and Iraq accounts also keep their own regions."""
     if mentions_syria_or_middle_east(text):
         return True
-    return handle.lower() in SUDAN_X_HANDLES and mentions_sudan_or_horn(text)
+    lowered = handle.lower()
+    if lowered in SUDAN_X_HANDLES and mentions_sudan_or_horn(text):
+        return True
+    return lowered in IRAQ_X_HANDLES and iraq_mention(text)
 
 
 def canonical_x_url(handle: str, link: str, guid: str) -> str:
@@ -1268,6 +1435,39 @@ def match_sudan_fallback(text: str) -> tuple[str, float, float] | None:
     return None
 
 
+def _latin_place_text(text: str) -> str:
+    return geo_blob(str(text or "").translate(_KURDISH_FOLD))
+
+
+def match_iraq_fallback(text: str) -> tuple[str, float, float] | None:
+    """Longest Iraq or Kurdistan place, including Arabic and Kurdish names."""
+    raw = str(text or "")
+    padded = f" {_latin_place_text(raw)} "
+    tokens = set(padded.split())
+    for keyword in _IRAQ_FALLBACK_ORDER:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                lat, lng = IRAQ_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword == "hit":
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                lat, lng = IRAQ_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword in tokens:
+            lat, lng = IRAQ_GEO_FALLBACKS[keyword]
+            return keyword, lat, lng
+    return None
+
+
+def iraq_mention(text: str) -> bool:
+    """Iraq, Kurdistan, a listed place, or an Iraqi or Kurdish security term."""
+    return match_iraq_fallback(text) is not None
+
+
 def sudan_mention(text: str) -> bool:
     """Sudan, RSF, SAF, Darfur, Kordofan, or a listed city."""
     if match_sudan_fallback(text):
@@ -1328,6 +1528,12 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         )
     )
     event_id = item.get("source_url") or item.get("id") or item.get("title")
+    if not coords and not sudan_mention(raw_blob):
+        iraq_hit = match_iraq_fallback(raw_blob)
+        if iraq_hit:
+            shifted = offset_fallback(iraq_hit[1], iraq_hit[2], event_id)
+            if shifted:
+                return shifted
     if not coords:
         sudan_hit = match_sudan_fallback(raw_blob)
         if sudan_hit:
@@ -1376,7 +1582,11 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                     str(part or "")
                     for part in (row["location_name"], row["governorate"], row["title"], row["summary"], row["original_text"])
                 )
-                hit = match_sudan_fallback(raw) or match_geo_fallback(geo_blob(raw))
+                hit = match_sudan_fallback(raw)
+                if hit is None and not sudan_mention(raw):
+                    hit = match_iraq_fallback(raw)
+                if hit is None:
+                    hit = match_geo_fallback(geo_blob(raw))
                 if not hit:
                     continue
                 shifted = offset_fallback(hit[1], hit[2], row["id"])
@@ -1470,6 +1680,57 @@ def backfill_sudan_rows() -> int:
     return updated
 
 
+def backfill_iraq_rows() -> int:
+    """Fill Iraq and Kurdistan coordinates and move Other / International rows into Iran & Iraq.
+    Sudan rows are left unchanged."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, location_name, governorate, region, lat, lng "
+                "FROM items"
+            ).fetchall()
+            for row in rows:
+                if (row["region"] or "") == "Sudan & Horn":
+                    continue
+                blob = " ".join(
+                    str(part or "")
+                    for part in (
+                        row["location_name"],
+                        row["governorate"],
+                        row["title"],
+                        row["summary"],
+                        row["original_text"],
+                    )
+                )
+                if sudan_mention(blob) or not iraq_mention(blob):
+                    continue
+                missing = row["lat"] is None or row["lng"] is None or row["lat"] == 0 or row["lng"] == 0
+                other = (row["region"] or "") in ("", "Other / International")
+                if not missing and not other:
+                    continue
+                new_lat, new_lng = row["lat"], row["lng"]
+                if missing:
+                    hit = match_iraq_fallback(blob)
+                    shifted = offset_fallback(hit[1], hit[2], row["id"]) if hit else None
+                    if shifted:
+                        new_lat, new_lng = shifted
+                if "Iran & Iraq" == row["region"] and new_lat == row["lat"] and new_lng == row["lng"]:
+                    continue
+                conn.execute(
+                    "UPDATE items SET region = ?, lat = ?, lng = ? WHERE id = ?",
+                    ("Iran & Iraq", new_lat, new_lng, row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Backfilled {updated} Iraq event(s).")
+        finally:
+            conn.close()
+    return updated
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     blob = " ".join(
         str(part or "")
@@ -1484,6 +1745,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     if sudan_mention(blob):
         placed = dict(placed)
         placed["region"] = "Sudan & Horn"
+    elif iraq_mention(blob):
+        placed = dict(placed)
+        placed["region"] = "Iran & Iraq"
     lat, lng = placed_coordinates(item, placed)
     source_url = item["source_url"]
     if lat is None or lng is None:
@@ -1623,6 +1887,7 @@ def ingest_feeds() -> dict:
             now = datetime.now(timezone.utc)
             backfill_coordinates(now)
             backfill_sudan_rows()
+            backfill_iraq_rows()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
             )
@@ -2325,6 +2590,7 @@ def start_background() -> None:
             conn.close()
         backfill_coordinates()
         backfill_sudan_rows()
+        backfill_iraq_rows()
         _threads_started = True
     start_translation_pass()
     start_poller()
