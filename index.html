@@ -62,6 +62,51 @@
     #feed-popover ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     #feed-popover li { font-size: 12px; line-height: 1.35; }
     #feed-popover .fail-error { color: #ffb703; }
+    #ticker-toggle {
+      color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 999px;
+      padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    #ticker-toggle[aria-pressed="false"] { color: #b8c2cc; background: #11151a; border-color: #242b33; }
+    #ticker {
+      display: flex; align-items: stretch; width: 100%; height: 34px; overflow: hidden;
+      background: #090c10; border-top: 1px solid #262012; border-bottom: 1px solid #262012;
+    }
+    body.ticker-off #ticker { display: none; }
+    #ticker-badge {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+      background: #1c1810; color: #e6c667; border-right: 1px solid #3a2f15;
+      padding: 0 12px; font-weight: 700; font-size: 11px; letter-spacing: 1px; white-space: nowrap;
+    }
+    #ticker-badge .ticker-live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #e6c667; box-shadow: 0 0 8px #e6c667;
+      animation: tickerPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes tickerPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.75); }
+    }
+    #ticker-viewport { flex: 1; min-width: 0; overflow: hidden; }
+    #ticker-track {
+      display: flex; width: max-content; height: 34px;
+      animation: tickerScroll 45s linear infinite;
+    }
+    #ticker:hover #ticker-track { animation-play-state: paused; }
+    #ticker-track.is-still { animation: none; }
+    .ticker-seq { display: flex; align-items: center; height: 34px; }
+    .ticker-item {
+      display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 22px;
+      border: 0; background: transparent; color: #e7eef0; font: inherit; font-size: 12.5px;
+      white-space: nowrap; cursor: pointer;
+    }
+    .ticker-item:hover { color: #e6c667; }
+    .ticker-region { color: #e6c667; font-weight: 700; letter-spacing: 0.04em; }
+    .ticker-sev { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+    .ticker-age { color: #8fb3b8; }
+    .ticker-empty { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; color: #8fb3b8; font-size: 12px; }
+    @keyframes tickerScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
     .leaflet-tooltip.coord-tip {
@@ -328,7 +373,7 @@
     @media print {
       @page { size: A4; margin: 12mm; }
       html, body { background: #fff !important; color: #1a1a1a !important; height: auto; overflow: visible; }
-      #live-bar, #stage, #headlines, #daily-brief { display: none !important; }
+      #live-bar, #ticker, #stage, #headlines, #daily-brief { display: none !important; }
       #print-sheet {
         display: block !important; max-width: 180mm; margin: 0 auto; color: #1a1a1a;
         font: 11.5px/1.35 "Segoe UI", system-ui, sans-serif;
@@ -352,12 +397,22 @@
         <p>No failing sources.</p>
       </div>
     </div>
+    <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="ticker">Ticker</button>
     <div id="clock-strip">
       <span id="clock-london">London --:--:--</span>
       <span id="clock-utc">UTC --:--:--</span>
       <span id="clock-brief">Next briefing --:--:--</span>
     </div>
   </header>
+  <div id="ticker" role="region" aria-label="Breaking news">
+    <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
+    <div id="ticker-viewport">
+      <div id="ticker-track" class="is-still">
+        <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
+        <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
   <div id="stage">
   <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
   <aside id="sidebar">
@@ -1189,6 +1244,108 @@
       badge.textContent = "Last updated: " + (shown === "Unknown time" ? stamp : shown);
     }
 
+    function tickerSeverityColor(value) {
+      const text = String(value || "").toLowerCase();
+      if (text === "high") return "#ff4d6d";
+      if (text === "medium") return "#e6c667";
+      return "#64748b";
+    }
+
+    function severityRank(value) {
+      const text = String(value || "").toLowerCase();
+      if (text === "high") return 0;
+      if (text === "medium") return 1;
+      return 2;
+    }
+
+    function relativeTime(timestamp) {
+      const age = ageMs(timestamp);
+      if (age === null) return "";
+      const minutes = Math.max(0, Math.round(age / 60000));
+      if (minutes < 1) return "just now";
+      if (minutes < 60) return minutes + "m ago";
+      const hours = Math.round(minutes / 60);
+      if (hours < 48) return hours + "h ago";
+      return Math.round(hours / 24) + "d ago";
+    }
+
+    function tickerCandidates() {
+      return features.filter((feature) => {
+        const coords = feature.geometry && feature.geometry.coordinates;
+        return coords && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]));
+      }).sort((a, b) => {
+        const propsA = a.properties || {};
+        const propsB = b.properties || {};
+        const rank = severityRank(propsA.severity) - severityRank(propsB.severity);
+        if (rank !== 0) return rank;
+        const am = Date.parse(propsA.timestamp);
+        const bm = Date.parse(propsB.timestamp);
+        return (Number.isNaN(bm) ? 0 : bm) - (Number.isNaN(am) ? 0 : am);
+      }).slice(0, 15);
+    }
+
+    function tickerItemHtml(feature) {
+      const props = feature.properties || {};
+      const title = props.title || props.summary || "Incident";
+      const regionName = props.region || "Other / International";
+      const when = relativeTime(props.timestamp);
+      return (
+        '<button type="button" class="ticker-item" data-ticker="' + esc(pinId(feature)) + '">' +
+          '<span class="ticker-region">[' + esc(regionName) + ']</span>' +
+          '<span class="ticker-sev" style="background:' + tickerSeverityColor(props.severity) + '"></span>' +
+          '<span class="ticker-title">' + esc(title) + '</span>' +
+          (when ? '<span class="ticker-age">' + esc(when) + '</span>' : '') +
+        '</button>'
+      );
+    }
+
+    function renderTicker() {
+      const track = document.getElementById("ticker-track");
+      const seq = document.getElementById("ticker-seq");
+      const clone = document.getElementById("ticker-seq-clone");
+      if (!track || !seq || !clone) return;
+      const items = tickerCandidates();
+      if (!items.length) {
+        track.classList.add("is-still");
+        track.style.animationDuration = "";
+        seq.innerHTML = '<span class="ticker-empty">No located incidents</span>';
+        clone.innerHTML = "";
+        return;
+      }
+      const html = items.map(tickerItemHtml).join("");
+      seq.innerHTML = html;
+      clone.innerHTML = html;
+      track.classList.remove("is-still");
+      const width = seq.scrollWidth || 1;
+      track.style.animationDuration = Math.max(22, Math.round(width / 70)) + "s";
+    }
+
+    function openTickerPin(id) {
+      const feature = features.find((item) => pinId(item) === id);
+      if (!feature || !isPoint(feature)) return;
+      const coords = feature.geometry.coordinates;
+      const lat = Number(coords[1]);
+      const lng = Number(coords[0]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const source = String((feature.properties || {}).source || "");
+      let marker = source ? markers.get(source) : null;
+      if (!marker) {
+        marker = markerFor(feature);
+        if (source) markers.set(source, marker);
+        if (clusterLayer) clusterLayer.addLayer(marker);
+        else marker.addTo(map);
+      }
+      focusSerial += 1;
+      const serial = focusSerial;
+      const open = () => {
+        if (serial !== focusSerial) return;
+        marker.openPopup();
+      };
+      map.flyTo([lat, lng], 8, { duration: 0.6 });
+      map.once("moveend", open);
+      window.setTimeout(open, 700);
+    }
+
     async function loadLive() {
       try {
         const response = await fetch("/api/data", { cache: "no-store" });
@@ -1204,6 +1361,7 @@
         loadedOnce = true;
         setStatus(incoming.length ? "" : "No incidents in the last 72 hours.");
         render();
+        renderTicker();
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
@@ -1226,6 +1384,7 @@
         loadedOnce = true;
         setStatus(features.length ? "" : "No incidents in hotspots.json.");
         render();
+        renderTicker();
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
@@ -1239,6 +1398,17 @@
       }
     }
 
+    document.getElementById("ticker").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-ticker]");
+      if (!button) return;
+      openTickerPin(button.dataset.ticker);
+    });
+    document.getElementById("ticker-toggle").addEventListener("click", () => {
+      const hidden = document.body.classList.toggle("ticker-off");
+      const button = document.getElementById("ticker-toggle");
+      button.setAttribute("aria-pressed", String(!hidden));
+      button.setAttribute("aria-label", hidden ? "Show ticker" : "Hide ticker");
+    });
     document.getElementById("sidebar").addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button || button.id === "search-clear") return;
