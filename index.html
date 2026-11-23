@@ -62,20 +62,6 @@
     #feed-popover .fail-error { color: #ffb703; }
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
-    #map-watermark {
-      position: absolute; bottom: 16px; left: 16px; z-index: 1000; pointer-events: none;
-      background: rgba(10, 17, 20, 0.84); backdrop-filter: blur(6px);
-      border: 1px solid #1a2c35; border-radius: 8px; padding: 8px 12px;
-    }
-    #map-watermark .wm-line { display: flex; align-items: center; gap: 8px; color: #F3C64F; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
-    #map-watermark .wm-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #F3C64F; flex: 0 0 auto;
-      box-shadow: 0 0 0 0 rgba(243, 198, 79, 0.7); animation: watermark-pulse 1.6s ease-out infinite;
-    }
-    @keyframes watermark-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(243, 198, 79, 0.7); }
-      100% { box-shadow: 0 0 0 8px rgba(243, 198, 79, 0); }
-    }
     .leaflet-tooltip.coord-tip {
       background: #0c1014; color: #ecfdf5; border: 1px solid #F3C64F; border-radius: 6px;
       box-shadow: none; font-size: 12px; font-weight: 650; padding: 3px 6px;
@@ -182,7 +168,6 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .pin.is-fresh .ring { animation: none; opacity: 0.8; }
-      #map-watermark .wm-dot { animation: none; }
       #sidebar, .headline-card, .brief-card { transition: none; }
       .headline-card:hover, .brief-card:hover { transform: none; }
     }
@@ -410,11 +395,7 @@
     <span><i style="background:#ffb703"></i>Medium</span>
     <span><i style="background:#19d3b8"></i>Low</span>
   </div>
-  <div id="map" role="application" aria-label="Incident map">
-    <div id="map-watermark">
-      <div class="wm-line"><span class="wm-dot"></span><span>LIVE GEOSPATIAL OSINT MONITOR</span></div>
-    </div>
-  </div>
+  <div id="map" role="application" aria-label="Incident map"></div>
   </div>
   <section id="daily-brief" aria-labelledby="brief-title">
     <article class="brief-card">
@@ -478,6 +459,14 @@
 
     const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
     L.control.zoom({ position: "bottomright" }).addTo(map);
+    const brandControl = L.control({ position: "bottomleft" });
+    brandControl.onAdd = function () {
+      const div = L.DomUtil.create("div", "georisk-map-badge");
+      div.style.cssText = "background: rgba(7, 9, 11, 0.94); border: 1px solid #2e2612; border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75); pointer-events: none; margin-bottom: 12px; margin-left: 8px;";
+      div.innerHTML = `<img src="/static/logo.png" alt="GeoRiskIntel" onerror="this.style.display='none'; document.getElementById('georisk-fallback-title').style.display='block';" style="height: 28px; width: auto; display: block; margin-bottom: 5px;" /><div id="georisk-fallback-title" style="display: none; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; margin-bottom: 4px;"><span style="color: #ffffff;">GeoRisk</span><span style="color: #F3C64F;">Intel</span></div><div style="display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 1px; color: #9aa5b1; font-weight: 600;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #F3C64F; box-shadow: 0 0 8px #F3C64F; display: inline-block;"></span>LIVE GEOSPATIAL MONITOR</div>`;
+      return div;
+    };
+    brandControl.addTo(map);
     let coordTip = null;
     map.on("click", (event) => {
       const raw = event.originalEvent && event.originalEvent.target;
