@@ -3434,17 +3434,17 @@ def render_daily_chart_png(chart: dict) -> bytes:
 
         scale = 2
         width, height = 840 * scale, 560 * scale
-        image = Image.new("RGB", (width, height), (13, 17, 23))
+        image = Image.new("RGB", (width, height), (9, 12, 16))
         draw = ImageDraw.Draw(image)
         title_font = _chart_font(16 * scale, bold=True)
         body_font = _chart_font(12 * scale)
         small_font = _chart_font(9 * scale)
         gold = (230, 198, 103)
-        muted = (143, 179, 184)
-        high_color = (255, 77, 109)
-        medium_color = (230, 198, 103)
-        low_color = (71, 85, 105)
-        track = (17, 21, 26)
+        muted = (148, 163, 184)
+        high_color = (244, 63, 94)
+        medium_color = (245, 158, 11)
+        low_color = (56, 189, 248)
+        track = (17, 22, 29)
         label = str(chart.get("window_label") or "")
         draw.text((20 * scale, 16 * scale), label, font=title_font, fill=gold)
         counts = (
