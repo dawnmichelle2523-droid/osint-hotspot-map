@@ -368,12 +368,6 @@
     .brief-section-body p { margin: 0; }
     .brief-section-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
-    .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
-    button.bar-row { width: 100%; background: transparent; color: inherit; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
-    .bar-row { display: grid; grid-template-columns: 148px 1fr 28px auto; gap: 8px; align-items: center; font-size: 12px; }
-    .region-delta { font-size: 11px; font-weight: 650; white-space: nowrap; }
-    .region-delta.up { color: #e07a72; }
-    .region-delta.down, .region-delta.flat { color: #8b97a3; }
     .badge-tier-official { background: #1c1810; color: #F3C64F; border: 1px solid #8a6d29; }
     .badge-tier-state { background: #1a1214; color: #e7b3b0; border: 1px solid #6e3d3d; }
     .badge-tier-lead { background: #16140f; color: #d9c48a; border: 1px solid #6d5a32; }
@@ -382,16 +376,6 @@
     .badge-tier-regional { background: #121614; color: #c5d2c4; border: 1px solid #3d4a40; }
     .badge-tier-corroborated { background: #1a1504; color: #F3C64F; border: 1px solid #F3C64F; }
     .chokepoint-label { background: transparent; border: 0; color: #F3C64F; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
-    button.bar-row[aria-pressed="true"] {
-      background: rgba(243, 198, 79, 0.12); border-radius: 8px; outline: 1px solid #F3C64F;
-    }
-    button.bar-row[aria-pressed="true"] span:first-child { color: #F3C64F; }
-    #show-all-regions {
-      color: #b8c2cc; background: #11151a; border: 1px solid #242b33; border-radius: 999px;
-      padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
-    }
-    #show-all-regions:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
-    #show-all-regions[aria-pressed="true"] { background: #1c1810; color: #e6c667; border: 1px solid #8a6d29; font-weight: 600; }
     #daily-chart-toggle {
       color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 999px;
       padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
@@ -439,9 +423,6 @@
     .chart-region span:first-child { color: #8fb3b8; }
     .chart-region-track { height: 8px; background: #11151a; border-radius: 999px; overflow: hidden; }
     .chart-region-fill { display: block; height: 100%; width: 0; background: #e6c667; }
-    .bar-row span:first-child { color: var(--muted); }
-    .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 9, 11, 0.8); border: 1px solid var(--line); overflow: hidden; }
-    .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #b89438 0%, #c97a4b 55%, #d95f6b 100%); }
     .source-pill { display: inline-block; color: var(--muted); background: #07090b; border: 1px solid #1c2229; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
     .update-place { margin: 0; color: var(--muted); font-size: 12px; }
     #headlines.drawer { border-top: 1px solid #1c2229; }
@@ -456,7 +437,6 @@
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
       #copy-briefing, #export-headlines, #export-pdf, #refresh-summary { margin-left: 0; }
-      .bar-row, .chart-region { grid-template-columns: 108px 1fr 28px auto; }
       .chart-region { grid-template-columns: 108px 1fr 28px; }
     }
     #print-sheet { display: none; }
@@ -781,8 +761,6 @@
         <button type="button" data-summary-scope="Other / International">Other / International</button>
       </div>
       <p id="summary-updated">Last auto-updated: not yet</p>
-      <button type="button" id="show-all-regions" aria-pressed="true">Show All Regions</button>
-      <div class="region-chart" id="region-chart" aria-label="Live incidents by region"></div>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
   </section>
@@ -1302,7 +1280,6 @@
       syncControls(visible.length);
       updateSearchCount(visible.length);
       renderHeadlines(visible);
-      renderRegionBars();
       if (loadedOnce) {
         setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
       }
@@ -2089,9 +2066,6 @@
       document.querySelectorAll("[data-summary-scope]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.summaryScope === summaryScope));
       });
-      document.querySelectorAll("[data-region-bar]").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.regionBar === region));
-      });
       if (!text) return false;
       const body = document.getElementById("brief-body");
       body.innerHTML = "<p class=\"summary-lead\">" + esc(text) + "</p>";
@@ -2177,32 +2151,6 @@
     let governorateCounts = {};
     let briefingWindow = "";
 
-    function regionDeltaHtml(name) {
-      const trend = regionTrends[name] || {};
-      const direction = trend.direction === "up" ? "up" : trend.direction === "down" ? "down" : "flat";
-      const label = trend.label || "0%";
-      return '<span class="region-delta ' + direction + '">' + esc(label) + "</span>";
-    }
-
-    function renderRegionBars() {
-      const counts = {};
-      LIVE_REGIONS.forEach((name) => { counts[name] = 0; });
-      features.forEach((feature) => {
-        const name = (feature.properties || {}).region;
-        const key = Object.prototype.hasOwnProperty.call(counts, name) ? name : "Other / International";
-        counts[key] += 1;
-      });
-      const maxCount = Math.max(1, ...LIVE_REGIONS.map((name) => counts[name]));
-      const reset = document.getElementById("show-all-regions");
-      if (reset) reset.setAttribute("aria-pressed", String(region === "all"));
-      document.getElementById("region-chart").innerHTML = LIVE_REGIONS.map((name) => {
-        const count = counts[name];
-        const width = Math.round((count / maxCount) * 100);
-        const pressed = name === region ? "true" : "false";
-        return "<button type=\"button\" class=\"bar-row\" data-region-bar=\"" + esc(name) + "\" aria-pressed=\"" + pressed + "\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span>" + regionDeltaHtml(name) + "</button>";
-      }).join("");
-    }
-
     document.getElementById("daily-brief").addEventListener("click", (event) => {
       const button = event.target.closest(".brief-section-toggle");
       if (!button) return;
@@ -2256,17 +2204,6 @@
       if (!button) return;
       selectSummaryScope(button.dataset.summaryScope);
     });
-    function applyRegionFilter(name) {
-      region = name || "all";
-      selectSummaryScope(region === "all" ? "overall" : region);
-      render(searchQuery ? "search" : (region === "all" ? "clear" : "region"));
-    }
-    document.getElementById("region-chart").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-region-bar]");
-      if (!button) return;
-      applyRegionFilter(button.dataset.regionBar);
-    });
-    document.getElementById("show-all-regions").addEventListener("click", () => applyRegionFilter("all"));
     const CHART_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
     let chartWindow = "yesterday";
 
