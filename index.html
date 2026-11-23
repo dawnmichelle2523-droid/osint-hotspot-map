@@ -345,10 +345,11 @@
     #daily-brief .brief-card::before { display: none; }
     .brief-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    #summary-scopes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    #summary-scopes button { background: #11151a; color: #b8c2cc; border: 1px solid #242b33; border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    #summary-scopes button:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
-    #summary-scopes button[aria-pressed="true"] { background: #1c1810; color: #e6c667; border: 1px solid #8a6d29; font-weight: 600; }
+    #summaryRegionSelect {
+      background: #11151a; color: #e6c667; border: 1px solid #3a2f15; border-radius: 6px;
+      padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    #summaryRegionSelect option { background: #11151a; color: #e6c667; }
     #summary-updated { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
     #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #F3C64F; }
     #brief-time { color: var(--muted); font-size: 12px; }
@@ -732,6 +733,16 @@
       <div class="brief-bar" id="brief-controls">
         <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
+        <select id="summaryRegionSelect" aria-label="07:00 to 07:00 summary">
+          <option value="overall" selected>Overall Briefing (07:00–07:00)</option>
+          <option value="Gulf">Gulf</option>
+          <option value="Saudi &amp; Yemen">Saudi &amp; Yemen</option>
+          <option value="Levant">Levant</option>
+          <option value="Iran &amp; Iraq">Iran &amp; Iraq</option>
+          <option value="Maritime">Maritime</option>
+          <option value="Sudan &amp; Horn">Sudan &amp; Horn</option>
+          <option value="Other / International">Other / International</option>
+        </select>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
         <button type="button" id="export-pdf">📄 Export PDF</button>
         <button type="button" id="refresh-summary">↻ Refresh Now</button>
@@ -750,16 +761,6 @@
         <div id="daily-chart-hours" aria-label="Incidents by hour"></div>
         <div id="daily-chart-regions" class="chart-regions" aria-label="Incidents by region"></div>
       </section>
-      <div id="summary-scopes" role="group" aria-label="24 hour summary">
-        <button type="button" data-summary-scope="overall" aria-pressed="true">Overall (24h)</button>
-        <button type="button" data-summary-scope="Gulf">Gulf</button>
-        <button type="button" data-summary-scope="Saudi &amp; Yemen">Saudi &amp; Yemen</button>
-        <button type="button" data-summary-scope="Levant">Levant</button>
-        <button type="button" data-summary-scope="Iran &amp; Iraq">Iran &amp; Iraq</button>
-        <button type="button" data-summary-scope="Maritime">Maritime</button>
-        <button type="button" data-summary-scope="Sudan &amp; Horn">Sudan &amp; Horn</button>
-        <button type="button" data-summary-scope="Other / International">Other / International</button>
-      </div>
       <p id="summary-updated">Last auto-updated: not yet</p>
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
@@ -1280,6 +1281,7 @@
       syncControls(visible.length);
       updateSearchCount(visible.length);
       renderHeadlines(visible);
+      paintSummaryRegionSelect();
       if (loadedOnce) {
         setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
       }
@@ -2060,12 +2062,32 @@
       node.textContent = "Last auto-updated: " + (shown === "Unknown time" ? stamp : shown);
     }
 
+    function paintSummaryRegionSelect() {
+      const select = document.getElementById("summaryRegionSelect");
+      if (!select) return;
+      const counts = {};
+      LIVE_REGIONS.forEach((name) => { counts[name] = 0; });
+      features.forEach((feature) => {
+        const name = (feature.properties || {}).region;
+        const key = Object.prototype.hasOwnProperty.call(counts, name) ? name : "Other / International";
+        counts[key] += 1;
+      });
+      const selected = summaryScope || "overall";
+      Array.from(select.options).forEach((option) => {
+        if (option.value === "overall") {
+          option.textContent = "Overall Briefing (07:00–07:00)";
+          return;
+        }
+        option.textContent = option.value + " (" + Number(counts[option.value] || 0) + ")";
+      });
+      if (select.value !== selected) select.value = selected;
+    }
+
     function renderSelectedSummary() {
       if (governorateSummary) return false;
       const text = summaryTextFor(summaryScope);
-      document.querySelectorAll("[data-summary-scope]").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.summaryScope === summaryScope));
-      });
+      const select = document.getElementById("summaryRegionSelect");
+      if (select && select.value !== summaryScope) select.value = summaryScope;
       if (!text) return false;
       const body = document.getElementById("brief-body");
       body.innerHTML = "<p class=\"summary-lead\">" + esc(text) + "</p>";
@@ -2110,6 +2132,7 @@
           if (data && data.summaries) {
             storedSummaries = data.summaries;
             showSummaryUpdated(data.summaries.updated_at);
+            paintSummaryRegionSelect();
             if (!governorateSummary && renderSelectedSummary()) return;
             if (governorateSummary) return;
           }
@@ -2137,6 +2160,7 @@
           governorateSummary = false;
           summaryPinned = false;
           renderSelectedSummary();
+          paintSummaryRegionSelect();
         }
       } catch (err) {
         setStatus("Summary refresh failed.");
@@ -2199,10 +2223,8 @@
       updatesQuery = event.target.value;
       render("none");
     });
-    document.getElementById("summary-scopes").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-summary-scope]");
-      if (!button) return;
-      selectSummaryScope(button.dataset.summaryScope);
+    document.getElementById("summaryRegionSelect").addEventListener("change", (event) => {
+      selectSummaryScope(event.target.value);
     });
     const CHART_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
     let chartWindow = "yesterday";
