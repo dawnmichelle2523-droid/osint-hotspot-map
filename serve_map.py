@@ -5,6 +5,7 @@ POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search).
 GET /api/data returns live events, six region counts, the cached summary, and last_polled_at.
 POST /api/data with {"view":"regional"} returns that same live payload for the regional overview.
 POST /api/poll-now starts one ingest batch in the background and returns immediately.
+GET /api/daily-chart returns the 07:00 Europe/London incident chart.
 The poll never writes hotspots.json or daily_brief.json.
 """
 
@@ -32,6 +33,7 @@ from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
 import feedparser
@@ -3180,6 +3182,10 @@ class MapHandler(SimpleHTTPRequestHandler):
         if route == "/api/data":
             self._json(data_response())
             return
+        if route == "/api/daily-chart":
+            query = self.path.split("?", 1)[1] if "?" in self.path else ""
+            self._json(daily_chart_response(query))
+            return
         super().do_GET()
 
     def do_POST(self) -> None:
@@ -3326,6 +3332,186 @@ def period_events(start: datetime, end: datetime) -> list[dict]:
     return found
 
 
+_CHART_HOURS = list(range(7, 24)) + list(range(0, 7))
+_CHART_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def chart_bounds(window: str, now: datetime | None = None) -> tuple[datetime, datetime]:
+    """Yesterday is the completed 07:00–07:00 window. Current runs from the latest 07:00 through now."""
+    moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+    if str(window or "").strip().lower() == "current":
+        start = moment.replace(hour=7, minute=0, second=0, microsecond=0)
+        if moment < start:
+            start -= timedelta(days=1)
+        return start, moment
+    return briefing_window("daily", moment)
+
+
+def format_chart_window(start: datetime, end: datetime) -> str:
+    def piece(moment: datetime) -> str:
+        return f"{moment.day} {_CHART_MONTHS[moment.month - 1]} {moment.strftime('%H:%M')}"
+
+    zone = start.tzname() or "GMT"
+    return f"{piece(start)} – {piece(end)} {zone}"
+
+
+def _chart_buckets() -> list[dict]:
+    return [{"hour_label": f"{hour:02d}:00", "high": 0, "medium": 0, "low": 0} for hour in _CHART_HOURS]
+
+
+def daily_chart(window: str = "yesterday", now: datetime | None = None) -> dict:
+    kind = "current" if str(window or "").strip().lower() == "current" else "yesterday"
+    start, end = chart_bounds(kind, now)
+    buckets = {hour: {"high": 0, "medium": 0, "low": 0} for hour in _CHART_HOURS}
+    regions = {name: 0 for name in REGIONS}
+    high = medium = low = 0
+    for event in period_events(start, end):
+        stamp = event.get("timestamp")
+        if not isinstance(stamp, datetime):
+            continue
+        rank = str(event.get("severity") or "").strip().lower()
+        if rank == "high":
+            field = "high"
+            high += 1
+        elif rank == "low":
+            field = "low"
+            low += 1
+        else:
+            field = "medium"
+            medium += 1
+        buckets[stamp.astimezone(LONDON).hour][field] += 1
+        regions[region_name(event.get("region"))] += 1
+    return {
+        "window_label": format_chart_window(start, end),
+        "total_incidents": high + medium + low,
+        "high_count": high,
+        "medium_count": medium,
+        "low_count": low,
+        "hourly_buckets": [
+            {"hour_label": f"{hour:02d}:00", **buckets[hour]} for hour in _CHART_HOURS
+        ],
+        "region_counts": regions,
+    }
+
+
+def daily_chart_response(query: str = "") -> dict:
+    window = "yesterday"
+    try:
+        raw = (parse_qs(query or "").get("window") or ["yesterday"])[0]
+        window = "current" if str(raw).strip().lower() == "current" else "yesterday"
+        return daily_chart(window)
+    except Exception as exc:
+        print(f"GET /api/daily-chart failed: {exc.__class__.__name__}.")
+        start, end = chart_bounds(window)
+        return {
+            "window_label": format_chart_window(start, end),
+            "total_incidents": 0,
+            "high_count": 0,
+            "medium_count": 0,
+            "low_count": 0,
+            "hourly_buckets": _chart_buckets(),
+            "region_counts": {name: 0 for name in REGIONS},
+        }
+
+
+def _chart_font(size: int, bold: bool = False):
+    from PIL import ImageFont
+
+    path = (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    )
+    if os.path.isfile(path):
+        return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
+def render_daily_chart_png(chart: dict) -> bytes:
+    """High-DPI dark chart for the daily briefing. A draw failure returns no image."""
+    try:
+        from PIL import Image, ImageDraw
+
+        scale = 2
+        width, height = 840 * scale, 560 * scale
+        image = Image.new("RGB", (width, height), (13, 17, 23))
+        draw = ImageDraw.Draw(image)
+        title_font = _chart_font(16 * scale, bold=True)
+        body_font = _chart_font(12 * scale)
+        small_font = _chart_font(9 * scale)
+        gold = (230, 198, 103)
+        muted = (143, 179, 184)
+        high_color = (255, 77, 109)
+        medium_color = (230, 198, 103)
+        low_color = (71, 85, 105)
+        track = (17, 21, 26)
+        label = str(chart.get("window_label") or "")
+        draw.text((20 * scale, 16 * scale), label, font=title_font, fill=gold)
+        counts = (
+            f"{int(chart.get('total_incidents') or 0)} incidents"
+            f"    High {int(chart.get('high_count') or 0)}"
+            f"    Medium {int(chart.get('medium_count') or 0)}"
+            f"    Low {int(chart.get('low_count') or 0)}"
+        )
+        draw.text((20 * scale, 42 * scale), counts, font=body_font, fill=muted)
+        buckets = list(chart.get("hourly_buckets") or _chart_buckets())
+        if len(buckets) != 24:
+            buckets = _chart_buckets()
+        plot_left = 28 * scale
+        plot_top = 78 * scale
+        plot_width = 784 * scale
+        plot_height = 210 * scale
+        slot = plot_width / 24
+        gap = 3 * scale
+        max_stack = max(
+            1,
+            max(int(bucket.get("high") or 0) + int(bucket.get("medium") or 0) + int(bucket.get("low") or 0) for bucket in buckets),
+        )
+        for index, bucket in enumerate(buckets):
+            x0 = plot_left + index * slot + gap / 2
+            x1 = plot_left + (index + 1) * slot - gap / 2
+            draw.rectangle((x0, plot_top, x1, plot_top + plot_height), fill=track)
+            y = plot_top + plot_height
+            for key, color in (("low", low_color), ("medium", medium_color), ("high", high_color)):
+                count = int(bucket.get(key) or 0)
+                if count <= 0:
+                    continue
+                bar_height = plot_height * count / max_stack
+                draw.rectangle((x0, y - bar_height, x1, y), fill=color)
+                y -= bar_height
+            hour = str(bucket.get("hour_label") or "")[:2]
+            if index % 2 == 0:
+                draw.text((x0, plot_top + plot_height + 4 * scale), hour, font=small_font, fill=muted)
+        legend_y = plot_top + plot_height + 28 * scale
+        legend = (("High", high_color), ("Medium", medium_color), ("Low", low_color))
+        cursor = 20 * scale
+        for name, color in legend:
+            draw.rectangle((cursor, legend_y, cursor + 12 * scale, legend_y + 12 * scale), fill=color)
+            draw.text((cursor + 16 * scale, legend_y - 1 * scale), name, font=body_font, fill=muted)
+            cursor += 110 * scale
+        regions = chart.get("region_counts") if isinstance(chart.get("region_counts"), dict) else {}
+        widest = max([1] + [int(regions.get(name) or 0) for name in REGIONS])
+        row_top = legend_y + 28 * scale
+        row_h = 22 * scale
+        bar_left = 168 * scale
+        bar_right = width - 48 * scale
+        for offset, name in enumerate(REGIONS):
+            y = row_top + offset * row_h
+            count = int(regions.get(name) or 0)
+            draw.text((20 * scale, y), name, font=small_font, fill=muted)
+            draw.rectangle((bar_left, y + 3 * scale, bar_right, y + 11 * scale), fill=track)
+            if count:
+                span = (bar_right - bar_left) * count / widest
+                draw.rectangle((bar_left, y + 3 * scale, bar_left + span, y + 11 * scale), fill=gold)
+            draw.text((bar_right + 6 * scale, y), str(count), font=small_font, fill=gold)
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
+    except Exception as exc:
+        print(f"Daily chart image failed: {exc.__class__.__name__}.")
+        return b""
+
+
 def smtp_settings() -> dict | None:
     osint.load_dotenv(osint.ROOT / ".env")
     host = (os.environ.get("SMTP_HOST") or "").strip()
@@ -3430,7 +3616,14 @@ def briefing_narrative(events: list[dict], report_type: str, start: datetime, en
         return fallback
 
 
-def briefing_html(report_type: str, start: datetime, end: datetime, events: list[dict], narrative: dict) -> str:
+def briefing_html(
+    report_type: str,
+    start: datetime,
+    end: datetime,
+    events: list[dict],
+    narrative: dict,
+    chart: bool = False,
+) -> str:
     counts = {name: 0 for name in REGIONS}
     governorates = {name: 0 for name in osint.SYRIA_GOVERNORATES}
     for event in events:
@@ -3492,8 +3685,19 @@ def briefing_html(report_type: str, start: datetime, end: datetime, events: list
         + "<div style=\"background:#0c1014;border:1px solid #1c2229;border-radius:12px;padding:16px 18px;\">"
         f"<h1 style=\"color:#F3C64F;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
         f"<p style=\"margin:0 0 12px;color:#d5e4e8;\">{html.escape(format_briefing_window(start, end))}</p>"
-        "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
-        "<h2 style=\"color:#F3C64F;font-size:16px;\">Regions</h2>"
+        + (
+            "<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin:0 0 8px;\">"
+            "<tr>"
+            "<td width=\"50%\" valign=\"top\" style=\"padding-right:6px;\">"
+            "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
+            "</td>"
+            "<td width=\"50%\" valign=\"top\" style=\"padding-left:6px;\">"
+            "<img src=\"cid:daily_chart\" alt=\"07:00 to 07:00 incident chart\" style=\"width:100%;border-radius:12px;\" />"
+            "</td></tr></table>"
+            if chart
+            else "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
+        )
+        + "<h2 style=\"color:#F3C64F;font-size:16px;\">Regions</h2>"
         + "".join(bars)
         + f"<h2 style=\"color:#F3C64F;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
         + "".join(region_notes)
@@ -3528,7 +3732,7 @@ def briefing_subject(report_type: str, start: datetime, end: datetime) -> str:
     return f"[GeoRiskIntel] {label} Geopolitical & OSINT Briefing — {format_briefing_window(start, end)}"
 
 
-def send_briefing_message(subject: str, body: str, png: bytes, settings: dict) -> bool:
+def send_briefing_message(subject: str, body: str, png: bytes, settings: dict, chart_png: bytes = b"") -> bool:
     message = MIMEMultipart("related")
     message["Subject"] = subject
     message["From"] = settings["sender"]
@@ -3543,6 +3747,11 @@ def send_briefing_message(subject: str, body: str, png: bytes, settings: dict) -
     image.add_header("Content-ID", "<incident_map>")
     image.add_header("Content-Disposition", "inline", filename="incident_map.png")
     message.attach(image)
+    if chart_png:
+        chart_image = MIMEImage(chart_png, _subtype="png")
+        chart_image.add_header("Content-ID", "<daily_chart>")
+        chart_image.add_header("Content-Disposition", "inline", filename="daily_chart.png")
+        message.attach(chart_image)
     try:
         if settings["port"] == 465:
             smtp = smtplib.SMTP_SSL(settings["host"], settings["port"], timeout=30)
@@ -3567,6 +3776,7 @@ def generate_and_email_periodic_report(report_type: str) -> bool:
     if kind not in {"daily", "weekly", "monthly"}:
         print(f"Unknown briefing type. Skipped sending.")
         return False
+    chart = daily_chart("yesterday") if kind == "daily" else None
     settings = smtp_settings()
     if settings is None:
         print(f"SMTP is not configured. Skipped sending the {kind} OSINT briefing.")
@@ -3574,10 +3784,11 @@ def generate_and_email_periodic_report(report_type: str) -> bool:
     start, end = briefing_window(kind)
     events = period_events(start, end)
     png = render_period_map_png(events)
+    chart_png = render_daily_chart_png(chart) if chart is not None else b""
     narrative = briefing_narrative(events, kind, start, end)
-    body = briefing_html(kind, start, end, events, narrative)
+    body = briefing_html(kind, start, end, events, narrative, chart=bool(chart_png))
     subject = briefing_subject(kind, start, end)
-    sent = send_briefing_message(subject, body, png, settings)
+    sent = send_briefing_message(subject, body, png, settings, chart_png)
     if sent:
         print(f"Sent the {kind} OSINT briefing. daily_brief.json and hotspots.json were not changed.")
     return sent

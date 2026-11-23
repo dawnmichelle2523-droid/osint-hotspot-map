@@ -392,6 +392,53 @@
     }
     #show-all-regions:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
     #show-all-regions[aria-pressed="true"] { background: #1c1810; color: #e6c667; border: 1px solid #8a6d29; font-weight: 600; }
+    #daily-chart-toggle {
+      color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 999px;
+      padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    #daily-chart-toggle[aria-expanded="true"] { background: #0d1117; }
+    #daily-chart-card {
+      background: #0d1117; color: #e7eef0; border: 1px solid #8a6d29; border-radius: 12px;
+      padding: 12px 14px; margin: 10px 0 12px;
+    }
+    #daily-chart-card[hidden] { display: none; }
+    .chart-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .chart-head h3 { margin: 0; color: #e6c667; font-size: 14px; }
+    #daily-chart-label { margin: 6px 0 0; color: #8fb3b8; font-size: 12px; }
+    .chart-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chart-pills button {
+      background: #11151a; color: #b8c2cc; border: 1px solid #242b33; border-radius: 999px;
+      padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .chart-pills button[aria-pressed="true"] { background: #1c1810; color: #e6c667; border: 1px solid #8a6d29; }
+    .chart-counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 12px; font-weight: 650; }
+    .chart-counts .high { color: #ff4d6d; }
+    .chart-counts .medium { color: #e6c667; }
+    .chart-counts .low { color: #94a3b8; }
+    .chart-legend { display: flex; gap: 12px; margin: 4px 0 8px; color: #8fb3b8; font-size: 11px; }
+    .chart-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+    .chart-legend .high { background: #ff4d6d; }
+    .chart-legend .medium { background: #e6c667; }
+    .chart-legend .low { background: #475569; }
+    #daily-chart-hours {
+      display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px;
+      align-items: end; height: 132px;
+    }
+    .hour-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+    .hour-stack {
+      width: 100%; height: 104px; display: flex; flex-direction: column; justify-content: flex-end;
+      background: #11151a; border-radius: 3px; overflow: hidden;
+    }
+    .hour-stack span { display: block; width: 100%; min-height: 0; }
+    .hour-stack .high { background: #ff4d6d; }
+    .hour-stack .medium { background: #e6c667; }
+    .hour-stack .low { background: #475569; }
+    .hour-label { margin-top: 3px; color: #8fb3b8; font-size: 8px; line-height: 1; }
+    .chart-regions { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+    .chart-region { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    .chart-region span:first-child { color: #8fb3b8; }
+    .chart-region-track { height: 8px; background: #11151a; border-radius: 999px; overflow: hidden; }
+    .chart-region-fill { display: block; height: 100%; width: 0; background: #e6c667; }
     .bar-row span:first-child { color: var(--muted); }
     .bar-track { height: 8px; border-radius: 999px; background: rgba(7, 9, 11, 0.8); border: 1px solid var(--line); overflow: hidden; }
     .bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #b89438 0%, #c97a4b 55%, #d95f6b 100%); }
@@ -409,7 +456,8 @@
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
       #copy-briefing, #export-headlines, #export-pdf, #refresh-summary { margin-left: 0; }
-      .bar-row { grid-template-columns: 108px 1fr 28px auto; }
+      .bar-row, .chart-region { grid-template-columns: 108px 1fr 28px auto; }
+      .chart-region { grid-template-columns: 108px 1fr 28px; }
     }
     #print-sheet { display: none; }
     @media print {
@@ -440,6 +488,7 @@
       </div>
     </div>
     <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="ticker">Ticker</button>
+    <button type="button" id="daily-chart-toggle" aria-expanded="false" aria-controls="daily-chart-card">📊 07:00–07:00 Chart</button>
     <div id="clock-strip">
       <span id="clock-london">London --:--:--</span>
       <span id="clock-utc">UTC --:--:--</span>
@@ -707,6 +756,20 @@
         <button type="button" id="export-pdf">📄 Export PDF</button>
         <button type="button" id="refresh-summary">↻ Refresh Now</button>
       </div>
+      <section id="daily-chart-card" hidden>
+        <div class="chart-head">
+          <h3>📊 07:00–07:00 Chart</h3>
+          <div class="chart-pills" role="group" aria-label="Chart window">
+            <button type="button" data-chart-window="yesterday" aria-pressed="true">Yesterday (07:00–07:00)</button>
+            <button type="button" data-chart-window="current" aria-pressed="false">Live Window (07:00–Now)</button>
+          </div>
+        </div>
+        <p id="daily-chart-label">Loading chart…</p>
+        <div id="daily-chart-counts" class="chart-counts"></div>
+        <div class="chart-legend" aria-hidden="true"><span><i class="high"></i>High</span><span><i class="medium"></i>Medium</span><span><i class="low"></i>Low</span></div>
+        <div id="daily-chart-hours" aria-label="Incidents by hour"></div>
+        <div id="daily-chart-regions" class="chart-regions" aria-label="Incidents by region"></div>
+      </section>
       <div id="summary-scopes" role="group" aria-label="24 hour summary">
         <button type="button" data-summary-scope="overall" aria-pressed="true">Overall (24h)</button>
         <button type="button" data-summary-scope="Gulf">Gulf</button>
@@ -2204,6 +2267,73 @@
       applyRegionFilter(button.dataset.regionBar);
     });
     document.getElementById("show-all-regions").addEventListener("click", () => applyRegionFilter("all"));
+    const CHART_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
+    let chartWindow = "yesterday";
+
+    function renderDailyChart(data) {
+      const payload = data || {};
+      const buckets = Array.isArray(payload.hourly_buckets) ? payload.hourly_buckets : [];
+      const maxStack = Math.max(1, ...buckets.map((bucket) => Number(bucket.high || 0) + Number(bucket.medium || 0) + Number(bucket.low || 0)));
+      document.getElementById("daily-chart-label").textContent = payload.window_label || "";
+      document.getElementById("daily-chart-counts").innerHTML =
+        "<span>" + Number(payload.total_incidents || 0) + " incidents</span>" +
+        "<span class=\"high\">High " + Number(payload.high_count || 0) + "</span>" +
+        "<span class=\"medium\">Medium " + Number(payload.medium_count || 0) + "</span>" +
+        "<span class=\"low\">Low " + Number(payload.low_count || 0) + "</span>";
+      document.getElementById("daily-chart-hours").innerHTML = buckets.map((bucket) => {
+        const high = Number(bucket.high || 0);
+        const medium = Number(bucket.medium || 0);
+        const low = Number(bucket.low || 0);
+        const hour = esc(String(bucket.hour_label || "").slice(0, 2));
+        return "<div class=\"hour-col\" title=\"" + esc(bucket.hour_label || "") + "\">" +
+          "<div class=\"hour-stack\">" +
+            "<span class=\"spacer\" style=\"flex-grow:" + (maxStack - high - medium - low) + "\"></span>" +
+            "<span class=\"high\" style=\"flex-grow:" + high + "\"></span>" +
+            "<span class=\"medium\" style=\"flex-grow:" + medium + "\"></span>" +
+            "<span class=\"low\" style=\"flex-grow:" + low + "\"></span>" +
+          "</div><span class=\"hour-label\">" + hour + "</span></div>";
+      }).join("");
+      const regions = payload.region_counts || {};
+      const maxRegion = Math.max(1, ...CHART_REGIONS.map((name) => Number(regions[name] || 0)));
+      document.getElementById("daily-chart-regions").innerHTML = CHART_REGIONS.map((name) => {
+        const count = Number(regions[name] || 0);
+        const width = Math.round((count / maxRegion) * 100);
+        return "<div class=\"chart-region\"><span>" + esc(name) + "</span><span class=\"chart-region-track\"><span class=\"chart-region-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
+      }).join("");
+    }
+
+    async function loadDailyChart() {
+      const label = document.getElementById("daily-chart-label");
+      label.textContent = "Loading chart…";
+      try {
+        const response = await fetch("/api/daily-chart?window=" + encodeURIComponent(chartWindow), { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        renderDailyChart(await response.json());
+      } catch (err) {
+        label.textContent = "Chart could not be loaded.";
+      }
+    }
+
+    document.getElementById("daily-chart-toggle").addEventListener("click", () => {
+      const card = document.getElementById("daily-chart-card");
+      const open = card.hasAttribute("hidden");
+      if (open) card.removeAttribute("hidden");
+      else card.setAttribute("hidden", "");
+      document.getElementById("daily-chart-toggle").setAttribute("aria-expanded", String(open));
+      if (open) {
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        loadDailyChart();
+      }
+    });
+    document.querySelector("#daily-chart-card .chart-pills").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-chart-window]");
+      if (!button) return;
+      chartWindow = button.dataset.chartWindow;
+      document.querySelectorAll("[data-chart-window]").forEach((item) => {
+        item.setAttribute("aria-pressed", String(item === button));
+      });
+      loadDailyChart();
+    });
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     async function loadData() {
       await loadLive();
