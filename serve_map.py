@@ -210,6 +210,94 @@ def region_name(value: object) -> str:
     return "Other / International"
 
 
+_OFFICIAL_MARKERS = (
+    "sananewsenglish",
+    "syrianarabnewsagency",
+    "televisionsyria",
+    "alekhbariahsy",
+    "irna",
+    "kuna",
+    "bna",
+    "petra",
+    "centcom",
+    "ukmto",
+    "sweidagov",
+    "syrtelevision",
+    "reuters",
+    "apnews",
+    "associatedpress",
+)
+_OSINT_MARKERS = (
+    "osintdefender",
+    "auroraintel",
+    "clashreport",
+    "warmonitors",
+    "osint613",
+    "osintupdates",
+    "osinttv",
+    "osintwarfare",
+    "osinttechnical",
+    "afrimeosint",
+    "syriacosint",
+    "sentdefender",
+    "intelcrab",
+    "conflictarchive",
+    "suriyak",
+    "liveuamap",
+    "hawranosint",
+    "syrianinfowar",
+    "qalaatalmudiq",
+    "middleeastspectator",
+)
+
+
+def source_identity(kind: str = "", name: str = "", url: str = "") -> str:
+    """Outlet name, Telegram/X handle, and host. Article paths are left out."""
+    parts = [str(kind or ""), str(name or "")]
+    text = str(url or "")
+    telegram = re.search(r"t\.me/([^/?#]+)", text, re.IGNORECASE)
+    if telegram:
+        parts.append(telegram.group(1))
+    social = re.search(r"(?:x\.com|twitter\.com)/([^/?#]+)", text, re.IGNORECASE)
+    if social and social.group(1).lower() not in {"i", "intent", "share", "search", "status"}:
+        parts.append(social.group(1))
+    host = re.search(r"https?://([^/?#]+)", text, re.IGNORECASE)
+    if host:
+        parts.append(host.group(1))
+    return " ".join(parts)
+
+
+def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
+    """Official for state wires, OSINT for known accounts, otherwise Regional Media."""
+    raw = source_identity(kind, name, url).lower()
+    compact = re.sub(r"[^a-z0-9]+", "", raw)
+    words = set(re.findall(r"[a-z0-9]+", raw))
+    if "osint" in compact or any(marker in compact for marker in _OSINT_MARKERS):
+        return "OSINT"
+    if any(marker in compact for marker in _OFFICIAL_MARKERS):
+        return "Official"
+    if "associated" in words and "press" in words:
+        return "Official"
+    if words & {"sana", "irna", "kuna", "bna", "petra", "centcom", "ukmto", "reuters"}:
+        return "Official"
+    if "ap" in words and ("news" in words or "middle" in words):
+        return "Official"
+    return "Regional Media"
+
+
+def backfill_source_tiers(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+    if "source_tier" not in columns:
+        return
+    rows = conn.execute(
+        "SELECT id, source_url, source_name, source_kind, source_tier FROM items "
+        "WHERE source_tier IS NULL OR source_tier = ''"
+    ).fetchall()
+    for row in rows:
+        tier = source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
+        conn.execute("UPDATE items SET source_tier = ? WHERE id = ?", (tier, row["id"]))
+
+
 def load_features() -> list[dict]:
     try:
         features = [item for item in osint.read_collection(osint.HOTSPOTS) if isinstance(item, dict)]
@@ -355,7 +443,8 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
             corroboration_count INTEGER NOT NULL DEFAULT 1,
             published_at TEXT,
             ingested_at TEXT NOT NULL,
-            original_text TEXT
+            original_text TEXT,
+            source_tier TEXT
         )
         """
     )
@@ -379,10 +468,12 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "title": "TEXT",
         "summary": "TEXT",
         "original_text": "TEXT",
+        "source_tier": "TEXT",
     }
     for name, typedef in additions.items():
         if name not in existing:
             conn.execute(f"ALTER TABLE items ADD COLUMN {name} {typedef}")
+    backfill_source_tiers(conn)
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_source_url ON items(source_url)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_headline_hash ON items(headline_hash)")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_items_url_hash ON items(url_hash)")
@@ -635,6 +726,8 @@ def feed_features() -> list[dict]:
             "summary": row["summary"] or row["title"],
             "timestamp": row["published_at"] or row["ingested_at"],
             "source": row["source_url"],
+            "source_url": row["source_url"] or "",
+            "source_tier": row["source_tier"] or source_tier_for(row["source_kind"], row["source_name"], row["source_url"]),
             "account": source_label(row["source_kind"], row["source_name"]),
             "handle": source_label(row["source_kind"], row["source_name"]),
             "source_handle": source_label(row["source_kind"], row["source_name"]),
@@ -920,9 +1013,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 """
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
-                    region, governorate, location_name, lat, lng, severity, category,
+                    source_tier, region, governorate, location_name, lat, lng, severity, category,
                     corroboration_count, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -933,6 +1026,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     item.get("original_text") or "",
                     item.get("source_name") or "",
                     item.get("source_kind") or "",
+                    source_tier_for(item.get("source_kind") or "", item.get("source_name") or "", source_url),
                     placed.get("region") or "Other / International",
                     placed.get("governorate") or "",
                     placed.get("location_name") or "",
@@ -1427,6 +1521,56 @@ def feed_health_payload() -> dict:
     return {"online": online, "total": len(catalog), "failing": failing}
 
 
+def trend_label(percent: int) -> dict:
+    if percent > 0:
+        return {"percent": percent, "direction": "up", "label": f"▲ +{percent}%"}
+    if percent < 0:
+        return {"percent": percent, "direction": "down", "label": f"▼ {percent}%"}
+    return {"percent": 0, "direction": "flat", "label": "0%"}
+
+
+def region_escalation(now: datetime | None = None) -> dict[str, dict]:
+    """Compare each region's latest UTC day with its 7-day daily average."""
+    moment = now or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(timezone.utc)
+    latest_day = moment.date()
+    start_day = latest_day - timedelta(days=6)
+    start = datetime.combine(start_day, datetime.min.time(), tzinfo=timezone.utc)
+    series = {name: [0] * 7 for name in REGIONS}
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT region, published_at, ingested_at FROM items "
+                "WHERE COALESCE(published_at, ingested_at, '') >= ?",
+                (start.strftime("%Y-%m-%dT%H:%M:%SZ"),),
+            ).fetchall()
+        finally:
+            conn.close()
+    for row in rows:
+        stamp = parse_when(row["published_at"]) or parse_when(row["ingested_at"])
+        if stamp is None:
+            continue
+        stamp = stamp.astimezone(timezone.utc)
+        offset = (stamp.date() - start_day).days
+        if offset < 0 or offset > 6:
+            continue
+        series[region_name(row["region"])][offset] += 1
+    trends = {}
+    for name in REGIONS:
+        days = series[name]
+        baseline = sum(days) / 7
+        latest = days[-1]
+        if baseline <= 0:
+            percent = 100 if latest > 0 else 0
+        else:
+            percent = int(round((latest - baseline) / baseline * 100))
+        trends[name] = trend_label(percent)
+    return trends
+
+
 def data_payload() -> dict:
     now = datetime.now(timezone.utc)
     features = [feature for feature in combined_features() if within_live_window(feature, now)]
@@ -1446,6 +1590,8 @@ def data_payload() -> dict:
         "summaries": read_summaries(),
         "last_polled_at": last_polled_at,
         "feed_health": feed_health_payload(),
+        "region_trends": region_escalation(now),
+        "briefing_window": format_briefing_window(*briefing_window("daily", now)),
     }
 
 
@@ -1551,6 +1697,8 @@ def data_response() -> dict:
             "summary": read_cache(),
             "summaries": {"overall": "", "regions": {name: "" for name in REGIONS}, "updated_at": ""},
             "last_polled_at": None,
+            "region_trends": {name: trend_label(0) for name in REGIONS},
+            "briefing_window": "",
         }
 
 

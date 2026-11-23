@@ -217,8 +217,8 @@
     .headlines-inner { width: 100%; margin: 0 auto; }
     .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid var(--active-line); padding-bottom: 8px; }
     #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; color: #F3C64F; }
-    #export-headlines, #copy-briefing { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    #export-headlines:hover, #copy-briefing:hover { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
+    #export-headlines, #copy-briefing, #export-pdf { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #export-headlines:hover, #copy-briefing:hover, #export-pdf:hover { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
     .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .popup-actions .popup-link { margin-top: 0; }
     .copy-pin { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -287,7 +287,14 @@
     .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
     .region-chart { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; }
     button.bar-row { width: 100%; background: transparent; color: inherit; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
-    .bar-row { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    .bar-row { display: grid; grid-template-columns: 148px 1fr 28px auto; gap: 8px; align-items: center; font-size: 12px; }
+    .region-delta { font-size: 11px; font-weight: 650; white-space: nowrap; }
+    .region-delta.up { color: #e07a72; }
+    .region-delta.down, .region-delta.flat { color: #8b97a3; }
+    .badge-tier-official { background: #1c1810; color: #F3C64F; border: 1px solid #8a6d29; }
+    .badge-tier-osint { background: #11151a; color: #d5e4e8; border: 1px solid #3a4650; }
+    .badge-tier-corroborated { background: #1a1504; color: #F3C64F; border: 1px solid #F3C64F; }
+    .chokepoint-label { background: transparent; border: 0; color: #F3C64F; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
     button.bar-row[aria-pressed="true"] {
       background: rgba(243, 198, 79, 0.12); border-radius: 8px; outline: 1px solid #F3C64F;
     }
@@ -314,8 +321,23 @@
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
-      #copy-briefing, #export-headlines, #refresh-summary { margin-left: 0; }
-      .bar-row { grid-template-columns: 108px 1fr 28px; }
+      #copy-briefing, #export-headlines, #export-pdf, #refresh-summary { margin-left: 0; }
+      .bar-row { grid-template-columns: 108px 1fr 28px auto; }
+    }
+    #print-sheet { display: none; }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      html, body { background: #fff !important; color: #1a1a1a !important; height: auto; overflow: visible; }
+      #live-bar, #stage, #headlines, #daily-brief { display: none !important; }
+      #print-sheet {
+        display: block !important; max-width: 180mm; margin: 0 auto; color: #1a1a1a;
+        font: 11.5px/1.35 "Segoe UI", system-ui, sans-serif;
+      }
+      #print-sheet img { height: 36px; width: auto; }
+      #print-sheet h1 { margin: 8px 0 2px; font-size: 18px; color: #8a6d29; }
+      #print-sheet h2 { margin: 12px 0 4px; font-size: 13px; color: #8a6d29; }
+      #print-sheet p, #print-sheet li { margin: 0 0 4px; }
+      #print-window { color: #444; }
     }
   </style>
 </head>
@@ -406,6 +428,7 @@
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
     <button type="button" data-jump="levant">Levant</button>
     <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
+    <button type="button" id="chokepoints" aria-pressed="false">Chokepoints</button>
     <button type="button" id="thermal-toggle" aria-pressed="false">🔥 Satellite Heat (24h)</button>
     <button type="button" id="summarize-governorate">Summarize Governorate</button>
   </nav>
@@ -416,12 +439,24 @@
   </div>
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
+  <section id="print-sheet" aria-hidden="true">
+    <img src="/static/logo.png" alt="GeoRiskIntel">
+    <h1>GeoRiskIntel</h1>
+    <p id="print-window"></p>
+    <h2>Overall</h2>
+    <p id="print-overall"></p>
+    <h2>Regions</h2>
+    <div id="print-regions"></div>
+    <h2>Active Syria governorates</h2>
+    <ul id="print-governorates"></ul>
+  </section>
   <section id="daily-brief" aria-labelledby="brief-title">
     <article class="brief-card">
       <div class="brief-bar" id="brief-controls">
         <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
+        <button type="button" id="export-pdf">📄 Export PDF</button>
         <button type="button" id="refresh-summary">↻ Refresh Now</button>
       </div>
       <div id="summary-scopes" role="group" aria-label="24 hour summary">
@@ -644,10 +679,21 @@
       return fields.some((value) => String(value || "").toLowerCase().includes(needle));
     }
 
-    function corroborationBadge(props) {
+    function trustBadge(props) {
       const count = Number(props.corroboration_count);
-      if (!Number.isFinite(count) || count <= 1) return "";
-      return '<span class="badge badge-sources">✓ ' + count + ' sources</span>';
+      if (Number.isFinite(count) && count > 1) {
+        return '<span class="badge badge-tier-corroborated">Corroborated (' + count + 'x)</span>';
+      }
+      const tier = String(props.source_tier || "");
+      if (tier === "Official") return '<span class="badge badge-tier-official">Official</span>';
+      if (tier === "OSINT") return '<span class="badge badge-tier-osint">OSINT</span>';
+      return "";
+    }
+
+    function originalPostLink(props) {
+      const href = safeUrl(props.source_url || props.source || "");
+      if (!href) return "";
+      return '<a class="popup-link original-post" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">↗ View Original Post</a>';
     }
 
     function matchesQuery(props, query) {
@@ -769,10 +815,7 @@
     function popupHtml(props, id) {
       const badge = severityBadge(props);
       const headline = props.title || props.summary || "Incident";
-      const href = safeUrl(props.source);
-      const link = href
-        ? '<a class="popup-link" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">View Source ↗</a>'
-        : "";
+      const link = originalPostLink(props);
       const place = props.location_name
         ? '<div class="update-place">' + esc(props.location_name) + "</div>"
         : "";
@@ -781,7 +824,7 @@
           "<h3>" + esc(headline) + "</h3>" +
           '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
           '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
-          corroborationBadge(props) +
+          trustBadge(props) +
           place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           originalArabicBlock(props) +
@@ -969,9 +1012,9 @@
       }).join("\n\n");
       list.innerHTML = sorted.map((feature) => {
         const props = feature.properties || {};
-        const href = safeUrl(props.source);
+        const href = safeUrl(props.source_url || props.source || "");
         const source = href
-          ? '<a class="headline-source" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">View Source</a>'
+          ? '<a class="headline-source original-post" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">↗ View Original Post</a>'
           : "";
         const place = props.location_name
           ? '<p class="update-place">' + esc(props.location_name) + "</p>"
@@ -981,7 +1024,7 @@
             '<div class="headline-meta">' +
               '<span class="source-pill">' + esc(sourceLabel(props)) + "</span>" +
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
-              corroborationBadge(props) +
+              trustBadge(props) +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
@@ -1150,6 +1193,9 @@
         renderFeedHealth(data.feed_health);
         const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
         features = incoming;
+        regionTrends = (data && data.region_trends) || {};
+        governorateCounts = (data && data.counts_by_governorate) || {};
+        briefingWindow = (data && data.briefing_window) || "";
         loadedOnce = true;
         setStatus(incoming.length ? "" : "No incidents in the last 72 hours.");
         render();
@@ -1306,6 +1352,41 @@
     document.getElementById("syria-governorates").addEventListener("click", () => {
       toggleSyriaGovernorates(document.getElementById("syria-governorates"));
       if (thermalOn && !map.hasLayer(thermalLayer)) thermalLayer.addTo(map);
+    });
+
+    let chokepointLayer = null;
+    function chokepointPolygons() {
+      if (chokepointLayer) return chokepointLayer;
+      const areas = [
+        { name: "Strait of Hormuz", ring: [[26.95, 56.15], [27.10, 56.45], [26.70, 56.85], [26.35, 56.55], [26.50, 56.20]] },
+        { name: "Bab el-Mandeb", ring: [[12.85, 43.20], [12.95, 43.45], [12.60, 43.70], [12.35, 43.45], [12.50, 43.15]] },
+        { name: "Syria–Iraq Al-Tanf / Al-Bukamal Corridor", ring: [[33.25, 38.40], [33.70, 38.55], [34.60, 40.70], [34.40, 41.15], [34.15, 40.85], [33.20, 38.80]] }
+      ];
+      chokepointLayer = L.layerGroup(areas.map((area) => {
+        const polygon = L.polygon(area.ring, {
+          color: "#F3C64F", weight: 1.5, opacity: 0.85, dashArray: "6 5",
+          fillColor: "#F3C64F", fillOpacity: 0.05, interactive: false
+        });
+        const lat = area.ring.reduce((sum, pair) => sum + pair[0], 0) / area.ring.length;
+        const lng = area.ring.reduce((sum, pair) => sum + pair[1], 0) / area.ring.length;
+        const label = L.marker([lat, lng], {
+          interactive: false,
+          icon: L.divIcon({ className: "chokepoint-label", html: esc(area.name), iconSize: [220, 16], iconAnchor: [110, 8] })
+        });
+        return L.layerGroup([polygon, label]);
+      }));
+      return chokepointLayer;
+    }
+    document.getElementById("chokepoints").addEventListener("click", () => {
+      const button = document.getElementById("chokepoints");
+      const on = button.getAttribute("aria-pressed") !== "true";
+      button.setAttribute("aria-pressed", String(on));
+      const layer = chokepointPolygons();
+      if (on) {
+        if (!map.hasLayer(layer)) layer.addTo(map);
+      } else if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
     });
     function thermalRadius(frp) {
       const value = Number(frp);
@@ -1574,6 +1655,9 @@
         const response = await fetch("/api/data", { cache: "no-store" });
         if (response.ok) {
           const data = await response.json();
+          if (data && data.region_trends) regionTrends = data.region_trends;
+          if (data && data.counts_by_governorate) governorateCounts = data.counts_by_governorate;
+          if (data && data.briefing_window) briefingWindow = data.briefing_window;
           if (data && data.summaries) {
             storedSummaries = data.summaries;
             showSummaryUpdated(data.summaries.updated_at);
@@ -1614,6 +1698,16 @@
     }
 
     const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Other / International"];
+    let regionTrends = {};
+    let governorateCounts = {};
+    let briefingWindow = "";
+
+    function regionDeltaHtml(name) {
+      const trend = regionTrends[name] || {};
+      const direction = trend.direction === "up" ? "up" : trend.direction === "down" ? "down" : "flat";
+      const label = trend.label || "0%";
+      return '<span class="region-delta ' + direction + '">' + esc(label) + "</span>";
+    }
 
     function renderRegionBars() {
       const counts = {};
@@ -1630,7 +1724,7 @@
         const count = counts[name];
         const width = Math.round((count / maxCount) * 100);
         const pressed = name === region ? "true" : "false";
-        return "<button type=\"button\" class=\"bar-row\" data-region-bar=\"" + esc(name) + "\" aria-pressed=\"" + pressed + "\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></button>";
+        return "<button type=\"button\" class=\"bar-row\" data-region-bar=\"" + esc(name) + "\" aria-pressed=\"" + pressed + "\"><span>" + esc(name) + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span>" + regionDeltaHtml(name) + "</button>";
       }).join("");
     }
 
@@ -1655,6 +1749,23 @@
     });
     document.getElementById("export-headlines").addEventListener("click", () => {
       copyText(headlineExport, document.getElementById("export-headlines"), "Export Filtered Headlines");
+    });
+    function fillPrintSheet() {
+      const regions = (storedSummaries && storedSummaries.regions) || {};
+      const overall = (storedSummaries && storedSummaries.overall) || "No overall summary is available.";
+      document.getElementById("print-window").textContent = briefingWindow || "07:00–07:00 Europe/London";
+      document.getElementById("print-overall").textContent = overall;
+      document.getElementById("print-regions").innerHTML = LIVE_REGIONS.map((name) => {
+        return "<p><strong>" + esc(name) + ".</strong> " + esc(regions[name] || "No regional summary is available.") + "</p>";
+      }).join("");
+      const active = Object.keys(governorateCounts).filter((name) => Number(governorateCounts[name]) > 0);
+      document.getElementById("print-governorates").innerHTML = active.length
+        ? active.map((name) => "<li>" + esc(name) + " (" + Number(governorateCounts[name]) + ")</li>").join("")
+        : "<li>None in the current window.</li>";
+    }
+    document.getElementById("export-pdf").addEventListener("click", () => {
+      fillPrintSheet();
+      window.print();
     });
     document.getElementById("copy-briefing").addEventListener("click", () => {
       const text = briefText || document.getElementById("brief-body").innerText.trim();
