@@ -68,8 +68,11 @@ USER_AGENT = "osint_tracker"
 _thermal_lock = threading.Lock()
 _thermal_cache: dict = {"at": 0.0, "points": None}
 # Configurable public feeds. Google News RSS stands in for Reuters and AP.
+ALJAZEERA_ALL_FEED = "https://www.aljazeera.com/xml/rss/all.xml"
+ALJAZEERA_MIDDLE_EAST_PAGE = "https://www.aljazeera.com/where/middle-east/"
 RSS_FEEDS = [
     ("Al Jazeera Middle East", "https://www.aljazeera.com/xml/rss/middleeast.xml"),
+    ("Al Jazeera", ALJAZEERA_ALL_FEED),
     ("BBC Middle East", "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"),
     ("Reuters Middle East & Syria", "https://news.google.com/rss/search?q=site:reuters.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("AP Middle East & Syria", "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
@@ -1361,6 +1364,58 @@ def html_notice_items(name: str, url: str, content: bytes) -> list[dict]:
     return found
 
 
+_AJ_THEATER_RE = re.compile(
+    r"\b(?:middle[\s-]east|iran(?:ian)?s?|tehran|irgc|persian gulf|arabian gulf|the gulf|"
+    r"bahrain|kuwait|qatar|emirates|emirati|oman|saudi(?: arabia)?|yemeni?|houthis?|ansarallah|ansar allah|"
+    r"israel(?:i)?s?|gaza|palestin(?:e|ian)s?|west bank|lebanon(?:ese)?|beirut|hezbollah|"
+    r"jordan(?:ian)?s?|amman|syria(?:n)?s?|damascus|aleppo|idlib|iraq(?:i)?s?|baghdad|kurdistan|"
+    r"hormuz|red sea|bab al-mandeb|bab el-mandeb|bab al-mandab|gulf of aden|gulf of oman|arabian sea|"
+    r"sudan(?:ese)?|khartoum|darfur|kordofan|rsf)\b",
+    re.IGNORECASE,
+)
+_AJ_SECURITY_RE = re.compile(
+    r"\b(?:wars?|conflict|strikes?|struck|attacks?|attacked|hits?|missiles?|drones?|rockets?|"
+    r"shelling|shelled|clash(?:es|ed)?|troops|military|army|navy|naval|sanctions?|"
+    r"blockades?|ceasefire|cease-fire|truce|airstrikes?|air strikes?|explosions?|blasts?|"
+    r"bombs?|bombings?|hostages?|militias?|militants?|intercept(?:ed|s|ion)?|"
+    r"sea mines?|naval mines?|landmines?|mines|raids?|invasions?|offensives?|"
+    r"killed|killing|wounded|casualt(?:y|ies)|shooting|artillery|warships?|"
+    r"sieges?|bombard(?:ed|ment)?|assassinat(?:ed|ion)|shot down|downed|"
+    r"air defen[cs]e|unrest|tankers?|shipping|seiz(?:e|es|ed|ure)|captured?|"
+    r"ablaze|on fire|fighter jets?|security council)\b",
+    re.IGNORECASE,
+)
+_LIVEBLOG_PATH_RE = re.compile(
+    r"/news/liveblog/(\d{4})/(\d{2})/(\d{2})/([a-z0-9-]+)",
+    re.IGNORECASE,
+)
+
+
+def aljazeera_conflict_item(text: str) -> bool:
+    """Middle East, Iran, Gulf, Levant, Yemen, maritime, or Sudan security news."""
+    raw = str(text or "")
+    if not raw.strip():
+        return False
+    theater = (
+        _AJ_THEATER_RE.search(raw) is not None
+        or sudan_mention(raw)
+        or iraq_mention(raw)
+        or mentions_syria_or_middle_east(raw)
+    )
+    return theater and _AJ_SECURITY_RE.search(raw) is not None
+
+
+def browser_get(url: str):
+    return requests.get(
+        url,
+        timeout=FETCH_TIMEOUT,
+        headers={
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/rss+xml,*/*",
+        },
+    )
+
+
 def fetch_rss_feed(name: str, url: str) -> list[dict]:
     try:
         response = paced_get(url)
@@ -1386,6 +1441,10 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
         if not title or not link.startswith("http"):
             continue
         summary = plain_text(getattr(entry, "summary", "") or getattr(entry, "description", "") or title)
+        if url == ALJAZEERA_ALL_FEED and "/news/liveblog/" in link:
+            continue
+        if url == ALJAZEERA_ALL_FEED and not aljazeera_conflict_item(f"{title} {summary}"):
+            continue
         published = getattr(entry, "published", "") or getattr(entry, "updated", "")
         found.append(
             {
@@ -1398,6 +1457,137 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
             }
         )
     return found
+
+
+def newest_aljazeera_liveblog(text: str) -> str:
+    """Newest /news/liveblog/YYYY/MM/DD/ link. Equal dates keep the first one."""
+    best = ""
+    best_key = ("", "", "")
+    for match in _LIVEBLOG_PATH_RE.finditer(str(text or "").replace("\\/", "/")):
+        key = (match.group(1), match.group(2), match.group(3))
+        if key <= best_key:
+            continue
+        best_key = key
+        slug = match.group(4).lower().strip("-")
+        best = f"https://www.aljazeera.com/news/liveblog/{key[0]}/{key[1]}/{key[2]}/{slug}"
+    return best
+
+
+def discover_aljazeera_liveblog() -> str:
+    """Look in the all-news RSS, then the Middle East page. No link means skip quietly."""
+    for url in (ALJAZEERA_ALL_FEED, ALJAZEERA_MIDDLE_EAST_PAGE):
+        try:
+            response = browser_get(url)
+            response.raise_for_status()
+        except Exception as exc:
+            print(f"Al Jazeera liveblog lookup failed: {exc.__class__.__name__}.")
+            continue
+        found = newest_aljazeera_liveblog(response.text)
+        if found:
+            return found
+    return ""
+
+
+def aljazeera_amp_url(page_url: str) -> str:
+    marker = "https://www.aljazeera.com/news/liveblog/"
+    amp = "https://www.aljazeera.com/amp/news/liveblog/"
+    if page_url.startswith(amp):
+        return page_url
+    if page_url.startswith(marker):
+        return amp + page_url[len(marker):]
+    return page_url
+
+
+def parse_aljazeera_liveblog(html_text: str, page_url: str) -> list[dict]:
+    """Top 5 newest timestamped updates. One liveblog becomes one item per update."""
+    soup = BeautifulSoup(html_text or "", "html.parser")
+    nodes = soup.select("#live-blog-updates li[data-sort-time]")
+    if not nodes:
+        nodes = soup.select("li[id^=live-blog-updates-item]")
+    ranked = []
+    for node in nodes:
+        raw_sort = str(node.get("data-sort-time") or "")
+        sort_value = int(raw_sort) if raw_sort.isdigit() else 0
+        card = node.select_one(".card-live") or node
+        heading_node = card.find(["h2", "h3"])
+        heading = plain_text(heading_node.get_text(" ", strip=True) if heading_node else "")
+        body_node = card.select_one(".wysiwyg") or card.select_one(".card-live__content")
+        body = plain_text(body_node.get_text(" ", strip=True) if body_node else "")
+        if not heading:
+            continue
+        item_id = str(node.get("id") or "").strip()
+        if item_id:
+            source_url = f"{page_url}#{item_id}"
+        else:
+            digest = hashlib.sha256(heading.encode("utf-8")).hexdigest()[:16]
+            source_url = f"{page_url}#{digest}"
+        published = ""
+        if sort_value:
+            published = osint.format_timestamp(datetime.fromtimestamp(sort_value, timezone.utc))
+        ranked.append(
+            (
+                sort_value,
+                {
+                    "title": heading[:240],
+                    "summary": (body or heading)[:500],
+                    "source_url": source_url,
+                    "source_name": "Al Jazeera Live",
+                    "source_kind": "rss",
+                    "published_at": published,
+                },
+            )
+        )
+    ranked.sort(key=lambda pair: pair[0], reverse=True)
+    found = []
+    seen_heading = set()
+    seen_url = set()
+    seen_hash = set()
+    for _sort, item in ranked:
+        heading_key = " ".join(item["title"].lower().split())
+        digest = hashlib.sha256(
+            f"{heading_key}|{item['source_url']}|{item['summary']}".encode("utf-8")
+        ).hexdigest()
+        if heading_key in seen_heading or item["source_url"] in seen_url or digest in seen_hash:
+            continue
+        seen_heading.add(heading_key)
+        seen_url.add(item["source_url"])
+        seen_hash.add(digest)
+        found.append(item)
+        if len(found) >= 5:
+            break
+    return found
+
+
+def poll_aljazeera_liveblog() -> list[dict]:
+    """Fetch the newest liveblog and return its latest updates. No liveblog is a quiet skip."""
+    try:
+        page_url = discover_aljazeera_liveblog()
+    except Exception as exc:
+        print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
+        return []
+    if not page_url:
+        return []
+    try:
+        response = browser_get(page_url)
+        response.raise_for_status()
+        updates = parse_aljazeera_liveblog(response.text, page_url)
+        if not updates:
+            amp = browser_get(aljazeera_amp_url(page_url))
+            amp.raise_for_status()
+            updates = parse_aljazeera_liveblog(amp.text, page_url)
+    except Exception as exc:
+        print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
+        return []
+    if not updates:
+        return []
+    kept = []
+    for item in updates:
+        blob = spam_post_text(item.get("title"), item.get("summary"), "", item.get("source_url"))
+        if is_spam_post(blob):
+            print(f"Dropped spam before save: {str(item.get('title') or '')[:80]}")
+            continue
+        kept.append(item)
+    return kept
 
 
 def fetch_rss_candidates() -> list[dict]:
@@ -2249,6 +2439,13 @@ def ingest_feeds() -> dict:
             rss_items = collect_fetched(
                 [(lambda name=name, url=url: fetch_rss_feed(name, url)) for name, url in feeds]
             )
+            try:
+                live_items = poll_aljazeera_liveblog()
+            except Exception as exc:
+                print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
+                live_items = []
+            if inserted < MAX_NEW_PER_CYCLE and live_items:
+                inserted += store_new_items(live_items, now, MAX_NEW_PER_CYCLE - inserted)
             if inserted < MAX_NEW_PER_CYCLE:
                 inserted += store_new_items(rss_items, now, MAX_NEW_PER_CYCLE - inserted)
             stamp = osint.format_timestamp(now)
