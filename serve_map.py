@@ -75,6 +75,12 @@ RSS_FEEDS = [
     ("AP Middle East & Syria", "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("Enab Baladi", "https://english.enabbaladi.net/feed/"),
     ("Syria Direct", "https://syriadirect.org/feed/"),
+    ("Shafaq English", "https://shafaq.com/en/rss"),
+    ("Iraqi News", "https://www.iraqinews.com/feed/"),
+    ("Iran International", "https://www.iranintl.com/en/rss"),
+    ("Arab News", "https://www.arabnews.com/rss.xml"),
+    ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
+    ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
 ]
 # Configurable public OSINT channels, read from the t.me/s preview page.
 TELEGRAM_CHANNELS = [
@@ -105,6 +111,18 @@ TELEGRAM_CHANNELS = [
     "SabereenNews22",
     "IranIntl_En",
     "rudaw_english",
+    "shafaqnews",
+    "IRNA_en",
+    "Mehrnews_en",
+    "presstv",
+    "alarabiya_eng",
+    "skynewsarabia_b",
+    "gulfnews",
+    "KUNA_EN",
+    "BNA_EN",
+    "RoyaNews",
+    "alghadnews",
+    "PetraNewsAgency",
 ]
 X_HANDLES = [
     "syr_television",
@@ -645,11 +663,21 @@ def combined_features() -> list[dict]:
     return features
 
 
+def parse_feed(content: bytes):
+    """Parse bytes already fetched with timeout=6. A parse error is logged by the caller."""
+    return feedparser.parse(content)
+
+
 def fetch_rss_feed(name: str, url: str) -> list[dict]:
     try:
         response = paced_get(url)
         response.raise_for_status()
-        parsed = feedparser.parse(response.content)
+    except Exception as exc:
+        print(f"RSS {name} failed: {exc.__class__.__name__}.")
+        note_feed("rss", name, False, exc.__class__.__name__)
+        return []
+    try:
+        parsed = parse_feed(response.content)
     except Exception as exc:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
         note_feed("rss", name, False, exc.__class__.__name__)
@@ -757,7 +785,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
             last_error = f"HTTP {response.status_code}"
             print(f"X {handle} via {host} failed: {last_error}.")
             continue
-        parsed = feedparser.parse(response.content)
+        parsed = parse_feed(response.content)
         if not parsed.entries:
             last_error = "no entries"
             print(f"X {handle} via {host} failed: no entries.")
@@ -943,6 +971,21 @@ def store_new_items(candidates: list[dict], now: datetime, limit: int = MAX_NEW_
     return inserted
 
 
+def collect_fetched(calls: list) -> list[dict]:
+    """Run one batch slice together so a slow channel cannot stall the others."""
+    if not calls:
+        return []
+    found: list[dict] = []
+    with ThreadPoolExecutor(max_workers=len(calls)) as pool:
+        futures = [pool.submit(fn) for fn in calls]
+        for future in futures:
+            try:
+                found.extend(future.result() or [])
+            except Exception as exc:
+                print(f"Batch fetch failed: {exc.__class__.__name__}.")
+    return found
+
+
 def ingest_feeds() -> dict:
     """One rotated batch: 7 Telegram channels, 2 X handles, and 2 RSS feeds."""
     global _pacing, _pace_pending
@@ -969,24 +1012,24 @@ def ingest_feeds() -> dict:
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
             now = datetime.now(timezone.utc)
-            for channel in telegram:
-                if inserted >= MAX_NEW_PER_CYCLE:
-                    break
-                inserted += store_new_items(
-                    fetch_telegram_channel(channel), now, MAX_NEW_PER_CYCLE - inserted
-                )
+            telegram_items = collect_fetched(
+                [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
+            )
+            inserted += store_new_items(telegram_items, now, MAX_NEW_PER_CYCLE - inserted)
             for handle in handles:
                 if inserted >= MAX_NEW_PER_CYCLE:
                     break
-                inserted += store_new_items(
-                    fetch_x_handle(handle), now, MAX_NEW_PER_CYCLE - inserted
-                )
-            for name, url in feeds:
-                if inserted >= MAX_NEW_PER_CYCLE:
-                    break
-                inserted += store_new_items(
-                    fetch_rss_feed(name, url), now, MAX_NEW_PER_CYCLE - inserted
-                )
+                try:
+                    fetched = fetch_x_handle(handle)
+                except Exception as exc:
+                    print(f"X {handle} failed: {exc.__class__.__name__}.")
+                    fetched = []
+                inserted += store_new_items(fetched, now, MAX_NEW_PER_CYCLE - inserted)
+            rss_items = collect_fetched(
+                [(lambda name=name, url=url: fetch_rss_feed(name, url)) for name, url in feeds]
+            )
+            if inserted < MAX_NEW_PER_CYCLE:
+                inserted += store_new_items(rss_items, now, MAX_NEW_PER_CYCLE - inserted)
             stamp = osint.format_timestamp(now)
             next_batch = (batch_index + BATCH_SIZE) % len(TELEGRAM_CHANNELS) if TELEGRAM_CHANNELS else 0
             next_x = (x_index + X_BATCH_SIZE) % len(X_HANDLES) if X_HANDLES else 0

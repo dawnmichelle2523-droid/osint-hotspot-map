@@ -542,17 +542,22 @@ def extract_location(headline: str) -> dict | None:
         return None
     prompt = (
         "Extract the place from this headline. Do not use live search and do not invent a place "
-        "that the text does not support. region must be one of: "
+        "that the text does not support. region must be exactly one of: "
         + ", ".join(REGIONS)
-        + ". location_name is the most specific place named. "
+        + ". Map the region exactly: UAE, Bahrain, Kuwait, Oman, and Qatar are Gulf. "
+        "Saudi Arabia and Yemen are Saudi & Yemen. Iran and Iraq are Iran & Iraq. "
+        "Jordan, Syria, Lebanon, Israel, and Palestine are Levant. "
+        "The Red Sea, Strait of Hormuz, Persian Gulf, and Gulf of Oman are Maritime. "
+        "Anything else is Other / International. "
+        "location_name is the most specific place named. "
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the post is Arabic or any non-English language, title and summary must be English. "
+        "When the title or summary is Arabic or Farsi, title and summary must be clear English. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
-        "Preserve military and geopolitical place names, governorates, and unit names accurately. "
-        "Translate into English and do not add facts. "
+        "Preserve place names, governorates, and unit names accurately. "
+        "Do not add facts. "
         "If the post is already English, keep title and summary in English and do not add facts. "
         "severity is exactly High, Medium, or Low. "
         "category is exactly one of: Kinetic/Military, Maritime, Security/Clashes, Political/Other. "
@@ -609,7 +614,8 @@ def translate_post(title: str, summary: str) -> dict | None:
     if not key:
         return None
     prompt = (
-        "Translate this Telegram, X, or RSS post into English. "
+        "Translate this Telegram, X, or RSS post into clear English. "
+        "Arabic or Farsi title and summary must be English. "
         "If it is already English, return it in English without adding facts. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
