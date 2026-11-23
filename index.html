@@ -41,10 +41,25 @@
       padding: 4px 10px; font-size: 12px; font-weight: 650;
     }
     #clock-strip {
-      display: flex; flex-wrap: wrap; gap: 12px; margin-left: auto;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-left: auto;
       color: #d5e4e8; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
     }
+    #world-clocks { display: flex; align-items: flex-start; gap: 10px; }
+    .world-clock { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; }
+    .world-clock svg { display: block; width: 42px; height: 42px; }
+    .world-clock figcaption {
+      margin: 0; color: #c5ced6; font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.14em; line-height: 1;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .world-clock.london figcaption { color: #e6c667; }
+    .world-clock .clock-tip {
+      display: none; position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
+      background: #11151a; color: #e6c667; border: 1px solid #8a6d29; border-radius: 4px;
+      padding: 1px 5px; font-size: 10px; letter-spacing: 0.04em; white-space: nowrap; pointer-events: none;
+    }
+    .world-clock:hover .clock-tip { display: block; }
     #feed-health-wrap { position: relative; }
     #feed-health {
       color: #b8c2cc; background: #11151a; border: 1px solid #242b33; border-radius: 999px;
@@ -428,6 +443,143 @@
     <div id="clock-strip">
       <span id="clock-london">London --:--:--</span>
       <span id="clock-utc">UTC --:--:--</span>
+      <div id="world-clocks">
+        <figure class="world-clock london" data-zone="Europe/London" title="--:--">
+          <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
+            <defs>
+              <linearGradient id="bezel-london" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#e6d7a4"/>
+                <stop offset="28%" stop-color="#8a6d29"/>
+                <stop offset="52%" stop-color="#c6a85a"/>
+                <stop offset="78%" stop-color="#8a6d29"/>
+                <stop offset="100%" stop-color="#5c4818"/>
+              </linearGradient>
+              <linearGradient id="second-london" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e6c667"/>
+                <stop offset="100%" stop-color="#c23b4a"/>
+              </linearGradient>
+            </defs>
+            <circle cx="21" cy="21" r="20.2" fill="url(#bezel-london)"/>
+            <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
+            <g stroke="#d9c7a2" stroke-linecap="round">
+              <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
+              <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
+              <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
+              <line x1="34.10" y1="21.00" x2="37.20" y2="21.00" stroke-width="1.3"/>
+              <line x1="33.56" y1="28.25" x2="35.03" y2="29.10" stroke-width="0.8"/>
+              <line x1="28.25" y1="33.56" x2="29.10" y2="35.03" stroke-width="0.8"/>
+              <line x1="21.00" y1="34.10" x2="21.00" y2="37.20" stroke-width="1.3"/>
+              <line x1="13.75" y1="33.56" x2="12.90" y2="35.03" stroke-width="0.8"/>
+              <line x1="8.44" y1="28.25" x2="6.97" y2="29.10" stroke-width="0.8"/>
+              <line x1="7.90" y1="21.00" x2="4.80" y2="21.00" stroke-width="1.3"/>
+              <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
+              <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
+            </g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-london)" stroke-width="0.7" stroke-linecap="round"/></g>
+            <circle cx="21" cy="21" r="1.7" fill="#e6c667" stroke="#8a6d29" stroke-width="0.6"/>
+          </svg>
+          <figcaption>LONDON</figcaption>
+          <span class="clock-tip">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="America/New_York" title="--:--">
+          <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
+            <defs>
+              <linearGradient id="second-newyork" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e6c667"/>
+                <stop offset="100%" stop-color="#c23b4a"/>
+              </linearGradient>
+            </defs>
+            <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
+            <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
+            <g stroke="#d9c7a2" stroke-linecap="round">
+              <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
+              <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
+              <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
+              <line x1="34.10" y1="21.00" x2="37.20" y2="21.00" stroke-width="1.3"/>
+              <line x1="33.56" y1="28.25" x2="35.03" y2="29.10" stroke-width="0.8"/>
+              <line x1="28.25" y1="33.56" x2="29.10" y2="35.03" stroke-width="0.8"/>
+              <line x1="21.00" y1="34.10" x2="21.00" y2="37.20" stroke-width="1.3"/>
+              <line x1="13.75" y1="33.56" x2="12.90" y2="35.03" stroke-width="0.8"/>
+              <line x1="8.44" y1="28.25" x2="6.97" y2="29.10" stroke-width="0.8"/>
+              <line x1="7.90" y1="21.00" x2="4.80" y2="21.00" stroke-width="1.3"/>
+              <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
+              <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
+            </g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-newyork)" stroke-width="0.7" stroke-linecap="round"/></g>
+            <circle cx="21" cy="21" r="1.7" fill="#e6c667" stroke="#2e3642" stroke-width="0.6"/>
+          </svg>
+          <figcaption>NEW YORK</figcaption>
+          <span class="clock-tip">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="Asia/Tokyo" title="--:--">
+          <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
+            <defs>
+              <linearGradient id="second-tokyo" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e6c667"/>
+                <stop offset="100%" stop-color="#c23b4a"/>
+              </linearGradient>
+            </defs>
+            <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
+            <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
+            <g stroke="#d9c7a2" stroke-linecap="round">
+              <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
+              <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
+              <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
+              <line x1="34.10" y1="21.00" x2="37.20" y2="21.00" stroke-width="1.3"/>
+              <line x1="33.56" y1="28.25" x2="35.03" y2="29.10" stroke-width="0.8"/>
+              <line x1="28.25" y1="33.56" x2="29.10" y2="35.03" stroke-width="0.8"/>
+              <line x1="21.00" y1="34.10" x2="21.00" y2="37.20" stroke-width="1.3"/>
+              <line x1="13.75" y1="33.56" x2="12.90" y2="35.03" stroke-width="0.8"/>
+              <line x1="8.44" y1="28.25" x2="6.97" y2="29.10" stroke-width="0.8"/>
+              <line x1="7.90" y1="21.00" x2="4.80" y2="21.00" stroke-width="1.3"/>
+              <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
+              <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
+            </g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-tokyo)" stroke-width="0.7" stroke-linecap="round"/></g>
+            <circle cx="21" cy="21" r="1.7" fill="#e6c667" stroke="#2e3642" stroke-width="0.6"/>
+          </svg>
+          <figcaption>TOKYO</figcaption>
+          <span class="clock-tip">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="Australia/Sydney" title="--:--">
+          <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
+            <defs>
+              <linearGradient id="second-sydney" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#e6c667"/>
+                <stop offset="100%" stop-color="#c23b4a"/>
+              </linearGradient>
+            </defs>
+            <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
+            <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
+            <g stroke="#d9c7a2" stroke-linecap="round">
+              <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
+              <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
+              <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
+              <line x1="34.10" y1="21.00" x2="37.20" y2="21.00" stroke-width="1.3"/>
+              <line x1="33.56" y1="28.25" x2="35.03" y2="29.10" stroke-width="0.8"/>
+              <line x1="28.25" y1="33.56" x2="29.10" y2="35.03" stroke-width="0.8"/>
+              <line x1="21.00" y1="34.10" x2="21.00" y2="37.20" stroke-width="1.3"/>
+              <line x1="13.75" y1="33.56" x2="12.90" y2="35.03" stroke-width="0.8"/>
+              <line x1="8.44" y1="28.25" x2="6.97" y2="29.10" stroke-width="0.8"/>
+              <line x1="7.90" y1="21.00" x2="4.80" y2="21.00" stroke-width="1.3"/>
+              <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
+              <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
+            </g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-sydney)" stroke-width="0.7" stroke-linecap="round"/></g>
+            <circle cx="21" cy="21" r="1.7" fill="#e6c667" stroke="#2e3642" stroke-width="0.6"/>
+          </svg>
+          <figcaption>SYDNEY</figcaption>
+          <span class="clock-tip">--:--</span>
+        </figure>
+      </div>
       <span id="clock-brief">Next briefing --:--:--</span>
     </div>
   </header>
@@ -1277,11 +1429,31 @@
       return hh + ":" + mm + ":" + ss;
     }
 
+    function paintWorldClocks(now) {
+      document.querySelectorAll("#world-clocks .world-clock").forEach((node) => {
+        const parts = zonedParts(now, node.getAttribute("data-zone"));
+        const hour = Number(parts.hour);
+        const minute = Number(parts.minute);
+        const second = Number(parts.second);
+        const secondAngle = second * 6;
+        const minuteAngle = minute * 6 + second * 0.1;
+        const hourAngle = (hour % 12) * 30 + minute * 0.5;
+        node.querySelector(".hand-hour").setAttribute("transform", "rotate(" + hourAngle + " 21 21)");
+        node.querySelector(".hand-minute").setAttribute("transform", "rotate(" + minuteAngle + " 21 21)");
+        node.querySelector(".hand-second").setAttribute("transform", "rotate(" + secondAngle + " 21 21)");
+        const label = parts.hour + ":" + parts.minute;
+        node.title = label;
+        const tip = node.querySelector(".clock-tip");
+        if (tip) tip.textContent = label;
+      });
+    }
+
     function tickClocks() {
       const now = new Date();
       document.getElementById("clock-london").textContent = "London " + clockLabel(zonedParts(now, "Europe/London"));
       document.getElementById("clock-utc").textContent = "UTC " + clockLabel(zonedParts(now, "UTC"));
       document.getElementById("clock-brief").textContent = "Next briefing " + countdownLabel(nextLondonBriefing(now));
+      paintWorldClocks(now);
     }
 
     function renderFeedHealth(health) {
