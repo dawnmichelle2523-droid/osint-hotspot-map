@@ -80,3 +80,7 @@ def static_file(filename: str) -> Response:
 
 _enable_basic_auth()
 serve_map.start_background()
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=False, use_reloader=False)
