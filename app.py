@@ -64,6 +64,35 @@ def api_report() -> Response:
     return _json(serve_map.report_response(request.get_data(cache=False, as_text=False) or b""))
 
 
+def _forward_api() -> Response:
+    target = request.path
+    if request.query_string:
+        target += "?" + request.query_string.decode("utf-8", "replace")
+    handled = serve_map.handle_api(request.method, target, request.get_data(cache=False, as_text=False) or b"")
+    if handled is None:
+        abort(404)
+    status, content_type, payload = handled
+    response = Response(payload, status=status)
+    response.headers["Content-Type"] = content_type
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.get("/api/daily-chart")
+def api_daily_chart() -> Response:
+    return _forward_api()
+
+
+@app.get("/api/daily-chart.png")
+def api_daily_chart_png() -> Response:
+    return _forward_api()
+
+
+@app.route("/api/<path:endpoint>", methods=["GET", "POST"])
+def api_forward(endpoint: str) -> Response:
+    return _forward_api()
+
+
 @app.get("/")
 def index() -> Response:
     return send_from_directory(serve_map.ROOT, "index.html")

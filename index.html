@@ -2281,15 +2281,118 @@
       }).join("");
     }
 
+    function londonParts(date) {
+      const parts = {};
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).formatToParts(date).forEach((part) => { parts[part.type] = part.value; });
+      if (parts.hour === "24") parts.hour = "00";
+      return parts;
+    }
+
+    function londonWallToUtc(year, month, day, hour, minute) {
+      const guess = Date.UTC(year, month - 1, day, hour, minute);
+      const offset = (instant) => {
+        const parts = londonParts(new Date(instant));
+        return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) - instant;
+      };
+      return new Date(guess - offset(guess - offset(guess)));
+    }
+
+    function chartBoundsClient(windowName, now) {
+      const parts = londonParts(now);
+      let end = londonWallToUtc(+parts.year, +parts.month, +parts.day, 7, 0);
+      if (now < end) end = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+      if (windowName === "current") return { start: end, end: now };
+      return { start: new Date(end.getTime() - 24 * 60 * 60 * 1000), end: end };
+    }
+
+    function chartEventTime(value) {
+      try {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          const ms = Math.abs(value) >= 1e11 ? value : value * 1000;
+          const date = new Date(ms);
+          return Number.isNaN(date.getTime()) ? null : date;
+        }
+        const text = String(value == null ? "" : value).trim();
+        if (!text) return null;
+        if (/^-?\d+(?:\.\d+)?$/.test(text)) return chartEventTime(Number(text));
+        let normalized = text.replace(" ", "T");
+        if (/[zZ]$/.test(normalized)) normalized = normalized.slice(0, -1) + "Z";
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(normalized)) normalized += "Z";
+        const date = new Date(normalized);
+        return Number.isNaN(date.getTime()) ? null : date;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function chartFromFeatures(windowName) {
+      const now = new Date();
+      const bounds = chartBoundsClient(windowName, now);
+      const hours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
+      const buckets = {};
+      hours.forEach((hour) => { buckets[hour] = { high: 0, medium: 0, low: 0 }; });
+      const regions = {};
+      CHART_REGIONS.forEach((name) => { regions[name] = 0; });
+      let high = 0;
+      let medium = 0;
+      let low = 0;
+      (Array.isArray(features) ? features : []).forEach((feature) => {
+        const props = (feature && feature.properties) || {};
+        const moment = chartEventTime(props.timestamp);
+        if (!moment || moment < bounds.start || moment >= bounds.end) return;
+        const rank = String(props.severity || "").toLowerCase();
+        const hour = Number(londonParts(moment).hour);
+        const slot = Object.prototype.hasOwnProperty.call(buckets, hour) ? buckets[hour] : buckets[0];
+        if (rank === "high") { slot.high += 1; high += 1; }
+        else if (rank === "low") { slot.low += 1; low += 1; }
+        else { slot.medium += 1; medium += 1; }
+        const region = CHART_REGIONS.indexOf(props.region) >= 0 ? props.region : "Other / International";
+        regions[region] += 1;
+      });
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const piece = (date) => {
+        const parts = londonParts(date);
+        return Number(parts.day) + " " + months[Number(parts.month) - 1] + " " + parts.hour + ":" + parts.minute;
+      };
+      const zone = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", timeZoneName: "short" })
+        .formatToParts(bounds.start)
+        .find((part) => part.type === "timeZoneName");
+      return {
+        window_label: piece(bounds.start) + " – " + piece(bounds.end) + " " + (zone ? zone.value : "GMT"),
+        total_incidents: high + medium + low,
+        high_count: high,
+        medium_count: medium,
+        low_count: low,
+        hourly_buckets: hours.map((hour) => ({
+          hour_label: String(hour).padStart(2, "0") + ":00",
+          high: buckets[hour].high,
+          medium: buckets[hour].medium,
+          low: buckets[hour].low
+        })),
+        region_counts: regions
+      };
+    }
+
     async function loadDailyChart() {
       const label = document.getElementById("daily-chart-label");
       label.textContent = "Loading chart…";
       try {
         const response = await fetch("/api/daily-chart?window=" + encodeURIComponent(chartWindow), { cache: "no-store" });
         if (!response.ok) throw new Error("HTTP " + response.status);
-        renderDailyChart(await response.json());
+        const data = await response.json();
+        if (!data || !Array.isArray(data.hourly_buckets)) throw new Error("not chart json");
+        renderDailyChart(data);
       } catch (err) {
-        label.textContent = "Chart could not be loaded.";
+        renderDailyChart(chartFromFeatures(chartWindow));
       }
     }
 

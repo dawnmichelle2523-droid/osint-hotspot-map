@@ -6,6 +6,7 @@ GET /api/data returns live events, six region counts, the cached summary, and la
 POST /api/data with {"view":"regional"} returns that same live payload for the regional overview.
 POST /api/poll-now starts one ingest batch in the background and returns immediately.
 GET /api/daily-chart returns the 07:00 Europe/London incident chart.
+GET /api/daily-chart.png returns that chart as a PNG.
 The poll never writes hotspots.json or daily_brief.json.
 """
 
@@ -3129,6 +3130,43 @@ def start_translation_pass() -> None:
     threading.Thread(target=translate_existing_rows, name="translate-existing", daemon=True).start()
 
 
+def _api_json(payload: dict) -> bytes:
+    return json.dumps(payload, ensure_ascii=False).encode("utf-8")
+
+
+def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
+    """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
+    route = path.split("?", 1)[0]
+    query = path.split("?", 1)[1] if "?" in path else ""
+    verb = str(method or "GET").upper()
+    if not route.startswith("/api/"):
+        return None
+    try:
+        if verb == "GET" and route == "/api/thermal":
+            return 200, "application/json; charset=utf-8", _api_json(thermal_response())
+        if verb == "GET" and route == "/api/data":
+            return 200, "application/json; charset=utf-8", _api_json(data_response())
+        if verb == "POST" and route == "/api/data":
+            return 200, "application/json; charset=utf-8", _api_json(data_post_response(body))
+        if verb == "GET" and route == "/api/daily-chart":
+            return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
+        if verb == "GET" and route == "/api/daily-chart.png":
+            return 200, "image/png", daily_chart_png_response(query)
+        if verb == "POST" and route == "/api/report":
+            return 200, "application/json; charset=utf-8", _api_json(report_response(body))
+        if verb == "POST" and route == "/api/poll-now":
+            return 200, "application/json; charset=utf-8", _api_json(poll_response())
+        if verb == "POST" and route == "/api/summary":
+            return 200, "application/json; charset=utf-8", _api_json(summary_response())
+    except Exception as exc:
+        print(f"{verb} {route} failed: {exc.__class__.__name__}.")
+        if route == "/api/daily-chart":
+            return 200, "application/json; charset=utf-8", _api_json(empty_daily_chart())
+        if route == "/api/daily-chart.png":
+            return 200, "image/png", dark_map_png()
+    return None
+
+
 def start_background() -> None:
     """Open the database and start ingest plus the London mailer once per process."""
     global _threads_started
@@ -3171,40 +3209,31 @@ class MapHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send(self, status: int, content_type: str, payload: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_GET(self) -> None:
         if self._blocked():
             self.send_error(404)
             return
-        route = self._route()
-        if route == "/api/thermal":
-            self._json(thermal_response())
-            return
-        if route == "/api/data":
-            self._json(data_response())
-            return
-        if route == "/api/daily-chart":
-            query = self.path.split("?", 1)[1] if "?" in self.path else ""
-            self._json(daily_chart_response(query))
+        handled = handle_api("GET", self.path)
+        if handled:
+            self._send(*handled)
             return
         super().do_GET()
 
     def do_POST(self) -> None:
-        route = self._route()
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(min(length, 1_000_000)) if length else b""
-        if route == "/api/data":
-            self._json(data_post_response(raw))
+        handled = handle_api("POST", self.path, raw)
+        if handled:
+            self._send(*handled)
             return
-        if route == "/api/report":
-            self._json(report_response(raw))
-            return
-        if route == "/api/poll-now":
-            self._json(poll_response())
-            return
-        if route != "/api/summary":
-            self.send_error(404)
-            return
-        self._json(summary_response())
+        self.send_error(404)
 
     def log_message(self, fmt: str, *args) -> None:
         super().log_message(fmt, *args)
@@ -3296,13 +3325,52 @@ def event_source(props: dict) -> str:
     return "Live"
 
 
+def parse_event_time(value: object) -> datetime | None:
+    """ISO, SQLite YYYY-MM-DD HH:MM:SS, or epoch seconds/milliseconds. Never raises."""
+    try:
+        if isinstance(value, datetime):
+            moment = value
+        elif isinstance(value, bool) or value is None:
+            return None
+        elif isinstance(value, (int, float)):
+            moment = _epoch_to_datetime(float(value))
+        elif isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            if re.fullmatch(r"-?\d+(?:\.\d+)?", text):
+                moment = _epoch_to_datetime(float(text))
+            else:
+                if text.endswith(("Z", "z")):
+                    text = text[:-1] + "+00:00"
+                moment = datetime.fromisoformat(text)
+        else:
+            return None
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return moment.astimezone(timezone.utc)
+    except (OverflowError, OSError, ValueError, TypeError):
+        return None
+
+
+def _epoch_to_datetime(number: float) -> datetime:
+    if not math.isfinite(number):
+        raise ValueError("bad epoch")
+    if abs(number) >= 100_000_000_000:
+        number /= 1000.0
+    return datetime.fromtimestamp(number, timezone.utc)
+
+
 def period_events(start: datetime, end: datetime) -> list[dict]:
     start_utc = start.astimezone(timezone.utc)
     end_utc = end.astimezone(timezone.utc)
     found = []
     for feature in combined_features():
-        props = feature.get("properties") or {}
-        moment = osint.parse_timestamp(props.get("timestamp"))
+        try:
+            props = feature.get("properties") or {}
+            moment = parse_event_time(props.get("timestamp"))
+        except Exception:
+            continue
         if moment is None or moment < start_utc or moment >= end_utc:
             continue
         geometry = feature.get("geometry") or {}
@@ -3359,39 +3427,66 @@ def _chart_buckets() -> list[dict]:
     return [{"hour_label": f"{hour:02d}:00", "high": 0, "medium": 0, "low": 0} for hour in _CHART_HOURS]
 
 
-def daily_chart(window: str = "yesterday", now: datetime | None = None) -> dict:
-    kind = "current" if str(window or "").strip().lower() == "current" else "yesterday"
-    start, end = chart_bounds(kind, now)
-    buckets = {hour: {"high": 0, "medium": 0, "low": 0} for hour in _CHART_HOURS}
-    regions = {name: 0 for name in REGIONS}
-    high = medium = low = 0
-    for event in period_events(start, end):
-        stamp = event.get("timestamp")
-        if not isinstance(stamp, datetime):
-            continue
-        rank = str(event.get("severity") or "").strip().lower()
-        if rank == "high":
-            field = "high"
-            high += 1
-        elif rank == "low":
-            field = "low"
-            low += 1
-        else:
-            field = "medium"
-            medium += 1
-        buckets[stamp.astimezone(LONDON).hour][field] += 1
-        regions[region_name(event.get("region"))] += 1
+def empty_daily_chart(window: str = "yesterday", now: datetime | None = None) -> dict:
+    label = ""
+    try:
+        start, end = chart_bounds(window, now)
+        label = format_chart_window(start, end)
+    except Exception:
+        label = ""
     return {
-        "window_label": format_chart_window(start, end),
-        "total_incidents": high + medium + low,
-        "high_count": high,
-        "medium_count": medium,
-        "low_count": low,
-        "hourly_buckets": [
-            {"hour_label": f"{hour:02d}:00", **buckets[hour]} for hour in _CHART_HOURS
-        ],
-        "region_counts": regions,
+        "window_label": label,
+        "total_incidents": 0,
+        "high_count": 0,
+        "medium_count": 0,
+        "low_count": 0,
+        "hourly_buckets": _chart_buckets(),
+        "region_counts": {name: 0 for name in REGIONS},
     }
+
+
+def daily_chart(window: str = "yesterday", now: datetime | None = None) -> dict:
+    try:
+        kind = "current" if str(window or "").strip().lower() == "current" else "yesterday"
+        start, end = chart_bounds(kind, now)
+        buckets = {hour: {"high": 0, "medium": 0, "low": 0} for hour in _CHART_HOURS}
+        regions = {name: 0 for name in REGIONS}
+        high = medium = low = 0
+        for event in period_events(start, end):
+            try:
+                stamp = event.get("timestamp")
+                if not isinstance(stamp, datetime):
+                    stamp = parse_event_time(stamp)
+                if not isinstance(stamp, datetime):
+                    continue
+                rank = str(event.get("severity") or "").strip().lower()
+                if rank == "high":
+                    field = "high"
+                    high += 1
+                elif rank == "low":
+                    field = "low"
+                    low += 1
+                else:
+                    field = "medium"
+                    medium += 1
+                buckets[stamp.astimezone(LONDON).hour][field] += 1
+                regions[region_name(event.get("region"))] += 1
+            except Exception:
+                continue
+        return {
+            "window_label": format_chart_window(start, end),
+            "total_incidents": high + medium + low,
+            "high_count": high,
+            "medium_count": medium,
+            "low_count": low,
+            "hourly_buckets": [
+                {"hour_label": f"{hour:02d}:00", **buckets[hour]} for hour in _CHART_HOURS
+            ],
+            "region_counts": regions,
+        }
+    except Exception as exc:
+        print(f"Daily chart failed: {exc.__class__.__name__}.")
+        return empty_daily_chart(window, now)
 
 
 def daily_chart_response(query: str = "") -> dict:
@@ -3399,19 +3494,23 @@ def daily_chart_response(query: str = "") -> dict:
     try:
         raw = (parse_qs(query or "").get("window") or ["yesterday"])[0]
         window = "current" if str(raw).strip().lower() == "current" else "yesterday"
-        return daily_chart(window)
+        chart = daily_chart(window)
+        if not isinstance(chart, dict) or not chart.get("hourly_buckets"):
+            return empty_daily_chart(window)
+        return chart
     except Exception as exc:
         print(f"GET /api/daily-chart failed: {exc.__class__.__name__}.")
-        start, end = chart_bounds(window)
-        return {
-            "window_label": format_chart_window(start, end),
-            "total_incidents": 0,
-            "high_count": 0,
-            "medium_count": 0,
-            "low_count": 0,
-            "hourly_buckets": _chart_buckets(),
-            "region_counts": {name: 0 for name in REGIONS},
-        }
+        return empty_daily_chart(window)
+
+
+def daily_chart_png_response(query: str = "") -> bytes:
+    try:
+        png = render_daily_chart_png(daily_chart_response(query))
+        if png:
+            return png
+    except Exception as exc:
+        print(f"GET /api/daily-chart.png failed: {exc.__class__.__name__}.")
+    return dark_map_png()
 
 
 def _chart_font(size: int, bold: bool = False):
