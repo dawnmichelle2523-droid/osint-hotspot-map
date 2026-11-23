@@ -463,8 +463,8 @@
     const brandControl = L.control({ position: "bottomleft" });
     brandControl.onAdd = function () {
       const div = L.DomUtil.create("div", "georisk-map-badge");
-      div.style.cssText = "background: rgba(7, 9, 11, 0.94); border: 1px solid #2e2612; border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75); pointer-events: none; margin-bottom: 12px; margin-left: 8px;";
-      div.innerHTML = `<img src="/static/logo.png" alt="GeoRiskIntel" onerror="this.style.display='none'; document.getElementById('georisk-fallback-title').style.display='block';" style="height: 28px; width: auto; display: block; margin-bottom: 5px;" /><div id="georisk-fallback-title" style="display: none; font-weight: 700; font-size: 15px; letter-spacing: 0.5px; margin-bottom: 4px;"><span style="color: #ffffff;">GeoRisk</span><span style="color: #F3C64F;">Intel</span></div><div style="display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 1px; color: #9aa5b1; font-weight: 600;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #F3C64F; box-shadow: 0 0 8px #F3C64F; display: inline-block;"></span>LIVE GEOSPATIAL MONITOR</div>`;
+      div.style.cssText = "background: #000000; border: 1px solid #3a2f15; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 14px; margin-left: 10px;";
+      div.innerHTML = `<img src="/static/logo.png" alt="GeoRiskIntel" style="height: 32px; width: auto; display: block; margin-bottom: 6px;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #a3aab5; font-weight: 600; border-top: 1px solid #1c1a14; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #F3C64F; box-shadow: 0 0 8px #F3C64F; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
       return div;
     };
     brandControl.addTo(map);
