@@ -635,7 +635,9 @@ def extract_location(headline: str) -> dict | None:
         "When only a country or sea is named, use that country or sea center. "
         "Do not return null or 0,0 for Iran, Iraq, the Kurdistan Region, Sudan, Kuwait, Bahrain, the UAE, Jordan, Saudi Arabia, "
         "the Red Sea, or the Strait of Hormuz. "
-        "Use null for lat and lng only when the text names no place at all.\n\n"
+        "Use null for lat and lng only when the text names no place at all. "
+        "Set relevant to false for advertisements, dating or matrimonial promos, gambling links, and non-news spam. "
+        "Set relevant to true for news, security incidents, and official advisories.\n\n"
         + headline
     )
     schema = {
@@ -651,8 +653,9 @@ def extract_location(headline: str) -> dict | None:
             "lng": {"type": ["number", "null"]},
             "severity": {"type": "string", "enum": list(LIVE_SEVERITIES)},
             "category": {"type": "string", "enum": list(LIVE_CATEGORIES)},
+            "relevant": {"type": "boolean"},
         },
-        "required": ["title", "summary", "region", "location_name", "governorate", "lat", "lng", "severity", "category"],
+        "required": ["title", "summary", "region", "location_name", "governorate", "lat", "lng", "severity", "category", "relevant"],
     }
     try:
         response = make_client(key).responses.create(
@@ -791,8 +794,22 @@ def locate_event(
             "lng": known[0],
             "severity": severity,
             "category": category,
+            "relevant": True,
         }
     extracted = extract_location(one_sentence(headline) or text)
+    if extracted and extracted.get("relevant") is False:
+        return {
+            "region": known_region or "Other / International",
+            "governorate": governorate,
+            "location_name": text,
+            "title": "",
+            "summary": "",
+            "lat": None,
+            "lng": None,
+            "severity": severity,
+            "category": category,
+            "relevant": False,
+        }
     if extracted:
         english_title = one_sentence(extracted.get("title"))
         english_summary = one_sentence(extracted.get("summary"))
@@ -843,6 +860,7 @@ def locate_event(
         "lng": known[0] if known else None,
         "severity": severity,
         "category": category,
+        "relevant": True,
     }
 
 

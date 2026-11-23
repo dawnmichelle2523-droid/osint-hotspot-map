@@ -1027,6 +1027,8 @@ def init_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Railway boots through app.py -> start_background() -> db_connect() -> ensure_feed_db() -> init_db().
+    purge_spam_rows_once(conn)
 
 
 def db_connect() -> sqlite3.Connection:
@@ -1989,8 +1991,67 @@ def drop_excluded_items() -> int:
     return removed
 
 
+_SPAM_BOUNDARY_TERMS = (
+    "dating", "single girls", "meet singles", "hookup", "escort", "onlyfans",
+    "adult", "romance", "matchmaking", "bride", "flirt", "chat with girls",
+    "sugar daddy", "tinder", "bumble", "badoo", "casino", "betting", "1xbet",
+    "promo code", "crypto signal", "forex",
+)
+_SPAM_BOUNDARY_RE = re.compile(
+    "|".join(
+        r"\b" + r"\s+".join(re.escape(part) for part in term.split()) + r"\b"
+        for term in _SPAM_BOUNDARY_TERMS
+    ),
+    re.IGNORECASE,
+)
+_SPAM_ARABIC_TERMS = ("زواج", "تعارف", "بنات", "دردشة")
+_spam_purged = False
+
+
+def is_spam_post(text: str) -> bool:
+    """Dating, gambling, and promo spam. A place name by itself is not spam."""
+    raw = str(text or "")
+    if _SPAM_BOUNDARY_RE.search(raw):
+        return True
+    return any(token in raw for token in _SPAM_ARABIC_TERMS)
+
+
+def spam_post_text(*parts: object) -> str:
+    return " ".join(str(part or "") for part in parts)
+
+
+def purge_spam_rows(conn: sqlite3.Connection) -> int:
+    """Delete stored spam. The database file itself stays."""
+    rows = conn.execute(
+        "SELECT id, title, summary, original_text FROM items"
+    ).fetchall()
+    ids = [
+        row["id"]
+        for row in rows
+        if is_spam_post(spam_post_text(row["title"], row["summary"], row["original_text"]))
+    ]
+    if not ids:
+        return 0
+    conn.executemany("DELETE FROM items WHERE id = ?", [(item_id,) for item_id in ids])
+    print(f"Deleted {len(ids)} spam row(s) from the live database.")
+    return len(ids)
+
+
+def purge_spam_rows_once(conn: sqlite3.Connection) -> int:
+    """Run the spam cleanup on the first database open of this process."""
+    global _spam_purged
+    if _spam_purged:
+        return 0
+    removed = purge_spam_rows(conn)
+    _spam_purged = True
+    return removed
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
+        return False
+    if is_spam_post(spam_post_text(item.get("title"), item.get("summary"), item.get("original_text"), item.get("source_url"))):
+        print(f"Dropped spam before insert: {str(item.get('title') or '')[:80]}")
         return False
     styled_title, styled_summary = apply_house_style(
         item.get("title") or "",
@@ -2066,6 +2127,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
 
 def save_classified_item(item: dict, now: datetime) -> bool:
     """Classify one candidate and commit it before the next item."""
+    if is_spam_post(spam_post_text(item.get("title"), item.get("summary"), item.get("original_text"), item.get("source_url"))):
+        print(f"Dropped spam before classify: {str(item.get('title') or '')[:80]}")
+        return False
     with _db_lock:
         conn = db_connect()
         try:
@@ -2089,6 +2153,9 @@ def save_classified_item(item: dict, now: datetime) -> bool:
         return False
     original = original_post_text(item)
     placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
+    if placed.get("relevant") is False:
+        print(f"Dropped non-news spam from classifier: {str(item.get('title') or '')[:80]}")
+        return False
     stored = dict(item)
     stored["original_text"] = original
     english_title = osint.one_sentence(placed.get("title") or "")
