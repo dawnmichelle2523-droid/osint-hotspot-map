@@ -83,8 +83,7 @@ if hasattr(serve_map, "start_background"):
     serve_map.start_background()
 elif hasattr(serve_map, "start_background_threads"):
     serve_map.start_background_threads()
-elif hasattr(serve_map, "init_db"):
-    serve_map.init_db()
+
 
 
 
