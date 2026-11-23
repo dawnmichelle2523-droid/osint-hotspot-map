@@ -1,0 +1,130 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          42.5,
+          13.5
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Threat level remains SUBSTANTIAL in the Southern Red Sea and Bab el-Mandeb due to Houthi attacks on shipping and infrastructure.",
+        "summary": "Threat level remains SUBSTANTIAL in the Southern Red Sea and Bab el-Mandeb due to Houthi attacks on shipping and infrastructure.",
+        "timestamp": "2026-10-30T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/20261030-ukmto_vra_overview_u.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Saudi & Yemen",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          46.7219,
+          24.7136
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Saudi Arabia due to the volatile security situation, including missile and drone attacks by Iran-backed Houthis targeting infrastructure and airports.",
+        "summary": "Do not travel to Saudi Arabia due to the volatile security situation, including missile and drone attacks by Iran-backed Houthis targeting infrastructure and airports.",
+        "timestamp": "2026-10-23T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/saudi-arabia-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Saudi & Yemen",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44.2066,
+          15.5527
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Yemen due to terrorism, unrest, crime, health risks, kidnapping, and landmines.",
+        "summary": "Do not travel to Yemen due to terrorism, unrest, crime, health risks, kidnapping, and landmines.",
+        "timestamp": "2026-10-23T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/yemen-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Saudi & Yemen",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          51.389,
+          35.6892
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Iran due to terrorism, civil unrest, kidnapping, arbitrary arrest, and wrongful detention of US citizens.",
+        "summary": "Do not travel to Iran due to terrorism, civil unrest, kidnapping, arbitrary arrest, and wrongful detention of US citizens.",
+        "timestamp": "2025-12-05T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/iran-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Iran & Iraq",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.217,
+          31.7683
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to Israel due to terrorism and unrest, with some areas under do not travel advisories due to armed conflict.",
+        "summary": "Reconsider travel to Israel due to terrorism and unrest, with some areas under do not travel advisories due to armed conflict.",
+        "timestamp": "2026-08-26T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/israel-west-bank-and-gaza-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    }
+  ]
+}
