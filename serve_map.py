@@ -4,7 +4,7 @@
 POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search).
 GET /api/data returns live events, six region counts, the cached summary, and last_polled_at.
 POST /api/data with {"view":"regional"} returns that same live payload for the regional overview.
-POST /api/poll-now fetches RSS and public Telegram once.
+POST /api/poll-now starts one ingest batch in the background and returns immediately.
 The poll never writes hotspots.json or daily_brief.json.
 """
 
@@ -53,7 +53,7 @@ MAX_NEW_PER_CYCLE = 6
 LIVE_WINDOW = timedelta(hours=72)
 SIMILAR_TITLE_LIMIT = 40
 SIMILAR_TITLE_RATIO = 0.65
-FETCH_TIMEOUT = 8
+FETCH_TIMEOUT = 6
 FIRMS_TIMEOUT = 10
 FIRMS_CACHE_SECONDS = 15 * 60
 FIRMS_URL = (
@@ -846,41 +846,46 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     return True
 
 
-def store_new_items(candidates: list[dict], now: datetime) -> int:
+def save_classified_item(item: dict, now: datetime) -> bool:
+    """Classify one candidate and commit it before the next item."""
+    with _db_lock:
+        conn = db_connect()
+        try:
+            if seen_url(conn, item["source_url"]):
+                return False
+            match = best_title_match(item["title"], recent_story_rows(conn))
+            if match is not None:
+                if same_channel(item, match):
+                    print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
+                else:
+                    bump_corroboration(conn, match["id"])
+                    conn.commit()
+                    print(f"Corroborated story {match['id']} from another channel: {item['title'][:80]}")
+                return False
+        finally:
+            conn.close()
+    if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
+        f"{item.get('title') or ''} {item.get('summary') or ''}"
+    ):
+        return False
+    placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
+    english = osint.one_sentence(placed.get("title") or "")
+    if english:
+        item = dict(item)
+        item["title"] = english[:240]
+    return insert_item(item, placed, now)
+
+
+def store_new_items(candidates: list[dict], now: datetime, limit: int = MAX_NEW_PER_CYCLE) -> int:
     candidates.sort(
         key=lambda item: parse_when(item.get("published_at")) or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
     inserted = 0
     for item in candidates:
-        if inserted >= MAX_NEW_PER_CYCLE:
+        if inserted >= limit:
             break
-        with _db_lock:
-            conn = db_connect()
-            try:
-                if seen_url(conn, item["source_url"]):
-                    continue
-                match = best_title_match(item["title"], recent_story_rows(conn))
-                if match is not None:
-                    if same_channel(item, match):
-                        print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
-                    else:
-                        bump_corroboration(conn, match["id"])
-                        conn.commit()
-                        print(f"Corroborated story {match['id']} from another channel: {item['title'][:80]}")
-                    continue
-            finally:
-                conn.close()
-        if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
-            f"{item.get('title') or ''} {item.get('summary') or ''}"
-        ):
-            continue
-        placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
-        english = osint.one_sentence(placed.get("title") or "")
-        if english:
-            item = dict(item)
-            item["title"] = english[:240]
-        if insert_item(item, placed, now):
+        if save_classified_item(item, now):
             inserted += 1
     return inserted
 
@@ -910,15 +915,25 @@ def ingest_feeds() -> dict:
             checked = len(telegram)
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
-            candidates = []
-            for channel in telegram:
-                candidates.extend(fetch_telegram_channel(channel))
-            for handle in handles:
-                candidates.extend(fetch_x_handle(handle))
-            for name, url in feeds:
-                candidates.extend(fetch_rss_feed(name, url))
             now = datetime.now(timezone.utc)
-            inserted = store_new_items(candidates, now)
+            for channel in telegram:
+                if inserted >= MAX_NEW_PER_CYCLE:
+                    break
+                inserted += store_new_items(
+                    fetch_telegram_channel(channel), now, MAX_NEW_PER_CYCLE - inserted
+                )
+            for handle in handles:
+                if inserted >= MAX_NEW_PER_CYCLE:
+                    break
+                inserted += store_new_items(
+                    fetch_x_handle(handle), now, MAX_NEW_PER_CYCLE - inserted
+                )
+            for name, url in feeds:
+                if inserted >= MAX_NEW_PER_CYCLE:
+                    break
+                inserted += store_new_items(
+                    fetch_rss_feed(name, url), now, MAX_NEW_PER_CYCLE - inserted
+                )
             stamp = osint.format_timestamp(now)
             next_batch = (batch_index + BATCH_SIZE) % len(TELEGRAM_CHANNELS) if TELEGRAM_CHANNELS else 0
             next_x = (x_index + X_BATCH_SIZE) % len(X_HANDLES) if X_HANDLES else 0
@@ -1441,12 +1456,16 @@ def report_response(raw: bytes) -> dict:
     return {"ok": True, "type": report_type, "result": "sent" if sent else "skipped"}
 
 
-def poll_response() -> dict:
+def _poll_background() -> None:
     try:
-        return run_poll()
+        ingest_feeds()
     except Exception as exc:
         print(f"POST /api/poll-now failed: {exc.__class__.__name__}.")
-        return {"ok": False, "inserted": 0, "last_polled_at": None}
+
+
+def poll_response() -> dict:
+    threading.Thread(target=_poll_background, name="poll-now", daemon=True).start()
+    return {"status": "started"}
 
 
 def summary_response() -> dict:
