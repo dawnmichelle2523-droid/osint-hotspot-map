@@ -123,6 +123,10 @@ TELEGRAM_CHANNELS = [
     "RoyaNews",
     "alghadnews",
     "PetraNewsAgency",
+    "AuroraIntel",
+    "ClashReport",
+    "Middle_East_Spectator",
+    "QudsNen",
 ]
 X_HANDLES = [
     "syr_television",
@@ -133,15 +137,28 @@ X_HANDLES = [
     "OSINTWarfare",
     "Osinttechnical",
     "AfriMEOSINT",
+    "AuroraIntel",
+    "OSINTdefender",
+    "sentdefender",
+    "IntelCrab",
+    "clashreport",
+    "CENTCOM",
+    "UK_MTO",
+    "IranIntl_En",
+    "RudawEnglish",
+    "Levant_24_",
 ]
-# Tried in order for each handle. {handle} is replaced. A timeout or rate limit uses the next one.
+# First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
+    "https://xcancel.com/{handle}/rss",
     "https://nitter.poast.org/{handle}/rss",
     "https://nitter.privacydev.net/{handle}/rss",
-    "https://nitter.woodland.cafe/{handle}/rss",
-    "https://xcancel.com/{handle}/rss",
-    "https://rss-bridge.org/bridge01/?action=display&bridge=TwitterBridge&context=By+username&u={handle}&format=Atom",
 ]
+X_MIRROR_TIMEOUT = 5
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
 X_RATE_LIMITS = {401, 403, 429, 503}
 _start_lock = threading.Lock()
 _poll_lock = threading.Lock()
@@ -771,12 +788,17 @@ def canonical_x_url(handle: str, link: str, guid: str) -> str:
 
 
 def fetch_x_handle(handle: str) -> list[dict]:
+    """Try X mirrors in order. Only the final result is recorded as online or failing."""
     last_error = "no entries"
     for template in X_FEED_URLS:
         url = template.format(handle=handle)
         host = url.split("/")[2]
         try:
-            response = paced_get(url)
+            response = requests.get(
+                url,
+                timeout=X_MIRROR_TIMEOUT,
+                headers={"User-Agent": BROWSER_USER_AGENT},
+            )
         except Exception as exc:
             last_error = exc.__class__.__name__
             print(f"X {handle} via {host} failed: {last_error}.")
@@ -785,7 +807,16 @@ def fetch_x_handle(handle: str) -> list[dict]:
             last_error = f"HTTP {response.status_code}"
             print(f"X {handle} via {host} failed: {last_error}.")
             continue
-        parsed = parse_feed(response.content)
+        try:
+            parsed = parse_feed(response.content)
+        except Exception as exc:
+            last_error = exc.__class__.__name__
+            print(f"X {handle} via {host} failed: {last_error}.")
+            continue
+        if getattr(parsed, "bozo", False) and not parsed.entries:
+            last_error = "invalid rss"
+            print(f"X {handle} via {host} failed: invalid rss.")
+            continue
         if not parsed.entries:
             last_error = "no entries"
             print(f"X {handle} via {host} failed: no entries.")

@@ -553,7 +553,7 @@ def extract_location(headline: str) -> dict | None:
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the title or summary is Arabic or Farsi, title and summary must be clear English. "
+        "When the title or summary is Arabic, Farsi, or Hebrew, title and summary must be clear English. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
         "Preserve place names, governorates, and unit names accurately. "
@@ -615,7 +615,7 @@ def translate_post(title: str, summary: str) -> dict | None:
         return None
     prompt = (
         "Translate this Telegram, X, or RSS post into clear English. "
-        "Arabic or Farsi title and summary must be English. "
+        "Arabic, Farsi, or Hebrew title and summary must be English. "
         "If it is already English, return it in English without adding facts. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
