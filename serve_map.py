@@ -3,6 +3,7 @@
 
 POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search).
 GET /api/data returns live events, six region counts, the cached summary, and last_polled_at.
+POST /api/data with {"view":"regional"} returns that same live payload for the regional overview.
 POST /api/poll-now fetches RSS and public Telegram once.
 The poll never writes hotspots.json or daily_brief.json.
 """
@@ -1411,6 +1412,21 @@ def data_response() -> dict:
         }
 
 
+def data_post_response(raw: bytes) -> dict:
+    """Return the live payload. {"view":"regional"} selects the regional overview."""
+    view = ""
+    try:
+        body = json.loads(raw.decode("utf-8") or "{}")
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        body = {}
+    if isinstance(body, dict):
+        view = str(body.get("view") or "").strip().lower()
+    payload = data_response()
+    if view == "regional":
+        payload["view"] = "regional"
+    return payload
+
+
 def report_response(raw: bytes) -> dict:
     try:
         payload = json.loads(raw.decode("utf-8") or "{}")
@@ -1502,6 +1518,9 @@ class MapHandler(SimpleHTTPRequestHandler):
         route = self._route()
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(min(length, 1_000_000)) if length else b""
+        if route == "/api/data":
+            self._json(data_post_response(raw))
+            return
         if route == "/api/report":
             self._json(report_response(raw))
             return

@@ -37,8 +37,10 @@ def _no_store(response: Response) -> Response:
     return response
 
 
-@app.get("/api/data")
+@app.route("/api/data", methods=["GET", "POST"])
 def api_data() -> Response:
+    if request.method == "POST":
+        return _json(serve_map.data_post_response(request.get_data(cache=False, as_text=False) or b""))
     return _json(serve_map.data_response())
 
 
