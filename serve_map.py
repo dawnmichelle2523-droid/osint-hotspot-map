@@ -196,6 +196,99 @@ REGIONS = (
     "Sudan & Horn",
     "Other / International",
 )
+# Published geographic centers, (latitude, longitude). Longer names are matched first.
+GEO_FALLBACKS = {
+    "strait of hormuz": (26.5667, 56.2667),
+    "bab el mandeb": (12.5833, 43.3333),
+    "bab al mandab": (12.5833, 43.3333),
+    "gulf of oman": (25.0, 58.0),
+    "persian gulf": (26.5, 51.5),
+    "arabian gulf": (26.5, 51.5),
+    "red sea state": (19.6158, 37.2164),
+    "red sea": (20.0, 38.5),
+    "united arab emirates": (24.0, 54.0),
+    "u a e": (24.0, 54.0),
+    "saudi arabia": (25.0, 45.0),
+    "port sudan": (19.6158, 37.2164),
+    "el fasher": (13.6281, 25.3494),
+    "el fashir": (13.6281, 25.3494),
+    "al fashir": (13.6281, 25.3494),
+    "el geneina": (13.45, 22.45),
+    "el obeid": (13.1833, 30.2167),
+    "wad madani": (14.4, 33.52),
+    "wad medani": (14.4, 33.52),
+    "khartoum": (15.5518, 32.5324),
+    "omdurman": (15.6445, 32.4773),
+    "nyala": (12.05, 24.8833),
+    "kadugli": (11.0167, 29.7167),
+    "kassala": (15.45, 36.4),
+    "gedaref": (14.0333, 35.3833),
+    "al qadarif": (14.0333, 35.3833),
+    "atbara": (17.7, 33.9833),
+    "dongola": (19.1761, 30.4839),
+    "north darfur": (13.6281, 25.3494),
+    "south darfur": (12.05, 24.8833),
+    "west darfur": (13.45, 22.45),
+    "central darfur": (12.9092, 23.4706),
+    "east darfur": (11.4611, 26.1258),
+    "north kordofan": (13.1833, 30.2167),
+    "south kordofan": (11.0167, 29.7167),
+    "west kordofan": (11.7128, 28.3464),
+    "al jazirah": (14.4, 33.52),
+    "blue nile": (11.7891, 34.3592),
+    "white nile": (13.18, 32.74),
+    "river nile": (17.5928, 33.9597),
+    "rif dimashq": (33.5138, 36.3),
+    "damascus": (33.5138, 36.2765),
+    "aleppo": (36.2021, 37.1612),
+    "idlib": (35.9306, 36.6317),
+    "idleb": (35.9306, 36.6317),
+    "latakia": (35.5317, 35.7953),
+    "tartus": (34.889, 35.8866),
+    "hama": (35.1318, 36.7552),
+    "homs": (34.7324, 36.7137),
+    "raqqa": (35.9594, 39.0094),
+    "deir ez zor": (35.3359, 40.1408),
+    "deir ezzor": (35.3359, 40.1408),
+    "al hasakah": (36.5024, 40.7477),
+    "hasakah": (36.5024, 40.7477),
+    "daraa": (32.6189, 36.1021),
+    "quneitra": (33.1259, 35.8244),
+    "as suwayda": (32.7094, 36.5667),
+    "suwayda": (32.7094, 36.5667),
+    "sweida": (32.7094, 36.5667),
+    "hormuz": (26.5667, 56.2667),
+    "iran": (32.0, 53.0),
+    "iraq": (33.0, 44.0),
+    "jordan": (31.0, 36.0),
+    "kuwait": (29.5, 47.75),
+    "bahrain": (26.0, 50.55),
+    "saudi": (25.0, 45.0),
+    "uae": (24.0, 54.0),
+    "qatar": (25.5, 51.25),
+    "oman": (21.0, 57.0),
+    "yemen": (15.0, 48.0),
+    "syria": (35.0, 38.0),
+    "lebanon": (33.8333, 35.8333),
+    "israel": (31.5, 34.75),
+    "gaza": (31.5017, 34.4668),
+    "sudan": (15.0, 30.0),
+    "darfur": (13.6281, 25.3494),
+    "kordofan": (13.1833, 30.2167),
+    "sennar": (13.569, 33.5672),
+}
+_GEO_FALLBACK_ORDER = tuple(sorted(GEO_FALLBACKS, key=len, reverse=True))
+_COUNTRY_STEMS = {
+    "iran", "iraq", "syria", "yemen", "sudan", "oman", "qatar", "kuwait",
+    "bahrain", "jordan", "israel", "saudi", "lebanon",
+}
+_COUNTRY_OR_SEA = {
+    "iran", "iraq", "jordan", "kuwait", "bahrain", "saudi", "saudi arabia",
+    "uae", "united arab emirates", "qatar", "oman", "yemen", "syria", "lebanon",
+    "israel", "gaza", "sudan", "red sea", "bab el mandeb", "bab al mandab",
+    "strait of hormuz", "hormuz", "persian gulf", "arabian gulf", "gulf of oman",
+}
+RECENT_COORD_WINDOW = timedelta(days=7)
 
 SUMMARY_SCHEMA = {
     "type": "object",
@@ -356,7 +449,9 @@ def event_row(feature: dict) -> dict | None:
 def is_point(feature: dict) -> bool:
     geometry = feature.get("geometry") or {}
     coords = geometry.get("coordinates")
-    return geometry.get("type") == "Point" and isinstance(coords, list) and len(coords) >= 2
+    if geometry.get("type") != "Point" or not isinstance(coords, list) or len(coords) < 2:
+        return False
+    return osint.valid_coord(coords[0], coords[1]) is not None
 
 
 def live_events_from(features: list[dict]) -> list[dict]:
@@ -1054,12 +1149,141 @@ def original_post_text(item: dict) -> str:
     return chosen[:2000]
 
 
-def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+def geo_blob(*parts: object) -> str:
+    text = " ".join(str(part or "") for part in parts).lower().replace("'", " ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def match_geo_fallback(text: str) -> tuple[str, float, float] | None:
+    """Longest place keyword in the text, or None when nothing in GEO_FALLBACKS matches."""
+    padded = f" {geo_blob(text)} "
+    tokens = padded.split()
+    for keyword in _GEO_FALLBACK_ORDER:
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                lat, lng = GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword in tokens or (
+            keyword in _COUNTRY_STEMS
+            and any(token.startswith(keyword) and 0 < len(token) - len(keyword) <= 4 for token in tokens)
+        ):
+            lat, lng = GEO_FALLBACKS[keyword]
+            return keyword, lat, lng
+    return None
+
+
+def fallback_offset(event_id: object) -> tuple[float, float]:
+    digest = hashlib.sha256(str(event_id or "event").encode("utf-8")).digest()
+    lat_shift = (digest[0] - 128) / 128 * 0.04
+    lng_shift = (digest[1] - 128) / 128 * 0.04
+    return lat_shift, lng_shift
+
+
+def offset_fallback(lat: float, lng: float, event_id: object) -> tuple[float, float] | None:
+    lat_shift, lng_shift = fallback_offset(event_id)
+    checked = osint.valid_coord(lng + lng_shift, lat + lat_shift)
+    if checked is None:
+        return None
+    return checked[1], checked[0]
+
+
+def _near_center(lat: float, lng: float, center: tuple[float, float], tolerance: float = 0.25) -> bool:
+    return abs(lat - center[0]) <= tolerance and abs(lng - center[1]) <= tolerance
+
+
+def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | None]:
+    """Use a real model point. Otherwise a GEO_FALLBACKS center with a stable tiny offset."""
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
+    blob = geo_blob(
+        placed.get("location_name"),
+        placed.get("governorate"),
+        item.get("title"),
+        item.get("summary"),
+        item.get("original_text"),
+    )
+    hit = match_geo_fallback(blob)
+    event_id = item.get("source_url") or item.get("id") or item.get("title")
+    if coords and hit and hit[0] in _COUNTRY_OR_SEA and _near_center(coords[1], coords[0], (hit[1], hit[2])):
+        shifted = offset_fallback(hit[1], hit[2], event_id)
+        if shifted:
+            return shifted
+    if coords:
+        return coords[1], coords[0]
+    if hit:
+        shifted = offset_fallback(hit[1], hit[2], event_id)
+        if shifted:
+            return shifted
+    return None, None
+
+
+def backfill_coordinates(now: datetime | None = None) -> int:
+    """Fill recent null or 0,0 coordinates from GEO_FALLBACKS. Rows without a keyword stay unmapped."""
+    moment = now or datetime.now(timezone.utc)
+    cutoff = moment - RECENT_COORD_WINDOW
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, location_name, governorate, source_url, "
+                "published_at, ingested_at FROM items "
+                "WHERE lat IS NULL OR lng IS NULL OR lat = 0 OR lng = 0"
+            ).fetchall()
+            for row in rows:
+                stamp = parse_when(row["published_at"]) or parse_when(row["ingested_at"])
+                if stamp is None or stamp < cutoff:
+                    continue
+                hit = match_geo_fallback(
+                    geo_blob(row["location_name"], row["governorate"], row["title"], row["summary"], row["original_text"])
+                )
+                if not hit:
+                    continue
+                shifted = offset_fallback(hit[1], hit[2], row["id"])
+                if not shifted:
+                    continue
+                conn.execute(
+                    "UPDATE items SET lat = ?, lng = ? WHERE id = ?",
+                    (shifted[0], shifted[1], row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Backfilled coordinates for {updated} recent event(s).")
+        finally:
+            conn.close()
+    return updated
+
+
+def coordinate_counts(now: datetime | None = None) -> tuple[int, int]:
+    moment = now or datetime.now(timezone.utc)
+    cutoff = moment - LIVE_WINDOW
+    mapped = 0
+    total = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT lat, lng, published_at, ingested_at FROM items"
+            ).fetchall()
+        finally:
+            conn.close()
+    for row in rows:
+        stamp = parse_when(row["published_at"]) or parse_when(row["ingested_at"])
+        if stamp is None or stamp < cutoff:
+            continue
+        total += 1
+        if osint.valid_coord(row["lng"], row["lat"]):
+            mapped += 1
+    return mapped, total
+
+
+def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    lat, lng = placed_coordinates(item, placed)
     source_url = item["source_url"]
-    if coords is None:
-        print(f"Skipped {source_url}: no coordinates.")
-        return False
+    if lat is None or lng is None:
+        print(f"Stored unmapped {source_url}: no place keyword.")
     moment = parse_when(item.get("published_at")) or now
     with _db_lock:
         conn = db_connect()
@@ -1085,8 +1309,8 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     placed.get("region") or "Other / International",
                     placed.get("governorate") or "",
                     placed.get("location_name") or "",
-                    coords[1],
-                    coords[0],
+                    lat,
+                    lng,
                     osint.live_severity(placed.get("severity")),
                     osint.live_category(placed.get("category")),
                     1,
@@ -1193,6 +1417,7 @@ def ingest_feeds() -> dict:
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
             now = datetime.now(timezone.utc)
+            backfill_coordinates(now)
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
             )
@@ -1637,6 +1862,7 @@ def data_payload() -> dict:
             last_polled_at = read_last_polled(conn)
         finally:
             conn.close()
+    mapped_count, total_count = coordinate_counts(now)
     return {
         "events": events,
         "features": features,
@@ -1648,6 +1874,8 @@ def data_payload() -> dict:
         "feed_health": feed_health_payload(),
         "region_trends": region_escalation(now),
         "briefing_window": format_briefing_window(*briefing_window("daily", now)),
+        "mapped_count": mapped_count,
+        "total_count": total_count,
     }
 
 
@@ -1755,6 +1983,8 @@ def data_response() -> dict:
             "last_polled_at": None,
             "region_trends": {name: trend_label(0) for name in REGIONS},
             "briefing_window": "",
+            "mapped_count": 0,
+            "total_count": 0,
         }
 
 
@@ -1888,6 +2118,7 @@ def start_background() -> None:
         with _db_lock:
             conn = db_connect()
             conn.close()
+        backfill_coordinates()
         _threads_started = True
     start_translation_pass()
     start_poller()

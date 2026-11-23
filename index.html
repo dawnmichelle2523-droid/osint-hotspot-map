@@ -1151,8 +1151,14 @@
 
     function isPoint(feature) {
       const coords = feature && feature.geometry && feature.geometry.coordinates;
-      return feature && feature.type === "Feature" && feature.geometry.type === "Point" &&
-        Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1]);
+      if (!(feature && feature.type === "Feature" && feature.geometry.type === "Point" &&
+            Array.isArray(coords) && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1])))) {
+        return false;
+      }
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return false;
+      return !(Math.abs(lng) < 1e-9 && Math.abs(lat) < 1e-9);
     }
 
     function zonedParts(date, timeZone) {
@@ -1270,10 +1276,7 @@
     }
 
     function tickerCandidates() {
-      return features.filter((feature) => {
-        const coords = feature.geometry && feature.geometry.coordinates;
-        return coords && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]));
-      }).sort((a, b) => {
+      return features.filter(isPoint).sort((a, b) => {
         const propsA = a.properties || {};
         const propsB = b.properties || {};
         const rank = severityRank(propsA.severity) - severityRank(propsB.severity);

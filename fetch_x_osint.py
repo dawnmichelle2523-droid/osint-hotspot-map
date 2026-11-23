@@ -603,7 +603,8 @@ def extract_location(headline: str) -> dict | None:
         "El Obeid, Wad Madani, Kassala, Gedaref, Atbara, and Kadugli, is Sudan & Horn. "
         "The Horn of Africa, including Eritrea, Ethiopia, Djibouti, Somalia, and South Sudan, is Sudan & Horn. "
         "Anything else is Other / International. "
-        "location_name is the most specific place named. "
+        "location_name is the most specific place named: a city, governorate, port, airbase, border crossing, "
+        "maritime chokepoint, or, if nothing finer is named, the country or sea. "
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
@@ -615,7 +616,12 @@ def extract_location(headline: str) -> dict | None:
         "If the post is already English, keep title and summary in English and do not add facts. "
         "severity is exactly High, Medium, or Low. "
         "category is exactly one of: Kinetic/Military, Maritime, Security/Clashes, Political/Other. "
-        "lat and lng are decimal degrees, or null when the text does not locate the event.\n\n"
+        "Every regional event must return numeric decimal lat and lng plus location_name. "
+        "When the text names a city, governorate, port, airbase, border crossing, or maritime chokepoint, use that place. "
+        "When only a country or sea is named, use that country or sea center. "
+        "Do not return null or 0,0 for Iran, Sudan, Kuwait, Bahrain, the UAE, Jordan, Saudi Arabia, Iraq, "
+        "the Red Sea, or the Strait of Hormuz. "
+        "Use null for lat and lng only when the text names no place at all.\n\n"
         + headline
     )
     schema = {
