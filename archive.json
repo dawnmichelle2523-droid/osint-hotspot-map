@@ -125,6 +125,31 @@
         "category": "Travel / Embassy Advisory",
         "warning_number": null
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44.3661,
+          33.3152
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Iraq due to terrorism, kidnapping, armed conflict, civil unrest, and limited U.S. government ability to provide emergency services.",
+        "summary": "Do not travel to Iraq due to terrorism, kidnapping, armed conflict, civil unrest, and limited U.S. government ability to provide emergency services.",
+        "timestamp": "2026-03-02T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/iraq-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Iran & Iraq",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
     }
   ]
 }
