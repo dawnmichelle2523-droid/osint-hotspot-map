@@ -1651,12 +1651,17 @@
     });
     document.getElementById("show-all-regions").addEventListener("click", () => applyRegionFilter("all"));
     document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
+    async function loadData() {
+      await loadLive();
+      await loadSummaryPanel();
+    }
     document.getElementById("fetch-live").addEventListener("click", async () => {
       const button = document.getElementById("fetch-live");
       button.disabled = true;
       try {
         await fetch("/api/poll-now", { method: "POST", cache: "no-store" });
-        await loadLive();
+        await loadData();
+        setTimeout(() => { loadData(); }, 5000);
       } catch (err) {
         setStatus("Live feed fetch failed.");
       } finally {
@@ -1682,11 +1687,9 @@
       popover.setAttribute("hidden", "");
       document.getElementById("feed-health").setAttribute("aria-expanded", "false");
     });
-    loadLive();
+    loadData();
     showSyriaGovernorates(false);
-    loadSummaryPanel();
-    setInterval(loadLive, 60000);
-    setInterval(loadSummaryPanel, 60000);
+    setInterval(() => loadData(), 30000);
   </script>
 </body>
 </html>
