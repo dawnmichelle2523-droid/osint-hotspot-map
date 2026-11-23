@@ -1753,14 +1753,14 @@ def briefing_html(report_type: str, start: datetime, end: datetime, events: list
         bars.append(
             "<div style=\"margin:8px 0;\">"
             f"<div style=\"color:#d5e4e8;font-size:13px;\">{html.escape(name)} {counts[name]}</div>"
-            "<div style=\"background:#1a2c35;border-radius:999px;height:10px;\">"
-            f"<div style=\"width:{width}%;height:10px;border-radius:999px;background:linear-gradient(90deg,#19d3b8,#ff7b89);\"></div>"
+            "<div style=\"background:#1c2229;border-radius:999px;height:10px;\">"
+            f"<div style=\"width:{width}%;height:10px;border-radius:999px;background:linear-gradient(90deg,#F3C64F 0%,#e09f3e 55%,#ff6b6b 100%);\"></div>"
             "</div></div>"
         )
     region_notes = []
     for name in REGIONS:
         region_notes.append(
-            "<h3 style=\"color:#19d3b8;font-size:15px;margin:16px 0 6px;\">"
+            "<h3 style=\"color:#F3C64F;font-size:15px;margin:16px 0 6px;\">"
             f"{html.escape(name)}</h3><p style=\"margin:0;\">{html.escape(narrative['regions'][name])}</p>"
         )
     gov_lines = "".join(
@@ -1778,11 +1778,11 @@ def briefing_html(report_type: str, start: datetime, end: datetime, events: list
             else:
                 coords = f"{item['lat']:.4f}, {item['lng']:.4f}"
             incident_html.append(
-                "<div style=\"border-top:1px solid #1a2c35;padding:8px 0;\">"
+                "<div style=\"border-top:1px solid #1c2229;padding:8px 0;\">"
                 f"<strong>{html.escape(item.get('title') or 'Incident')}</strong><br>"
                 f"{html.escape(item.get('location_name') or 'Location unavailable')}<br>"
                 f"{html.escape(coords)}<br>"
-                "<span style=\"display:inline-block;margin-top:4px;color:#19d3b8;border:1px solid #19d3b8;"
+                "<span style=\"display:inline-block;margin-top:4px;color:#F3C64F;border:1px solid #F3C64F;"
                 f"border-radius:999px;padding:1px 8px;font-size:12px;\">{html.escape(item.get('source') or 'Live')}</span>"
                 "</div>"
             )
@@ -1791,22 +1791,46 @@ def briefing_html(report_type: str, start: datetime, end: datetime, events: list
         incidents = "<p>No high-severity or corroborated incidents in this window.</p>"
     title = f"{report_type.upper()} OSINT INTELLIGENCE BRIEFING"
     return (
-        "<html><body style=\"margin:0;background:#0a1114;color:#e7eef0;font-family:Segoe UI,sans-serif;\">"
+        "<html><body style=\"margin:0;background:#07090b;color:#e7eef0;font-family:Segoe UI,sans-serif;\">"
         "<div style=\"max-width:720px;margin:0 auto;padding:24px;\">"
-        "<div style=\"background:#0e181d;border:1px solid #1a2c35;border-radius:12px;padding:16px 18px;\">"
-        f"<h1 style=\"color:#19d3b8;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
+        + briefing_banner()
+        + "<div style=\"background:#0c1014;border:1px solid #1c2229;border-radius:12px;padding:16px 18px;\">"
+        f"<h1 style=\"color:#F3C64F;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
         f"<p style=\"margin:0 0 12px;color:#d5e4e8;\">{html.escape(format_briefing_window(start, end))}</p>"
         "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
-        "<h2 style=\"color:#19d3b8;font-size:16px;\">Regions</h2>"
+        "<h2 style=\"color:#F3C64F;font-size:16px;\">Regions</h2>"
         + "".join(bars)
-        + f"<h2 style=\"color:#19d3b8;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
+        + f"<h2 style=\"color:#F3C64F;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
         + "".join(region_notes)
-        + "<h2 style=\"color:#19d3b8;font-size:16px;\">Syria</h2>"
+        + "<h2 style=\"color:#F3C64F;font-size:16px;\">Syria</h2>"
         + f"<p>{html.escape(narrative['syria'])}</p><ul>{gov_lines}</ul>"
-        + "<h2 style=\"color:#19d3b8;font-size:16px;\">High-severity and corroborated incidents</h2>"
+        + "<h2 style=\"color:#F3C64F;font-size:16px;\">High-severity and corroborated incidents</h2>"
         + incidents
         + "</div></div></body></html>"
     )
+
+
+def logo_path() -> Path:
+    return ROOT / "static" / "logo.png"
+
+
+def briefing_banner() -> str:
+    if logo_path().is_file():
+        return (
+            "<div style=\"background:#000000;text-align:center;padding:14px 12px;\">"
+            "<img src=\"cid:georisk_logo\" alt=\"GeoRiskIntel\" height=\"34\" "
+            "style=\"height:34px;display:block;margin:0 auto;\" />"
+            "</div>"
+        )
+    return (
+        "<div style=\"background:#000000;text-align:center;padding:14px 12px;"
+        "color:#F3C64F;font-size:22px;font-weight:700;letter-spacing:0.04em;\">GeoRiskIntel</div>"
+    )
+
+
+def briefing_subject(report_type: str, start: datetime, end: datetime) -> str:
+    label = {"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly"}[report_type]
+    return f"[GeoRiskIntel] {label} Geopolitical & OSINT Briefing — {format_briefing_window(start, end)}"
 
 
 def send_briefing_message(subject: str, body: str, png: bytes, settings: dict) -> bool:
@@ -1815,6 +1839,11 @@ def send_briefing_message(subject: str, body: str, png: bytes, settings: dict) -
     message["From"] = settings["sender"]
     message["To"] = settings["recipient"]
     message.attach(MIMEText(body, "html", "utf-8"))
+    if logo_path().is_file():
+        logo = MIMEImage(logo_path().read_bytes(), _subtype="png")
+        logo.add_header("Content-ID", "<georisk_logo>")
+        logo.add_header("Content-Disposition", "inline", filename="logo.png")
+        message.attach(logo)
     image = MIMEImage(png, _subtype="png")
     image.add_header("Content-ID", "<incident_map>")
     image.add_header("Content-Disposition", "inline", filename="incident_map.png")
@@ -1852,7 +1881,7 @@ def generate_and_email_periodic_report(report_type: str) -> bool:
     png = render_period_map_png(events)
     narrative = briefing_narrative(events, kind, start, end)
     body = briefing_html(kind, start, end, events, narrative)
-    subject = f"{kind.upper()} OSINT INTELLIGENCE BRIEFING"
+    subject = briefing_subject(kind, start, end)
     sent = send_briefing_message(subject, body, png, settings)
     if sent:
         print(f"Sent the {kind} OSINT briefing. daily_brief.json and hotspots.json were not changed.")
