@@ -163,6 +163,29 @@
     .group { margin-top: 14px; }
     #sidebar h1, .group h2 { color: #F3C64F; }
     .group h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 650; }
+    details.filter-dropdown {
+      background: #11151a; border: 1px solid #242b33; border-radius: 8px;
+      padding: 8px 12px; margin-top: 8px; margin-bottom: 8px;
+    }
+    details.filter-dropdown summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      cursor: pointer; list-style: none; user-select: none;
+    }
+    details.filter-dropdown summary::-webkit-details-marker { display: none; }
+    details.filter-dropdown summary::marker { content: ""; }
+    .filter-label {
+      color: #e6c667; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+    }
+    .filter-current {
+      display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+      color: #cbd5e1; font-size: 11px; font-weight: 600;
+    }
+    .filter-current [data-filter-summary] {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .filter-chevron { flex: 0 0 auto; transition: transform 0.15s ease; }
+    details.filter-dropdown[open] .filter-chevron { transform: rotate(180deg); }
+    details.filter-dropdown .row { margin-top: 8px; }
     button.pill, button.chip {
       background: #11151a; color: #b8c2cc; border: 1px solid #242b33;
       border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -431,8 +454,11 @@
       <button type="button" class="chip" data-chip="Embassy">Embassy</button>
     </div>
     <p id="search-count"></p>
-    <section class="group">
-      <h2>Region</h2>
+    <details class="filter-dropdown" open>
+      <summary>
+        <span class="filter-label">Region</span>
+        <span class="filter-current"><span data-filter-summary="region">All Regions (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
       <div class="row">
         <button type="button" class="pill" data-region="all" aria-pressed="true">All Regions <span class="n" data-count="all">0</span></button>
         <button type="button" class="pill" data-region="Gulf">Gulf <span class="n" data-count="Gulf">0</span></button>
@@ -443,27 +469,36 @@
         <button type="button" class="pill" data-region="Sudan &amp; Horn">Sudan &amp; Horn <span class="n" data-count="Sudan &amp; Horn">0</span></button>
         <button type="button" class="pill" data-region="Other / International">Other / International <span class="n" data-count="Other / International">0</span></button>
       </div>
-    </section>
-    <section class="group">
-      <h2>Time window</h2>
+    </details>
+    <details class="filter-dropdown">
+      <summary>
+        <span class="filter-label">Time window</span>
+        <span class="filter-current"><span data-filter-summary="window">All Active</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
       <div class="row">
         <button type="button" class="pill" data-window="2h">Last 2 Hours</button>
         <button type="button" class="pill" data-window="24h">Last 24 Hours</button>
         <button type="button" class="pill" data-window="7d">Last 7 Days</button>
         <button type="button" class="pill" data-window="all" aria-pressed="true">All Active</button>
       </div>
-    </section>
-    <section class="group">
-      <h2>Severity</h2>
+    </details>
+    <details class="filter-dropdown">
+      <summary>
+        <span class="filter-label">Severity</span>
+        <span class="filter-current"><span data-filter-summary="severity">All</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
       <div class="row">
         <button type="button" class="pill" data-severity="all" aria-pressed="true">All</button>
         <button type="button" class="pill sev-high" data-severity="high">High</button>
         <button type="button" class="pill sev-medium" data-severity="medium">Medium</button>
         <button type="button" class="pill sev-low" data-severity="low">Low</button>
       </div>
-    </section>
-    <section class="group">
-      <h2>Category</h2>
+    </details>
+    <details class="filter-dropdown">
+      <summary>
+        <span class="filter-label">Category</span>
+        <span class="filter-current"><span data-filter-summary="category">All</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
       <div class="row">
         <button type="button" class="pill" data-category="all" aria-pressed="true">All</button>
         <button type="button" class="pill" data-category="Kinetic/Military">Kinetic/Military</button>
@@ -471,7 +506,7 @@
         <button type="button" class="pill" data-category="Security/Clashes">Security/Clashes</button>
         <button type="button" class="pill" data-category="Political/Other">Political/Other</button>
       </div>
-    </section>
+    </details>
   </aside>
   <div id="basemap" role="group" aria-label="Basemap">
     <button type="button" data-basemap="clear">Clear Map</button>
@@ -935,6 +970,20 @@
       document.querySelectorAll("[data-count]").forEach((node) => {
         node.textContent = String(countRegion(node.dataset.count));
       });
+      const regionSummary = document.querySelector('[data-filter-summary="region"]');
+      if (regionSummary) {
+        regionSummary.textContent = (region === "all" ? "All Regions" : region) + " (" + countRegion(region) + ")";
+      }
+      const windowSummary = document.querySelector('[data-filter-summary="window"]');
+      if (windowSummary) {
+        windowSummary.textContent = { "2h": "Last 2 Hours", "24h": "Last 24 Hours", "7d": "Last 7 Days", all: "All Active" }[timeWindow] || "All Active";
+      }
+      const severitySummary = document.querySelector('[data-filter-summary="severity"]');
+      if (severitySummary) {
+        severitySummary.textContent = { all: "All", high: "High", medium: "Medium", low: "Low" }[severity] || "All";
+      }
+      const categorySummary = document.querySelector('[data-filter-summary="category"]');
+      if (categorySummary) categorySummary.textContent = category === "all" ? "All" : category;
       const newest = features.reduce((best, feature) => {
         const ms = Date.parse((feature.properties || {}).timestamp);
         if (Number.isNaN(ms)) return best;
