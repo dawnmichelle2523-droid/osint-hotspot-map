@@ -319,7 +319,8 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
             category TEXT,
             corroboration_count INTEGER NOT NULL DEFAULT 1,
             published_at TEXT,
-            ingested_at TEXT NOT NULL
+            ingested_at TEXT NOT NULL,
+            original_text TEXT
         )
         """
     )
@@ -342,6 +343,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "source_url": "TEXT",
         "title": "TEXT",
         "summary": "TEXT",
+        "original_text": "TEXT",
     }
     for name, typedef in additions.items():
         if name not in existing:
@@ -400,7 +402,7 @@ def recent_titles(conn: sqlite3.Connection, limit: int = SIMILAR_TITLE_LIMIT) ->
 
 def recent_story_rows(conn: sqlite3.Connection, limit: int = SIMILAR_TITLE_LIMIT) -> list[sqlite3.Row]:
     return conn.execute(
-        "SELECT id, title, source_name, source_kind FROM items "
+        "SELECT id, title, original_text, source_name, source_kind FROM items "
         "WHERE title IS NOT NULL AND title != '' ORDER BY id DESC LIMIT ?",
         (limit,),
     ).fetchall()
@@ -428,13 +430,17 @@ def best_title_match(title: str, rows: list[sqlite3.Row]) -> sqlite3.Row | None:
     best = None
     best_ratio = SIMILAR_TITLE_RATIO
     for row in rows:
-        right = " ".join(str(row["title"] or "").split())
-        if not right:
-            continue
-        ratio = SequenceMatcher(None, folded, right.casefold()).ratio()
-        if ratio > best_ratio:
-            best_ratio = ratio
-            best = row
+        candidates = [row["title"] or ""]
+        if "original_text" in row.keys() and row["original_text"]:
+            candidates.append(row["original_text"])
+        for candidate in candidates:
+            right = " ".join(str(candidate or "").split())
+            if not right:
+                continue
+            ratio = SequenceMatcher(None, folded, right.casefold()).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best = row
     return best
 
 
@@ -605,6 +611,7 @@ def feed_features() -> list[dict]:
             "warning_number": None,
             "location_name": row["location_name"] or "",
             "corroboration_count": int(row["corroboration_count"] or 1),
+            "original_text": row["original_text"] or "",
         }
         if row["governorate"]:
             props["governorate"] = row["governorate"]
@@ -800,6 +807,46 @@ def fetch_telegram_candidates() -> list[dict]:
     return found
 
 
+_FOREIGN_SCRIPT = re.compile(
+    r"[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF"
+    r"\u0900-\u097F\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]"
+)
+_ENGLISH_STOPS = (" the ", " and ", " of ", " to ", " in ", " for ", " with ", " from ", " on ", " said ")
+_OTHER_LANGUAGE_MARKERS = (
+    " le ", " la ", " les ", " des ", " une ", " dans ", " est ",
+    " los ", " las ", " del ", " una ", " que ",
+    " und ", " der ", " die ", " nicht ",
+)
+
+
+def needs_english(text: object) -> bool:
+    """True when a title or summary is still Arabic or another non-English language."""
+    sample = " ".join(str(text or "").split())
+    if not sample:
+        return False
+    latin = len(re.findall(r"[A-Za-z]", sample))
+    foreign = len(_FOREIGN_SCRIPT.findall(sample))
+    if foreign >= 3 and foreign > latin:
+        return True
+    words = re.findall(r"[A-Za-z\u00C0-\u024F']+", sample)
+    if len(words) < 4:
+        return False
+    lowered = f" {sample.casefold()} "
+    english_hits = sum(1 for token in _ENGLISH_STOPS if token in lowered)
+    if english_hits >= 2:
+        return False
+    accented = re.search(r"[\u00C0-\u024F]", sample) is not None
+    other_language = any(token in lowered for token in _OTHER_LANGUAGE_MARKERS)
+    return (accented or other_language) and english_hits == 0
+
+
+def original_post_text(item: dict) -> str:
+    title = str(item.get("title") or "")
+    summary = str(item.get("summary") or "")
+    chosen = summary if len(summary) >= len(title) else title
+    return chosen[:2000]
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
     source_url = item["source_url"]
@@ -813,10 +860,10 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
             conn.execute(
                 """
                 INSERT INTO items (
-                    source_url, url_hash, headline_hash, title, summary, source_name, source_kind,
+                    source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
                     region, governorate, location_name, lat, lng, severity, category,
                     corroboration_count, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -824,6 +871,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     headline_hash(item["title"]),
                     item["title"],
                     item.get("summary") or item["title"],
+                    item.get("original_text") or "",
                     item.get("source_name") or "",
                     item.get("source_kind") or "",
                     placed.get("region") or "Other / International",
@@ -868,12 +916,17 @@ def save_classified_item(item: dict, now: datetime) -> bool:
         f"{item.get('title') or ''} {item.get('summary') or ''}"
     ):
         return False
+    original = original_post_text(item)
     placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
-    english = osint.one_sentence(placed.get("title") or "")
-    if english:
-        item = dict(item)
-        item["title"] = english[:240]
-    return insert_item(item, placed, now)
+    stored = dict(item)
+    stored["original_text"] = original
+    english_title = osint.one_sentence(placed.get("title") or "")
+    english_summary = osint.one_sentence(placed.get("summary") or "")
+    if english_title and not needs_english(english_title):
+        stored["title"] = english_title[:240]
+    if english_summary and not needs_english(english_summary):
+        stored["summary"] = english_summary[:500]
+    return insert_item(stored, placed, now)
 
 
 def store_new_items(candidates: list[dict], now: datetime, limit: int = MAX_NEW_PER_CYCLE) -> int:
@@ -1483,6 +1536,71 @@ def summary_response() -> dict:
     return {"summaries": summary, "fallback": bool(summary.get("fallback"))}
 
 
+def apply_english_fields(title: str, summary: str, translated: dict) -> tuple[str, str] | None:
+    new_title = osint.one_sentence(translated.get("title"))[:240]
+    new_summary = osint.one_sentence(translated.get("summary"))[:500]
+    updated_title = title
+    updated_summary = summary
+    changed = False
+    if needs_english(title) and new_title and not needs_english(new_title):
+        updated_title = new_title
+        changed = True
+    if needs_english(summary) and new_summary and not needs_english(new_summary):
+        updated_summary = new_summary
+        changed = True
+    if not changed:
+        return None
+    return updated_title, updated_summary or updated_title
+
+
+def translate_existing_rows() -> int:
+    """Rewrite stored non-English titles and summaries. Leaves rows unchanged when the key is missing."""
+    key = osint.read_api_key()
+    if not key:
+        print("XAI_API_KEY is missing. Translation of existing non-English rows was skipped.")
+        return 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute("SELECT id, title, summary, original_text FROM items").fetchall()
+        finally:
+            conn.close()
+    updated = 0
+    for row in rows:
+        title = str(row["title"] or "")
+        summary = str(row["summary"] or "")
+        if not needs_english(title) and not needs_english(summary):
+            continue
+        translated = osint.translate_post(title, summary)
+        if not translated:
+            continue
+        applied = apply_english_fields(title, summary, translated)
+        if applied is None:
+            print(f"Translation left item {row['id']} unchanged.")
+            continue
+        english_title, english_summary = applied
+        original = str(row["original_text"] or "").strip()
+        if not original:
+            original = original_post_text({"title": title, "summary": summary})
+        with _db_lock:
+            conn = db_connect()
+            try:
+                conn.execute(
+                    "UPDATE items SET title = ?, summary = ?, original_text = ? WHERE id = ?",
+                    (english_title, english_summary, original, row["id"]),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        updated += 1
+        print(f"Translated item {row['id']} into English.")
+    return updated
+
+
+def start_translation_pass() -> None:
+    threading.Thread(target=translate_existing_rows, name="translate-existing", daemon=True).start()
+
+
 def start_background() -> None:
     """Open the database and start ingest plus the London mailer once per process."""
     global _threads_started
@@ -1493,6 +1611,7 @@ def start_background() -> None:
             conn = db_connect()
             conn.close()
         _threads_started = True
+    start_translation_pass()
     start_poller()
     start_summary_daemon()
     start_briefing_daemon()
@@ -1660,6 +1779,7 @@ def period_events(start: datetime, end: datetime) -> list[dict]:
         found.append(
             {
                 "title": osint.one_sentence(props.get("title") or props.get("summary"))[:240],
+                "summary": osint.one_sentence(props.get("summary") or props.get("title"))[:500],
                 "location_name": osint.one_sentence(props.get("location_name"))[:160],
                 "governorate": osint.match_governorate(props.get("governorate"))
                 or osint.match_governorate(props.get("location_name")),
@@ -1815,9 +1935,13 @@ def briefing_html(report_type: str, start: datetime, end: datetime, events: list
                 coords = "Coordinates unavailable"
             else:
                 coords = f"{item['lat']:.4f}, {item['lng']:.4f}"
+            summary_line = ""
+            if str(item.get("summary") or "").strip():
+                summary_line = f"{html.escape(item.get('summary') or '')}<br>"
             incident_html.append(
                 "<div style=\"border-top:1px solid #1c2229;padding:8px 0;\">"
                 f"<strong>{html.escape(item.get('title') or 'Incident')}</strong><br>"
+                f"{summary_line}"
                 f"{html.escape(item.get('location_name') or 'Location unavailable')}<br>"
                 f"{html.escape(coords)}<br>"
                 "<span style=\"display:inline-block;margin-top:4px;color:#F3C64F;border:1px solid #F3C64F;"

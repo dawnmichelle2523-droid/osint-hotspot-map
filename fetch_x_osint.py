@@ -548,7 +548,12 @@ def extract_location(headline: str) -> dict | None:
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "title is a concise English headline. Translate Arabic into English and do not add facts. "
+        "When the post is Arabic or any non-English language, title and summary must be English. "
+        "title is a concise neutral intelligence headline. "
+        "summary is 1-2 clear sentences. "
+        "Preserve military and geopolitical place names, governorates, and unit names accurately. "
+        "Translate into English and do not add facts. "
+        "If the post is already English, keep title and summary in English and do not add facts. "
         "severity is exactly High, Medium, or Low. "
         "category is exactly one of: Kinetic/Military, Maritime, Security/Clashes, Political/Other. "
         "lat and lng are decimal degrees, or null when the text does not locate the event.\n\n"
@@ -559,6 +564,7 @@ def extract_location(headline: str) -> dict | None:
         "additionalProperties": False,
         "properties": {
             "title": {"type": "string"},
+            "summary": {"type": "string"},
             "region": {"type": "string", "enum": list(REGIONS)},
             "location_name": {"type": "string"},
             "governorate": {"type": "string"},
@@ -567,7 +573,7 @@ def extract_location(headline: str) -> dict | None:
             "severity": {"type": "string", "enum": list(LIVE_SEVERITIES)},
             "category": {"type": "string", "enum": list(LIVE_CATEGORIES)},
         },
-        "required": ["title", "region", "location_name", "governorate", "lat", "lng", "severity", "category"],
+        "required": ["title", "summary", "region", "location_name", "governorate", "lat", "lng", "severity", "category"],
     }
     try:
         response = make_client(key).responses.create(
@@ -581,7 +587,7 @@ def extract_location(headline: str) -> dict | None:
                     "strict": True,
                 }
             },
-            max_output_tokens=400,
+            max_output_tokens=600,
             timeout=API_TIMEOUT,
         )
         text = response_text(response)
@@ -593,6 +599,58 @@ def extract_location(headline: str) -> dict | None:
         return None
     if not isinstance(payload, dict):
         print("Location extract failed: response was not an object.")
+        return None
+    return payload
+
+
+def translate_post(title: str, summary: str) -> dict | None:
+    """English title and summary for one stored post. A missing key does not call xAI."""
+    key = read_api_key()
+    if not key:
+        return None
+    prompt = (
+        "Translate this Telegram, X, or RSS post into English. "
+        "If it is already English, return it in English without adding facts. "
+        "title is a concise neutral intelligence headline. "
+        "summary is 1-2 clear sentences. "
+        "Preserve military and geopolitical place names, governorates, and unit names accurately. "
+        "Do not add facts that are not in the post.\n\n"
+        f"Title: {one_sentence(title)}\n"
+        f"Summary: {one_sentence(summary) or one_sentence(title)}"
+    )
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "title": {"type": "string"},
+            "summary": {"type": "string"},
+        },
+        "required": ["title", "summary"],
+    }
+    try:
+        response = make_client(key).responses.create(
+            model=GEO_MODEL,
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "english_incident",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+            max_output_tokens=400,
+            timeout=API_TIMEOUT,
+        )
+        text = response_text(response)
+        if not text:
+            raise RuntimeError("xAI response did not include output text")
+        payload = parse_json_object(text)
+    except Exception as exc:
+        print(f"Translation failed: {public_error(exc, key)}.")
+        return None
+    if not isinstance(payload, dict):
+        print("Translation failed: response was not an object.")
         return None
     return payload
 
@@ -632,6 +690,7 @@ def locate_event(
     known_region = normalize_region(region)
     governorate = match_governorate(text) or match_governorate(headline)
     english_title = ""
+    english_summary = ""
     vague = is_vague_location(text) or is_vague_location(headline)
     severity = "Medium"
     category = "Political/Other"
@@ -641,6 +700,7 @@ def locate_event(
             "governorate": governorate,
             "location_name": text,
             "title": english_title,
+            "summary": english_summary,
             "lat": known[1],
             "lng": known[0],
             "severity": severity,
@@ -649,6 +709,7 @@ def locate_event(
     extracted = extract_location(one_sentence(headline) or text)
     if extracted:
         english_title = one_sentence(extracted.get("title"))
+        english_summary = one_sentence(extracted.get("summary"))
         known_region = normalize_region(extracted.get("region")) or known_region
         named = one_sentence(extracted.get("location_name"))
         if named:
@@ -685,6 +746,7 @@ def locate_event(
         "governorate": governorate,
         "location_name": text,
         "title": english_title,
+        "summary": english_summary,
         "lat": known[1] if known else None,
         "lng": known[0] if known else None,
         "severity": severity,

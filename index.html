@@ -69,6 +69,15 @@
       box-shadow: none; font-size: 12px; font-weight: 650; padding: 3px 6px;
     }
     .leaflet-tooltip.coord-tip::before { display: none; }
+    .leaflet-tooltip.pin-tip {
+      background: #0c1014; color: #ecfdf5; border: 1px solid #1c2229; border-radius: 8px;
+      box-shadow: none; font-size: 12px; font-weight: 650; padding: 6px 8px; max-width: 240px;
+    }
+    .leaflet-tooltip.pin-tip::before { display: none; }
+    .pin-tip-summary { display: block; margin-top: 3px; color: #c5ceda; font-weight: 500; }
+    .original-arabic { margin-top: 6px; }
+    .original-arabic summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+    .original-arabic div { margin-top: 4px; color: #c5ceda; font-size: 12px; line-height: 1.45; }
     #filter-toggle {
       position: absolute; z-index: 950; top: 12px; left: 12px;
       background: #11151a; color: #b8c2cc;
@@ -732,6 +741,31 @@
       return "Live";
     }
 
+    function hasArabicScript(text) {
+      return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(text || ""));
+    }
+
+    function originalArabicBlock(props) {
+      const original = String(props.original_text || "").trim();
+      const title = String(props.title || "").trim();
+      if (!original || original === title || !hasArabicScript(original)) return "";
+      return (
+        '<details class="original-arabic">' +
+          "<summary>Original Arabic</summary>" +
+          '<div dir="rtl">' + esc(original) + "</div>" +
+        "</details>"
+      );
+    }
+
+    function tooltipHtml(props) {
+      const headline = props.title || props.summary || "Incident";
+      const summary = twoSentences(props.summary || "");
+      const extra = summary && summary !== headline
+        ? '<span class="pin-tip-summary">' + esc(summary) + "</span>"
+        : "";
+      return "<strong>" + esc(headline) + "</strong>" + extra;
+    }
+
     function popupHtml(props, id) {
       const badge = severityBadge(props);
       const headline = props.title || props.summary || "Incident";
@@ -750,6 +784,7 @@
           corroborationBadge(props) +
           place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
+          originalArabicBlock(props) +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
           '<div class="popup-actions">' + link +
             '<button type="button" class="copy-pin" data-pin="' + esc(id) + '">Copy Link</button>' +
@@ -776,7 +811,9 @@
         iconAnchor: [14, 14],
         popupAnchor: [0, -14]
       });
-      return L.marker([coords[1], coords[0]], { icon }).bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 });
+      return L.marker([coords[1], coords[0]], { icon })
+        .bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 })
+        .bindTooltip(tooltipHtml(props), { direction: "top", offset: [0, -12], opacity: 0.96, className: "pin-tip" });
     }
 
     function syncControls(visibleCount) {
