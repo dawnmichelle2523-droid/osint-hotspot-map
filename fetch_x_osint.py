@@ -58,6 +58,7 @@ REGIONS = (
     "Levant",
     "Iran & Iraq",
     "Maritime",
+    "Sudan & Horn",
     "Other / International",
 )
 CATEGORIES = (
@@ -156,6 +157,10 @@ REGION_ALIASES = {
     "iran & iraq": "Iran & Iraq",
     "iran and iraq": "Iran & Iraq",
     "maritime": "Maritime",
+    "sudan & horn": "Sudan & Horn",
+    "sudan and horn": "Sudan & Horn",
+    "sudan": "Sudan & Horn",
+    "horn of africa": "Sudan & Horn",
     "other / international": "Other / International",
     "other": "Other / International",
 }
@@ -354,6 +359,27 @@ PLACES = {
     "baghdad": (44.3661, 33.3152, "Iran & Iraq"),
     "bandar abbas": (56.2808, 27.1832, "Iran & Iraq"),
     "cairo": (31.2357, 30.0444, "Other / International"),
+    "khartoum": (32.5599, 15.5007, "Sudan & Horn"),
+    "omdurman": (32.4773, 15.6445, "Sudan & Horn"),
+    "port sudan": (37.2164, 19.6158, "Sudan & Horn"),
+    "el fasher": (25.3494, 13.6289, "Sudan & Horn"),
+    "el fashir": (25.3494, 13.6289, "Sudan & Horn"),
+    "al fashir": (25.3494, 13.6289, "Sudan & Horn"),
+    "nyala": (24.8825, 12.0489, "Sudan & Horn"),
+    "el geneina": (22.4472, 13.4528, "Sudan & Horn"),
+    "geneina": (22.4472, 13.4528, "Sudan & Horn"),
+    "el obeid": (30.2167, 13.1833, "Sudan & Horn"),
+    "elobeid": (30.2167, 13.1833, "Sudan & Horn"),
+    "al obeid": (30.2167, 13.1833, "Sudan & Horn"),
+    "wad madani": (33.5211, 14.4012, "Sudan & Horn"),
+    "wad medani": (33.5211, 14.4012, "Sudan & Horn"),
+    "kassala": (36.3981, 15.4500, "Sudan & Horn"),
+    "gedaref": (35.3833, 14.0333, "Sudan & Horn"),
+    "qadarif": (35.3833, 14.0333, "Sudan & Horn"),
+    "al qadarif": (35.3833, 14.0333, "Sudan & Horn"),
+    "atbara": (33.9833, 17.7000, "Sudan & Horn"),
+    "kadugli": (29.7167, 11.0167, "Sudan & Horn"),
+    "sudan": (32.5599, 15.5007, "Sudan & Horn"),
 }
 VAGUE_PLACES = {
     "strait of hormuz",
@@ -375,6 +401,7 @@ REGION_CAPITALS = {
     "Levant": PLACES["damascus"],
     "Iran & Iraq": PLACES["tehran"],
     "Maritime": PLACES["strait of hormuz"],
+    "Sudan & Horn": PLACES["khartoum"],
     "Other / International": PLACES["cairo"],
 }
 GEO_MODEL = "grok-3-mini"
@@ -445,7 +472,31 @@ def is_vague_location(text: object) -> bool:
     return bool(found) and all(name in VAGUE_PLACES for name in found)
 
 
+SUDAN_ARABIC = (
+    ("بورتسودان", "port sudan"),
+    ("بورت سودان", "port sudan"),
+    ("أم درمان", "omdurman"),
+    ("ام درمان", "omdurman"),
+    ("الخرطوم", "khartoum"),
+    ("الفاشر", "el fasher"),
+    ("نيالا", "nyala"),
+    ("الجنينة", "el geneina"),
+    ("الأبيض", "el obeid"),
+    ("الابيض", "el obeid"),
+    ("ود مدني", "wad madani"),
+    ("القضارف", "gedaref"),
+    ("كسلا", "kassala"),
+    ("عطبرة", "atbara"),
+    ("كادقلي", "kadugli"),
+    ("السودان", "sudan"),
+)
+
+
 def lookup_place(text: object) -> tuple[float, float, str] | None:
+    raw = str(text or "")
+    for needle, key in SUDAN_ARABIC:
+        if needle in raw and key in PLACES:
+            return PLACES[key]
     found = places_in(text)
     specific = [name for name in found if name not in VAGUE_PLACES]
     chosen = specific[0] if specific else (found[0] if found else "")
@@ -548,12 +599,15 @@ def extract_location(headline: str) -> dict | None:
         "Saudi Arabia and Yemen are Saudi & Yemen. Iran and Iraq are Iran & Iraq. "
         "Jordan, Syria, Lebanon, Israel, and Palestine are Levant. "
         "The Red Sea, Strait of Hormuz, Persian Gulf, and Gulf of Oman are Maritime. "
+        "Sudan, including Khartoum, Omdurman, Port Sudan, El Fasher, Nyala, El Geneina, "
+        "El Obeid, Wad Madani, Kassala, Gedaref, Atbara, and Kadugli, is Sudan & Horn. "
+        "The Horn of Africa, including Eritrea, Ethiopia, Djibouti, Somalia, and South Sudan, is Sudan & Horn. "
         "Anything else is Other / International. "
         "location_name is the most specific place named. "
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the title or summary is Arabic, Farsi, or Hebrew, title and summary must be clear English. "
+        "When the title or summary is Arabic, including Sudanese Arabic, Farsi, or Hebrew, title and summary must be clear English. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
         "Preserve place names, governorates, and unit names accurately. "
@@ -615,7 +669,7 @@ def translate_post(title: str, summary: str) -> dict | None:
         return None
     prompt = (
         "Translate this Telegram, X, or RSS post into clear English. "
-        "Arabic, Farsi, or Hebrew title and summary must be English. "
+        "Arabic, including Sudanese Arabic, Farsi, or Hebrew title and summary must be English. "
         "If it is already English, return it in English without adding facts. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
@@ -665,21 +719,27 @@ def geocode_name(location_name: str) -> tuple[float, float] | None:
     name = one_sentence(location_name)
     if not name:
         return None
+    coded = None
     try:
         from geopy.geocoders import Nominatim
     except ImportError:
         print(f"Geocode failed for {name}: geopy is not installed.")
-        return None
-    try:
-        geolocator = Nominatim(user_agent="osint_tracker", timeout=10)
-        found = geolocator.geocode(name)
-    except Exception as exc:
-        print(f"Geocode failed for {name}: {exc.__class__.__name__}.")
-        return None
-    if found is None:
-        print(f"Geocode failed for {name}: no result.")
-        return None
-    return valid_coord(found.longitude, found.latitude)
+    else:
+        try:
+            geolocator = Nominatim(user_agent="osint_tracker", timeout=10)
+            found = geolocator.geocode(name)
+        except Exception as exc:
+            print(f"Geocode failed for {name}: {exc.__class__.__name__}.")
+            found = None
+        if found is not None:
+            coded = valid_coord(found.longitude, found.latitude)
+    if coded:
+        return coded
+    place = lookup_place(name)
+    if place:
+        return (place[0], place[1])
+    print(f"Geocode failed for {name}: no result.")
+    return None
 
 
 def locate_event(
@@ -738,6 +798,12 @@ def locate_event(
         if place:
             known = (place[0], place[1])
             known_region = known_region or place[2]
+    sudan_place = lookup_place(text) or lookup_place(headline)
+    if sudan_place and sudan_place[2] == "Sudan & Horn":
+        if known is None:
+            known = (sudan_place[0], sudan_place[1])
+        if known_region in (None, "Other / International"):
+            known_region = "Sudan & Horn"
     if known_region is None and any(token in f"{headline} {text}".lower() for token in ("syria", "syrian")):
         known_region = "Levant"
     if known_region is None and any(token in f"{headline} {text}" for token in ("سوريا", "سورية")):
@@ -1256,6 +1322,7 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
         "Levant (Israel, Palestine, Lebanon, Jordan, Syria); "
         "Iran & Iraq (Iran, Iraq, Kurdistan Region); "
         "Maritime (Strait of Hormuz, Bab el-Mandeb, Gulf of Oman, Arabian Sea, UKMTO/JMIC); "
+        "Sudan & Horn (Sudan and the Horn of Africa); "
         "Other / International (Turkey, US/UN diplomatic statements, broader advisories).\n"
         "category is exactly one of: Security Incident; Maritime Advisory; Travel / Embassy Advisory.\n"
         "Travel and embassy accounts should use Travel / Embassy Advisory. "

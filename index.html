@@ -385,6 +385,7 @@
         <button type="button" class="pill" data-region="Levant">Levant <span class="n" data-count="Levant">0</span></button>
         <button type="button" class="pill" data-region="Iran &amp; Iraq">Iran &amp; Iraq <span class="n" data-count="Iran &amp; Iraq">0</span></button>
         <button type="button" class="pill" data-region="Maritime">Maritime <span class="n" data-count="Maritime">0</span></button>
+        <button type="button" class="pill" data-region="Sudan &amp; Horn">Sudan &amp; Horn <span class="n" data-count="Sudan &amp; Horn">0</span></button>
         <button type="button" class="pill" data-region="Other / International">Other / International <span class="n" data-count="Other / International">0</span></button>
       </div>
     </section>
@@ -427,6 +428,7 @@
     <button type="button" data-jump="hormuz">Strait of Hormuz</button>
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
     <button type="button" data-jump="levant">Levant</button>
+    <button type="button" data-jump="sudan">Sudan</button>
     <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
     <button type="button" id="chokepoints" aria-pressed="false">Chokepoints</button>
     <button type="button" id="thermal-toggle" aria-pressed="false">🔥 Satellite Heat (24h)</button>
@@ -466,6 +468,7 @@
         <button type="button" data-summary-scope="Levant">Levant</button>
         <button type="button" data-summary-scope="Iran &amp; Iraq">Iran &amp; Iraq</button>
         <button type="button" data-summary-scope="Maritime">Maritime</button>
+        <button type="button" data-summary-scope="Sudan &amp; Horn">Sudan &amp; Horn</button>
         <button type="button" data-summary-scope="Other / International">Other / International</button>
       </div>
       <p id="summary-updated">Last auto-updated: not yet</p>
@@ -495,7 +498,8 @@
       bahrain: { center: [26.07, 50.55], zoom: 8 },
       hormuz: { center: [26.56, 56.25], zoom: 7 },
       redsea: { center: [15.3, 42.6], zoom: 6 },
-      levant: { center: [33.5, 36.0], zoom: 6 }
+      levant: { center: [33.5, 36.0], zoom: 6 },
+      sudan: { center: [15.5, 30.2], zoom: 6 }
     };
     const BADGES = {
       "Official / Primary": { label: "Official", cls: "badge-official" },
@@ -507,7 +511,8 @@
       "Saudi & Yemen": L.latLngBounds([12.1, 34.5], [32.2, 55.7]),
       "Levant": L.latLngBounds([29.1, 34.2], [37.5, 42.4]),
       "Iran & Iraq": L.latLngBounds([24.8, 38.4], [40.2, 63.4]),
-      "Maritime": L.latLngBounds([11.5, 42.5], [27.2, 62.5])
+      "Maritime": L.latLngBounds([11.5, 42.5], [27.2, 62.5]),
+      "Sudan & Horn": L.latLngBounds([3.4, 21.8], [22.2, 51.5])
     };
 
     const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
@@ -1697,7 +1702,7 @@
       }
     }
 
-    const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Other / International"];
+    const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
     let regionTrends = {};
     let governorateCounts = {};
     let briefingWindow = "";

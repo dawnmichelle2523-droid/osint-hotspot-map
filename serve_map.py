@@ -81,6 +81,9 @@ RSS_FEEDS = [
     ("Arab News", "https://www.arabnews.com/rss.xml"),
     ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
+    ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
+    ("Sudan Tribune", "https://sudantribune.com/feed/"),
+    ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
 ]
 # Configurable public OSINT channels, read from the t.me/s preview page.
 TELEGRAM_CHANNELS = [
@@ -127,6 +130,10 @@ TELEGRAM_CHANNELS = [
     "ClashReport",
     "Middle_East_Spectator",
     "QudsNen",
+    "sudanwarmonitor",
+    "darfur24",
+    "sudannews24",
+    "alrakoba_sudan",
 ]
 X_HANDLES = [
     "syr_television",
@@ -147,7 +154,15 @@ X_HANDLES = [
     "IranIntl_En",
     "RudawEnglish",
     "Levant_24_",
+    "SudanWarMonitor",
+    "DabangaSudan",
+    "SudanTribune_EN",
 ]
+SUDAN_X_HANDLES = {
+    "sudanwarmonitor",
+    "dabangasudan",
+    "sudantribune_en",
+}
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
     "https://xcancel.com/{handle}/rss",
@@ -178,6 +193,7 @@ REGIONS = (
     "Levant",
     "Iran & Iraq",
     "Maritime",
+    "Sudan & Horn",
     "Other / International",
 )
 
@@ -248,6 +264,7 @@ _OSINT_MARKERS = (
     "syrianinfowar",
     "qalaatalmudiq",
     "middleeastspectator",
+    "sudanwarmonitor",
 )
 
 
@@ -872,6 +889,44 @@ def mentions_syria_or_middle_east(text: str) -> bool:
     return any(term in text for term in ("سوريا", "سورية", "الشرق الأوسط", "الشرق الاوسط", "حلب", "دمشق", "إدلب", "حمص"))
 
 
+def mentions_sudan_or_horn(text: str) -> bool:
+    lowered = text.lower()
+    latin = (
+        "sudan", "khartoum", "omdurman", "port sudan", "el fasher", "el-fashir", "al fashir",
+        "nyala", "el geneina", "geneina", "el obeid", "el-obeid", "al obeid", "wad madani",
+        "wad medani", "kassala", "gedaref", "qadarif", "atbara", "kadugli", "darfur",
+        "kordofan", "horn of africa", "eritrea", "ethiopia", "djibouti", "somalia", "south sudan",
+    )
+    if any(term in lowered for term in latin):
+        return True
+    return any(
+        term in text
+        for term in (
+            "السودان", "الخرطوم", "أم درمان", "ام درمان", "بورتسودان", "بورت سودان",
+            "الفاشر", "نيالا", "الجنينة", "الأبيض", "الابيض", "ود مدني", "كسلا",
+            "القضارف", "عطبرة", "كادقلي", "دارفور", "كردفان", "القرن الأفريقي", "القرن الافريقي",
+        )
+    )
+
+
+def x_handle_from_item(item: dict) -> str:
+    url = str(item.get("source_url") or "")
+    match = re.search(r"(?:x|twitter)\.com/([^/?#]+)", url, re.IGNORECASE)
+    if match and match.group(1).lower() not in {"i", "intent", "share", "search"}:
+        return match.group(1)
+    name = str(item.get("source_name") or "")
+    if "·" in name:
+        return name.split("·", 1)[1].strip().lstrip("@")
+    return ""
+
+
+def keep_x_post(handle: str, text: str) -> bool:
+    """Sudan accounts keep Horn posts. Every other handle keeps the Syria and Middle East filter."""
+    if mentions_syria_or_middle_east(text):
+        return True
+    return handle.lower() in SUDAN_X_HANDLES and mentions_sudan_or_horn(text)
+
+
 def canonical_x_url(handle: str, link: str, guid: str) -> str:
     match = re.search(r"/status/(\d+)", f"{link} {guid}")
     if match:
@@ -919,7 +974,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
             title = plain_text(getattr(entry, "title", ""))
             summary = plain_text(getattr(entry, "summary", "") or getattr(entry, "description", "") or title)
             blob = f"{title} {summary}"
-            if not title or not mentions_syria_or_middle_east(blob):
+            if not title or not keep_x_post(handle, blob):
                 continue
             source_url = canonical_x_url(handle, getattr(entry, "link", ""), getattr(entry, "id", "") or getattr(entry, "guid", ""))
             if not source_url:
@@ -1065,8 +1120,9 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 return False
         finally:
             conn.close()
-    if item.get("source_kind") == "x" and not mentions_syria_or_middle_east(
-        f"{item.get('title') or ''} {item.get('summary') or ''}"
+    if item.get("source_kind") == "x" and not keep_x_post(
+        x_handle_from_item(item),
+        f"{item.get('title') or ''} {item.get('summary') or ''}",
     ):
         return False
     original = original_post_text(item)
@@ -1616,7 +1672,7 @@ def summary_prompt(events: list[dict], counts: dict[str, int], now: datetime) ->
         "Use only the live incidents and counts below. Do not use live search and do not add events "
         "that are not in this list.\n"
         f"As of {osint.format_timestamp(now)} UTC.\n"
-        "Cover Gulf, Saudi & Yemen, Levant, Iran & Iraq, Maritime, and Other / International.\n"
+        "Cover " + ", ".join(REGIONS) + ".\n"
         "summary is 2-4 sentences for the whole theater.\n"
         "regional_notes is one short sentence per region whose count is above zero. "
         "Use the region name exactly. Omit regions with a count of 0.\n\n"

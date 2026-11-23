@@ -26,6 +26,7 @@ REGIONS = (
     "Levant",
     "Iran & Iraq",
     "Maritime",
+    "Sudan & Horn",
     "Other / International",
 )
 CATEGORIES = (
