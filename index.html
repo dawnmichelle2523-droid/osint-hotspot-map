@@ -145,15 +145,14 @@
     }
     #quick-jump button:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
     #quick-jump button[aria-pressed="true"] { background: #1c1810; color: #e6c667; border: 1px solid #8a6d29; font-weight: 600; }
-    #quick-jump button:focus-visible, #copy-brief:focus-visible, #export-headlines:focus-visible, .copy-pin:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
+    #quick-jump button:focus-visible, #copy-briefing:focus-visible, #export-headlines:focus-visible, .copy-pin:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .legend {
-      position: absolute; z-index: 800; left: 292px; bottom: 12px;
+      position: absolute; z-index: 800; right: 12px; bottom: 12px;
       display: flex; gap: 8px; align-items: center;
       padding: 4px 8px; border-radius: 999px;
       background: rgba(10, 26, 31, 0.9); border: 1px solid var(--line);
       color: var(--text); font-size: 11px; white-space: nowrap;
     }
-    body.filters-closed .legend { left: 12px; }
     .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; border: 1px solid #fff; vertical-align: 0; }
     .pin-icon { background: transparent; border: none; }
     .pin { position: relative; width: 28px; height: 28px; }
@@ -201,7 +200,7 @@
     .summary { margin: 6px 0; font-size: 13px; }
     .when { color: var(--muted); font-size: 12px; }
     a.popup-link { display: inline-block; margin-top: 8px; color: var(--active-line); text-decoration: none; font-size: 13px; font-weight: 650; }
-    .leaflet-bottom.leaflet-right { margin-bottom: 4px; }
+    .leaflet-bottom.leaflet-right { margin-bottom: 46px; }
     #headlines {
       width: 100%; background: var(--bg); color: var(--text);
       border: 1px solid var(--line); padding: 28px 20px 48px; overflow-y: auto;
@@ -209,8 +208,8 @@
     .headlines-inner { width: 100%; margin: 0 auto; }
     .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid var(--active-line); padding-bottom: 8px; }
     #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; color: #F3C64F; }
-    #export-headlines, #copy-brief, #copy-briefing { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    #export-headlines:hover, #copy-brief:hover, #copy-briefing:hover { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
+    #export-headlines, #copy-briefing { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #export-headlines:hover, #copy-briefing:hover { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
     .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .popup-actions .popup-link { margin-top: 0; }
     .copy-pin { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -261,7 +260,7 @@
     #summary-updated { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
     #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #F3C64F; }
     #brief-time { color: var(--muted); font-size: 12px; }
-    #copy-brief { margin-left: auto; }
+    #copy-briefing { margin-left: auto; }
     #refresh-summary { color: #e6c667; background: #1c1810; border: 1px solid #8a6d29; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
     #refresh-summary:hover { background: #181d24; border-color: #4a3d1c; color: #e6c667; }
     #refresh-summary:disabled { opacity: 0.7; cursor: wait; }
@@ -306,7 +305,7 @@
       #headlines, #daily-brief { padding-left: 14px; padding-right: 14px; }
       #headlines h2, #brief-title { font-size: 18px; }
       .headline-card time { margin-left: 0; }
-      #copy-brief, #export-headlines, #refresh-summary { margin-left: 0; }
+      #copy-briefing, #export-headlines, #refresh-summary { margin-left: 0; }
       .bar-row { grid-template-columns: 108px 1fr 28px; }
     }
   </style>
@@ -388,8 +387,8 @@
     </section>
   </aside>
   <div id="basemap" role="group" aria-label="Basemap">
-    <button type="button" data-basemap="clear" aria-pressed="true">Clear Map</button>
-    <button type="button" data-basemap="dark">Dark Slate</button>
+    <button type="button" data-basemap="clear">Clear Map</button>
+    <button type="button" data-basemap="dark" aria-pressed="true">Dark Slate</button>
   </div>
   <nav id="quick-jump" aria-label="Quick jump">
     <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
@@ -413,7 +412,6 @@
       <div class="brief-bar" id="brief-controls">
         <h2 id="brief-title">Geopolitical Summary</h2>
         <time id="brief-time"></time>
-        <button type="button" id="copy-brief">Copy Brief</button>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
         <button type="button" id="refresh-summary">↻ Refresh Now</button>
       </div>
@@ -470,10 +468,10 @@
 
     const map = L.map("map", { zoomControl: false, minZoom: 2, worldCopyJump: true });
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    const brandControl = L.control({ position: "bottomleft" });
+    const brandControl = L.control({ position: "bottomright" });
     brandControl.onAdd = function () {
       const div = L.DomUtil.create("div", "georisk-map-badge");
-      div.style.cssText = "background: #000000; border: 1px solid #3a2f15; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 14px; margin-left: 10px;";
+      div.style.cssText = "background: #000000; border: 1px solid #3a2f15; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 14px; margin-right: 10px;";
       div.innerHTML = `<img src="/static/logo.png" alt="GeoRiskIntel" style="height: 32px; width: auto; display: block; margin-bottom: 6px;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #a3aab5; font-weight: 600; border-top: 1px solid #1c1a14; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #F3C64F; box-shadow: 0 0 8px #F3C64F; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
       return div;
     };
@@ -524,7 +522,7 @@
         button.setAttribute("aria-pressed", String(button.dataset.basemap === (clear ? "clear" : "dark")));
       });
     }
-    setBasemap("clear");
+    setBasemap("dark");
     map.setView(HOME.center, HOME.zoom);
     window.addEventListener("resize", () => map.invalidateSize());
 
@@ -1620,10 +1618,6 @@
     });
     document.getElementById("export-headlines").addEventListener("click", () => {
       copyText(headlineExport, document.getElementById("export-headlines"), "Export Filtered Headlines");
-    });
-    document.getElementById("copy-brief").addEventListener("click", () => {
-      if (!briefText) return;
-      copyText(briefText, document.getElementById("copy-brief"), "Copy Brief");
     });
     document.getElementById("copy-briefing").addEventListener("click", () => {
       const text = briefText || document.getElementById("brief-body").innerText.trim();
