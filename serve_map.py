@@ -4134,14 +4134,14 @@ def logo_path() -> Path:
 def briefing_banner() -> str:
     if logo_path().is_file():
         return (
-            "<div style=\"background:#041222;text-align:center;padding:16px 12px;"
+            "<div style=\"background:#000000;text-align:center;padding:16px 12px;"
             "border-bottom:1px solid #0F4C4C;\">"
             "<img src=\"cid:georisk_logo\" alt=\"GeoRiskIntel\" height=\"36\" "
             "style=\"height:36px;width:auto;display:block;margin:0 auto;border:0;\" />"
             "</div>"
         )
     return (
-        "<div style=\"background:#041222;text-align:center;padding:16px 12px;"
+        "<div style=\"background:#000000;text-align:center;padding:16px 12px;"
         "border-bottom:1px solid #0F4C4C;color:#18D4C0;font-size:22px;"
         "font-weight:700;letter-spacing:0.04em;\">GeoRiskIntel</div>"
     )
