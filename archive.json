@@ -150,6 +150,156 @@
         "category": "Travel / Embassy Advisory",
         "warning_number": null
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.9304,
+          31.9566
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to Jordan due to terrorism and armed conflict.",
+        "summary": "Reconsider travel to Jordan due to terrorism and armed conflict.",
+        "timestamp": "2026-05-04T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/jordan-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          36.2765,
+          33.5138
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Syria due to terrorism, civil unrest, kidnapping, hostage taking, crime, and armed conflict.",
+        "summary": "Do not travel to Syria due to terrorism, civil unrest, kidnapping, hostage taking, crime, and armed conflict.",
+        "timestamp": "2025-12-11T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/syria-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.5018,
+          33.8886
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Lebanon due to crime, terrorism, unrest, kidnapping, landmines, and armed conflict.",
+        "summary": "Do not travel to Lebanon due to crime, terrorism, unrest, kidnapping, landmines, and armed conflict.",
+        "timestamp": "2026-05-06T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/lebanon-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          54.3705,
+          24.4539
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to the United Arab Emirates due to terrorism and armed conflict.",
+        "summary": "Reconsider travel to the United Arab Emirates due to terrorism and armed conflict.",
+        "timestamp": "2026-08-29T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/united-arab-emirates-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.3829,
+          23.5859
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to Oman due to armed conflict and terrorism.",
+        "summary": "Reconsider travel to Oman due to armed conflict and terrorism.",
+        "timestamp": "2026-03-13T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/Oman.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          47.9783,
+          29.3759
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to Kuwait due to armed conflict, landmines, and crime.",
+        "summary": "Reconsider travel to Kuwait due to armed conflict, landmines, and crime.",
+        "timestamp": "2026-06-28T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/Kuwait.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
     }
   ]
 }

@@ -1,6 +1,17 @@
 {
-  "generated_at": "2026-11-24T07:02:15Z",
-  "executive_summary": "No geopolitical incidents were reported in the Middle East over the past 24 hours as of 2026-11-24T07:02:15Z. The region remained stable without any verified events across Gulf & Maritime Security, Yemen & Red Sea, or Levant & Regional Politics. This quiet period allows for continued monitoring of ongoing tensions without new developments.",
-  "regional_sections": [],
-  "advisory_highlights": []
+  "generated_at": "2026-11-24T08:57:51Z",
+  "executive_summary": "Over the past 24 hours, Israeli warplanes conducted flights over the Hermel and Akkar highlands in Lebanon. A UKMTO maritime security warning was issued for the region. A high-level travel advisory continues to urge against all travel to Lebanon amid ongoing security risks.",
+  "regional_sections": [
+    {
+      "region": "Gulf & Maritime Security",
+      "summary": "Verified Official — UKMTO issued Maritime Security Warning 218-26."
+    },
+    {
+      "region": "Levant & Regional Politics",
+      "summary": "Verified Official — Israeli warplanes flying over the Hermel and Akkar highlands."
+    }
+  ],
+  "advisory_highlights": [
+    "Verified Official — Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism."
+  ]
 }
