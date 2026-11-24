@@ -386,7 +386,7 @@
     }
     .headline-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .headline-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .region-tag { background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+    .region-tag, .place-pill { background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
     .headline-card h3 { margin: 0; font-size: 16px; line-height: 1.3; }
     .headline-card .summary { margin: 0; color: var(--text); }
     .headline-card time { color: var(--muted); font-size: 12px; margin-left: auto; }
@@ -1225,6 +1225,34 @@
         <button type="button" class="pill" data-region="Other / International">Other / International <span class="n" data-count="Other / International">0</span></button>
       </div>
     </details>
+    <details class="filter-dropdown" id="country-filter">
+      <summary>
+        <span class="filter-label">Country</span>
+        <span class="filter-current"><span data-filter-summary="country">All Countries (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
+      <div class="row" id="country-row">
+        <button type="button" class="pill" data-country="all" aria-pressed="true">All Countries <span class="n" data-country-count="all">0</span></button>
+        <button type="button" class="pill" data-country="Syria">Syria <span class="n" data-country-count="Syria">0</span></button>
+        <button type="button" class="pill" data-country="Iraq">Iraq <span class="n" data-country-count="Iraq">0</span></button>
+        <button type="button" class="pill" data-country="Saudi Arabia">Saudi Arabia <span class="n" data-country-count="Saudi Arabia">0</span></button>
+        <button type="button" class="pill" data-country="Sudan">Sudan <span class="n" data-country-count="Sudan">0</span></button>
+        <button type="button" class="pill" data-country="Chad">Chad <span class="n" data-country-count="Chad">0</span></button>
+        <button type="button" class="pill" data-country="Iran">Iran <span class="n" data-country-count="Iran">0</span></button>
+        <button type="button" class="pill" data-country="Lebanon">Lebanon <span class="n" data-country-count="Lebanon">0</span></button>
+        <button type="button" class="pill" data-country="Israel">Israel <span class="n" data-country-count="Israel">0</span></button>
+        <button type="button" class="pill" data-country="Palestine">Palestine <span class="n" data-country-count="Palestine">0</span></button>
+        <button type="button" class="pill" data-country="Jordan">Jordan <span class="n" data-country-count="Jordan">0</span></button>
+        <button type="button" class="pill" data-country="Yemen">Yemen <span class="n" data-country-count="Yemen">0</span></button>
+        <button type="button" class="pill" data-country="Bahrain">Bahrain <span class="n" data-country-count="Bahrain">0</span></button>
+        <button type="button" class="pill" data-country="Kuwait">Kuwait <span class="n" data-country-count="Kuwait">0</span></button>
+        <button type="button" class="pill" data-country="Qatar">Qatar <span class="n" data-country-count="Qatar">0</span></button>
+        <button type="button" class="pill" data-country="UAE">UAE <span class="n" data-country-count="UAE">0</span></button>
+        <button type="button" class="pill" data-country="Oman">Oman <span class="n" data-country-count="Oman">0</span></button>
+        <button type="button" class="pill" data-country="Red Sea / Maritime">Red Sea / Maritime <span class="n" data-country-count="Red Sea / Maritime">0</span></button>
+        <button type="button" class="pill" data-country="Strait of Hormuz / Gulf">Strait of Hormuz / Gulf <span class="n" data-country-count="Strait of Hormuz / Gulf">0</span></button>
+        <button type="button" class="pill" data-country="Other">Other <span class="n" data-country-count="Other">0</span></button>
+      </div>
+    </details>
     <details class="filter-dropdown">
       <summary>
         <span class="filter-label">Time Window</span>
@@ -1604,6 +1632,30 @@
     let actorFilter = "all";
     let systemFilter = "all";
     let region = "all";
+    const COUNTRY_TAGS = ["Syria", "Iraq", "Saudi Arabia", "Sudan", "Chad", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Red Sea / Maritime", "Strait of Hormuz / Gulf", "Other"];
+    const COUNTRY_CENTERS = {
+      Syria: [33.5138, 36.2765],
+      Iraq: [33.3152, 44.3661],
+      "Saudi Arabia": [24.7136, 46.6753],
+      Sudan: [15.5007, 32.5599],
+      Chad: [12.1348, 15.0557],
+      Iran: [35.6892, 51.3890],
+      Lebanon: [33.8938, 35.5018],
+      Israel: [31.7683, 35.2137],
+      Palestine: [31.9522, 35.2332],
+      Jordan: [31.9454, 35.9284],
+      Yemen: [15.3694, 44.1910],
+      Bahrain: [26.0667, 50.5577],
+      Kuwait: [29.3759, 47.9774],
+      Qatar: [25.2854, 51.5310],
+      UAE: [24.4539, 54.3773],
+      Oman: [23.5880, 58.3829],
+      "Red Sea / Maritime": [20.0, 38.5],
+      "Strait of Hormuz / Gulf": [26.5667, 56.2667],
+      Other: [26.5, 47.0]
+    };
+    const _bootQuery = new URLSearchParams(window.location.search);
+    let countryFilter = COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0 ? _bootQuery.get("country") : "all";
     let searchQuery = "";
     let searchTimer = null;
     let focusSerial = 0;
@@ -1786,18 +1838,44 @@
       if (opts.actor !== "all" && String(props.actor || "Unattributed") !== opts.actor) return false;
       if (opts.system !== "all" && String(props.system_type || "") !== opts.system) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
+      if (opts.country && opts.country !== "all" && String(props.country || "Other") !== opts.country) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
       return matchesQuery(props, opts.query || "");
     }
 
     function currentOpts(regionId) {
-      return { severity, category, actor: actorFilter, system: systemFilter, region: regionId, timeWindow, query: searchQuery };
+      return { severity, category, actor: actorFilter, system: systemFilter, region: regionId, country: countryFilter, timeWindow, query: searchQuery };
     }
 
     function countRegion(regionId) {
       const id = regionId === "all" ? "all" : regionId;
       return features.filter((feature) => passes(feature, currentOpts(id))).length;
+    }
+
+    function countCountry(name) {
+      const opts = currentOpts(region);
+      opts.country = name;
+      return features.filter((feature) => passes(feature, opts)).length;
+    }
+
+    function writeFilterUrl() {
+      const params = new URLSearchParams(window.location.search);
+      if (!countryFilter || countryFilter === "all") params.delete("country");
+      else params.set("country", countryFilter);
+      const query = params.toString();
+      const next = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
+      const current = window.location.pathname + window.location.search + window.location.hash;
+      if (next !== current) history.replaceState(null, "", next);
+    }
+
+    function flyToCountry(name) {
+      if (!name || name === "all") {
+        flyToRegion(region);
+        return;
+      }
+      const center = COUNTRY_CENTERS[name];
+      if (center) map.flyTo(center, name === "Other" ? 5 : 6, { duration: 0.75 });
     }
 
     function gmtStamp(timestamp) {
@@ -1927,6 +2005,14 @@
       return "City / Governorate";
     }
 
+    function placePill(props) {
+      const country = String(props.country || "").trim();
+      const sub = String(props.sub_region || "").trim();
+      if (!country && !sub) return "";
+      const label = country && sub ? country + " · " + sub : (country || sub);
+      return '<span class="place-pill">' + esc(label) + "</span>";
+    }
+
     function analystTags(props) {
       const tags = ['<span class="badge badge-precision">' + esc(precisionLabel(props)) + "</span>"];
       if (props.actor) tags.push('<span class="badge badge-actor">' + esc(props.actor) + "</span>");
@@ -1948,6 +2034,7 @@
             '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
             '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
             trustBadge(props) +
+            placePill(props) +
           "</div>" +
           "<h3>" + esc(headline) + "</h3>" +
           analystTags(props) +
@@ -2047,6 +2134,16 @@
       document.querySelectorAll("[data-region]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.region === region));
       });
+      document.querySelectorAll("[data-country]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.country === countryFilter));
+      });
+      document.querySelectorAll("[data-country-count]").forEach((node) => {
+        node.textContent = String(countCountry(node.dataset.countryCount));
+      });
+      const countrySummary = document.querySelector('[data-filter-summary="country"]');
+      if (countrySummary) {
+        countrySummary.textContent = (countryFilter === "all" ? "All Countries" : countryFilter) + " (" + countCountry(countryFilter) + ")";
+      }
       document.querySelectorAll("[data-count]").forEach((node) => {
         node.textContent = String(countRegion(node.dataset.count));
       });
@@ -2162,6 +2259,7 @@
       if (focusMode === "search") focusMatches(visible);
       else if (focusMode === "clear") returnToRegion();
       else if (focusMode === "region") flyToRegion(region);
+      else if (focusMode === "country") flyToCountry(countryFilter);
     }
 
     function applyQuery(value, forcedMode) {
@@ -2249,6 +2347,7 @@
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
               trustBadge(props) +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
+              placePill(props) +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
             "<h3>" + esc(surface.title) + "</h3>" +
@@ -2616,6 +2715,7 @@
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
+          if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
         return;
       } catch (err) {}
@@ -2639,6 +2739,7 @@
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
+          if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
       } catch (err) {
         setStatus("Could not load hotspots.json.");
@@ -2682,6 +2783,12 @@
       if (button.dataset.region) {
         region = button.dataset.region;
         render(searchQuery ? "search" : "region");
+        return;
+      }
+      if (button.dataset.country) {
+        countryFilter = button.dataset.country;
+        writeFilterUrl();
+        render(searchQuery ? "search" : "country");
         return;
       }
       if (button.dataset.window || button.dataset.severity || button.dataset.category) {

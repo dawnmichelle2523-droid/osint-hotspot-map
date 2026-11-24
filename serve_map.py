@@ -1431,6 +1431,7 @@ def event_row(feature: dict) -> dict | None:
         "governorate": osint.match_governorate(props.get("governorate"))
         or osint.match_governorate(props.get("location_name")),
         "country": str(props.get("country") or ""),
+        "sub_region": str(props.get("sub_region") or ""),
         "verification_tier": osint.one_sentence(props.get("verification_tier"))[:80],
         "_ms": moment.timestamp() if moment else 0,
     }
@@ -1573,6 +1574,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "source_tier": "TEXT",
         "geo_precision": "TEXT",
         "country": "TEXT",
+        "sub_region": "TEXT",
         "actor": "TEXT",
         "system_type": "TEXT",
         "amplification_count": "INTEGER NOT NULL DEFAULT 0",
@@ -1937,6 +1939,7 @@ def feed_features() -> list[dict]:
             "original_text": row["original_text"] or "",
             "geo_precision": (row["geo_precision"] or "") if "geo_precision" in row.keys() else "",
             "country": (row["country"] or "") if "country" in row.keys() else "",
+            "sub_region": (row["sub_region"] or "") if "sub_region" in row.keys() else "",
             "actor": (row["actor"] or "") if "actor" in row.keys() else "",
             "system_type": (row["system_type"] or "") if "system_type" in row.keys() else "",
         }
@@ -3053,6 +3056,106 @@ def incident_country(text: str) -> str:
     return ""
 
 
+_SUB_REGION_RULES = tuple(sorted((
+    ("khartoum bahri", "Khartoum / Omdurman"),
+    ("khartoum north", "Khartoum / Omdurman"),
+    ("eastern province", "Eastern Province"),
+    ("ras tanura", "Eastern Province"),
+    ("red sea coast", "Red Sea Coast"),
+    ("sulaymaniyah", "Kurdistan Region (KRI)"),
+    ("rif dimashq", "Damascus / Rif Dimashq"),
+    ("rural damascus", "Damascus / Rif Dimashq"),
+    ("deir ez zor", "Deir ez-Zor / Hasakah"),
+    ("deir ezzor", "Deir ez-Zor / Hasakah"),
+    ("deir al zor", "Deir ez-Zor / Hasakah"),
+    ("al hasakah", "Deir ez-Zor / Hasakah"),
+    ("umm qasr", "Basra / Southern Iraq"),
+    ("el fasher", "Darfur"),
+    ("el geneina", "Darfur"),
+    ("fallujah", "Anbar / Western Iraq"),
+    ("dhahran", "Eastern Province"),
+    ("dammam", "Eastern Province"),
+    ("khobar", "Eastern Province"),
+    ("abqaiq", "Eastern Province"),
+    ("shaybah", "Eastern Province"),
+    ("jubail", "Eastern Province"),
+    ("jeddah", "Red Sea Coast"),
+    ("yanbu", "Red Sea Coast"),
+    ("jizan", "Southern Border (Jizan/Najran)"),
+    ("jazan", "Southern Border (Jizan/Najran)"),
+    ("najran", "Southern Border (Jizan/Najran)"),
+    ("riyadh", "Riyadh"),
+    ("kurdistan", "Kurdistan Region (KRI)"),
+    ("erbil", "Kurdistan Region (KRI)"),
+    ("duhok", "Kurdistan Region (KRI)"),
+    ("zakho", "Kurdistan Region (KRI)"),
+    ("baghdad", "Baghdad / Central"),
+    ("ramadi", "Anbar / Western Iraq"),
+    ("anbar", "Anbar / Western Iraq"),
+    ("basra", "Basra / Southern Iraq"),
+    ("omdurman", "Khartoum / Omdurman"),
+    ("khartoum", "Khartoum / Omdurman"),
+    ("darfur", "Darfur"),
+    ("nyala", "Darfur"),
+    ("adre", "Adré / Tiné Border"),
+    ("tine", "Adré / Tiné Border"),
+    ("ndjamena", "Adré / Tiné Border"),
+    ("damascus", "Damascus / Rif Dimashq"),
+    ("quneitra", "Quneitra / Daraa"),
+    ("daraa", "Quneitra / Daraa"),
+    ("hasakah", "Deir ez-Zor / Hasakah"),
+    ("أربيل", "Kurdistan Region (KRI)"),
+    ("بغداد", "Baghdad / Central"),
+    ("البصرة", "Basra / Southern Iraq"),
+    ("الأنبار", "Anbar / Western Iraq"),
+    ("الرياض", "Riyadh"),
+    ("جدة", "Red Sea Coast"),
+    ("الخرطوم", "Khartoum / Omdurman"),
+    ("دارفور", "Darfur"),
+    ("دمشق", "Damascus / Rif Dimashq"),
+    ("درعا", "Quneitra / Daraa"),
+    ("دير الزور", "Deir ez-Zor / Hasakah"),
+    ("الحسكة", "Deir ez-Zor / Hasakah"),
+), key=lambda item: len(item[0]), reverse=True))
+
+
+def sub_region_for(text: str, country: str = "") -> str:
+    """A desk sub-region when the text names one. Empty when it does not."""
+    raw = str(text or "")
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword, label in _SUB_REGION_RULES:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                return label
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                return label
+            continue
+        if keyword in tokens:
+            return label
+    return ""
+
+
+def country_from_coordinates(lat: object, lng: object) -> str:
+    """Nearest listed country center when the point sits close to one."""
+    point = osint.valid_coord(lng, lat)
+    if point is None:
+        return ""
+    lng_v, lat_v = point
+    best = ""
+    best_distance = 1.6
+    for name, center in COUNTRY_CENTERS.items():
+        if name == "Other":
+            continue
+        distance = ((lat_v - center[0]) ** 2 + (lng_v - center[1]) ** 2) ** 0.5
+        if distance < best_distance:
+            best_distance = distance
+            best = name
+    return best
+
+
 def resolve_item_country(item: dict, blob: str) -> str:
     """Desk country, unless the text names an event somewhere else. Wires follow the incident."""
     named = incident_country(blob)
@@ -3389,6 +3492,64 @@ def backfill_iraq_rows() -> int:
     return updated
 
 
+def backfill_country_tags() -> int:
+    """Fill country and sub_region when the row is blank or Other. A specific country stays."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+            if "country" not in columns:
+                return 0
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, location_name, governorate, "
+                "source_name, source_kind, source_url, lat, lng, country FROM items "
+                "WHERE country IS NULL OR TRIM(country) = '' OR country = 'Other'"
+            ).fetchall()
+            for row in rows:
+                stored = str(row["country"] or "").strip()
+                if stored and stored != "Other":
+                    continue
+                blob = " ".join(
+                    str(part or "")
+                    for part in (
+                        row["location_name"], row["governorate"], row["title"],
+                        row["summary"], row["original_text"],
+                    )
+                )
+                item = {
+                    "source_name": row["source_name"],
+                    "source_kind": row["source_kind"],
+                    "source_url": row["source_url"],
+                    "title": row["title"],
+                    "summary": row["summary"],
+                    "original_text": row["original_text"],
+                }
+                country = resolve_item_country(item, blob)
+                if country in ("", "Other"):
+                    country = country_from_coordinates(row["lat"], row["lng"]) or country or "Other"
+                sub_region = sub_region_for(blob, country)
+                if "sub_region" in columns:
+                    conn.execute(
+                        "UPDATE items SET country = ?, sub_region = ? WHERE id = ? "
+                        "AND (country IS NULL OR TRIM(country) = '' OR country = 'Other')",
+                        (country, sub_region, row["id"]),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE items SET country = ? WHERE id = ? "
+                        "AND (country IS NULL OR TRIM(country) = '' OR country = 'Other')",
+                        (country, row["id"]),
+                    )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Backfilled country tags for {updated} event(s).")
+        finally:
+            conn.close()
+    return updated
+
+
 def drop_excluded_items() -> int:
     """Remove rows from the blocked accounts. Yah_Saree rows stay."""
     removed = 0
@@ -3568,6 +3729,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     placed = dict(placed)
     placed["region"] = resolve_item_region(item, placed, blob)
     placed["country"] = resolve_item_country(item, blob)
+    placed["sub_region"] = sub_region_for(blob, placed["country"])
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
         placed = dict(placed)
@@ -3587,9 +3749,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
                     source_tier, region, governorate, location_name, lat, lng, severity, category,
-                    corroboration_count, published_at, ingested_at, geo_precision, country, actor, system_type,
-                    amplification_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    corroboration_count, published_at, ingested_at, geo_precision, country, sub_region, actor,
+                    system_type, amplification_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -3613,6 +3775,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     osint.format_timestamp(now),
                     placed.get("geo_precision") or "",
                     placed.get("country") or "",
+                    placed.get("sub_region") or "",
                     placed.get("actor") or osint.coerce_actor("", item.get("title") or ""),
                     placed.get("system_type") or "",
                     0,
@@ -3746,6 +3909,7 @@ def ingest_feeds() -> dict:
             backfill_coordinates(now)
             backfill_sudan_rows()
             backfill_iraq_rows()
+            backfill_country_tags()
             drop_excluded_items()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
@@ -5553,6 +5717,7 @@ def start_background() -> None:
         backfill_coordinates()
         backfill_sudan_rows()
         backfill_iraq_rows()
+        backfill_country_tags()
         drop_excluded_items()
         _threads_started = True
     start_translation_pass()
