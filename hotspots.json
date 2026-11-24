@@ -1,7 +1,31 @@
 {
   "type": "FeatureCollection",
-  "generated_at": "2026-11-24T04:58:07Z",
   "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels in the Gulf, Strait of Hormuz, Gulf of Oman and North Arabian Sea face risks of interception, hailing, monitoring and possible attacks.",
+        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels in the Gulf, Strait of Hormuz, Gulf of Oman and North Arabian Sea face risks of interception, hailing, monitoring and possible attacks.",
+        "timestamp": "2026-11-18T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
     {
       "type": "Feature",
       "geometry": {
@@ -23,31 +47,6 @@
         "batch": "mandatory_and_maritime",
         "verification_tier": "Official / Primary",
         "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          53.0,
-          27.0
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels face interception, diversion, or force if non-compliant, while neutral transit through the Strait of Hormuz is permitted subject to verification.",
-        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels face interception, diversion, or force if non-compliant, while neutral transit through the Strait of Hormuz is permitted subject to verification.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Iran & Iraq",
         "category": "Maritime Advisory",
         "warning_number": null
       }
