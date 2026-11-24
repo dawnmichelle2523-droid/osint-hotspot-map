@@ -6,6 +6,81 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
+          26.5,
+          56.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat of deliberate hostile activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat of deliberate hostile activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
+        "timestamp": "2026-11-18T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf?rev=ca07d9284c0d484db848d59387f671d0",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.0,
+          43.5
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "SUBSTANTIAL threat level persists in the Southern Red Sea and Bab el-Mandeb due to Houthi coastal control and potential for attacks on shipping, with no confirmed attacks since August 2026.",
+        "summary": "SUBSTANTIAL threat level persists in the Southern Red Sea and Bab el-Mandeb due to Houthi coastal control and potential for attacks on shipping, with no confirmed attacks since August 2026.",
+        "timestamp": "2026-11-22T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          26.3,
+          56.3
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Multiple recent projectile attacks on tankers in the Strait of Hormuz near Khasab, Oman, underscore the ongoing SEVERE maritime security risk in the area.",
+        "summary": "Multiple recent projectile attacks on tankers in the Strait of Hormuz near Khasab, Oman, underscore the ongoing SEVERE maritime security risk in the area.",
+        "timestamp": "2026-11-20T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/20261120-ukmto_vra_overview_u.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
           46.7219,
           24.7136
         ]
@@ -48,31 +123,6 @@
         "verification_tier": "Official / Primary",
         "region": "Levant",
         "category": "Travel / Embassy Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          56.3,
-          26.2
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "JMIC Advisory Note 001-26 (updated 22 Nov 2026) maintains SEVERE threat level in the Strait of Hormuz due to ongoing Iranian attacks on merchant vessels, including multiple projectile strikes near Khasab, Oman, with persistent IRGC harassment and navigation interference.",
-        "summary": "JMIC Advisory Note 001-26 (updated 22 Nov 2026) maintains SEVERE threat level in the Strait of Hormuz due to ongoing Iranian attacks on merchant vessels, including multiple projectile strikes near Khasab, Oman, with persistent IRGC harassment and navigation interference.",
-        "timestamp": "2026-11-22T13:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
         "warning_number": null
       }
     },
@@ -150,31 +200,6 @@
         "category": "Security Incident",
         "warning_number": null,
         "location_name": "IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza."
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          56.5,
-          26.5
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "U.S. naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level, requiring compliance with blockading forces in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "summary": "U.S. naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level, requiring compliance with blockading forces in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf?rev=ca07d9284c0d484db848d59387f671d0",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
       }
     },
     {
