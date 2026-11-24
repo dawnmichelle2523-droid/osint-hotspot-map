@@ -1,17 +1,15 @@
 {
-  "generated_at": "2026-11-24T08:57:51Z",
-  "executive_summary": "Over the past 24 hours, Israeli warplanes conducted flights over the Hermel and Akkar highlands in Lebanon. A UKMTO maritime security warning was issued for the region. A high-level travel advisory continues to urge against all travel to Lebanon amid ongoing security risks.",
-  "regional_sections": [
-    {
-      "region": "Gulf & Maritime Security",
-      "summary": "Verified Official — UKMTO issued Maritime Security Warning 218-26."
-    },
-    {
-      "region": "Levant & Regional Politics",
-      "summary": "Verified Official — Israeli warplanes flying over the Hermel and Akkar highlands."
-    }
-  ],
-  "advisory_highlights": [
-    "Verified Official — Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism."
-  ]
+  "window_label": "23 Nov 2026, 07:00 → 24 Nov 2026, 07:00 Europe/London",
+  "generated_at": "2026-11-24T10:53:43Z",
+  "source_count": 1,
+  "overall": "A travel advisory for Lebanon is the sole recorded incident across the theater. Smartraveller states do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism. No incidents appear in any other region.",
+  "regions": {
+    "Gulf": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Saudi & Yemen": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Levant": "Smartraveller advises against travel to Lebanon. The advisory cites the volatile security situation, armed conflict, civil unrest and terrorism. Source: Smartraveller.",
+    "Iran & Iraq": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Maritime": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Sudan & Horn": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Other / International": "No significant incidents recorded in this 07:00–07:00 window."
+  }
 }
