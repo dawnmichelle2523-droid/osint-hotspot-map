@@ -46,8 +46,8 @@
     #wall-mode:hover, #wall-mode[aria-pressed="true"] { background: #102A63; border-color: #C5A059; }
     body.wall-mode #sidebar,
     body.wall-mode #filter-toggle,
-    body.wall-mode #liveWireTickerBar,
-    body.wall-mode #daily-brief { display: none !important; }
+    body.wall-mode #drawer,
+    body.wall-mode #app-footer { display: none !important; }
     #fetch-live {
       color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
       padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -600,7 +600,7 @@
     body.wall-mode #workspace { grid-template-columns: minmax(0, 1fr); }
     body.wall-mode #sidebar,
     body.wall-mode #drawer,
-    body.wall-mode #liveWireTickerBar,
+    body.wall-mode #app-footer,
     body.wall-mode #filter-toggle,
     body.wall-mode #drawer-toggle { display: none !important; }
     #sidebar {
@@ -1138,6 +1138,7 @@
         <span id="clock-brief">Next briefing --:--:--</span>
       </div>
       <button type="button" id="export-pdf">Export PDF</button>
+      <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall View</button>
       <details id="ops-menu">
         <summary>⚙ Ops</summary>
         <div id="ops-panel">
@@ -1148,7 +1149,6 @@
               <p>No failing sources.</p>
             </div>
           </div>
-          <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall Mode</button>
           <button type="button" id="export-data">📥 Export CSV / GeoJSON</button>
           <span id="last-updated">Last updated: not yet</span>
         </div>
@@ -2583,6 +2583,7 @@
     document.getElementById("wall-mode").addEventListener("click", () => {
       const on = document.body.classList.toggle("wall-mode");
       document.getElementById("wall-mode").setAttribute("aria-pressed", String(on));
+      map.invalidateSize();
       window.setTimeout(() => map.invalidateSize(), 60);
     });
     document.getElementById("sidebar").addEventListener("click", (event) => {
