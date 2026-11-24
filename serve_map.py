@@ -824,7 +824,7 @@ _WIRE_NAMES = {
     "ynet", "ynetnews", "rudaw", "rudawenglish", "kurdistan24", "k24english", "shafaq", "shafaqnews",
     "shafaqnewsarb", "nna", "nnaleb", "thenewregion", "wsj", "uniindianews", "lorientlejour",
     "iranintl", "iranintl_en", "middleeastmonitor", "thestudyofwar", "understandingwar", "isw",
-    "levant_24_", "levant24",
+    "levant_24_", "levant24", "televisionsyria",
 }
 _OFFICIAL_HANDLES = {
     "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en", "uk_mto",
