@@ -12,8 +12,8 @@
       },
       "properties": {
         "severity": "high",
-        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels must comply with blockading forces, maintain VHF watch, and demonstrate neutral transit intentions through the Strait of Hormuz.",
-        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels must comply with blockading forces, maintain VHF watch, and demonstrate neutral transit intentions through the Strait of Hormuz.",
+        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels subject to interception and must follow US forces directions.",
+        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels subject to interception and must follow US forces directions.",
         "timestamp": "2026-11-18T00:00:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
         "account": "UK_MTO",
@@ -37,8 +37,33 @@
       },
       "properties": {
         "severity": "high",
-        "title": "Ongoing regional tension advisory with SEVERE threat in Strait of Hormuz and SUBSTANTIAL in Arabian Gulf and Bab el-Mandeb/Southern Red Sea due to continued attacks on shipping and Houthi activities; baseline advisories remain in force.",
-        "summary": "Ongoing regional tension advisory with SEVERE threat in Strait of Hormuz and SUBSTANTIAL in Arabian Gulf and Bab el-Mandeb/Southern Red Sea due to continued attacks on shipping and Houthi activities; baseline advisories remain in force.",
+        "title": "Baseline maritime security advisories remain in force across Middle East region including Strait of Hormuz and Bab el-Mandeb due to ongoing regional tension and kinetic threats.",
+        "summary": "Baseline maritime security advisories remain in force across Middle East region including Strait of Hormuz and Bab el-Mandeb due to ongoing regional tension and kinetic threats.",
+        "timestamp": "2026-11-19T13:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_115_19-nov.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Ongoing attacks and harassment in Strait of Hormuz and Arabian Gulf with SUBSTANTIAL to SEVERE threat levels; IRGC activity and navigation interference persist.",
+        "summary": "Ongoing attacks and harassment in Strait of Hormuz and Arabian Gulf with SUBSTANTIAL to SEVERE threat levels; IRGC activity and navigation interference persist.",
         "timestamp": "2026-11-22T13:00:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
         "account": "UK_MTO",
@@ -49,6 +74,32 @@
         "region": "Maritime",
         "category": "Maritime Advisory",
         "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          34.4667,
+          31.5
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza.",
+        "summary": "IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza.",
+        "timestamp": "2026-11-24T12:52:31Z",
+        "source": "https://x.com/IDF/status/2125211581776642176",
+        "account": "IDF",
+        "handle": "IDF",
+        "source_handle": "IDF",
+        "batch": "official_primary",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Security Incident",
+        "warning_number": null,
+        "location_name": "IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza."
       }
     },
     {
