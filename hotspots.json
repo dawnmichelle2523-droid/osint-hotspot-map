@@ -6,14 +6,89 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          56.5,
-          26.5
+          46.7219,
+          24.7136
         ]
       },
       "properties": {
         "severity": "high",
-        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels subject to interception and must follow US forces directions.",
-        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat level; vessels subject to interception and must follow US forces directions.",
+        "title": "Do not travel to Saudi Arabia due to the volatile security situation including Houthi attacks on infrastructure and airports.",
+        "summary": "Do not travel to Saudi Arabia due to the volatile security situation including Houthi attacks on infrastructure and airports.",
+        "timestamp": "2026-11-21T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/saudi-arabia",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Saudi & Yemen",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.945,
+          31.951
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Exercise a high degree of caution in Jordan due to the unpredictable security situation and threat of terrorism, with higher risk near Syrian and Iraqi borders.",
+        "summary": "Exercise a high degree of caution in Jordan due to the unpredictable security situation and threat of terrorism, with higher risk near Syrian and Iraqi borders.",
+        "timestamp": "2026-11-20T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/jordan",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.3,
+          26.2
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "JMIC Advisory Note 001-26 (updated 22 Nov 2026) maintains SEVERE threat level in the Strait of Hormuz due to ongoing Iranian attacks on merchant vessels, including multiple projectile strikes near Khasab, Oman, with persistent IRGC harassment and navigation interference.",
+        "summary": "JMIC Advisory Note 001-26 (updated 22 Nov 2026) maintains SEVERE threat level in the Strait of Hormuz due to ongoing Iranian attacks on merchant vessels, including multiple projectile strikes near Khasab, Oman, with persistent IRGC harassment and navigation interference.",
+        "timestamp": "2026-11-22T13:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          52.0,
+          25.0
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "JMIC Advisory 017-26 (18 Nov 2026) confirms ongoing US naval blockade enforcement of Iranian ports and coastlines in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea, with SEVERE regional threat level and instructions for neutral vessels.",
+        "summary": "JMIC Advisory 017-26 (18 Nov 2026) confirms ongoing US naval blockade enforcement of Iranian ports and coastlines in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea, with SEVERE regional threat level and instructions for neutral vessels.",
         "timestamp": "2026-11-18T00:00:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
         "account": "UK_MTO",
@@ -56,31 +131,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          56.5,
-          26.5
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "Ongoing attacks and harassment in Strait of Hormuz and Arabian Gulf with SUBSTANTIAL to SEVERE threat levels; IRGC activity and navigation interference persist.",
-        "summary": "Ongoing attacks and harassment in Strait of Hormuz and Arabian Gulf with SUBSTANTIAL to SEVERE threat levels; IRGC activity and navigation interference persist.",
-        "timestamp": "2026-11-22T13:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           34.4667,
           31.5
         ]
@@ -100,31 +150,6 @@
         "category": "Security Incident",
         "warning_number": null,
         "location_name": "IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza."
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          35.5018,
-          33.8886
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism.",
-        "summary": "Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism.",
-        "timestamp": "2026-11-24T00:00:00Z",
-        "source": "https://www.smartraveller.gov.au/destinations/middle-east/lebanon",
-        "account": "Smartraveller",
-        "handle": "Smartraveller",
-        "source_handle": "Smartraveller",
-        "batch": "travel_advisories_and_embassies",
-        "verification_tier": "Official / Primary",
-        "region": "Levant",
-        "category": "Travel / Embassy Advisory",
-        "warning_number": null
       }
     },
     {
@@ -225,31 +250,6 @@
         "batch": "travel_advisories_and_embassies",
         "verification_tier": "Official / Primary",
         "region": "Levant",
-        "category": "Travel / Embassy Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          46.6753,
-          24.7136
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "Do not travel to Saudi Arabia due to the volatile security situation including Houthi attacks on infrastructure, airports, and energy facilities, with risks of missile and drone strikes and airspace disruptions.",
-        "summary": "Do not travel to Saudi Arabia due to the volatile security situation including Houthi attacks on infrastructure, airports, and energy facilities, with risks of missile and drone strikes and airspace disruptions.",
-        "timestamp": "2026-11-21T00:00:00Z",
-        "source": "https://www.smartraveller.gov.au/destinations/middle-east/saudi-arabia",
-        "account": "Smartraveller",
-        "handle": "Smartraveller",
-        "source_handle": "Smartraveller",
-        "batch": "travel_advisories_and_embassies",
-        "verification_tier": "Official / Primary",
-        "region": "Saudi & Yemen",
         "category": "Travel / Embassy Advisory",
         "warning_number": null
       }
