@@ -3550,6 +3550,50 @@ def backfill_country_tags() -> int:
     return updated
 
 
+def backfill_syria_governorates() -> int:
+    """Normalize Syrian governorate names. Unmatched Syria rows are left for the Damascus fallback."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+            if "country" not in columns:
+                return 0
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, location_name, governorate, sub_region "
+                "FROM items WHERE country = 'Syria'"
+            ).fetchall()
+            for row in rows:
+                blob = " ".join(
+                    str(part or "")
+                    for part in (
+                        row["governorate"], row["location_name"], row["title"],
+                        row["summary"], row["original_text"],
+                    )
+                )
+                name = osint.match_governorate(blob)
+                if not name:
+                    continue
+                current = str(row["governorate"] or "")
+                sub = str(row["sub_region"] or "") if "sub_region" in columns else ""
+                if current == name and sub == name:
+                    continue
+                if "sub_region" in columns:
+                    conn.execute(
+                        "UPDATE items SET governorate = ?, sub_region = ? WHERE id = ?",
+                        (name, name, row["id"]),
+                    )
+                else:
+                    conn.execute("UPDATE items SET governorate = ? WHERE id = ?", (name, row["id"]))
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Normalized {updated} Syria governorate(s).")
+        finally:
+            conn.close()
+    return updated
+
+
 def drop_excluded_items() -> int:
     """Remove rows from the blocked accounts. Yah_Saree rows stay."""
     removed = 0
@@ -3730,6 +3774,11 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     placed["region"] = resolve_item_region(item, placed, blob)
     placed["country"] = resolve_item_country(item, blob)
     placed["sub_region"] = sub_region_for(blob, placed["country"])
+    if placed["country"] == "Syria":
+        governorate = osint.match_governorate(blob) or osint.match_governorate(placed.get("governorate"))
+        if governorate:
+            placed["governorate"] = governorate
+            placed["sub_region"] = governorate
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
         placed = dict(placed)
@@ -3910,6 +3959,7 @@ def ingest_feeds() -> dict:
             backfill_sudan_rows()
             backfill_iraq_rows()
             backfill_country_tags()
+            backfill_syria_governorates()
             drop_excluded_items()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
@@ -5718,6 +5768,7 @@ def start_background() -> None:
         backfill_sudan_rows()
         backfill_iraq_rows()
         backfill_country_tags()
+        backfill_syria_governorates()
         drop_excluded_items()
         _threads_started = True
     start_translation_pass()

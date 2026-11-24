@@ -1253,6 +1253,29 @@
         <button type="button" class="pill" data-country="Other">Other <span class="n" data-country-count="Other">0</span></button>
       </div>
     </details>
+    <details class="filter-dropdown" id="syria-governorate-filter">
+      <summary>
+        <span class="filter-label">Syria Governorates</span>
+        <span class="filter-current"><span data-filter-summary="governorate">All 14 (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
+      <div class="row" id="syria-governorate-row">
+        <button type="button" class="pill" data-governorate="all" aria-pressed="true">All 14 <span class="n" data-gov-count="all">0</span></button>
+        <button type="button" class="pill" data-governorate="Damascus">Damascus <span class="n" data-gov-count="Damascus">0</span></button>
+        <button type="button" class="pill" data-governorate="Rif Dimashq">Rif Dimashq <span class="n" data-gov-count="Rif Dimashq">0</span></button>
+        <button type="button" class="pill" data-governorate="Aleppo">Aleppo <span class="n" data-gov-count="Aleppo">0</span></button>
+        <button type="button" class="pill" data-governorate="Idlib">Idlib <span class="n" data-gov-count="Idlib">0</span></button>
+        <button type="button" class="pill" data-governorate="Latakia">Latakia <span class="n" data-gov-count="Latakia">0</span></button>
+        <button type="button" class="pill" data-governorate="Tartus">Tartus <span class="n" data-gov-count="Tartus">0</span></button>
+        <button type="button" class="pill" data-governorate="Homs">Homs <span class="n" data-gov-count="Homs">0</span></button>
+        <button type="button" class="pill" data-governorate="Hama">Hama <span class="n" data-gov-count="Hama">0</span></button>
+        <button type="button" class="pill" data-governorate="Deir ez-Zor">Deir ez-Zor <span class="n" data-gov-count="Deir ez-Zor">0</span></button>
+        <button type="button" class="pill" data-governorate="Raqqa">Raqqa <span class="n" data-gov-count="Raqqa">0</span></button>
+        <button type="button" class="pill" data-governorate="Al-Hasakah">Al-Hasakah <span class="n" data-gov-count="Al-Hasakah">0</span></button>
+        <button type="button" class="pill" data-governorate="Daraa">Daraa <span class="n" data-gov-count="Daraa">0</span></button>
+        <button type="button" class="pill" data-governorate="Quneitra">Quneitra <span class="n" data-gov-count="Quneitra">0</span></button>
+        <button type="button" class="pill" data-governorate="As-Suwayda">As-Suwayda <span class="n" data-gov-count="As-Suwayda">0</span></button>
+      </div>
+    </details>
     <details class="filter-dropdown">
       <summary>
         <span class="filter-label">Time Window</span>
@@ -1656,6 +1679,29 @@
     };
     const _bootQuery = new URLSearchParams(window.location.search);
     let countryFilter = COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0 ? _bootQuery.get("country") : "all";
+    const SYRIA_GOV_CENTERS = {
+      Damascus: [33.5138, 36.2765],
+      "Rif Dimashq": [33.6500, 36.5500],
+      Aleppo: [36.2021, 37.1343],
+      Idlib: [35.9306, 36.6339],
+      Latakia: [35.5317, 35.7901],
+      Tartus: [34.8959, 35.8867],
+      Homs: [34.7324, 36.7137],
+      Hama: [35.1318, 36.7578],
+      "Deir ez-Zor": [35.3359, 40.1408],
+      Raqqa: [35.9594, 39.0079],
+      "Al-Hasakah": [36.5072, 40.7485],
+      Daraa: [32.6189, 36.1021],
+      Quneitra: [33.1256, 35.8244],
+      "As-Suwayda": [32.7090, 36.5662]
+    };
+    const SYRIA_GOV_NAMES = Object.keys(SYRIA_GOV_CENTERS);
+    let governorateFilter = SYRIA_GOV_NAMES.indexOf(_bootQuery.get("governorate") || "") >= 0 ? _bootQuery.get("governorate") : "";
+    if (governorateFilter) countryFilter = "Syria";
+    if (countryFilter === "Syria") {
+      const syriaPanel = document.getElementById("syria-governorate-filter");
+      if (syriaPanel) syriaPanel.open = true;
+    }
     let searchQuery = "";
     let searchTimer = null;
     let focusSerial = 0;
@@ -1839,13 +1885,14 @@
       if (opts.system !== "all" && String(props.system_type || "") !== opts.system) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
       if (opts.country && opts.country !== "all" && String(props.country || "Other") !== opts.country) return false;
+      if (opts.governorate && featureGovernorate(props) !== opts.governorate) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
       return matchesQuery(props, opts.query || "");
     }
 
     function currentOpts(regionId) {
-      return { severity, category, actor: actorFilter, system: systemFilter, region: regionId, country: countryFilter, timeWindow, query: searchQuery };
+      return { severity, category, actor: actorFilter, system: systemFilter, region: regionId, country: countryFilter, governorate: governorateFilter, timeWindow, query: searchQuery };
     }
 
     function countRegion(regionId) {
@@ -1859,10 +1906,23 @@
       return features.filter((feature) => passes(feature, opts)).length;
     }
 
+    function countGovernorate(name) {
+      const opts = currentOpts(region);
+      opts.country = "Syria";
+      opts.governorate = !name || name === "all" ? "" : name;
+      return features.filter((feature) => passes(feature, opts)).length;
+    }
+
     function writeFilterUrl() {
       const params = new URLSearchParams(window.location.search);
-      if (!countryFilter || countryFilter === "all") params.delete("country");
-      else params.set("country", countryFilter);
+      if (governorateFilter) {
+        params.set("country", "Syria");
+        params.set("governorate", governorateFilter);
+      } else {
+        params.delete("governorate");
+        if (!countryFilter || countryFilter === "all") params.delete("country");
+        else params.set("country", countryFilter);
+      }
       const query = params.toString();
       const next = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
       const current = window.location.pathname + window.location.search + window.location.hash;
@@ -2144,6 +2204,17 @@
       if (countrySummary) {
         countrySummary.textContent = (countryFilter === "all" ? "All Countries" : countryFilter) + " (" + countCountry(countryFilter) + ")";
       }
+      document.querySelectorAll("[data-governorate]").forEach((button) => {
+        const selected = governorateFilter ? button.dataset.governorate === governorateFilter : button.dataset.governorate === "all";
+        button.setAttribute("aria-pressed", String(selected));
+      });
+      document.querySelectorAll("[data-gov-count]").forEach((node) => {
+        node.textContent = String(countGovernorate(node.dataset.govCount));
+      });
+      const govSummary = document.querySelector('[data-filter-summary="governorate"]');
+      if (govSummary) {
+        govSummary.textContent = (governorateFilter || "All 14") + " (" + countGovernorate(governorateFilter || "all") + ")";
+      }
       document.querySelectorAll("[data-count]").forEach((node) => {
         node.textContent = String(countRegion(node.dataset.count));
       });
@@ -2260,6 +2331,11 @@
       else if (focusMode === "clear") returnToRegion();
       else if (focusMode === "region") flyToRegion(region);
       else if (focusMode === "country") flyToCountry(countryFilter);
+      else if (focusMode === "governorate") {
+        const center = SYRIA_GOV_CENTERS[governorateFilter];
+        if (center) map.flyTo(center, 9, { duration: 0.75 });
+        else flyToCountry("Syria");
+      }
     }
 
     function applyQuery(value, forcedMode) {
@@ -2715,7 +2791,9 @@
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
-          if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
+          if (!window.location.hash && governorateFilter && SYRIA_GOV_CENTERS[governorateFilter]) {
+            map.flyTo(SYRIA_GOV_CENTERS[governorateFilter], 9, { duration: 0.75 });
+          } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
         return;
       } catch (err) {}
@@ -2739,7 +2817,9 @@
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
-          if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
+          if (!window.location.hash && governorateFilter && SYRIA_GOV_CENTERS[governorateFilter]) {
+            map.flyTo(SYRIA_GOV_CENTERS[governorateFilter], 9, { duration: 0.75 });
+          } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
       } catch (err) {
         setStatus("Could not load hotspots.json.");
@@ -2787,8 +2867,24 @@
       }
       if (button.dataset.country) {
         countryFilter = button.dataset.country;
+        if (countryFilter !== "Syria") governorateFilter = "";
+        if (countryFilter === "Syria") {
+          const syriaPanel = document.getElementById("syria-governorate-filter");
+          if (syriaPanel) syriaPanel.open = true;
+        }
         writeFilterUrl();
         render(searchQuery ? "search" : "country");
+        return;
+      }
+      if (button.dataset.governorate) {
+        governorateFilter = button.dataset.governorate === "all" ? "" : button.dataset.governorate;
+        if (governorateFilter) {
+          countryFilter = "Syria";
+          const syriaPanel = document.getElementById("syria-governorate-filter");
+          if (syriaPanel) syriaPanel.open = true;
+        }
+        writeFilterUrl();
+        render(searchQuery ? "search" : "governorate");
         return;
       }
       if (button.dataset.window || button.dataset.severity || button.dataset.category) {
@@ -3119,6 +3215,8 @@
         "rif dimashq": "Rif Dimashq",
         "deir ez-zor": "Deir ez-Zor",
         "deir ezzor": "Deir ez-Zor",
+        "deir al-zor": "Deir ez-Zor",
+        "deir al zor": "Deir ez-Zor",
         "deir al-zour": "Deir ez-Zor",
         "al-hasakah": "Al-Hasakah",
         "hasakah": "Al-Hasakah",
