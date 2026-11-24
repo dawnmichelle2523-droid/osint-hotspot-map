@@ -46,7 +46,7 @@
     #wall-mode:hover, #wall-mode[aria-pressed="true"] { background: #102A63; border-color: #C5A059; }
     body.wall-mode #sidebar,
     body.wall-mode #filter-toggle,
-    body.wall-mode #ticker,
+    body.wall-mode #liveWireTickerBar,
     body.wall-mode #daily-brief { display: none !important; }
     #fetch-live {
       color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
@@ -122,11 +122,13 @@
       padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
     }
     #ticker-toggle[aria-pressed="false"] { color: #94A3B8; background: #0D1424; border-color: #1E293B; }
-    #ticker {
-      display: flex; align-items: stretch; width: 100%; height: 34px; overflow: hidden;
+    #liveWireTickerBar {
+      display: flex; align-items: stretch; width: 100%; height: 34px;
+      flex: 0 0 34px; min-height: 34px; max-height: 34px; overflow: hidden;
       background: #060A13; border-top: 1px solid #1E293B; border-bottom: 1px solid #1E293B;
+      position: relative; z-index: 15;
     }
-    body.ticker-off #ticker { display: none; }
+    body.ticker-off #liveWireTickerBar { display: none; }
     #ticker-badge {
       flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
       background: #102A63; color: #D4AF37; border-right: 1px solid #C5A059;
@@ -145,7 +147,7 @@
       display: flex; width: max-content; height: 34px;
       animation: tickerScroll 45s linear infinite;
     }
-    #ticker:hover #ticker-track { animation-play-state: paused; }
+    #liveWireTickerBar:hover #ticker-track { animation-play-state: paused; }
     #ticker-track.is-still { animation: none; }
     .ticker-seq { display: flex; align-items: center; height: 34px; }
     .ticker-item {
@@ -520,7 +522,7 @@
     @media print {
       @page { size: A4; margin: 12mm; }
       html, body { background: #fff !important; color: #1a1a1a !important; height: auto; overflow: visible; }
-      #live-bar, #ticker, #stage, #headlines, #daily-brief { display: none !important; }
+      #live-bar, #liveWireTickerBar, #stage, #headlines, #daily-brief { display: none !important; }
       #print-sheet {
         display: block !important; max-width: 180mm; margin: 0 auto; color: #1a1a1a;
         font: 11.5px/1.35 "Segoe UI", system-ui, sans-serif;
@@ -598,7 +600,7 @@
     body.wall-mode #workspace { grid-template-columns: minmax(0, 1fr); }
     body.wall-mode #sidebar,
     body.wall-mode #drawer,
-    body.wall-mode #ticker,
+    body.wall-mode #liveWireTickerBar,
     body.wall-mode #filter-toggle,
     body.wall-mode #drawer-toggle { display: none !important; }
     #sidebar {
@@ -643,7 +645,6 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
     }
     #drawer .drawer-panel[hidden] { display: none !important; }
-    #drawer #ticker { flex: 0 0 auto; width: 100%; }
     #drawer #daily-brief, #drawer #headlines { padding: 8px 10px 12px; }
     #drawer .brief-card { margin: 0; }
     #drawer .brief-card:hover { transform: none; }
@@ -1154,6 +1155,15 @@
       </details>
     </div>
   </header>
+  <div id="liveWireTickerBar" role="region" aria-label="Live wire">
+    <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
+    <div id="ticker-viewport">
+      <div id="ticker-track" class="is-still">
+        <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
+        <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
       <div class="feed-modal-head">
@@ -1355,17 +1365,8 @@
   </section>
     <section id="headlines" class="drawer-panel" data-panel="wire" hidden aria-labelledby="updates-toggle">
     <div class="headlines-inner">
-      <div id="ticker" role="region" aria-label="Breaking news">
-        <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
-        <div id="ticker-viewport">
-          <div id="ticker-track" class="is-still">
-            <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
-            <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
-          </div>
-        </div>
-      </div>
       <input id="updates-filter" type="search" placeholder="Filter pins &amp; updates..." aria-label="Filter pins and updates">
-      <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="ticker">Ticker</button>
+      <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="liveWireTickerBar">Ticker</button>
       <div class="wire-tiers" role="group" aria-label="Source tier">
         <button type="button" data-wire="all" aria-pressed="true">All</button>
         <button type="button" data-wire="wire">UN / Wire</button>
@@ -2511,7 +2512,7 @@
         if (serial !== focusSerial) return;
         marker.openPopup();
       };
-      map.flyTo([lat, lng], 8, { duration: 0.6 });
+      map.flyTo([lat, lng], 8);
       map.once("moveend", open);
       window.setTimeout(open, 700);
     }
@@ -2568,7 +2569,7 @@
       }
     }
 
-    document.getElementById("ticker").addEventListener("click", (event) => {
+    document.getElementById("liveWireTickerBar").addEventListener("click", (event) => {
       const button = event.target.closest("[data-ticker]");
       if (!button) return;
       openTickerPin(button.dataset.ticker);
