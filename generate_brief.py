@@ -26,7 +26,7 @@ MAX_OUTPUT_TOKENS = 1000
 SECTION_TITLES = (
     "Gulf & Maritime Security",
     "Yemen & Red Sea",
-    "Levant & Regional Politics",
+    "Syria, Lebanon, Israel, Palestine, and Jordan",
 )
 ADVISORY_TITLE = "Official Travel & Embassy Advisories"
 SECTION_ALIASES = {
@@ -38,8 +38,9 @@ SECTION_ALIASES = {
     "yemen": "Yemen & Red Sea",
     "red sea": "Yemen & Red Sea",
     "yemen & red sea": "Yemen & Red Sea",
-    "levant": "Levant & Regional Politics",
-    "levant & regional politics": "Levant & Regional Politics",
+    "levant": "Syria, Lebanon, Israel, Palestine, and Jordan",
+    "levant & regional politics": "Syria, Lebanon, Israel, Palestine, and Jordan",
+    "syria, lebanon, israel, palestine, and jordan": "Syria, Lebanon, Israel, Palestine, and Jordan",
 }
 
 BRIEF_SCHEMA = {

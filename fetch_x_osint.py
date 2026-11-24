@@ -53,13 +53,23 @@ LEAD_MATCH_KM = 100
 LEAD_MATCH_HOURS = 6
 
 REGIONS = (
-    "Gulf",
-    "Saudi & Yemen",
-    "Levant",
-    "Iran & Iraq",
+    "Syria",
+    "Lebanon",
+    "Israel",
+    "Palestine",
+    "Jordan",
+    "Iraq",
+    "Iran",
+    "Saudi Arabia",
+    "Yemen",
+    "Sudan",
+    "Chad",
+    "Bahrain",
+    "Kuwait",
+    "Qatar",
+    "UAE",
+    "Oman",
     "Maritime",
-    "Sudan & Horn",
-    "Other / International",
 )
 CATEGORIES = (
     "Security Incident",
@@ -150,19 +160,25 @@ OUTLET_LABELS = {
 }
 
 REGION_ALIASES = {
-    "gulf": "Gulf",
-    "saudi & yemen": "Saudi & Yemen",
-    "saudi and yemen": "Saudi & Yemen",
-    "levant": "Levant",
-    "iran & iraq": "Iran & Iraq",
-    "iran and iraq": "Iran & Iraq",
     "maritime": "Maritime",
-    "sudan & horn": "Sudan & Horn",
-    "sudan and horn": "Sudan & Horn",
-    "sudan": "Sudan & Horn",
-    "horn of africa": "Sudan & Horn",
-    "other / international": "Other / International",
-    "other": "Other / International",
+    "red sea / maritime": "Maritime",
+    "strait of hormuz / gulf": "Maritime",
+    "syria": "Syria",
+    "lebanon": "Lebanon",
+    "israel": "Israel",
+    "palestine": "Palestine",
+    "jordan": "Jordan",
+    "iraq": "Iraq",
+    "iran": "Iran",
+    "saudi arabia": "Saudi Arabia",
+    "yemen": "Yemen",
+    "sudan": "Sudan",
+    "chad": "Chad",
+    "bahrain": "Bahrain",
+    "kuwait": "Kuwait",
+    "qatar": "Qatar",
+    "uae": "UAE",
+    "oman": "Oman",
 }
 CATEGORY_ALIASES = {
     "security incident": "Security Incident",
@@ -322,68 +338,68 @@ PLACES = {
     "arabian sea": (64.0000, 16.0000, "Maritime"),
     "suez canal": (32.3500, 30.4500, "Maritime"),
     "eastern mediterranean": (34.0000, 33.5000, "Maritime"),
-    "manama": (50.5860, 26.2285, "Gulf"),
-    "bahrain": (50.5577, 26.0667, "Gulf"),
-    "doha": (51.5310, 25.2854, "Gulf"),
-    "abu dhabi": (54.3773, 24.4539, "Gulf"),
-    "dubai": (55.2708, 25.2048, "Gulf"),
-    "muscat": (58.4059, 23.5880, "Gulf"),
-    "kuwait city": (47.9774, 29.3759, "Gulf"),
-    "riyadh": (46.6753, 24.7136, "Saudi & Yemen"),
-    "jeddah": (39.1925, 21.4858, "Saudi & Yemen"),
-    "sanaa": (44.1910, 15.3694, "Saudi & Yemen"),
-    "aden": (45.0187, 12.7855, "Saudi & Yemen"),
-    "hodeidah": (42.9511, 14.7978, "Saudi & Yemen"),
-    "yemen": (44.1910, 15.3694, "Saudi & Yemen"),
-    "damascus": (36.2765, 33.5138, "Levant"),
-    "aleppo": (37.1612, 36.2021, "Levant"),
-    "idlib": (36.6317, 35.9306, "Levant"),
-    "idleb": (36.6317, 35.9306, "Levant"),
-    "latakia": (35.7953, 35.5317, "Levant"),
-    "tartus": (35.8866, 34.8890, "Levant"),
-    "hama": (36.7552, 35.1318, "Levant"),
-    "homs": (36.7137, 34.7324, "Levant"),
-    "raqqa": (39.0094, 35.9594, "Levant"),
-    "deir ez zor": (40.1408, 35.3359, "Levant"),
-    "deir ezzor": (40.1408, 35.3359, "Levant"),
-    "hasakah": (40.7477, 36.5024, "Levant"),
-    "al hasakah": (40.7477, 36.5024, "Levant"),
-    "daraa": (36.1021, 32.6189, "Levant"),
-    "quneitra": (35.8244, 33.1259, "Levant"),
-    "suwayda": (36.5667, 32.7094, "Levant"),
-    "as suwayda": (36.5667, 32.7094, "Levant"),
-    "beirut": (35.5018, 33.8938, "Levant"),
-    "nabatieh": (35.4830, 33.3770, "Levant"),
-    "amman": (35.9304, 31.9632, "Levant"),
-    "jerusalem": (35.2137, 31.7683, "Levant"),
-    "gaza": (34.4668, 31.5017, "Levant"),
-    "tehran": (51.3890, 35.6892, "Iran & Iraq"),
-    "baghdad": (44.3661, 33.3152, "Iran & Iraq"),
-    "bandar abbas": (56.2808, 27.1832, "Iran & Iraq"),
+    "manama": (50.5860, 26.2285, "Bahrain"),
+    "bahrain": (50.5577, 26.0667, "Bahrain"),
+    "doha": (51.5310, 25.2854, "Qatar"),
+    "abu dhabi": (54.3773, 24.4539, "UAE"),
+    "dubai": (55.2708, 25.2048, "UAE"),
+    "muscat": (58.4059, 23.5880, "Oman"),
+    "kuwait city": (47.9774, 29.3759, "Kuwait"),
+    "riyadh": (46.6753, 24.7136, "Saudi Arabia"),
+    "jeddah": (39.1925, 21.4858, "Saudi Arabia"),
+    "sanaa": (44.1910, 15.3694, "Yemen"),
+    "aden": (45.0187, 12.7855, "Yemen"),
+    "hodeidah": (42.9511, 14.7978, "Yemen"),
+    "yemen": (44.1910, 15.3694, "Yemen"),
+    "damascus": (36.2765, 33.5138, "Syria"),
+    "aleppo": (37.1612, 36.2021, "Syria"),
+    "idlib": (36.6317, 35.9306, "Syria"),
+    "idleb": (36.6317, 35.9306, "Syria"),
+    "latakia": (35.7953, 35.5317, "Syria"),
+    "tartus": (35.8866, 34.8890, "Syria"),
+    "hama": (36.7552, 35.1318, "Syria"),
+    "homs": (36.7137, 34.7324, "Syria"),
+    "raqqa": (39.0094, 35.9594, "Syria"),
+    "deir ez zor": (40.1408, 35.3359, "Syria"),
+    "deir ezzor": (40.1408, 35.3359, "Syria"),
+    "hasakah": (40.7477, 36.5024, "Syria"),
+    "al hasakah": (40.7477, 36.5024, "Syria"),
+    "daraa": (36.1021, 32.6189, "Syria"),
+    "quneitra": (35.8244, 33.1259, "Syria"),
+    "suwayda": (36.5667, 32.7094, "Syria"),
+    "as suwayda": (36.5667, 32.7094, "Syria"),
+    "beirut": (35.5018, 33.8938, "Lebanon"),
+    "nabatieh": (35.4830, 33.3770, "Lebanon"),
+    "amman": (35.9304, 31.9632, "Jordan"),
+    "jerusalem": (35.2137, 31.7683, "Israel"),
+    "gaza": (34.4668, 31.5017, "Palestine"),
+    "tehran": (51.3890, 35.6892, "Iran"),
+    "baghdad": (44.3661, 33.3152, "Iraq"),
+    "bandar abbas": (56.2808, 27.1832, "Iran"),
     "cairo": (31.2357, 30.0444, "Other / International"),
-    "khartoum": (32.5599, 15.5007, "Sudan & Horn"),
-    "adre crossing": (22.2000, 13.4667, "Sudan & Horn"),
-    "tine crossing": (22.7833, 15.0167, "Sudan & Horn"),
-    "omdurman": (32.4777, 15.6445, "Sudan & Horn"),
-    "port sudan": (37.2164, 19.6158, "Sudan & Horn"),
-    "el fasher": (25.3494, 13.6289, "Sudan & Horn"),
-    "el fashir": (25.3494, 13.6289, "Sudan & Horn"),
-    "al fashir": (25.3494, 13.6289, "Sudan & Horn"),
-    "nyala": (24.8825, 12.0489, "Sudan & Horn"),
-    "el geneina": (22.4472, 13.4528, "Sudan & Horn"),
-    "geneina": (22.4472, 13.4528, "Sudan & Horn"),
-    "el obeid": (30.2167, 13.1833, "Sudan & Horn"),
-    "elobeid": (30.2167, 13.1833, "Sudan & Horn"),
-    "al obeid": (30.2167, 13.1833, "Sudan & Horn"),
-    "wad madani": (33.5211, 14.4012, "Sudan & Horn"),
-    "wad medani": (33.5211, 14.4012, "Sudan & Horn"),
-    "kassala": (36.3981, 15.4500, "Sudan & Horn"),
-    "gedaref": (35.3833, 14.0333, "Sudan & Horn"),
-    "qadarif": (35.3833, 14.0333, "Sudan & Horn"),
-    "al qadarif": (35.3833, 14.0333, "Sudan & Horn"),
-    "atbara": (33.9833, 17.7000, "Sudan & Horn"),
-    "kadugli": (29.7167, 11.0167, "Sudan & Horn"),
-    "sudan": (32.5599, 15.5007, "Sudan & Horn"),
+    "khartoum": (32.5599, 15.5007, "Sudan"),
+    "adre crossing": (22.2000, 13.4667, "Sudan"),
+    "tine crossing": (22.7833, 15.0167, "Sudan"),
+    "omdurman": (32.4777, 15.6445, "Sudan"),
+    "port sudan": (37.2164, 19.6158, "Sudan"),
+    "el fasher": (25.3494, 13.6289, "Sudan"),
+    "el fashir": (25.3494, 13.6289, "Sudan"),
+    "al fashir": (25.3494, 13.6289, "Sudan"),
+    "nyala": (24.8825, 12.0489, "Sudan"),
+    "el geneina": (22.4472, 13.4528, "Sudan"),
+    "geneina": (22.4472, 13.4528, "Sudan"),
+    "el obeid": (30.2167, 13.1833, "Sudan"),
+    "elobeid": (30.2167, 13.1833, "Sudan"),
+    "al obeid": (30.2167, 13.1833, "Sudan"),
+    "wad madani": (33.5211, 14.4012, "Sudan"),
+    "wad medani": (33.5211, 14.4012, "Sudan"),
+    "kassala": (36.3981, 15.4500, "Sudan"),
+    "gedaref": (35.3833, 14.0333, "Sudan"),
+    "qadarif": (35.3833, 14.0333, "Sudan"),
+    "al qadarif": (35.3833, 14.0333, "Sudan"),
+    "atbara": (33.9833, 17.7000, "Sudan"),
+    "kadugli": (29.7167, 11.0167, "Sudan"),
+    "sudan": (32.5599, 15.5007, "Sudan"),
 }
 VAGUE_PLACES = {
     "strait of hormuz",
@@ -400,13 +416,22 @@ VAGUE_PLACES = {
     "eastern mediterranean",
 }
 REGION_CAPITALS = {
-    "Gulf": PLACES["manama"],
-    "Saudi & Yemen": PLACES["riyadh"],
-    "Levant": PLACES["damascus"],
-    "Iran & Iraq": PLACES["tehran"],
+    "Syria": PLACES["damascus"],
+    "Lebanon": PLACES["beirut"],
+    "Israel": PLACES["jerusalem"],
+    "Palestine": PLACES["gaza"],
+    "Jordan": PLACES["amman"],
+    "Iraq": PLACES["baghdad"],
+    "Iran": PLACES["tehran"],
+    "Saudi Arabia": PLACES["riyadh"],
+    "Yemen": PLACES["sanaa"],
+    "Sudan": PLACES["khartoum"],
+    "Bahrain": PLACES["manama"],
+    "Qatar": PLACES["doha"],
+    "UAE": PLACES["abu dhabi"],
+    "Oman": PLACES["muscat"],
+    "Kuwait": PLACES["kuwait city"],
     "Maritime": PLACES["strait of hormuz"],
-    "Sudan & Horn": PLACES["khartoum"],
-    "Other / International": PLACES["cairo"],
 }
 GEO_MODEL = "grok-3-mini"
 _missing_key_noted = False
@@ -670,22 +695,14 @@ def extract_location(headline: str) -> dict | None:
         "Extract the place from this headline. Do not use live search and do not invent a place "
         "that the text does not support. region must be exactly one of: "
         + ", ".join(REGIONS)
-        + ". Map the region exactly: UAE, Bahrain, Kuwait, Oman, and Qatar are Gulf. "
-        "Saudi Arabia and Yemen are Saudi & Yemen. Iran and Iraq are Iran & Iraq. "
-        "Iraq and the Kurdistan Region, including Baghdad, the Green Zone, Baghdad Airport, Erbil, "
-        "Al-Harir, Ain al-Asad, Al-Anbar, Al-Qaim, Fallujah, Ramadi, Basra, Umm Qasr, Mosul, Nineveh, "
-        "Sinjar, Kirkuk, Sulaymaniyah, Duhok, Zakho, Jurf al-Sakhar, Babil, Diyala, Baqubah, "
-        "Salah al-Din, Tikrit, Balad Air Base, Najaf, Karbala, the Peshmerga, and the PMF, are Iran & Iraq. "
-        "Do not use Other / International for Iraq, Kurdistan, or those places. "
-        "Do not label a Sudan event as Iran & Iraq. "
-        "Jordan, Syria, Lebanon, Israel, and Palestine are Levant. "
+        + ". region equals the country where the incident happened. "
+        "Keep Bahrain, Kuwait, Qatar, the UAE, and Oman as separate countries. Do not fold them into Gulf. "
+        "Syria, Lebanon, Israel, Palestine, and Jordan are separate countries. Do not use Levant. "
+        "Iraq, including the Kurdistan Region, Baghdad, Erbil, Basra, Mosul, and the PMF, is Iraq. "
+        "Iran is Iran. Saudi Arabia is Saudi Arabia. Yemen is Yemen. "
         "The Red Sea, Strait of Hormuz, Persian Gulf, and Gulf of Oman are Maritime. "
-        "Sudan, including Khartoum, Omdurman, Bahri, Port Sudan, El Fasher, Nyala, El Geneina, "
-        "Zalingei, Ed Daein, El Obeid, Kadugli, Al-Fulah, Wad Madani, Sennar, Kassala, Gedaref, "
-        "Atbara, Dongola, Adre, Adré / Adre Crossing, Tiné / Tine Crossing, Darfur, Kordofan, the RSF, and the SAF, is Sudan & Horn. "
-        "Do not use Other / International for Sudan, the RSF, the SAF, Darfur, Kordofan, or a Sudanese city. "
-        "The Horn of Africa, including Eritrea, Ethiopia, Djibouti, Somalia, and South Sudan, is Sudan & Horn. "
-        "Anything else is Other / International. "
+        "Sudan, including Khartoum, Darfur, and the RSF or SAF, is Sudan. Chad is Chad. "
+        "Do not use a theater bucket such as Levant, Gulf, Iran & Iraq, or Sudan & Horn. "
         "location_name is the most specific place named: a city, governorate, port, airbase, border crossing, "
         "maritime chokepoint, or, if nothing finer is named, the country or sea. "
         "governorate is one of "
@@ -933,15 +950,15 @@ def locate_event(
             known_region = known_region or place[2]
             grok_coords = False
     sudan_place = lookup_place(text) or lookup_place(headline)
-    if sudan_place and sudan_place[2] == "Sudan & Horn":
+    if sudan_place and sudan_place[2] == "Sudan":
         if known is None:
             known = (sudan_place[0], sudan_place[1])
         if known_region in (None, "Other / International"):
-            known_region = "Sudan & Horn"
+            known_region = "Sudan"
     if known_region is None and any(token in f"{headline} {text}".lower() for token in ("syria", "syrian")):
-        known_region = "Levant"
+        known_region = "Syria"
     if known_region is None and any(token in f"{headline} {text}" for token in ("سوريا", "سورية")):
-        known_region = "Levant"
+        known_region = "Syria"
     if known is None and known_region in REGION_CAPITALS:
         capital = REGION_CAPITALS[known_region]
         known = (capital[0], capital[1])
@@ -1465,13 +1482,10 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
         "timestamp is UTC ISO 8601 with a Z suffix, for example 2026-11-21T15:00:00Z.\n"
         "source is the post URL https://x.com/<handle>/status/<id>.\n"
         "account is the handle without @.\n"
-        "region is exactly one of: Gulf (Bahrain, Kuwait, Qatar, UAE, Oman); "
-        "Saudi & Yemen (Saudi Arabia, Yemen, Red Sea coast); "
-        "Levant (Israel, Palestine, Lebanon, Jordan, Syria); "
-        "Iran & Iraq (Iran, Iraq, Kurdistan Region); "
-        "Maritime (Strait of Hormuz, Bab el-Mandeb, Gulf of Oman, Arabian Sea, UKMTO/JMIC); "
-        "Sudan & Horn (Sudan and the Horn of Africa); "
-        "Other / International (Turkey, US/UN diplomatic statements, broader advisories).\n"
+        "region equals the country and is exactly one of: "
+        + ", ".join(REGIONS)
+        + ". Keep each Gulf state separate. Do not use Levant or another theater bucket. "
+        "Maritime is the Strait of Hormuz, Bab el-Mandeb, Gulf of Oman, Arabian Sea, and UKMTO/JMIC.\n"
         "category is exactly one of: Security Incident; Maritime Advisory; Travel / Embassy Advisory.\n"
         "Travel and embassy accounts should use Travel / Embassy Advisory. "
         "UKMTO and other maritime warnings should use Maritime Advisory. "

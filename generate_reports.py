@@ -21,13 +21,23 @@ TIMEOUT = 25
 MAX_OUTPUT_TOKENS = 1000
 
 REGIONS = (
-    "Gulf",
-    "Saudi & Yemen",
-    "Levant",
-    "Iran & Iraq",
+    "Syria",
+    "Lebanon",
+    "Israel",
+    "Palestine",
+    "Jordan",
+    "Iraq",
+    "Iran",
+    "Saudi Arabia",
+    "Yemen",
+    "Sudan",
+    "Chad",
+    "Bahrain",
+    "Kuwait",
+    "Qatar",
+    "UAE",
+    "Oman",
     "Maritime",
-    "Sudan & Horn",
-    "Other / International",
 )
 CATEGORIES = (
     "Security Incident",

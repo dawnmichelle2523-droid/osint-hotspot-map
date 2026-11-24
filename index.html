@@ -1204,7 +1204,6 @@
     <button type="button" data-jump="bahrain">Bahrain</button>
     <button type="button" data-jump="hormuz">Strait of Hormuz</button>
     <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
-    <button type="button" data-jump="levant">Levant</button>
         <button type="button" data-jump="sudan">Sudan</button>
         <button type="button" data-jump="saudi">Saudi Arabia</button>
   </nav>
@@ -1216,13 +1215,19 @@
       </summary>
       <div class="row">
         <button type="button" class="pill" data-region="all" aria-pressed="true">All Regions <span class="n" data-count="all">0</span></button>
-        <button type="button" class="pill" data-region="Gulf">Gulf <span class="n" data-count="Gulf">0</span></button>
-        <button type="button" class="pill" data-region="Saudi &amp; Yemen">Saudi &amp; Yemen <span class="n" data-count="Saudi &amp; Yemen">0</span></button>
-        <button type="button" class="pill" data-region="Levant">Levant <span class="n" data-count="Levant">0</span></button>
-        <button type="button" class="pill" data-region="Iran &amp; Iraq">Iran &amp; Iraq <span class="n" data-count="Iran &amp; Iraq">0</span></button>
+        <button type="button" class="pill" data-region="Syria">Syria <span class="n" data-count="Syria">0</span></button>
+        <button type="button" class="pill" data-region="Iraq">Iraq <span class="n" data-count="Iraq">0</span></button>
+        <button type="button" class="pill" data-region="Saudi Arabia">Saudi Arabia <span class="n" data-count="Saudi Arabia">0</span></button>
+        <button type="button" class="pill" data-region="Iran">Iran <span class="n" data-count="Iran">0</span></button>
+        <button type="button" class="pill" data-region="Lebanon">Lebanon <span class="n" data-count="Lebanon">0</span></button>
+        <button type="button" class="pill" data-region="Israel">Israel <span class="n" data-count="Israel">0</span></button>
+        <button type="button" class="pill" data-region="Palestine">Palestine <span class="n" data-count="Palestine">0</span></button>
+        <button type="button" class="pill" data-region="Jordan">Jordan <span class="n" data-count="Jordan">0</span></button>
+        <button type="button" class="pill" data-region="Yemen">Yemen <span class="n" data-count="Yemen">0</span></button>
+        <button type="button" class="pill" data-region="Sudan">Sudan <span class="n" data-count="Sudan">0</span></button>
+        <button type="button" class="pill" data-region="Chad">Chad <span class="n" data-count="Chad">0</span></button>
+        <button type="button" class="pill" data-region="Gulf States">Gulf States <span class="n" data-count="Gulf States">0</span></button>
         <button type="button" class="pill" data-region="Maritime">Maritime <span class="n" data-count="Maritime">0</span></button>
-        <button type="button" class="pill" data-region="Sudan &amp; Horn">Sudan &amp; Horn <span class="n" data-count="Sudan &amp; Horn">0</span></button>
-        <button type="button" class="pill" data-region="Other / International">Other / International <span class="n" data-count="Other / International">0</span></button>
       </div>
     </details>
     <details class="filter-dropdown" id="country-filter">
@@ -1235,22 +1240,16 @@
         <button type="button" class="pill" data-country="Syria">Syria <span class="n" data-country-count="Syria">0</span></button>
         <button type="button" class="pill" data-country="Iraq">Iraq <span class="n" data-country-count="Iraq">0</span></button>
         <button type="button" class="pill" data-country="Saudi Arabia">Saudi Arabia <span class="n" data-country-count="Saudi Arabia">0</span></button>
-        <button type="button" class="pill" data-country="Sudan">Sudan <span class="n" data-country-count="Sudan">0</span></button>
-        <button type="button" class="pill" data-country="Chad">Chad <span class="n" data-country-count="Chad">0</span></button>
         <button type="button" class="pill" data-country="Iran">Iran <span class="n" data-country-count="Iran">0</span></button>
         <button type="button" class="pill" data-country="Lebanon">Lebanon <span class="n" data-country-count="Lebanon">0</span></button>
         <button type="button" class="pill" data-country="Israel">Israel <span class="n" data-country-count="Israel">0</span></button>
         <button type="button" class="pill" data-country="Palestine">Palestine <span class="n" data-country-count="Palestine">0</span></button>
         <button type="button" class="pill" data-country="Jordan">Jordan <span class="n" data-country-count="Jordan">0</span></button>
         <button type="button" class="pill" data-country="Yemen">Yemen <span class="n" data-country-count="Yemen">0</span></button>
-        <button type="button" class="pill" data-country="Bahrain">Bahrain <span class="n" data-country-count="Bahrain">0</span></button>
-        <button type="button" class="pill" data-country="Kuwait">Kuwait <span class="n" data-country-count="Kuwait">0</span></button>
-        <button type="button" class="pill" data-country="Qatar">Qatar <span class="n" data-country-count="Qatar">0</span></button>
-        <button type="button" class="pill" data-country="UAE">UAE <span class="n" data-country-count="UAE">0</span></button>
-        <button type="button" class="pill" data-country="Oman">Oman <span class="n" data-country-count="Oman">0</span></button>
-        <button type="button" class="pill" data-country="Red Sea / Maritime">Red Sea / Maritime <span class="n" data-country-count="Red Sea / Maritime">0</span></button>
-        <button type="button" class="pill" data-country="Strait of Hormuz / Gulf">Strait of Hormuz / Gulf <span class="n" data-country-count="Strait of Hormuz / Gulf">0</span></button>
-        <button type="button" class="pill" data-country="Other">Other <span class="n" data-country-count="Other">0</span></button>
+        <button type="button" class="pill" data-country="Sudan">Sudan <span class="n" data-country-count="Sudan">0</span></button>
+        <button type="button" class="pill" data-country="Chad">Chad <span class="n" data-country-count="Chad">0</span></button>
+        <button type="button" class="pill" data-country="Gulf States">Gulf States <span class="n" data-country-count="Gulf States">0</span></button>
+        <button type="button" class="pill" data-country="Maritime">Maritime <span class="n" data-country-count="Maritime">0</span></button>
       </div>
     </details>
     <details class="filter-dropdown" id="syria-governorate-filter">
@@ -1392,13 +1391,19 @@
         <time id="brief-time"></time>
         <select id="summaryRegionSelect" aria-label="07:00 to 07:00 summary">
           <option value="overall" selected>Overall Briefing (07:00–07:00)</option>
-          <option value="Gulf">Gulf</option>
-          <option value="Saudi &amp; Yemen">Saudi &amp; Yemen</option>
-          <option value="Levant">Levant</option>
-          <option value="Iran &amp; Iraq">Iran &amp; Iraq</option>
+          <option value="Syria">Syria</option>
+          <option value="Iraq">Iraq</option>
+          <option value="Saudi Arabia">Saudi Arabia</option>
+          <option value="Iran">Iran</option>
+          <option value="Lebanon">Lebanon</option>
+          <option value="Israel">Israel</option>
+          <option value="Palestine">Palestine</option>
+          <option value="Jordan">Jordan</option>
+          <option value="Yemen">Yemen</option>
+          <option value="Sudan">Sudan</option>
+          <option value="Chad">Chad</option>
+          <option value="Gulf States">Gulf States</option>
           <option value="Maritime">Maritime</option>
-          <option value="Sudan &amp; Horn">Sudan &amp; Horn</option>
-          <option value="Other / International">Other / International</option>
         </select>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
         <button type="button" id="daily-chart-toggle" aria-expanded="false" aria-controls="daily-chart-card">📊 07:00–07:00 Chart</button>
@@ -1492,7 +1497,6 @@
       bahrain: { center: [26.07, 50.55], zoom: 8 },
       hormuz: { center: [26.56, 56.25], zoom: 7 },
       redsea: { center: [15.3, 42.6], zoom: 6 },
-      levant: { center: [33.5, 36.0], zoom: 6 },
       sudan: { center: [15.5, 30.2], zoom: 6 },
       saudi: { center: [24.5, 44.5], zoom: 5 }
     };
@@ -1504,7 +1508,6 @@
     const REGION_BOUNDS = {
       "Gulf": L.latLngBounds([16.4, 46.3], [30.2, 59.9]),
       "Saudi & Yemen": L.latLngBounds([12.1, 34.5], [32.2, 55.7]),
-      "Levant": L.latLngBounds([29.1, 34.2], [37.5, 42.4]),
       "Iran & Iraq": L.latLngBounds([24.8, 38.4], [40.2, 63.4]),
       "Maritime": L.latLngBounds([11.5, 42.5], [27.2, 62.5]),
       "Sudan & Horn": L.latLngBounds([3.4, 21.8], [22.2, 51.5])
@@ -1682,7 +1685,8 @@
     let actorFilter = "all";
     let systemFilter = "all";
     let region = "all";
-    const COUNTRY_TAGS = ["Syria", "Iraq", "Saudi Arabia", "Sudan", "Chad", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Red Sea / Maritime", "Strait of Hormuz / Gulf", "Other"];
+    const COUNTRY_TAGS = ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime"];
+    const GULF_COUNTRIES = ["Bahrain", "Kuwait", "Qatar", "UAE", "Oman"];
     const COUNTRY_CENTERS = {
       Syria: [33.5138, 36.2765],
       Iraq: [33.3152, 44.3661],
@@ -1702,6 +1706,8 @@
       Oman: [23.5880, 58.3829],
       "Red Sea / Maritime": [20.0, 38.5],
       "Strait of Hormuz / Gulf": [26.5667, 56.2667],
+      "Gulf States": [26.2, 50.6],
+      Maritime: [20.0, 38.5],
       Other: [26.5, 47.0]
     };
     const _bootQuery = new URLSearchParams(window.location.search);
@@ -1945,14 +1951,29 @@
       return threatCodeOf(props);
     }
 
+    function featureCountry(props) {
+      const raw = String((props && (props.country || props.region)) || "");
+      if (raw === "Red Sea / Maritime" || raw === "Strait of Hormuz / Gulf" || raw === "Maritime") return "Maritime";
+      if (GULF_COUNTRIES.indexOf(raw) >= 0) return raw;
+      return raw;
+    }
+
+    function matchesArea(props, area) {
+      if (!area || area === "all") return true;
+      const country = featureCountry(props);
+      if (area === "Gulf States") return GULF_COUNTRIES.indexOf(country) >= 0;
+      if (area === "Maritime") return country === "Maritime";
+      return country === area || String((props && props.region) || "") === area;
+    }
+
     function passes(feature, opts) {
       const props = feature.properties || {};
       if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
       if (opts.category !== "all" && incidentCode(props) !== opts.category && props.category !== opts.category) return false;
       if (opts.actor !== "all" && String(props.actor || "Unattributed") !== opts.actor) return false;
       if (opts.system !== "all" && String(props.system_type || "") !== opts.system) return false;
-      if (opts.region !== "all" && props.region !== opts.region) return false;
-      if (opts.country && opts.country !== "all" && String(props.country || "Other") !== opts.country) return false;
+      if (!matchesArea(props, opts.region)) return false;
+      if (opts.country && !matchesArea(props, opts.country)) return false;
       if (opts.governorate && featureGovernorate(props) !== opts.governorate) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
@@ -2360,6 +2381,11 @@
     function flyToRegion(regionId) {
       if (!regionId || regionId === "all") {
         map.flyTo(HOME.center, HOME.zoom, { duration: 0.75 });
+        return;
+      }
+      const center = COUNTRY_CENTERS[regionId];
+      if (center) {
+        map.flyTo(center, regionId === "Maritime" || regionId === "Gulf States" ? 5 : 6, { duration: 0.75 });
         return;
       }
       const bounds = REGION_BOUNDS[regionId];
@@ -3445,6 +3471,12 @@
       const data = storedSummaries || {};
       if (scope === "overall") return String(data.overall || "");
       const regions = data.regions || {};
+      if (scope === "Gulf States") {
+        return GULF_COUNTRIES.map((name) => regions[name]).filter(Boolean).join("\n\n");
+      }
+      if (scope === "Maritime") {
+        return [regions.Maritime, regions["Red Sea / Maritime"], regions["Strait of Hormuz / Gulf"]].filter(Boolean).join("\n\n");
+      }
       return String(regions[scope] || "");
     }
 
@@ -3465,9 +3497,9 @@
       const counts = {};
       LIVE_REGIONS.forEach((name) => { counts[name] = 0; });
       features.forEach((feature) => {
-        const name = (feature.properties || {}).region;
-        const key = Object.prototype.hasOwnProperty.call(counts, name) ? name : "Other / International";
-        counts[key] += 1;
+        LIVE_REGIONS.forEach((name) => {
+          if (matchesArea(feature.properties || {}, name)) counts[name] += 1;
+        });
       });
       const selected = summaryScope || "overall";
       Array.from(select.options).forEach((option) => {
@@ -3568,7 +3600,7 @@
       }
     }
 
-    const LIVE_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
+    const LIVE_REGIONS = ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime"];
     let regionTrends = {};
     let governorateCounts = {};
     let briefingWindow = "";
@@ -3633,7 +3665,7 @@
     document.getElementById("summaryRegionSelect").addEventListener("change", (event) => {
       selectSummaryScope(event.target.value);
     });
-    const CHART_REGIONS = ["Gulf", "Saudi & Yemen", "Levant", "Iran & Iraq", "Maritime", "Sudan & Horn", "Other / International"];
+    const CHART_REGIONS = ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime"];
     let chartWindow = "yesterday";
 
     function renderDailyChart(data) {
@@ -3660,9 +3692,16 @@
           "</div><span class=\"hour-label\">" + hour + "</span></div>";
       }).join("");
       const regions = payload.region_counts || {};
-      const maxRegion = Math.max(1, ...CHART_REGIONS.map((name) => Number(regions[name] || 0)));
+      const chartValue = (name) => {
+        if (name === "Gulf States") return GULF_COUNTRIES.reduce((sum, item) => sum + Number(regions[item] || 0), 0);
+        if (name === "Maritime") {
+          return Number(regions.Maritime || 0) + Number(regions["Red Sea / Maritime"] || 0) + Number(regions["Strait of Hormuz / Gulf"] || 0);
+        }
+        return Number(regions[name] || 0);
+      };
+      const maxRegion = Math.max(1, ...CHART_REGIONS.map((name) => chartValue(name)));
       document.getElementById("daily-chart-regions").innerHTML = CHART_REGIONS.map((name) => {
-        const count = Number(regions[name] || 0);
+        const count = chartValue(name);
         const width = Math.round((count / maxRegion) * 100);
         return "<div class=\"chart-region\"><span>" + esc(name) + "</span><span class=\"chart-region-track\"><span class=\"chart-region-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
       }).join("");
@@ -3742,8 +3781,9 @@
         if (rank === "high") { slot.high += 1; high += 1; }
         else if (rank === "low") { slot.low += 1; low += 1; }
         else { slot.medium += 1; medium += 1; }
-        const region = CHART_REGIONS.indexOf(props.region) >= 0 ? props.region : "Other / International";
-        regions[region] += 1;
+        CHART_REGIONS.forEach((name) => {
+          if (matchesArea(props, name)) regions[name] += 1;
+        });
       });
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const piece = (date) => {

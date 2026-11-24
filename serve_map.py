@@ -173,7 +173,7 @@ TELEGRAM_CHANNELS = [
     "alrakoba_sudan",
     "SudanTribune",
 ]
-# Hyper-local Syrian channels. Their posts stay Levant unless the text is Iraq or Sudan.
+# Hyper-local Syrian channels. Their posts stay Syria unless the text names another country.
 SYRIA_LOCAL_CHANNELS = {
     "daraa24_news",
     "horanfree",
@@ -351,14 +351,14 @@ SAUDI_X_HANDLES = SAUDI_OFFICIAL_X | SAUDI_MEDIA_X
 SAUDI_RSS_NAMES = {"arab news", "al arabiya english"}
 # Country desks. Cross-cutting wires stay Dynamic and follow the incident.
 _DESK_META = (
-    ("Syria", "Levant", "Syria"),
-    ("Iraq", "Iran & Iraq", "Iraq"),
-    ("Saudi Arabia", "Saudi & Yemen", "Saudi Arabia"),
-    ("Sudan & Chad", "Sudan & Horn", "Sudan"),
-    ("Iran", "Iran & Iraq", "Iran"),
-    ("Gulf States", "Gulf", ""),
-    ("Levant Neighbors", "Levant", ""),
-    ("Maritime & Chokepoints", "Maritime", "Red Sea / Maritime"),
+    ("Syria", "Syria", "Syria"),
+    ("Iraq", "Iraq", "Iraq"),
+    ("Saudi Arabia", "Saudi Arabia", "Saudi Arabia"),
+    ("Sudan & Chad", "Sudan", "Sudan"),
+    ("Iran", "Iran", "Iran"),
+    ("Gulf States", "", ""),
+    ("Neighbor States", "", ""),
+    ("Maritime & Chokepoints", "Maritime", "Maritime"),
     ("Cross-Cutting Wires", "Dynamic", "Dynamic"),
 )
 _DESK_HANDLES = {
@@ -401,7 +401,7 @@ _DESK_HANDLES = {
         "alsakaniali", "mba_althani_", "majedalansari", "mofauae", "anwargargash",
         "gulfnewsuae", "gulfnews", "kuna_en", "bna_en",
     },
-    "Levant Neighbors": {
+    "Neighbor States": {
         "idf", "idfonline", "idfspokesperson", "avichayadraee", "netanyahu", "israelpresident",
         "israelmfa", "israel_katz", "gadi_eisenkot", "gantzbe", "yairlapid", "naftalibennett",
         "avigdorliberman", "yairgolan10", "ilredalert", "manniefabian", "barakravid",
@@ -454,7 +454,7 @@ _RSS_DESK = {
     "https://khartoumerr.org/feed/": "Sudan & Chad",
     "https://khartoumerr.org/": "Sudan & Chad",
     "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
-    "https://www.jordantimes.com/rss.xml": "Levant Neighbors",
+    "https://www.jordantimes.com/rss.xml": "Neighbor States",
     "https://www.ukmto.org/partner-products/jmic-products": "Maritime & Chokepoints",
     "https://www.aljazeera.com/xml/rss/middleeast.xml": "Cross-Cutting Wires",
     "https://www.aljazeera.com/xml/rss/all.xml": "Cross-Cutting Wires",
@@ -481,8 +481,8 @@ def _closest_desk(label: str) -> str:
         ("emirates", "Gulf States"), ("uae", "Gulf States"), ("oman", "Gulf States"),
         ("ukmto", "Maritime & Chokepoints"), ("jmic", "Maritime & Chokepoints"),
         ("hormuz", "Maritime & Chokepoints"),
-        ("israel", "Levant Neighbors"), ("lebanon", "Levant Neighbors"), ("jordan", "Levant Neighbors"),
-        ("gaza", "Levant Neighbors"), ("palestine", "Levant Neighbors"),
+        ("israel", "Neighbor States"), ("lebanon", "Neighbor States"), ("jordan", "Neighbor States"),
+        ("gaza", "Neighbor States"), ("palestine", "Neighbor States"),
     )
     for needle, desk in rules:
         if needle in blob:
@@ -571,15 +571,7 @@ COUNTRY_CENTERS = {
     "Strait of Hormuz / Gulf": (26.5667, 56.2667),
     "Other": (26.5, 47.0),
 }
-_COUNTRY_REGION = {
-    "Syria": "Levant", "Lebanon": "Levant", "Israel": "Levant", "Palestine": "Levant", "Jordan": "Levant",
-    "Iraq": "Iran & Iraq", "Iran": "Iran & Iraq",
-    "Saudi Arabia": "Saudi & Yemen", "Yemen": "Saudi & Yemen",
-    "Sudan": "Sudan & Horn", "Chad": "Sudan & Horn",
-    "Bahrain": "Gulf", "Kuwait": "Gulf", "Qatar": "Gulf", "UAE": "Gulf", "Oman": "Gulf",
-    "Red Sea / Maritime": "Maritime", "Strait of Hormuz / Gulf": "Maritime",
-    "Other": "Other / International",
-}
+_SEA_COUNTRY_NAMES = frozenset({"Red Sea / Maritime", "Strait of Hormuz / Gulf", "Maritime"})
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
     "https://xcancel.com/{handle}/rss",
@@ -605,14 +597,25 @@ MAX_OUTPUT_TOKENS = 800
 HOST = "0.0.0.0"
 PORT = 8000
 REGIONS = (
-    "Gulf",
-    "Saudi & Yemen",
-    "Levant",
-    "Iran & Iraq",
+    "Syria",
+    "Lebanon",
+    "Israel",
+    "Palestine",
+    "Jordan",
+    "Iraq",
+    "Iran",
+    "Saudi Arabia",
+    "Yemen",
+    "Sudan",
+    "Chad",
+    "Bahrain",
+    "Kuwait",
+    "Qatar",
+    "UAE",
+    "Oman",
     "Maritime",
-    "Sudan & Horn",
-    "Other / International",
 )
+GULF_COUNTRIES = ("Bahrain", "Kuwait", "Qatar", "UAE", "Oman")
 # Published geographic centers, (latitude, longitude). Longer names are matched first.
 GEO_FALLBACKS = {
     "strait of hormuz": (26.5667, 56.2667),
@@ -1097,11 +1100,19 @@ SUMMARY_SCHEMA = {
 }
 
 
-def region_name(value: object) -> str:
+def canonical_country(value: object) -> str:
+    """A stored country. Sea labels fold into Maritime. Theater names do not."""
     text = " ".join(str(value or "").split())
-    if text in REGIONS:
+    if text in _SEA_COUNTRY_NAMES:
+        return "Maritime"
+    if text in REGIONS or text == "Other":
         return text
-    return "Other / International"
+    return ""
+
+
+def region_name(value: object) -> str:
+    """Region is the country. An old theater label is not a country."""
+    return canonical_country(value)
 
 
 _OSINT_MARKERS = (
@@ -1424,7 +1435,7 @@ def event_row(feature: dict) -> dict | None:
     return {
         "title": title[:240],
         "summary": osint.one_sentence(props.get("summary"))[:500],
-        "region": region_name(props.get("region")),
+        "region": region_name(props.get("country") or props.get("region")),
         "category": threat_category_label(props.get("category"), props.get("threat_code")),
         "threat_code": props.get("threat_code"),
         "timestamp": osint.format_timestamp(moment) if moment else "",
@@ -1465,7 +1476,9 @@ def live_events() -> list[dict]:
 def region_counts(events: list[dict]) -> dict[str, int]:
     counts = {name: 0 for name in REGIONS}
     for event in events:
-        counts[region_name(event.get("region"))] += 1
+        name = region_name(event.get("country") or event.get("region"))
+        if name in counts:
+            counts[name] += 1
     return counts
 
 
@@ -1932,7 +1945,7 @@ def feed_features() -> list[dict]:
             "source_label": source_label(row["source_kind"], row["source_name"]),
             "batch": "live_feed",
             "verification_tier": "Unverified Lead" if row["source_kind"] == "telegram" else "State-Affiliated / Single-Source",
-            "region": region_name(row["region"]),
+            "region": region_name((row["country"] if "country" in row.keys() else "") or row["region"]),
             "category": threat_category_label(row["category"], row["threat_code"] if "threat_code" in row.keys() else None),
             "threat_code": row["threat_code"] if "threat_code" in row.keys() else None,
             "warning_number": None,
@@ -2062,7 +2075,7 @@ _LIVEBLOG_PATH_RE = re.compile(
 
 
 def aljazeera_conflict_item(text: str) -> bool:
-    """Middle East, Iran, Gulf, Levant, Yemen, maritime, or Sudan security news."""
+    """Middle East security news, routed by the country where it happened."""
     raw = str(text or "")
     if not raw.strip():
         return False
@@ -2459,7 +2472,7 @@ def x_handle_from_item(item: dict) -> str:
 
 
 def mentions_broad_theater(text: str) -> bool:
-    """Gulf, Levant, Iran, maritime, Sudan, or Iraq. Used for the widened X sweep."""
+    """Syria, Iraq, Iran, the Gulf states, Yemen, maritime, or Sudan. Used for the widened X sweep."""
     if mentions_syria_or_middle_east(text) or mentions_sudan_or_horn(text) or iraq_mention(text):
         return True
     lowered = text.lower()
@@ -2856,7 +2869,7 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
             stored["title"] = title
         if summary:
             stored["summary"] = summary
-        return _apply_threat(stored, located)
+        return route_event_country(_apply_threat(stored, located), located)
     if not title or not summary:
         first = _grok_english(original or incoming_title, incoming_summary or incoming_title, key)
         if first:
@@ -2873,7 +2886,7 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
         stored["summary"] = summary
     elif stored.get("title") and not contains_arabic(stored.get("title")):
         stored["summary"] = stored["title"]
-    return _apply_threat(stored, located)
+    return route_event_country(_apply_threat(stored, located), located)
 
 
 _LATIN_FOLD = str.maketrans({
@@ -3081,7 +3094,12 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
     ("red sea", "Red Sea / Maritime"),
     ("palestine", "Palestine"),
     ("west bank", "Palestine"),
+    ("jerusalem", "Israel"),
+    ("tel aviv", "Israel"),
+    ("nabatieh", "Lebanon"),
+    ("beirut", "Lebanon"),
     ("lebanon", "Lebanon"),
+    ("amman", "Jordan"),
     ("bahrain", "Bahrain"),
     ("kuwait", "Kuwait"),
     ("israel", "Israel"),
@@ -3125,7 +3143,8 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
 
 
 def region_for_country(country: str) -> str:
-    return _COUNTRY_REGION.get(country or "", "Other / International")
+    """Region and country are the same label."""
+    return canonical_country(country) or "Other"
 
 
 def desk_for_item(item: dict) -> dict | None:
@@ -3279,41 +3298,48 @@ def country_from_coordinates(lat: object, lng: object) -> str:
 
 
 def resolve_item_country(item: dict, blob: str) -> str:
-    """Desk country, unless the text names an event somewhere else. Wires follow the incident."""
+    """Country where the incident happened. The source desk is used only when the text names no place."""
     named = incident_country(blob)
+    if named:
+        return canonical_country(named) or named
     desk = desk_for_item(item)
     handle = channel_handle(item).lower()
     home = ""
-    if desk and desk.get("default_country") not in ("", "Dynamic"):
-        home = desk["default_country"]
-    elif handle in _HANDLE_COUNTRY:
+    if handle in _HANDLE_COUNTRY:
         home = _HANDLE_COUNTRY[handle]
+    elif desk and desk.get("default_country") not in ("", "Dynamic"):
+        home = desk["default_country"]
     if home:
-        if named and named != home:
-            return named
-        return home
-    if named:
-        return named
+        return canonical_country(home) or home
     return "Other"
 
 
 def resolve_item_region(item: dict, placed: dict, blob: str) -> str:
-    """Incident location wins. A country desk fills the region when the text names no other country."""
-    named = incident_country(blob)
-    desk = desk_for_item(item)
-    if named:
-        home = (desk or {}).get("default_country") or ""
-        if not home or home == "Dynamic" or named != home or home == named:
-            return region_for_country(named)
-    if sudan_mention(blob):
-        return "Sudan & Horn"
-    if iraq_mention(blob):
-        return "Iran & Iraq"
-    if saudi_mention(blob):
-        return "Saudi & Yemen"
-    if desk and desk.get("region") not in ("", "Dynamic"):
-        return desk["region"]
-    return placed.get("region") or "Other / International"
+    """Region equals the country of the incident."""
+    country = resolve_item_country(item, blob)
+    if country and country != "Other":
+        return country
+    named = canonical_country(placed.get("country") or placed.get("region"))
+    return named or "Other"
+
+
+def route_event_country(stored: dict, located: dict) -> dict:
+    """Set country from the incident. Use the source desk only when no place is named."""
+    blob = " ".join(
+        str(part or "")
+        for part in (
+            located.get("location_name"), located.get("governorate"),
+            stored.get("title"), stored.get("summary"), stored.get("original_text"),
+            located.get("title"), located.get("summary"),
+        )
+    )
+    country = resolve_item_country(stored, blob)
+    if country in ("", "Other"):
+        coord = country_from_coordinates(located.get("lat") or stored.get("lat"), located.get("lng") or stored.get("lng"))
+        country = canonical_country(coord) or country or "Other"
+    stored["country"] = country
+    stored["region"] = country if country != "Other" else "Other"
+    return stored
 
 
 def _desk_place_hit(country: str, text: str) -> tuple[str, float, float] | None:
@@ -3672,6 +3698,57 @@ def backfill_country_tags() -> int:
     return updated
 
 
+def _country_from_source_name(source_name: object) -> str:
+    handle = str(source_name or "").strip().lstrip("@").lower()
+    if "·" in handle:
+        handle = handle.split("·", 1)[1].strip()
+    if handle in _HANDLE_COUNTRY:
+        return _HANDLE_COUNTRY[handle]
+    desk = _DESK_BY_HANDLE.get(handle)
+    if desk and desk.get("default_country") not in ("", "Dynamic", None):
+        return str(desk["default_country"])
+    return ""
+
+
+def backfill_levant_routes() -> int:
+    """Retag Levant rows from the place, the coordinates, and the source name."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+            if "country" not in columns:
+                return 0
+            rows = conn.execute(
+                "SELECT id, location_name, lat, lng, source_name, region, country FROM items "
+                "WHERE region = 'Levant' OR country = 'Levant'"
+            ).fetchall()
+            for row in rows:
+                named = incident_country(str(row["location_name"] or ""))
+                country = canonical_country(named) or named
+                if not country:
+                    country = canonical_country(country_from_coordinates(row["lat"], row["lng"]))
+                if not country:
+                    country = canonical_country(_country_from_source_name(row["source_name"]))
+                if not country:
+                    stored = canonical_country(row["country"])
+                    country = stored if stored and stored != "Other" else "Other"
+                region = country
+                if str(row["region"] or "") == region and str(row["country"] or "") == country:
+                    continue
+                conn.execute(
+                    "UPDATE items SET region = ?, country = ? WHERE id = ?",
+                    (region, country, row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Retagged {updated} Levant event(s) by country.")
+        finally:
+            conn.close()
+    return updated
+
+
 SYRIA_GOVERNORATE_COORDS = {
     "Damascus": (33.5138, 36.2765),
     "Rif Dimashq": (33.6500, 36.5500),
@@ -4005,8 +4082,7 @@ def channel_handle(item: dict) -> str:
 
 
 def coverage_region(item: dict, placed: dict) -> dict:
-    """Syrian local channels stay Levant. Iraq and Kurdistan sources stay Iran & Iraq.
-    Sudan text is left for the existing Sudan rule and is not retagged here."""
+    """Pin the event to the country it names. A source desk fills in only when the text names none."""
     placed = dict(placed)
     blob = " ".join(
         str(part or "")
@@ -4018,46 +4094,12 @@ def coverage_region(item: dict, placed: dict) -> dict:
             item.get("original_text"),
         )
     )
-    handle = channel_handle(item)
-    rss_name = str(item.get("source_name") or "").lower()
-    sudan_roster = handle in SUDAN_X_HANDLES or any(name in rss_name for name in SUDAN_RSS_NAMES)
-    if sudan_mention(blob):
-        placed["region"] = "Sudan & Horn"
-        return placed
-    if sudan_roster and not iraq_mention(blob) and not mentions_syria_or_middle_east(blob):
-        placed["region"] = "Sudan & Horn"
-        return placed
-    saudi_roster = handle in SAUDI_OFFICIAL_X or any(name in rss_name for name in SAUDI_RSS_NAMES)
-    if saudi_mention(blob) and not iraq_mention(blob):
-        placed["region"] = "Saudi & Yemen"
-        return placed
-    if saudi_roster and not iraq_mention(blob) and not mentions_syria_or_middle_east(blob):
-        placed["region"] = "Saudi & Yemen"
-        return placed
-    syria_roster = (
-        handle in SYRIA_LOCAL_CHANNELS
-        or handle in SYRIA_X_HANDLES
-        or any(name in rss_name for name in SYRIA_RSS_NAMES)
-    )
-    iraq_roster = (
-        handle in IRAQ_LOCAL_CHANNELS
-        or handle in IRAQ_X_HANDLES
-        or any(name in rss_name for name in IRAQ_RSS_NAMES)
-    )
-    if syria_roster and not iraq_mention(blob):
-        placed["region"] = "Levant"
-    elif iraq_roster and (
-        iraq_mention(blob)
-        or not mentions_syria_or_middle_east(blob)
-        or handle in IRAQ_LOCAL_CHANNELS
-        or any(name in rss_name for name in IRAQ_RSS_NAMES)
-    ):
-        placed["region"] = "Iran & Iraq"
-    elif item.get("source_kind") == "sweep":
-        if iraq_mention(blob) or str(item.get("region") or placed.get("region")) == "Iran & Iraq":
-            placed["region"] = "Iran & Iraq"
-        else:
-            placed["region"] = "Levant"
+    country = resolve_item_country(item, blob)
+    if country in ("", "Other") and item.get("source_kind") == "sweep":
+        country = "Iraq" if iraq_mention(blob) else "Syria"
+    if country:
+        placed["country"] = country
+        placed["region"] = country
     return placed
 
 
@@ -4096,8 +4138,10 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         )
     )
     placed = dict(placed)
-    placed["region"] = resolve_item_region(item, placed, blob)
     placed["country"] = resolve_item_country(item, blob)
+    placed["region"] = placed["country"] if placed["country"] and placed["country"] != "Other" else resolve_item_region(item, placed, blob)
+    if placed["region"] == "Other":
+        placed["country"] = "Other"
     placed["sub_region"] = sub_region_for(blob, placed["country"])
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
@@ -4313,6 +4357,7 @@ def ingest_feeds() -> dict:
             backfill_sudan_rows()
             backfill_iraq_rows()
             backfill_country_tags()
+            backfill_levant_routes()
             backfill_syria_governorates()
             backfill_threat_codes()
             drop_excluded_items()
@@ -4452,7 +4497,8 @@ def request_sweep_events(key: str, known: list[dict], now: datetime) -> list[dic
         "Kurdistan Region. Omit anything already stored. Each event is one object in events. "
         "title and summary are concise English. location_name is the most specific place. "
         "governorate is a Syrian governorate or an empty string. "
-        "region is exactly Levant for Syria and exactly Iran & Iraq for Iraq or Kurdistan. "
+        "country and region are the same and exactly one of: " + ", ".join(REGIONS) + ". "
+        "Use the country where the incident happened. Do not use Levant or a theater bucket. "
         "lat and lng are decimal numbers for that place. severity is High, Medium, or Low. "
         "category is Kinetic/Military, Maritime, Security/Clashes, or Political/Other. "
         "source_name is the named wire or outlet, or an empty string when none is named. "
@@ -4497,12 +4543,14 @@ def sweep_item(event: dict, now: datetime) -> dict | None:
     published = parse_event_time(event.get("published_at"))
     if published is not None and published < now - timedelta(hours=2, minutes=5):
         return None
-    region = "Iran & Iraq" if str(event.get("region") or "") == "Iran & Iraq" or iraq_mention(f"{title} {summary}") else "Levant"
-    if region == "Levant" and not (
-        mentions_syria_or_middle_east(f"{title} {summary} {event.get('location_name') or ''}")
-        or str(event.get("region") or "") == "Levant"
-    ):
+    place_blob = f"{title} {summary} {event.get('location_name') or ''}"
+    country = incident_country(place_blob) or ("Iraq" if iraq_mention(place_blob) else "")
+    country = canonical_country(country) or country
+    if not country and not mentions_syria_or_middle_east(place_blob):
         return None
+    if not country:
+        country = "Syria"
+    region = country
     source_name = " ".join(str(event.get("source_name") or "").split())
     source_url = str(event.get("source_url") or "").strip()
     if not source_url.startswith("http"):
@@ -4650,7 +4698,10 @@ def grouped_24h(now: datetime) -> dict[str, list[dict]]:
         moment = osint.parse_timestamp(props.get("timestamp"))
         if moment is None or moment < cutoff:
             continue
-        groups[region_name(props.get("region"))].append(
+        name = region_name(props.get("country") or props.get("region"))
+        if name not in groups:
+            continue
+        groups[name].append(
             {
                 "headline": osint.one_sentence(props.get("title") or props.get("summary"))[:240],
                 "location": osint.one_sentence(props.get("location_name") or props.get("governorate"))[:120],
@@ -4984,7 +5035,9 @@ def deterministic_window_summary(records: list[dict], start: datetime, end: date
     """Panel text from the highest-severity stored events. No network call."""
     grouped: dict[str, list[dict]] = {name: [] for name in REGIONS}
     for item in records:
-        grouped[region_name(item.get("region"))].append(item)
+        name = region_name(item.get("country") or item.get("region"))
+        if name in grouped:
+            grouped[name].append(item)
     label = format_briefing_window(start, end)
 
     def cited(item: dict) -> str:
@@ -5021,7 +5074,10 @@ def deterministic_window_summary(records: list[dict], start: datetime, end: date
 def _grouped_records(records: list[dict]) -> dict[str, list[dict]]:
     grouped = {name: [] for name in REGIONS}
     for item in records:
-        grouped[region_name(item.get("region"))].append(
+        name = region_name(item.get("country") or item.get("region"))
+        if name not in grouped:
+            continue
+        grouped[name].append(
             {
                 key: item.get(key) if key == "corroboration_count" else (item.get(key) or "")
                 for key in (
@@ -5658,7 +5714,9 @@ def region_escalation(now: datetime | None = None) -> dict[str, dict]:
         offset = (stamp.date() - start_day).days
         if offset < 0 or offset > 6:
             continue
-        series[region_name(row["region"])][offset] += 1
+        name = region_name((row["country"] if "country" in row.keys() else "") or row["region"])
+        if name in series:
+            series[name][offset] += 1
     trends = {}
     for name in REGIONS:
         days = series[name]
@@ -6123,6 +6181,7 @@ def start_background() -> None:
         backfill_sudan_rows()
         backfill_iraq_rows()
         backfill_country_tags()
+        backfill_levant_routes()
         backfill_syria_governorates()
         backfill_threat_codes()
         drop_excluded_items()
@@ -6336,7 +6395,7 @@ def period_events(start: datetime, end: datetime) -> list[dict]:
                 "location_name": osint.one_sentence(props.get("location_name"))[:160],
                 "governorate": osint.match_governorate(props.get("governorate"))
                 or osint.match_governorate(props.get("location_name")),
-                "region": region_name(props.get("region")),
+                "region": region_name(props.get("country") or props.get("region")),
                 "severity": osint.live_severity(props.get("severity")),
                 "corroboration": int(props.get("corroboration_count") or 1),
                 "source": event_source(props),
@@ -6416,7 +6475,9 @@ def daily_chart(window: str = "yesterday", now: datetime | None = None) -> dict:
                     field = "medium"
                     medium += 1
                 buckets[stamp.astimezone(LONDON).hour][field] += 1
-                regions[region_name(event.get("region"))] += 1
+                name = region_name(event.get("country") or event.get("region"))
+                if name in regions:
+                    regions[name] += 1
             except Exception:
                 continue
         return {
@@ -6682,7 +6743,9 @@ def briefing_html(
     counts = {name: 0 for name in REGIONS}
     governorates = {name: 0 for name in osint.SYRIA_GOVERNORATES}
     for event in events:
-        counts[region_name(event.get("region"))] += 1
+        name = region_name(event.get("country") or event.get("region"))
+        if name in counts:
+            counts[name] += 1
         if event.get("governorate") in governorates:
             governorates[event["governorate"]] += 1
     widest = max(counts.values() or [1]) or 1
