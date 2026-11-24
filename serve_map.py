@@ -1638,6 +1638,7 @@ def poll_aljazeera_liveblog() -> list[dict]:
         page_url = discover_aljazeera_liveblog()
     except Exception as exc:
         print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
+        note_feed("liveblog", "Al Jazeera Live", False, exc.__class__.__name__)
         return []
     if not page_url:
         return []
@@ -1651,9 +1652,12 @@ def poll_aljazeera_liveblog() -> list[dict]:
             updates = parse_aljazeera_liveblog(amp.text, page_url)
     except Exception as exc:
         print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
+        note_feed("liveblog", "Al Jazeera Live", False, exc.__class__.__name__)
         return []
     if not updates:
+        note_feed("liveblog", "Al Jazeera Live", False, "no updates")
         return []
+    note_feed("liveblog", "Al Jazeera Live", True, "")
     kept = []
     for item in updates:
         blob = spam_post_text(item.get("title"), item.get("summary"), "", item.get("source_url"))
@@ -3104,18 +3108,38 @@ _feed_health: dict[str, dict] = {}
 
 
 def note_feed(kind: str, name: str, ok: bool, error: str = "") -> None:
+    """Record the final result for one feed. Do not call this for a dead mirror
+    when a later mirror may still succeed."""
     key = f"{kind}:{name}"
+    clean_error = "" if ok else " ".join(str(error or "error").split())[:160]
+    readable = source_label(kind, name) if kind in {"telegram", "x", "rss"} else str(name)
+    checked = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with _feed_health_lock:
         _feed_health[key] = {
+            "source_name": readable,
+            "type": kind,
+            "status": "active" if ok else "offline",
+            "last_checked": checked,
+            "last_error": clean_error,
             "ok": bool(ok),
-            "error": "" if ok else " ".join(str(error or "error").split())[:160],
+            "error": clean_error,
         }
 
 
+def note_feed_mirrors(kind: str, name: str, attempts: list[tuple[bool, str]]) -> None:
+    """First successful mirror wins. Earlier failures never leave the feed offline."""
+    last_error = "no entries"
+    for ok, error in attempts:
+        if ok:
+            note_feed(kind, name, True, "")
+            return
+        if error:
+            last_error = error
+    note_feed(kind, name, False, last_error)
+
+
 def feed_health_payload() -> dict:
-    catalog = [("telegram", channel) for channel in TELEGRAM_CHANNELS]
-    catalog.extend(("x", handle) for handle in X_HANDLES)
-    catalog.extend(("rss", name) for name, _url in RSS_FEEDS)
+    catalog = feed_catalog()
     with _feed_health_lock:
         recorded = dict(_feed_health)
     failing = []
@@ -3130,11 +3154,52 @@ def feed_health_payload() -> dict:
                 {
                     "kind": kind,
                     "name": name,
-                    "label": source_label(kind, name),
+                    "label": (row or {}).get("source_name") or source_label(kind, name),
                     "error": row.get("error") or "error",
                 }
             )
     return {"online": online, "total": len(catalog), "failing": failing}
+
+
+def feed_catalog() -> list[tuple[str, str]]:
+    catalog = [("telegram", channel) for channel in TELEGRAM_CHANNELS]
+    catalog.extend(("x", handle) for handle in X_HANDLES)
+    catalog.extend(("rss", name) for name, _url in RSS_FEEDS)
+    catalog.append(("liveblog", "Al Jazeera Live"))
+    return catalog
+
+
+def feed_status_payload() -> dict:
+    """Active versus offline feeds. Unchecked sources are neither."""
+    with _feed_health_lock:
+        recorded = dict(_feed_health)
+    feeds = []
+    for kind, name in feed_catalog():
+        row = recorded.get(f"{kind}:{name}") or {}
+        status = str(row.get("status") or "")
+        if status not in {"active", "offline"}:
+            status = "unchecked"
+        feeds.append(
+            {
+                "source_name": row.get("source_name") or (
+                    source_label(kind, name) if kind in {"telegram", "x", "rss"} else name
+                ),
+                "type": kind,
+                "status": status,
+                "last_checked": row.get("last_checked") or "",
+                "last_error": row.get("last_error") or "",
+            }
+        )
+    active = [item for item in feeds if item["status"] == "active"]
+    offline = [item for item in feeds if item["status"] == "offline"]
+    return {
+        "feeds": feeds,
+        "active": active,
+        "offline": offline,
+        "online": len(active),
+        "offline_count": len(offline),
+        "total": len(feeds),
+    }
 
 
 def trend_label(percent: int) -> dict:
@@ -3465,6 +3530,8 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(data_response())
         if verb == "POST" and route == "/api/data":
             return 200, "application/json; charset=utf-8", _api_json(data_post_response(body))
+        if verb == "GET" and route == "/api/feed-status":
+            return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
         if verb == "GET" and route == "/api/daily-chart":
             return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
         if verb == "GET" and route == "/api/daily-chart.png":

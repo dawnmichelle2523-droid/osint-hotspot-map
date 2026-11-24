@@ -78,6 +78,27 @@
       padding: 10px 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
     }
     #feed-popover[hidden] { display: none; }
+    #feed-modal[hidden] { display: none; }
+    #feed-modal {
+      position: fixed; inset: 0; z-index: 2000; display: flex; align-items: flex-start; justify-content: center;
+      padding: 72px 16px 16px; background: rgba(0, 0, 0, 0.72);
+    }
+    .feed-modal-card {
+      width: min(720px, 100%); max-height: min(70vh, 640px); overflow: auto;
+      background: #090C10; color: #E2E8F0; border: 1px solid #1E3A8A; border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); padding: 14px 16px 16px;
+    }
+    .feed-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .feed-modal-card h2 { margin: 0; color: #E6C667; font-size: 16px; }
+    #feed-modal-close { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .feed-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .feed-cols h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .feed-cols .active h3 { color: #E6C667; }
+    .feed-cols .offline h3 { color: #F8FAFC; }
+    .feed-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .feed-cols li { font-size: 12px; line-height: 1.35; }
+    .feed-type { color: #94A3B8; }
+    @media (max-width: 720px) { .feed-cols { grid-template-columns: 1fr; } }
     #feed-popover p { margin: 0; color: #94A3B8; font-size: 12px; }
     #feed-popover ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     #feed-popover li { font-size: 12px; line-height: 1.35; }
@@ -164,13 +185,14 @@
     #status:empty, #search-count:empty { display: none; }
     #status { color: var(--incident); }
     .search-row {
-      display: flex; align-items: center; margin-top: 12px;
-      background: rgba(7, 19, 22, 0.55); border: 1px solid var(--line); border-radius: 9px;
-      padding: 0 4px 0 10px;
+      display: flex; align-items: center; margin: 0 0 10px;
+      background: #000000; border: 1px solid #1E3A8A; border-radius: 8px;
+      padding: 0 4px 0 8px;
     }
+    .search-row:focus-within { border-color: #D4AF37; }
     #search-input {
-      flex: 1; min-width: 0; background: transparent; border: 0; color: var(--text);
-      font: inherit; font-size: 13px; padding: 8px 0; outline: none;
+      flex: 1; min-width: 0; background: transparent; border: 0; color: #F8FAFC;
+      font: inherit; font-size: 12px; padding: 6px 0; outline: none;
     }
     #search-input::placeholder { color: var(--muted); }
     #search-input::-webkit-search-cancel-button { display: none; }
@@ -310,8 +332,9 @@
     #export-headlines:hover, #copy-briefing:hover, #export-pdf:hover { background: #163B85; border-color: #E6C667; color: #E6C667; }
     .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .popup-actions .popup-link { margin-top: 0; }
-    .copy-pin { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .copy-pin:hover { background: #163B85; border-color: #E6C667; color: #E6C667; }
+    .copy-pin, .copy-alert { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .copy-alert { padding: 3px 7px; font-size: 11px; }
+    .copy-pin:hover, .copy-alert:hover { background: #163B85; border-color: #E6C667; color: #E6C667; }
     .headlines-note { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
     #headline-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
     #headline-list[hidden], #headlines .headlines-note[hidden] { display: none !important; }
@@ -470,7 +493,7 @@
     <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
     <span id="last-updated">Last updated: not yet</span>
     <div id="feed-health-wrap">
-      <button type="button" id="feed-health" aria-expanded="false" aria-controls="feed-popover">● 0/0 Feeds Online</button>
+      <button type="button" id="feed-health" aria-expanded="false" aria-controls="feed-modal">● 0/0 Feeds Online</button>
       <div id="feed-popover" hidden>
         <p>No failing sources.</p>
       </div>
@@ -620,6 +643,18 @@
       <span id="clock-brief">Next briefing --:--:--</span>
     </div>
   </header>
+  <div id="feed-modal" hidden>
+    <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
+      <div class="feed-modal-head">
+        <h2 id="feed-modal-title">Feeds</h2>
+        <button type="button" id="feed-modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="feed-cols">
+        <section class="active"><h3>Active</h3><ul id="feed-active"></ul></section>
+        <section class="offline"><h3>Offline</h3><ul id="feed-offline"></ul></section>
+      </div>
+    </div>
+  </div>
   <div id="ticker" role="region" aria-label="Breaking news">
     <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
     <div id="ticker-viewport">
@@ -632,13 +667,13 @@
   <div id="stage">
   <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
   <aside id="sidebar">
+    <form class="search-row" role="search" autocomplete="off">
+      <input id="search-input" type="search" placeholder="Search city, base, keyword..." aria-label="Search city, base, or keyword">
+      <button id="search-clear" type="button" aria-label="Clear">×</button>
+    </form>
     <h1>OSINT Map</h1>
     <p id="updated">Loading incidents…</p>
     <p id="status" role="status"></p>
-    <form class="search-row" role="search" autocomplete="off">
-      <input id="search-input" type="search" placeholder="Search port, airport, UKMTO #, city, or @handle..." aria-label="Search hotspots">
-      <button id="search-clear" type="button" aria-label="Clear">×</button>
-    </form>
     <div class="chips">
       <button type="button" class="chip" data-chip="UKMTO">UKMTO</button>
       <button type="button" class="chip" data-chip="Hormuz">Hormuz</button>
@@ -1029,13 +1064,20 @@
       if (!query) return true;
       const needle = query.trim().toLowerCase();
       if (!needle) return true;
-      const handleNeedle = needle.replace(/^@/, "");
-      const fields = [props.title, props.summary, props.region, props.source_handle, props.warning_number];
-      return fields.some((value) => {
-        if (value == null) return false;
-        const text = String(value).toLowerCase();
-        return text.includes(needle) || (handleNeedle !== needle && text.includes(handleNeedle));
-      });
+      const fields = [
+        props.title,
+        props.summary,
+        props.location_name,
+        props.location,
+        props.region,
+        props.source,
+        props.source_name,
+        props.source_label,
+        props.source_tier,
+        props.source_handle,
+        sourceLabel(props)
+      ];
+      return fields.some((value) => String(value || "").toLowerCase().includes(needle));
     }
 
     function passes(feature, opts) {
@@ -1154,6 +1196,15 @@
       return "<strong>" + esc(headline) + "</strong>" + extra;
     }
 
+    function alertLine(props) {
+      const region = String(props.region || "Unknown").toUpperCase();
+      const severity = String(props.severity || "Medium").toUpperCase();
+      const headline = String(props.title || props.summary || "Incident").replace(/\s+/g, " ").trim();
+      const location = String(props.location_name || props.location || "Location unavailable").replace(/\s+/g, " ").trim();
+      const tier = String(props.source_tier || "OSINT").replace(/\s+/g, " ").trim();
+      return "• [" + region + " | " + severity + "] " + headline + " — " + location + " (" + tier + ")";
+    }
+
     function popupHtml(props, id) {
       const badge = severityBadge(props);
       const headline = props.title || props.summary || "Incident";
@@ -1172,6 +1223,7 @@
           originalArabicBlock(props) +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
           '<div class="popup-actions">' + link +
+            '<button type="button" class="copy-alert" data-alert="' + encodeURIComponent(alertLine(props)) + '">📋 Copy Alert</button>' +
             '<button type="button" class="copy-pin" data-pin="' + esc(id) + '">Copy Link</button>' +
           "</div>" +
         "</div>"
@@ -1539,21 +1591,60 @@
       paintWorldClocks(now);
     }
 
-    function renderFeedHealth(health) {
+    function feedListHtml(items, empty) {
+      if (!items.length) return "<li>" + empty + "</li>";
+      return items.map((item) => (
+        "<li><strong>" + esc(item.source_name || "Feed") + "</strong> " +
+        "<span class=\"feed-type\">" + esc(item.type || "") + "</span>" +
+        (item.last_error ? " <span class=\"fail-error\">" + esc(item.last_error) + "</span>" : "") +
+        "</li>"
+      )).join("");
+    }
+
+    function renderFeedStatus(payload) {
       const button = document.getElementById("feed-health");
-      const popover = document.getElementById("feed-popover");
-      const online = health && Number.isFinite(Number(health.online)) ? Number(health.online) : 0;
-      const total = health && Number.isFinite(Number(health.total)) ? Number(health.total) : 0;
-      const failing = health && Array.isArray(health.failing) ? health.failing : [];
-      button.textContent = "● " + online + "/" + total + " Feeds Online";
-      button.classList.toggle("has-fail", failing.length > 0);
-      if (!failing.length) {
-        popover.innerHTML = "<p>No failing sources.</p>";
-        return;
+      const feeds = payload && Array.isArray(payload.feeds) ? payload.feeds : [];
+      const active = payload && Array.isArray(payload.active) ? payload.active : feeds.filter((item) => item.status === "active");
+      const onlineCount = payload && Number.isFinite(Number(payload.online)) ? Number(payload.online) : active.length;
+      const offline = payload && Array.isArray(payload.offline) ? payload.offline : feeds.filter((item) => item.status === "offline");
+      const total = payload && Number.isFinite(Number(payload.total)) ? Number(payload.total) : feeds.length;
+      button.textContent = "● " + onlineCount + "/" + total + " Feeds Online";
+      button.classList.toggle("has-fail", offline.length > 0);
+      const activeList = document.getElementById("feed-active");
+      const offlineList = document.getElementById("feed-offline");
+      if (activeList) activeList.innerHTML = feedListHtml(active, "No active feeds yet.");
+      if (offlineList) offlineList.innerHTML = feedListHtml(offline, "No offline feeds.");
+    }
+
+    async function refreshFeedStatus() {
+      try {
+        const response = await fetch("/api/feed-status", { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        renderFeedStatus(await response.json());
+        return true;
+      } catch (err) {
+        return false;
       }
-      popover.innerHTML = "<ul>" + failing.map((item) => (
-        "<li>" + esc(item.label || item.name || "Feed") + " <span class=\"fail-error\">" + esc(item.error || "error") + "</span></li>"
-      )).join("") + "</ul>";
+    }
+
+    function renderFeedHealth(health) {
+      if (!health) return;
+      const failing = Array.isArray(health.failing) ? health.failing : [];
+      const active = [];
+      const offline = failing.map((item) => ({
+        source_name: item.label || item.name || "Feed",
+        type: item.kind || "",
+        status: "offline",
+        last_error: item.error || "error"
+      }));
+      const online = Number.isFinite(Number(health.online)) ? Number(health.online) : 0;
+      renderFeedStatus({
+        feeds: active.concat(offline),
+        active: active,
+        offline: offline,
+        online: online,
+        total: Number.isFinite(Number(health.total)) ? Number(health.total) : online + offline.length
+      });
     }
 
     function showLastUpdated(stamp) {
@@ -1672,7 +1763,7 @@
         if (!response.ok) throw new Error("HTTP " + response.status);
         const data = await response.json();
         showLastUpdated(data.last_polled_at);
-        renderFeedHealth(data.feed_health);
+        if (!(await refreshFeedStatus())) renderFeedHealth(data.feed_health);
         const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
         features = incoming;
         regionTrends = (data && data.region_trends) || {};
@@ -1754,7 +1845,7 @@
 
     searchInput.addEventListener("input", () => {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => applyQuery(searchInput.value), 200);
+      applyQuery(searchInput.value);
     });
     document.getElementById("search-clear").addEventListener("click", () => {
       clearTimeout(searchTimer);
@@ -2227,6 +2318,15 @@
       button.setAttribute("aria-expanded", String(open));
     });
     document.addEventListener("click", (event) => {
+      const alertButton = event.target.closest(".copy-alert");
+      if (alertButton) {
+        event.preventDefault();
+        let text = "";
+        try { text = decodeURIComponent(alertButton.getAttribute("data-alert") || ""); }
+        catch (err) { text = alertButton.getAttribute("data-alert") || ""; }
+        copyText(text, alertButton, "📋 Copy Alert", "Copied ✓");
+        return;
+      }
       const button = event.target.closest(".copy-pin");
       if (!button) return;
       event.preventDefault();
@@ -2460,19 +2560,25 @@
 
     tickClocks();
     setInterval(tickClocks, 1000);
-    document.getElementById("feed-health").addEventListener("click", () => {
-      const popover = document.getElementById("feed-popover");
-      const open = popover.hasAttribute("hidden");
-      if (open) popover.removeAttribute("hidden");
-      else popover.setAttribute("hidden", "");
-      document.getElementById("feed-health").setAttribute("aria-expanded", String(open));
-    });
-    document.addEventListener("click", (event) => {
-      if (event.target.closest("#feed-health-wrap")) return;
-      const popover = document.getElementById("feed-popover");
-      if (!popover || popover.hasAttribute("hidden")) return;
-      popover.setAttribute("hidden", "");
+    function closeFeedModal() {
+      const modal = document.getElementById("feed-modal");
+      if (modal) modal.setAttribute("hidden", "");
       document.getElementById("feed-health").setAttribute("aria-expanded", "false");
+    }
+    document.getElementById("feed-health").addEventListener("click", () => {
+      const modal = document.getElementById("feed-modal");
+      const open = modal.hasAttribute("hidden");
+      if (open) {
+        modal.removeAttribute("hidden");
+        document.getElementById("feed-health").setAttribute("aria-expanded", "true");
+        refreshFeedStatus();
+      } else {
+        closeFeedModal();
+      }
+    });
+    document.getElementById("feed-modal-close").addEventListener("click", closeFeedModal);
+    document.getElementById("feed-modal").addEventListener("click", (event) => {
+      if (event.target.id === "feed-modal") closeFeedModal();
     });
     loadData();
     showSyriaGovernorates(false);

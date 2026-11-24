@@ -78,6 +78,11 @@ def _forward_api() -> Response:
     return response
 
 
+@app.get("/api/feed-status")
+def api_feed_status() -> Response:
+    return _forward_api()
+
+
 @app.get("/api/daily-chart")
 def api_daily_chart() -> Response:
     return _forward_api()
