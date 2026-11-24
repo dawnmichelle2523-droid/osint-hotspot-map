@@ -4404,16 +4404,16 @@ class MapHandler(SimpleHTTPRequestHandler):
 def severity_color(value: object) -> str:
     rank = str(value or "").strip().lower()
     if rank == "high":
-        return "#F43F5E"
+        return "#E11D48"
     if rank == "low":
         return "#3B82F6"
-    return "#F59E0B"
+    return "#D97706"
 
 
 def dark_map_png() -> bytes:
     from PIL import Image
 
-    image = Image.new("RGB", (800, 480), (10, 17, 20))
+    image = Image.new("RGB", (800, 480), (6, 10, 19))
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -4693,17 +4693,17 @@ def render_daily_chart_png(chart: dict) -> bytes:
 
         scale = 2
         width, height = 840 * scale, 560 * scale
-        image = Image.new("RGB", (width, height), (4, 18, 34))
+        image = Image.new("RGB", (width, height), (6, 10, 19))
         draw = ImageDraw.Draw(image)
         title_font = _chart_font(16 * scale, bold=True)
         body_font = _chart_font(12 * scale)
         small_font = _chart_font(9 * scale)
-        gold = (24, 212, 192)
+        gold = (212, 175, 55)
         muted = (148, 163, 184)
-        high_color = (244, 63, 94)
-        medium_color = (245, 158, 11)
+        high_color = (225, 29, 72)
+        medium_color = (217, 119, 6)
         low_color = (59, 130, 246)
-        track = (9, 14, 22)
+        track = (13, 20, 36)
         label = str(chart.get("window_label") or "")
         draw.text((20 * scale, 16 * scale), label, font=title_font, fill=gold)
         counts = (
