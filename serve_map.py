@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Serve the static map, the summary API, and live RSS/Telegram ingestion on port 8000.
 
-POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search).
+POST /api/summary makes one xAI call (grok-3-mini, timeout 25, no live search)
+for the completed Europe/London 07:00–07:00 window already stored in the database.
 GET /api/data returns live events, six region counts, the cached summary, and last_polled_at.
 POST /api/data with {"view":"regional"} returns that same live payload for the regional overview.
 POST /api/poll-now starts one ingest batch in the background and returns immediately.
 GET /api/daily-chart returns the 07:00 Europe/London incident chart.
 GET /api/daily-chart.png returns that chart as a PNG.
-The poll never writes hotspots.json or daily_brief.json.
+Ingest never writes hotspots.json. The 07:00 summary writes daily_brief.json only after Grok returns.
 """
 
 from __future__ import annotations
@@ -2601,6 +2602,10 @@ def ingest_feeds() -> dict:
             return {"ok": True, "inserted": inserted, "last_polled_at": stamp}
         finally:
             _pacing = False
+            try:
+                schedule_completed_summary()
+            except Exception as exc:
+                print(f"Geopolitical summary schedule failed: {exc.__class__.__name__}.")
 
 
 def run_poll() -> dict:
@@ -2809,6 +2814,7 @@ def start_sweep_daemon() -> None:
 
 
 EMPTY_REGION_TEXT = "No significant incidents recorded in the past 24 hours."
+EMPTY_WINDOW_TEXT = "No significant incidents recorded in this 07:00–07:00 window."
 SUMMARY_INTERVAL = 60 * 60
 _summary_lock = threading.Lock()
 _summary_started = False
@@ -2816,6 +2822,35 @@ _briefing_started = False
 _threads_started = False
 _briefing_slots: set[str] = set()
 LONDON = ZoneInfo("Europe/London")
+BRIEF_PATH = ROOT / "daily_brief.json"
+_SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def london_cycle(now: datetime | None = None, view: str = "completed") -> tuple[datetime, datetime]:
+    """Europe/London 07:00 windows.
+
+    Completed, when now is at or after 07:00: yesterday 07:00:00 through today 07:00:00.
+    Completed, when now is before 07:00: two days ago 07:00:00 through yesterday 07:00:00.
+    Active: the open cycle from the latest 07:00:00 through now (today 07:00 when that hour has passed).
+    """
+    moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=LONDON)
+    else:
+        moment = moment.astimezone(LONDON)
+    today_seven = moment.replace(hour=7, minute=0, second=0, microsecond=0)
+    if str(view or "completed").strip().lower() == "active":
+        start = today_seven if moment >= today_seven else today_seven - timedelta(days=1)
+        return start, moment
+    end = today_seven if moment >= today_seven else today_seven - timedelta(days=1)
+    return end - timedelta(days=1), end
+
+
+def _in_cycle(moment: datetime, start: datetime, end: datetime) -> bool:
+    stamp = moment.astimezone(timezone.utc)
+    return start.astimezone(timezone.utc) <= stamp < end.astimezone(timezone.utc)
+
+
 SUMMARY_24H_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -2880,9 +2915,18 @@ def read_summaries() -> dict:
     regions = {name: EMPTY_REGION_TEXT for name in REGIONS}
     overall = EMPTY_REGION_TEXT
     updated = ""
+    record = None
     for row in rows:
-        text = " ".join(str(row["summary"] or "").split())
         scope = row["scope"]
+        if scope == "__geo_record__":
+            try:
+                parsed = json.loads(row["summary"] or "")
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                record = parsed
+            continue
+        text = " ".join(str(row["summary"] or "").split())
         if scope == "overall" and text:
             overall = text
         elif scope in regions and text:
@@ -2890,7 +2934,26 @@ def read_summaries() -> dict:
         stamp = " ".join(str(row["updated_at"] or "").split())
         if stamp > updated:
             updated = stamp
-    return {"overall": overall, "regions": regions, "updated_at": updated}
+    payload = {"overall": overall, "regions": regions, "updated_at": updated}
+    if not record:
+        return payload
+    if str(record.get("overall") or "").strip():
+        payload["overall"] = " ".join(str(record["overall"]).split())
+    raw_regions = record.get("regions") if isinstance(record.get("regions"), dict) else {}
+    for name in REGIONS:
+        note = " ".join(str(raw_regions.get(name) or "").split())
+        if note:
+            payload["regions"][name] = note
+    payload["window_label"] = " ".join(str(record.get("window_label") or "").split())
+    generated = " ".join(str(record.get("generated_at") or "").split())
+    if generated:
+        payload["generated_at"] = generated
+        payload["updated_at"] = generated
+    try:
+        payload["source_count"] = int(record.get("source_count") or 0)
+    except (TypeError, ValueError):
+        payload["source_count"] = 0
+    return payload
 
 
 def summaries_due() -> bool:
@@ -2987,18 +3050,338 @@ def generate_24h_summaries() -> dict:
         return payload
 
 
-def summary_loop() -> None:
-    try:
-        if summaries_due():
-            generate_24h_summaries()
-    except Exception as exc:
-        print(f"24h summary failed: {exc.__class__.__name__}.")
-    while True:
-        time.sleep(SUMMARY_INTERVAL)
+def _clean_summary_text(text: str) -> str:
+    return " ".join(_HOUTHI.sub("Ansarallah", strip_lateness(text)).split())
+
+
+def _summary_record(title: str, summary: str, moment: datetime, region: str, severity: str, category: str, location: str, source_name: str, source_tier: str) -> dict:
+    return {
+        "timestamp": moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "region": region_name(region),
+        "severity": osint.live_severity(severity),
+        "category": osint.live_category(category) if str(category or "").strip() else "",
+        "location_name": osint.one_sentence(location)[:160],
+        "title": osint.one_sentence(title or summary)[:240],
+        "summary": osint.one_sentence(summary or title)[:500],
+        "source_name": osint.one_sentence(source_name)[:160],
+        "source_tier": osint.one_sentence(source_tier)[:80],
+    }
+
+
+def _record_stamp(record: dict) -> datetime | None:
+    return parse_event_time(record.get("timestamp"))
+
+
+def window_records(start: datetime, end: datetime) -> list[dict]:
+    """Rows already in osint_events.db or hotspots.json whose timestamps fall inside the window."""
+    found: list[dict] = []
+    seen: set[str] = set()
+
+    def add(record: dict | None, moment: datetime | None) -> None:
+        if not record or moment is None or not _in_cycle(moment, start, end):
+            return
+        key = f"{record['timestamp']}|{record['title'].lower()}"
+        if key in seen:
+            return
+        seen.add(key)
+        found.append(record)
+
+    with _db_lock:
+        conn = db_connect()
         try:
-            generate_24h_summaries()
+            rows = conn.execute(
+                "SELECT title, summary, region, severity, category, location_name, "
+                "source_name, source_kind, source_url, source_tier, published_at, ingested_at FROM items"
+            ).fetchall()
+        finally:
+            conn.close()
+    for row in rows:
+        if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"]):
+            continue
+        moment = parse_event_time(row["published_at"]) or parse_event_time(row["ingested_at"])
+        tier = row["source_tier"] or source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
+        name = row["source_name"] or source_label(row["source_kind"] or "", "")
+        add(
+            _summary_record(
+                row["title"],
+                row["summary"],
+                moment,
+                row["region"],
+                row["severity"],
+                row["category"],
+                row["location_name"],
+                name,
+                tier,
+            ) if moment else None,
+            moment,
+        )
+    try:
+        features = load_features()
+    except Exception as exc:
+        print(f"Hotspot read failed: {exc.__class__.__name__}.")
+        features = []
+    for feature in features:
+        props = feature.get("properties") or {}
+        if is_excluded_source(props.get("source_name"), props.get("source"), props.get("source_handle")):
+            continue
+        moment = parse_event_time(props.get("timestamp"))
+        add(
+            _summary_record(
+                props.get("title"),
+                props.get("summary"),
+                moment,
+                props.get("region"),
+                props.get("severity"),
+                props.get("category"),
+                props.get("location_name") or props.get("location"),
+                props.get("source_name") or props.get("source_label") or props.get("source_handle") or "",
+                props.get("source_tier") or "",
+            ) if moment else None,
+            moment,
+        )
+    found.sort(key=lambda item: item["timestamp"], reverse=True)
+    return found
+
+
+def _top_records(records: list[dict]) -> list[dict]:
+    def sort_key(item: dict) -> tuple:
+        moment = _record_stamp(item) or datetime.min.replace(tzinfo=timezone.utc)
+        return (_SEVERITY_RANK.get(str(item.get("severity") or "").lower(), 1), -moment.timestamp())
+
+    return sorted(records, key=sort_key)
+
+
+def deterministic_window_summary(records: list[dict], start: datetime, end: datetime) -> tuple[str, dict[str, str]]:
+    """Panel text from the highest-severity stored events. No network call."""
+    grouped: dict[str, list[dict]] = {name: [] for name in REGIONS}
+    for item in records:
+        grouped[region_name(item.get("region"))].append(item)
+    label = format_briefing_window(start, end)
+
+    def cited(item: dict) -> str:
+        place = item.get("location_name") or item.get("region") or "location unavailable"
+        tier = item.get("source_tier") or "unattributed"
+        source = item.get("source_name") or "unnamed source"
+        title = item.get("title") or item.get("summary") or "Incident"
+        return f"{title} ({place}; {item.get('severity') or 'Medium'}; {tier}; {source})"
+
+    if not records:
+        overall = EMPTY_WINDOW_TEXT
+    else:
+        lead = _top_records(records)[0]
+        overall = (
+            f"During {label}, {len(records)} recorded incident"
+            f"{'' if len(records) == 1 else 's'} are on file. "
+            f"The leading recorded item is {cited(lead)}."
+        )
+    regions = {}
+    for name in REGIONS:
+        chosen = _top_records(grouped[name])[:3]
+        if not chosen:
+            regions[name] = EMPTY_WINDOW_TEXT
+        else:
+            regions[name] = f"{name}: " + " ".join(cited(item) for item in chosen)
+    return overall, regions
+
+
+def _grouped_records(records: list[dict]) -> dict[str, list[dict]]:
+    grouped = {name: [] for name in REGIONS}
+    for item in records:
+        grouped[region_name(item.get("region"))].append(
+            {key: item.get(key) or "" for key in (
+                "timestamp", "region", "severity", "category", "location_name",
+                "title", "summary", "source_name", "source_tier",
+            )}
+        )
+    return grouped
+
+
+def call_window_summary(records: list[dict], start: datetime, end: datetime, key: str) -> tuple[str, dict[str, str]]:
+    grouped = _grouped_records(records)
+    prompt = (
+        "Write the Emerald house geopolitical summary in English. "
+        "Use only the recorded incidents below. Do not use live search, web search, or X search. "
+        "Do not add events, casualties, actors, or locations that are not in this list.\n"
+        f"Window: {format_briefing_window(start, end)}. "
+        "This is a Europe/London 07:00–07:00 cycle already stored in the event database.\n"
+        "Attribute each point with its source_name and source tier. Use these tier labels when they apply: "
+        "Official, State Media, Wire / Outlet, and Lead (Unverified).\n"
+        "When a sentence states likelihood, use only this calibrated scale: "
+        "remote chance, highly unlikely, unlikely, realistic possibility, likely, highly likely, almost certain. "
+        "Do not assign a likelihood the records do not support.\n"
+        "Emerald house style: judgment first, then the recorded evidence, short sentences, no rhetoric. "
+        "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
+        "Do not add timing or lateness markers such as late or hours later.\n"
+        "overall is 2-4 sentences for the whole theater.\n"
+        "regions has one short paragraph for each of these keys exactly: "
+        + ", ".join(REGIONS)
+        + ".\n"
+        "If a region's list is empty, its text must be exactly: "
+        + EMPTY_WINDOW_TEXT
+        + "\n\n"
+        + json.dumps({"source_count": len(records), "regions": grouped}, ensure_ascii=False)
+    )
+    response = osint.make_client(key).responses.create(
+        model=MODEL,
+        input=prompt,
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "geopolitical_summary",
+                "schema": SUMMARY_24H_SCHEMA,
+                "strict": True,
+            }
+        },
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        timeout=TIMEOUT,
+    )
+    text = osint.response_text(response)
+    if not text:
+        raise RuntimeError("xAI response did not include output text")
+    payload = osint.parse_json_object(text)
+    overall = _clean_summary_text(str(payload.get("overall") or ""))
+    if not overall:
+        raise RuntimeError("xAI response had no overall summary")
+    raw_regions = payload.get("regions") if isinstance(payload.get("regions"), dict) else {}
+    regions = {}
+    for name in REGIONS:
+        note = _clean_summary_text(str(raw_regions.get(name) or ""))
+        if not grouped.get(name) or not note:
+            note = EMPTY_WINDOW_TEXT
+        regions[name] = note
+    return overall, regions
+
+
+def _window_end_token(end: datetime) -> str:
+    return end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def completed_summary_ready(now: datetime | None = None) -> bool:
+    _start, end = london_cycle(now, "completed")
+    expected = _window_end_token(end)
+    with _db_lock:
+        conn = db_connect()
+        try:
+            row = conn.execute("SELECT value FROM feed_meta WHERE key = 'geo_summary_window_end'").fetchone()
+        finally:
+            conn.close()
+    return bool(row and str(row["value"] or "") == expected)
+
+
+def _save_geo_record(record: dict, write_brief: bool) -> None:
+    save_summaries(record["overall"], record["regions"], record["generated_at"])
+    blob = json.dumps(record, ensure_ascii=False)
+    with _db_lock:
+        conn = db_connect()
+        try:
+            conn.execute(
+                "INSERT INTO summary_cache (scope, updated_at, summary) VALUES (?, ?, ?) "
+                "ON CONFLICT(scope) DO UPDATE SET updated_at = excluded.updated_at, summary = excluded.summary",
+                ("__geo_record__", record["generated_at"], blob),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    if write_brief:
+        payload = {
+            "window_label": record["window_label"],
+            "generated_at": record["generated_at"],
+            "source_count": record["source_count"],
+            "overall": record["overall"],
+            "regions": {name: record["regions"][name] for name in REGIONS},
+        }
+        temporary = BRIEF_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        temporary.replace(BRIEF_PATH)
+    if not record.get("window_end"):
+        return
+    with _db_lock:
+        conn = db_connect()
+        try:
+            write_meta(conn, "geo_summary_window_end", str(record["window_end"]))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None) -> dict:
+    """Summarize one London 07:00 window from stored events. The official record is the completed window."""
+    kind = "active" if str(view or "").strip().lower() == "active" else "completed"
+    with _summary_lock:
+        moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+        start, end = london_cycle(moment, kind)
+        if kind == "completed" and not force and completed_summary_ready(moment):
+            stored = read_summaries()
+            stored["fallback"] = False
+            return stored
+        records = window_records(start, end)
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        key = get_xai_api_key()
+        write_brief = False
+        fallback = False
+        if not key:
+            print(
+                "XAI_API_KEY is missing. Wrote a deterministic geopolitical summary from stored events. "
+                "daily_brief.json and hotspots.json were not changed."
+            )
+            overall, regions = deterministic_window_summary(records, start, end)
+            fallback = True
+        else:
+            try:
+                overall, regions = call_window_summary(records, start, end, key)
+                write_brief = kind == "completed"
+            except Exception as exc:
+                print(
+                    f"Geopolitical summary failed: {osint.public_error(exc, key)}. "
+                    "Wrote a deterministic summary. daily_brief.json and hotspots.json were not changed."
+                )
+                overall, regions = deterministic_window_summary(records, start, end)
+                fallback = True
+        record = {
+            "window_label": format_briefing_window(start, end),
+            "window_end": _window_end_token(end) if kind == "completed" else "",
+            "generated_at": stamp,
+            "source_count": len(records),
+            "overall": overall,
+            "regions": regions,
+            "fallback": fallback,
+        }
+        if kind == "completed":
+            _save_geo_record(record, write_brief=write_brief)
+            print(f"Saved the completed geopolitical summary at {stamp} ({len(records)} source records).")
+        return {
+            "window_label": record["window_label"],
+            "generated_at": stamp,
+            "source_count": len(records),
+            "overall": overall,
+            "regions": regions,
+            "updated_at": stamp,
+            "fallback": fallback,
+        }
+
+
+def ensure_completed_summary() -> None:
+    try:
+        if completed_summary_ready():
+            return
+        generate_geopolitical_summary("completed")
+    except Exception as exc:
+        print(f"Geopolitical summary failed: {exc.__class__.__name__}.")
+
+
+def schedule_completed_summary() -> None:
+    if completed_summary_ready():
+        return
+    threading.Thread(target=ensure_completed_summary, name="geo-summary", daemon=True).start()
+
+
+def summary_loop() -> None:
+    while True:
+        try:
+            ensure_completed_summary()
         except Exception as exc:
-            print(f"24h summary failed: {exc.__class__.__name__}.")
+            print(f"Geopolitical summary failed: {exc.__class__.__name__}.")
+        time.sleep(SUMMARY_INTERVAL)
 
 
 def start_summary_daemon() -> None:
@@ -3350,7 +3733,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
 
 
 def refresh_summary() -> dict:
-    return generate_24h_summaries()
+    return generate_geopolitical_summary("completed", force=True)
 
 
 def blocked_static(name: str) -> bool:
@@ -3672,12 +4055,12 @@ def render_period_map_png(events: list[dict]) -> bytes:
 
 def briefing_window(report_type: str, now: datetime | None = None) -> tuple[datetime, datetime]:
     moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+    if report_type == "daily":
+        return london_cycle(moment, "completed")
     end = moment.replace(hour=7, minute=0, second=0, microsecond=0)
     if moment < end:
         end -= timedelta(days=1)
-    if report_type == "daily":
-        start = end - timedelta(days=1)
-    elif report_type == "weekly":
+    if report_type == "weekly":
         thursday = (end - timedelta(days=(end.weekday() - 3) % 7)).replace(
             hour=7, minute=0, second=0, microsecond=0
         )
@@ -3791,14 +4174,11 @@ _CHART_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", 
 
 
 def chart_bounds(window: str, now: datetime | None = None) -> tuple[datetime, datetime]:
-    """Yesterday is the completed 07:00–07:00 window. Current runs from the latest 07:00 through now."""
+    """Yesterday is the completed 07:00–07:00 window. Current is the open cycle through now."""
     moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
     if str(window or "").strip().lower() == "current":
-        start = moment.replace(hour=7, minute=0, second=0, microsecond=0)
-        if moment < start:
-            start -= timedelta(days=1)
-        return start, moment
-    return briefing_window("daily", moment)
+        return london_cycle(moment, "active")
+    return london_cycle(moment, "completed")
 
 
 def format_chart_window(start: datetime, end: datetime) -> str:
@@ -4305,6 +4685,10 @@ def maybe_send_briefings() -> None:
     now = datetime.now(LONDON)
     if not (now.hour == 7 and now.minute < 5):
         return
+    try:
+        generate_geopolitical_summary("completed")
+    except Exception as exc:
+        print(f"07:00 geopolitical summary failed: {exc.__class__.__name__}.")
     day = now.strftime("%Y-%m-%d")
     jobs = [("daily", f"briefing-daily-{day}")]
     if now.weekday() == 3:

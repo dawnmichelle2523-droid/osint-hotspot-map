@@ -2218,6 +2218,19 @@
     function renderBrief(data) {
       const body = document.getElementById("brief-body");
       const time = document.getElementById("brief-time");
+      if (data && !data.executive_summary && data.overall) {
+        const regions = data.regions || {};
+        data = {
+          generated_at: data.generated_at,
+          window_label: data.window_label,
+          executive_summary: data.overall,
+          regional_sections: LIVE_REGIONS.map((name) => ({
+            region: name,
+            summary: regions[name] || ""
+          })).filter((item) => item.summary),
+          advisory_highlights: []
+        };
+      }
       if (!data || !data.executive_summary) {
         time.textContent = "";
         time.removeAttribute("datetime");
@@ -2227,7 +2240,7 @@
       }
       const stamp = gmtStamp(data.generated_at);
       if (data.generated_at) time.setAttribute("datetime", data.generated_at);
-      time.textContent = stamp === "Unknown time" ? "" : stamp;
+      time.textContent = (data.window_label ? data.window_label + " · " : "") + (stamp === "Unknown time" ? "" : stamp);
       const sections = (Array.isArray(data.regional_sections) ? data.regional_sections : []).map((item) => ({
         title: item.region || "",
         bullets: briefBullets(item.summary)
@@ -2269,14 +2282,15 @@
       return String(regions[scope] || "");
     }
 
-    function showSummaryUpdated(stamp) {
+    function showSummaryUpdated(stamp, label) {
       const node = document.getElementById("summary-updated");
+      const windowLabel = label ? " · " + label : "";
       if (!stamp) {
-        node.textContent = "Last auto-updated: not yet";
+        node.textContent = label ? "Window: " + label : "Last auto-updated: not yet";
         return;
       }
       const shown = gmtStamp(stamp);
-      node.textContent = "Last auto-updated: " + (shown === "Unknown time" ? stamp : shown);
+      node.textContent = "Last auto-updated: " + (shown === "Unknown time" ? stamp : shown) + windowLabel;
     }
 
     function paintSummaryRegionSelect() {
@@ -2348,7 +2362,7 @@
           if (data && data.briefing_window) briefingWindow = data.briefing_window;
           if (data && data.summaries) {
             storedSummaries = data.summaries;
-            showSummaryUpdated(data.summaries.updated_at);
+            showSummaryUpdated(data.summaries.updated_at || data.summaries.generated_at, data.summaries.window_label);
             paintSummaryRegionSelect();
             if (!governorateSummary && renderSelectedSummary()) return;
             if (governorateSummary) return;
@@ -2373,7 +2387,7 @@
         const summaries = data && data.summaries ? data.summaries : null;
         if (summaries) {
           storedSummaries = summaries;
-          showSummaryUpdated(summaries.updated_at);
+          showSummaryUpdated(summaries.updated_at || summaries.generated_at, summaries.window_label);
           governorateSummary = false;
           summaryPinned = false;
           renderSelectedSummary();
