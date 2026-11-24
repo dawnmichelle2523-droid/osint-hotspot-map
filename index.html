@@ -2967,9 +2967,26 @@
       return "<div class=\"brief-section\"><button type=\"button\" class=\"brief-section-toggle\" aria-expanded=\"true\" aria-controls=\"" + id + "\">" + esc(title) + "</button><div class=\"brief-section-body\" id=\"" + id + "\"><ul>" + items.map(bulletHtml).join("") + "</ul></div></div>";
     }
 
+    function briefCycleStamp(timestamp) {
+      const ms = Date.parse(timestamp || "");
+      if (Number.isNaN(ms)) return "";
+      const date = new Date(ms);
+      return String(date.getUTCHours()).padStart(2, "0") + ":" + String(date.getUTCMinutes()).padStart(2, "0");
+    }
+
+    function paintBriefHeader(generatedAt, windowLabel) {
+      const time = document.getElementById("brief-time");
+      if (!time) return;
+      const hhmm = briefCycleStamp(generatedAt);
+      const updated = hhmm ? "Brief Updated: " + hhmm + " GMT (4-hr cycle)" : "";
+      const label = windowLabel ? String(windowLabel) : "";
+      time.textContent = [label, updated].filter(Boolean).join(" · ");
+      if (generatedAt && hhmm) time.setAttribute("datetime", generatedAt);
+      else time.removeAttribute("datetime");
+    }
+
     function renderBrief(data) {
       const body = document.getElementById("brief-body");
-      const time = document.getElementById("brief-time");
       if (data && !data.executive_summary && data.overall) {
         const regions = data.regions || {};
         data = {
@@ -2984,15 +3001,13 @@
         };
       }
       if (!data || !data.executive_summary) {
-        time.textContent = "";
-        time.removeAttribute("datetime");
+        paintBriefHeader("", "");
         briefText = "";
         body.innerHTML = '<p class="headline-empty">No daily brief yet.</p>';
         return;
       }
       const stamp = gmtStamp(data.generated_at);
-      if (data.generated_at) time.setAttribute("datetime", data.generated_at);
-      time.textContent = (data.window_label ? data.window_label + " · " : "") + (stamp === "Unknown time" ? "" : stamp);
+      paintBriefHeader(data.generated_at, data.window_label);
       const sections = (Array.isArray(data.regional_sections) ? data.regional_sections : []).map((item) => ({
         title: item.region || "",
         bullets: briefBullets(item.summary)
@@ -3071,6 +3086,9 @@
       const text = summaryTextFor(summaryScope);
       const select = document.getElementById("summaryRegionSelect");
       if (select && select.value !== summaryScope) select.value = summaryScope;
+      const generated = (storedSummaries && (storedSummaries.generated_at || storedSummaries.updated_at)) || "";
+      const label = (storedSummaries && storedSummaries.window_label) || "";
+      paintBriefHeader(generated, label);
       if (!text) return false;
       const body = document.getElementById("brief-body");
       body.innerHTML = "<p class=\"summary-lead\">" + esc(text) + "</p>";
@@ -3088,12 +3106,10 @@
 
     function renderLiveSummary(summary) {
       const body = document.getElementById("brief-body");
-      const time = document.getElementById("brief-time");
       const text = summary && summary.text ? String(summary.text) : "";
       if (!text) return false;
       const stamp = gmtStamp(summary.generated_at);
-      if (summary.generated_at) time.setAttribute("datetime", summary.generated_at);
-      time.textContent = stamp === "Unknown time" ? "" : stamp;
+      paintBriefHeader(summary.generated_at, summary.window_label || "");
       const notes = Array.isArray(summary.regional_notes) ? summary.regional_notes : [];
       body.innerHTML =
         "<p class=\"summary-lead\">" + esc(text) + "</p>" +

@@ -1270,6 +1270,18 @@ def init_db(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS briefing_archive (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            window_label TEXT NOT NULL DEFAULT '',
+            generated_at TEXT NOT NULL,
+            overall TEXT NOT NULL,
+            regions TEXT NOT NULL,
+            source_count INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
     # Railway boots through app.py -> start_background() -> db_connect() -> ensure_feed_db() -> init_db().
     purge_spam_rows_once(conn)
 
@@ -3025,7 +3037,7 @@ def ingest_feeds() -> dict:
         finally:
             _pacing = False
             try:
-                schedule_completed_summary()
+                schedule_brief_after_scrape()
             except Exception as exc:
                 print(f"Geopolitical summary schedule failed: {exc.__class__.__name__}.")
 
@@ -3238,13 +3250,20 @@ def start_sweep_daemon() -> None:
 EMPTY_REGION_TEXT = "No significant incidents recorded in the past 24 hours."
 EMPTY_WINDOW_TEXT = "No significant incidents recorded in this 07:00–07:00 window."
 SUMMARY_INTERVAL = 60 * 60
+SCRAPE_HOURS = (3, 7, 11, 15, 19, 23)
+ROLLING_HOURS = (3, 11, 15, 19, 23)
+OFFICIAL_HOUR = 7
+BRIEF_CYCLE = timedelta(hours=4)
 _summary_lock = threading.Lock()
+_brief_refresh_lock = threading.Lock()
 _summary_started = False
 _briefing_started = False
 _threads_started = False
+_startup_brief_checked = False
 _briefing_slots: set[str] = set()
 LONDON = ZoneInfo("Europe/London")
 BRIEF_PATH = ROOT / "daily_brief.json"
+CLIENT_PROFILES = ROOT / "client_profiles.json"
 _SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -3802,12 +3821,73 @@ def _save_geo_record(record: dict, write_brief: bool) -> None:
             conn.close()
 
 
+def london_now(now: datetime | None = None) -> datetime:
+    moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=LONDON)
+    return moment.astimezone(LONDON)
+
+
+def latest_scrape_hour(now: datetime | None = None) -> int:
+    """The Europe/London scrape hour that has most recently come due."""
+    moment = london_now(now)
+    passed = [hour for hour in SCRAPE_HOURS if hour <= moment.hour]
+    return passed[-1] if passed else SCRAPE_HOURS[-1]
+
+
+def brief_cycle_slot(now: datetime | None = None) -> str:
+    moment = london_now(now)
+    return f"brief-cycle-{moment.strftime('%Y-%m-%d')}-{moment.hour:02d}"
+
+
+def brief_generated_at() -> datetime | None:
+    """Cached brief time. The file wins, then the SQLite summary cache."""
+    try:
+        if BRIEF_PATH.exists() and BRIEF_PATH.stat().st_size:
+            payload = json.loads(BRIEF_PATH.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                moment = osint.parse_timestamp(payload.get("generated_at"))
+                if moment is not None:
+                    return moment
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"daily_brief.json was not readable ({exc.__class__.__name__}).")
+    stored = read_summaries()
+    return osint.parse_timestamp(stored.get("generated_at") or stored.get("updated_at"))
+
+
+def brief_is_stale(now: datetime | None = None) -> bool:
+    moment = brief_generated_at()
+    if moment is None:
+        return True
+    current = london_now(now).astimezone(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return current - moment.astimezone(timezone.utc) >= BRIEF_CYCLE
+
+
+def _summary_payload(record: dict) -> dict:
+    return {
+        "window_label": record["window_label"],
+        "generated_at": record["generated_at"],
+        "source_count": record["source_count"],
+        "overall": record["overall"],
+        "regions": record["regions"],
+        "updated_at": record["generated_at"],
+        "fallback": bool(record.get("fallback")),
+    }
+
+
 def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None) -> dict:
-    """Summarize one London 07:00 window from stored events. The official record is the completed window."""
-    kind = "active" if str(view or "").strip().lower() == "active" else "completed"
+    """Summarize stored SQLite events. completed is the official 07:00 window. rolling is the last 24 hours."""
+    requested = str(view or "").strip().lower()
+    kind = "rolling" if requested == "rolling" else ("active" if requested == "active" else "completed")
     with _summary_lock:
-        moment = now.astimezone(LONDON) if now is not None else datetime.now(LONDON)
-        start, end = london_cycle(moment, kind)
+        moment = london_now(now)
+        if kind == "rolling":
+            end = moment
+            start = end - timedelta(hours=24)
+        else:
+            start, end = london_cycle(moment, kind)
         if kind == "completed" and not force and completed_summary_ready(moment):
             stored = read_summaries()
             stored["fallback"] = False
@@ -3815,26 +3895,32 @@ def generate_geopolitical_summary(view: str = "completed", force: bool = False, 
         records = window_records(start, end)
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         key = get_xai_api_key()
-        write_brief = False
         fallback = False
         if not key:
             print(
-                "XAI_API_KEY is missing. Wrote a deterministic geopolitical summary from stored events. "
-                "daily_brief.json and hotspots.json were not changed."
+                "XAI_API_KEY is missing. Filled the geopolitical summary from stored events. "
+                "hotspots.json was not changed."
             )
             overall, regions = deterministic_window_summary(records, start, end)
             fallback = True
         else:
             try:
-                overall, regions = call_window_summary(records, start, end, key)
-                write_brief = kind == "completed"
+                if kind == "rolling":
+                    overall, regions = call_24h_summary(_grouped_records(records), moment, key)
+                else:
+                    overall, regions = call_window_summary(records, start, end, key)
             except Exception as exc:
                 print(
                     f"Geopolitical summary failed: {osint.public_error(exc, key)}. "
-                    "Wrote a deterministic summary. daily_brief.json and hotspots.json were not changed."
+                    "Filled the summary from stored events. hotspots.json was not changed."
                 )
                 overall, regions = deterministic_window_summary(records, start, end)
                 fallback = True
+        if not str(overall or "").strip():
+            print("Geopolitical summary was empty. daily_brief.json and hotspots.json were not changed.")
+            stored = read_summaries()
+            stored["fallback"] = True
+            return stored
         record = {
             "window_label": format_briefing_window(start, end),
             "window_end": _window_end_token(end) if kind == "completed" else "",
@@ -3844,18 +3930,14 @@ def generate_geopolitical_summary(view: str = "completed", force: bool = False, 
             "regions": regions,
             "fallback": fallback,
         }
-        if kind == "completed":
-            _save_geo_record(record, write_brief=write_brief)
+        if kind == "active":
+            return _summary_payload(record)
+        _save_geo_record(record, write_brief=True)
+        if kind == "rolling":
+            print(f"Saved the rolling 24-hour summary at {stamp} ({len(records)} source records).")
+        elif kind == "completed":
             print(f"Saved the completed geopolitical summary at {stamp} ({len(records)} source records).")
-        return {
-            "window_label": record["window_label"],
-            "generated_at": stamp,
-            "source_count": len(records),
-            "overall": overall,
-            "regions": regions,
-            "updated_at": stamp,
-            "fallback": fallback,
-        }
+        return _summary_payload(record)
 
 
 def ensure_completed_summary() -> None:
@@ -3871,6 +3953,123 @@ def schedule_completed_summary() -> None:
     if completed_summary_ready():
         return
     threading.Thread(target=ensure_completed_summary, name="geo-summary", daemon=True).start()
+
+
+def save_briefing_archive(record: dict) -> None:
+    """Keep the official 07:00 briefing. Existing brief files are left in place."""
+    overall = " ".join(str(record.get("overall") or "").split())
+    if not overall:
+        return
+    regions = record.get("regions") if isinstance(record.get("regions"), dict) else {}
+    generated = " ".join(str(record.get("generated_at") or "").split())
+    with _db_lock:
+        conn = db_connect()
+        try:
+            conn.execute(
+                "INSERT INTO briefing_archive (window_label, generated_at, overall, regions, source_count) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    " ".join(str(record.get("window_label") or "").split()),
+                    generated,
+                    overall,
+                    json.dumps({name: regions.get(name) or "" for name in REGIONS}, ensure_ascii=False),
+                    int(record.get("source_count") or 0),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def client_profile_recipients() -> list[str]:
+    """Emails from client_profiles.json. A missing file adds nobody."""
+    if not CLIENT_PROFILES.exists() or CLIENT_PROFILES.stat().st_size == 0:
+        return []
+    try:
+        payload = json.loads(CLIENT_PROFILES.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"client_profiles.json was not readable ({exc.__class__.__name__}).")
+        return []
+    rows = payload if isinstance(payload, list) else []
+    if isinstance(payload, dict):
+        rows = payload.get("profiles") or payload.get("clients") or []
+    found = []
+    for row in rows:
+        if isinstance(row, str):
+            email = row.strip()
+        elif isinstance(row, dict):
+            email = str(row.get("email") or row.get("recipient") or "").strip()
+        else:
+            email = ""
+        if email and "@" in email:
+            found.append(email)
+    return found
+
+
+def report_recipients() -> list[str]:
+    """REPORT_RECIPIENTS, then client profiles, then SMTP_TO when neither is set."""
+    found = []
+    raw = os.environ.get("REPORT_RECIPIENTS") or ""
+    for part in re.split(r"[,;\s]+", raw):
+        email = part.strip()
+        if email and "@" in email:
+            found.append(email)
+    found.extend(client_profile_recipients())
+    if not found:
+        fallback = (os.environ.get("SMTP_TO") or "").strip()
+        if fallback and "@" in fallback:
+            found.append(fallback)
+    unique = []
+    seen = set()
+    for email in found:
+        key = email.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(email)
+    return unique
+
+
+def run_brief_refresh(moment: datetime, startup: bool) -> None:
+    """Regenerate after a scrape. Email and the archive run only for the 07:00 cycle."""
+    mode_hour = latest_scrape_hour(moment) if startup else moment.hour
+    if mode_hour == OFFICIAL_HOUR:
+        record = generate_geopolitical_summary("completed", force=True, now=moment)
+        save_briefing_archive(record)
+        if moment.hour == OFFICIAL_HOUR:
+            send_official_daily_email(moment)
+        return
+    if mode_hour not in ROLLING_HOURS:
+        return
+    generate_geopolitical_summary("rolling", force=True, now=moment)
+
+
+def schedule_brief_after_scrape() -> None:
+    """One refresh on startup when the cached brief is older than 4 hours, then once per London scrape hour."""
+    global _startup_brief_checked
+    if not _brief_refresh_lock.acquire(blocking=False):
+        return
+    moment = london_now()
+    startup = False
+    if not _startup_brief_checked:
+        _startup_brief_checked = True
+        startup = brief_is_stale(moment)
+    scheduled = moment.hour in SCRAPE_HOURS and not briefing_already_sent(brief_cycle_slot(moment))
+    if not startup and not scheduled:
+        _brief_refresh_lock.release()
+        return
+
+    def work() -> None:
+        try:
+            run_brief_refresh(moment, startup=startup and not scheduled)
+            if moment.hour in SCRAPE_HOURS:
+                mark_briefing_sent(brief_cycle_slot(moment))
+        except Exception as exc:
+            print(f"Brief refresh after scrape failed: {exc.__class__.__name__}.")
+        finally:
+            _brief_refresh_lock.release()
+
+    threading.Thread(target=work, name="brief-after-scrape", daemon=True).start()
 
 
 def summary_loop() -> None:
@@ -4994,6 +5193,11 @@ def smtp_settings() -> dict | None:
     host = (os.environ.get("SMTP_HOST") or "").strip()
     sender = (os.environ.get("SMTP_FROM") or "").strip()
     recipient = (os.environ.get("SMTP_TO") or "").strip()
+    if not recipient:
+        for part in re.split(r"[,;\s]+", os.environ.get("REPORT_RECIPIENTS") or ""):
+            if part.strip() and "@" in part:
+                recipient = part.strip()
+                break
     if not host or not sender or not recipient:
         return None
     try:
@@ -5250,7 +5454,7 @@ def send_briefing_message(subject: str, body: str, png: bytes, settings: dict, c
     return True
 
 
-def generate_and_email_periodic_report(report_type: str) -> bool:
+def generate_and_email_periodic_report(report_type: str, recipients: list[str] | None = None) -> bool:
     kind = str(report_type or "").strip().lower()
     if kind not in {"daily", "weekly", "monthly"}:
         print(f"Unknown briefing type. Skipped sending.")
@@ -5260,6 +5464,9 @@ def generate_and_email_periodic_report(report_type: str) -> bool:
     if settings is None:
         print(f"SMTP is not configured. Skipped sending the {kind} OSINT briefing.")
         return False
+    if recipients:
+        settings = dict(settings)
+        settings["recipient"] = ", ".join(recipients)
     start, end = briefing_window(kind)
     events = period_events(start, end)
     png = render_period_map_png(events)
@@ -5293,16 +5500,35 @@ def mark_briefing_sent(slot: str) -> None:
             conn.close()
 
 
+def send_official_daily_email(moment: datetime) -> None:
+    """07:00 only. REPORT_RECIPIENTS and client profiles, otherwise SMTP_TO."""
+    if moment.hour != OFFICIAL_HOUR:
+        return
+    slot = f"briefing-daily-{moment.strftime('%Y-%m-%d')}"
+    if slot in _briefing_slots or briefing_already_sent(slot):
+        _briefing_slots.add(slot)
+        return
+    recipients = report_recipients()
+    if not recipients:
+        print("SMTP is not configured. Skipped sending the daily OSINT briefing.")
+        _briefing_slots.add(slot)
+        return
+    try:
+        sent = generate_and_email_periodic_report("daily", recipients)
+    except Exception as exc:
+        print(f"Briefing daily failed: {exc.__class__.__name__}.")
+        sent = False
+    if sent:
+        _briefing_slots.add(slot)
+        mark_briefing_sent(slot)
+
+
 def maybe_send_briefings() -> None:
     now = datetime.now(LONDON)
     if not (now.hour == 7 and now.minute < 5):
         return
-    try:
-        generate_geopolitical_summary("completed")
-    except Exception as exc:
-        print(f"07:00 geopolitical summary failed: {exc.__class__.__name__}.")
     day = now.strftime("%Y-%m-%d")
-    jobs = [("daily", f"briefing-daily-{day}")]
+    jobs = []
     if now.weekday() == 3:
         jobs.append(("weekly", f"briefing-weekly-{day}"))
     if now.day == 1:
