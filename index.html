@@ -33,8 +33,21 @@
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
     #live-bar {
       display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-      padding: 8px 12px; background: #000000; border-bottom: 1px solid #232A34;
+      padding: 8px 12px;
+      border-bottom: 1px solid transparent;
+      background-image: linear-gradient(#000000, #000000), linear-gradient(90deg, #1D4ED8 0%, #D4AF37 45%, rgba(212, 175, 55, 0.05) 100%);
+      background-origin: padding-box, border-box;
+      background-clip: padding-box, border-box;
     }
+    #wall-mode {
+      color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px;
+      padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    #wall-mode:hover, #wall-mode[aria-pressed="true"] { background: #163B85; border-color: #E6C667; }
+    body.wall-mode #sidebar,
+    body.wall-mode #filter-toggle,
+    body.wall-mode #ticker,
+    body.wall-mode #daily-brief { display: none !important; }
     #fetch-live {
       color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px;
       padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -63,6 +76,7 @@
       display: none; position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
       background: #090C10; color: #E6C667; border: 1px solid #D4AF37; border-radius: 4px;
       padding: 1px 5px; font-size: 10px; letter-spacing: 0.04em; white-space: nowrap; pointer-events: none;
+      font-variant-numeric: tabular-nums;
     }
     .world-clock:hover .clock-tip { display: block; }
     #feed-health-wrap { position: relative; }
@@ -175,8 +189,11 @@
     #sidebar {
       position: absolute; z-index: 900; top: 0; left: 0; bottom: 0; width: 280px;
       padding: 52px 14px 16px; overflow: auto;
-      background: var(--panel); border-right: 1px solid var(--line);
+      background: rgba(9, 13, 22, 0.85);
       backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
       transform: translateX(0); transition: transform 0.22s ease;
     }
     body.filters-closed #sidebar { transform: translateX(-100%); }
@@ -274,23 +291,21 @@
     }
     .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; border: 1px solid #fff; vertical-align: 0; }
     .pin-icon { background: transparent; border: none; }
-    .pin { position: relative; width: 28px; height: 28px; }
-    .pin .dot {
-      position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%;
-      background: currentColor; border: 2px solid #fff;
-      box-shadow: 0 2px 6px rgba(7, 19, 22, 0.55), 0 0 8px currentColor;
-    }
+    .pin { position: relative; width: 32px; height: 32px; }
+    .pin svg { display: block; overflow: visible; }
     .pin.is-old { opacity: 0.55; }
-    .pin.is-gold-ring .dot { box-shadow: 0 0 0 2px #E6C667, 0 2px 6px rgba(7, 19, 22, 0.55), 0 0 8px currentColor; }
-    path.thermal-heat { filter: drop-shadow(0 0 4px #ff6b00); }
-    .pin .ring { position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
-    .pin.is-fresh .ring { animation: pulse 1.8s ease-out infinite; }
-    @keyframes pulse {
-      0% { transform: scale(0.7); opacity: 0.75; }
-      100% { transform: scale(1.9); opacity: 0; }
+    .pin.is-radar::after {
+      content: ""; position: absolute; left: 4px; top: 4px; width: 24px; height: 24px;
+      border-radius: 50%; border: 1.5px solid #F43F5E; pointer-events: none;
+      animation: radarPulse 1.8s ease-out infinite;
     }
+    @keyframes radarPulse {
+      0% { transform: scale(0.7); opacity: 0.75; }
+      100% { transform: scale(1.85); opacity: 0; }
+    }
+    path.thermal-heat { filter: drop-shadow(0 0 4px #ff6b00); }
     @media (prefers-reduced-motion: reduce) {
-      .pin.is-fresh .ring { animation: none; opacity: 0.8; }
+      .pin.is-radar::after { animation: none; opacity: 0.55; }
       #sidebar, .headline-card, .brief-card { transition: none; }
       .headline-card:hover, .brief-card:hover { transform: none; }
     }
@@ -301,12 +316,18 @@
       border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 3px 8px rgba(7, 19, 22, 0.5);
     }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #090C10; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
-    .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid var(--line); }
-    .leaflet-popup-content { margin: 10px 12px; max-width: 276px; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0B101B; color: #E2E8F0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+    .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.45); }
+    .leaflet-popup-content { margin: 12px 14px; max-width: 276px; color: #E2E8F0; font-size: 14px; }
     .leaflet-popup-close-button { color: #c5ceda !important; }
-    .popup { width: 260px; max-width: 276px; }
-    .popup h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.3; }
+    .popup { width: 260px; max-width: 276px; color: #E2E8F0; font-size: 14px; }
+    .popup-head {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #E6C667;
+    }
+    .popup-head .badge-high, .popup-head .badge-medium, .popup-head .badge-low { box-shadow: 0 0 0 1px #E6C667; }
+    .popup h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.3; color: #E2E8F0; }
+    .popup .summary { margin: 6px 0; font-size: 14px; line-height: 1.45; color: #E2E8F0; }
     .badge { display: inline-block; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
     .badge-official { background: #1E3A8A; color: #E6C667; border: 1px solid #D4AF37; }
     .badge-claim { background: #f59e0b; color: #451a03; border: 1px solid #f59e0b; }
@@ -322,15 +343,20 @@
     a.popup-link { display: inline-block; margin-top: 8px; color: var(--active-line); text-decoration: none; font-size: 13px; font-weight: 650; }
     .leaflet-bottom.leaflet-right { margin-bottom: 52px; }
     #headlines {
-      width: 100%; background: var(--bg); color: var(--text);
-      border: 1px solid var(--line); padding: 28px 20px 48px; overflow-y: auto;
+      width: 100%; color: var(--text);
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      padding: 28px 20px 48px; overflow-y: auto;
     }
     .headlines-inner { width: 100%; margin: 0 auto; }
     .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid var(--active-line); padding-bottom: 8px; }
     #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; color: #E6C667; }
     #export-headlines, #copy-briefing, #export-pdf { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
     #export-headlines:hover, #copy-briefing:hover, #export-pdf:hover { background: #163B85; border-color: #E6C667; color: #E6C667; }
-    .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+    .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
     .popup-actions .popup-link { margin-top: 0; }
     .copy-pin, .copy-alert { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
     .copy-alert { padding: 3px 7px; font-size: 11px; }
@@ -365,7 +391,14 @@
     .locate:hover { background: #163B85; border-color: #E6C667; color: #E6C667; }
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .headline-empty { margin: 0; color: var(--muted); }
-    #daily-brief { width: 100%; background: #090C10; color: var(--text); border-top: 1px solid #232A34; border-bottom: 1px solid #232A34; padding: 20px 20px 8px; }
+    #daily-brief {
+      width: 100%; color: var(--text); padding: 20px 20px 8px;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+    }
     .brief-card {
       background: #090C10; border: 1px solid #232A34; border-top: 1px solid #232A34;
       border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px;
@@ -419,14 +452,14 @@
     #daily-chart-card[hidden] { display: none; }
     .chart-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .chart-head h3 { margin: 0; color: #E6C667; font-size: 14px; }
-    #daily-chart-label { margin: 6px 0 0; color: #94A3B8; font-size: 12px; }
+    #daily-chart-label { margin: 6px 0 0; color: #94A3B8; font-size: 12px; font-variant-numeric: tabular-nums; }
     .chart-pills { display: flex; flex-wrap: wrap; gap: 6px; }
     .chart-pills button {
       background: #090C10; color: #94A3B8; border: 1px solid #232A34; border-radius: 999px;
       padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     }
     .chart-pills button[aria-pressed="true"] { background: #1E3A8A; color: #E6C667; border: 1px solid #D4AF37; }
-    .chart-counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 12px; font-weight: 650; }
+    .chart-counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
     .chart-counts .high { color: #F43F5E; }
     .chart-counts .medium { color: #F59E0B; }
     .chart-counts .low { color: #3B82F6; }
@@ -448,15 +481,15 @@
     .hour-stack .high { background: #F43F5E; }
     .hour-stack .medium { background: #F59E0B; }
     .hour-stack .low { background: #3B82F6; }
-    .hour-label { margin-top: 3px; color: #94A3B8; font-size: 8px; line-height: 1; }
+    .hour-label { margin-top: 3px; color: #94A3B8; font-size: 8px; line-height: 1; font-variant-numeric: tabular-nums; }
     .chart-regions { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
-    .chart-region { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
+    .chart-region { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
     .chart-region span:first-child { color: #94A3B8; }
     .chart-region-track { height: 8px; background: #090C10; border-radius: 999px; overflow: hidden; }
     .chart-region-fill { display: block; height: 100%; width: 0; background: #D4AF37; }
     .source-pill { display: inline-block; color: var(--muted); background: #000000; border: 1px solid #232A34; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
     .update-place { margin: 0; color: var(--muted); font-size: 12px; }
-    #headlines.drawer { border-top: 1px solid #232A34; }
+    #headlines.drawer { border-top: 1px solid rgba(212, 175, 55, 0.22); }
     #updates-filter { width: 100%; margin: 0 0 10px; background: #000000; color: var(--text); border: 1px solid #232A34; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
     #updates-filter::placeholder { color: var(--muted); }
     #updates-toggle { background: transparent; color: var(--text); border: 0; font: inherit; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; cursor: pointer; padding: 0; }
@@ -642,6 +675,7 @@
       </div>
       <span id="clock-brief">Next briefing --:--:--</span>
     </div>
+    <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall Mode</button>
   </header>
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
@@ -1214,10 +1248,12 @@
         : "";
       return (
         '<div class="popup">' +
+          '<div class="popup-head">' +
+            '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
+            '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
+            trustBadge(props) +
+          "</div>" +
           "<h3>" + esc(headline) + "</h3>" +
-          '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
-          '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
-          trustBadge(props) +
           place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           originalArabicBlock(props) +
@@ -1230,28 +1266,72 @@
       );
     }
 
+    function pinKind(props) {
+      const explicit = String(props.symbol || props.code || props.pin_type || props.incident_code || "").trim().toUpperCase();
+      if (explicit === "ACT" || explicit === "SFA" || explicit === "HS" || explicit === "OD" || explicit === "MARITIME") return explicit;
+      const category = String(props.category || "").toLowerCase();
+      const region = String(props.region || "").toLowerCase();
+      if (category.includes("kinetic") || category.includes("military")) return "ACT";
+      if (category.includes("security") || category.includes("clash")) return "SFA";
+      if (category.includes("maritime") || region === "maritime") return "MARITIME";
+      if (category.includes("travel") || category.includes("embassy") || category.includes("political")) return "HS";
+      const blob = (String(props.title || "") + " " + String(props.summary || "")).toLowerCase();
+      if (/\bmaritime\b|\bukmto\b|\bvessel\b|\bnaval\b|\bport\b|\bshipping\b/.test(blob)) return "MARITIME";
+      if (/\b(clash|checkpoint|security forces)\b/.test(blob)) return "SFA";
+      if (/\b(strike|missile|drone|airstrike|shelling)\b/.test(blob)) return "ACT";
+      return "OD";
+    }
+
+    function pinGlyph(kind) {
+      if (kind === "ACT") {
+        return '<circle cx="16" cy="16" r="3.1" fill="none" stroke="#F8FAFC" stroke-width="1.4"/>' +
+          '<path d="M16 9.6v2.3M16 20.1v2.3M9.6 16h2.3M20.1 16h2.3" stroke="#F8FAFC" stroke-width="1.4" stroke-linecap="round"/>';
+      }
+      if (kind === "SFA") {
+        return '<path d="M16 9.4l5.1 1.8v3.6c0 2.9-2 5.1-5.1 6.2-3.1-1.1-5.1-3.3-5.1-6.2v-3.6z" fill="none" stroke="#F8FAFC" stroke-width="1.4" stroke-linejoin="round"/>';
+      }
+      if (kind === "MARITIME") {
+        return '<circle cx="16" cy="11.4" r="1.5" fill="none" stroke="#F8FAFC" stroke-width="1.3"/>' +
+          '<path d="M16 12.9v7.4M11.6 16.2h8.8M12 20.6c1.1 1.3 2.4 1.9 4 1.9s2.9-.6 4-1.9" fill="none" stroke="#F8FAFC" stroke-width="1.3" stroke-linecap="round"/>';
+      }
+      return '<path d="M16 10.2l5.6 9.6H10.4z" fill="none" stroke="#F8FAFC" stroke-width="1.4" stroke-linejoin="round"/>' +
+        '<path d="M16 13.6v3.1" stroke="#F8FAFC" stroke-width="1.4" stroke-linecap="round"/>' +
+        '<circle cx="16" cy="18.4" r="0.7" fill="#F8FAFC"/>';
+    }
+
+    function pinSvg(props) {
+      const color = pinColor(props);
+      const ring = goldRingPin(props)
+        ? '<circle cx="16" cy="16" r="14.2" fill="none" stroke="#E6C667" stroke-width="2"/>'
+        : "";
+      return '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">' +
+        ring +
+        '<circle cx="16" cy="16" r="11" fill="' + color + '"/>' +
+        pinGlyph(pinKind(props)) +
+        "</svg>";
+    }
+
     function markerFor(feature) {
       const coords = feature.geometry.coordinates;
       const props = feature.properties || {};
       const id = pinId(feature);
       const age = ageMs(props.timestamp);
-      const fresh = age !== null && age >= 0 && age <= 60 * 60 * 1000;
       const old = age !== null && age > WINDOWS["24h"];
+      const recentHigh = String(props.severity || "").toLowerCase() === "high" && age !== null && age >= 0 && age <= WINDOWS["2h"];
       const classes = ["pin"];
-      if (fresh) classes.push("is-fresh");
       if (old) classes.push("is-old");
+      if (recentHigh) classes.push("is-radar");
       if (goldRingPin(props)) classes.push("is-gold-ring");
-      const color = pinColor(props);
       const icon = L.divIcon({
         className: "pin-icon",
-        html: '<div class="' + classes.join(" ") + '" style="color:' + color + '"><span class="ring"></span><span class="dot"></span></div>',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14]
+        html: '<div class="' + classes.join(" ") + '">' + pinSvg(props) + "</div>",
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16]
       });
       return L.marker([coords[1], coords[0]], { icon })
         .bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 })
-        .bindTooltip(tooltipHtml(props), { direction: "top", offset: [0, -12], opacity: 0.96, className: "pin-tip" });
+        .bindTooltip(tooltipHtml(props), { direction: "top", offset: [0, -16], opacity: 0.96, className: "pin-tip" });
     }
 
     function syncControls(visibleCount) {
@@ -1819,6 +1899,11 @@
       const button = document.getElementById("ticker-toggle");
       button.setAttribute("aria-pressed", String(!hidden));
       button.setAttribute("aria-label", hidden ? "Show ticker" : "Hide ticker");
+    });
+    document.getElementById("wall-mode").addEventListener("click", () => {
+      const on = document.body.classList.toggle("wall-mode");
+      document.getElementById("wall-mode").setAttribute("aria-pressed", String(on));
+      window.setTimeout(() => map.invalidateSize(), 60);
     });
     document.getElementById("sidebar").addEventListener("click", (event) => {
       const button = event.target.closest("button");
