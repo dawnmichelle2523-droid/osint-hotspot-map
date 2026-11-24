@@ -3583,7 +3583,7 @@ def render_period_map_png(events: list[dict]) -> bytes:
         canvas = StaticMap(
             800,
             480,
-            url_template="https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            url_template="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
             tile_request_timeout=8,
             headers={"User-Agent": BROWSER_USER_AGENT},
             delay_between_retries=0,

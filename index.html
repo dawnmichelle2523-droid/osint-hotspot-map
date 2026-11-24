@@ -836,13 +836,17 @@
     map.createPane("labels");
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
-    const cartoAttr = '&copy; OpenStreetMap contributors &copy; CARTO';
     const esriAttr = 'Tiles &copy; Esri';
-    const tacticalDark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: cartoAttr,
-      subdomains: "abcd",
-      maxZoom: 19
-    });
+    const tacticalDark = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+        attribution: esriAttr,
+        maxZoom: 16
+      }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+        maxZoom: 16,
+        pane: "labels"
+      })
+    ]);
     const maritimeDark = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
         attribution: esriAttr,
