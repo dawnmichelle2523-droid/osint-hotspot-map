@@ -531,25 +531,172 @@
       #print-sheet p, #print-sheet li { margin: 0 0 4px; }
       #print-window { color: #444; }
     }
+
+    /* Docked workspace: header, left rail, map, right drawer, footer. */
+    html, body {
+      height: 100%; min-height: 100%; overflow: hidden;
+    }
+    body { display: flex; flex-direction: column; }
+    #live-bar {
+      position: relative; z-index: 20;
+      flex: 0 0 58px; height: 58px; min-height: 58px; max-height: 58px;
+      display: grid; grid-template-columns: auto minmax(120px, 1fr) auto;
+      align-items: center; gap: 8px; padding: 0 8px; flex-wrap: nowrap; overflow: visible;
+    }
+    .brand-lockup { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .brand-logo { height: 32px; width: auto; object-fit: contain; border-radius: 6px; }
+    .risk-pill {
+      color: #E6C667; background: #0D285E; border: 1px solid #C5A059; border-radius: 999px;
+      padding: 3px 8px; font-size: 10px; font-weight: 750; letter-spacing: 0.08em; white-space: nowrap;
+    }
+    #header-search { width: 100%; margin: 0; }
+    #live-bar #search-input { font-size: 13px; padding: 7px 0; }
+    #header-tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    #clock-strip { margin-left: 0; flex-wrap: nowrap; gap: 6px; }
+    #clock-london, #clock-utc { display: none !important; }
+    #world-clocks { gap: 4px; }
+    .world-clock { gap: 1px; }
+    .world-clock svg { width: 30px; height: 30px; }
+    .world-clock figcaption { font-size: 8px; letter-spacing: 0.06em; }
+    .world-clock .clock-tip { top: calc(100% + 2px); bottom: auto; z-index: 40; }
+    #clock-brief { font-size: 11px; white-space: nowrap; }
+    #export-pdf, #ops-menu > summary, #fetch-live, #wall-mode {
+      padding: 4px 8px; font-size: 12px;
+    }
+    #ops-menu { position: relative; }
+    #ops-menu > summary {
+      list-style: none; cursor: pointer; color: #E6C667; background: #0D285E;
+      border: 1px solid #C5A059; border-radius: 8px; font-weight: 700; white-space: nowrap;
+    }
+    #ops-menu > summary::-webkit-details-marker { display: none; }
+    #ops-panel {
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
+      display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+      min-width: 230px; padding: 10px; background: #090C10;
+      border: 1px solid rgba(212, 175, 55, 0.22); border-radius: 10px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+    }
+    #ops-panel #fetch-live, #ops-panel #wall-mode, #ops-panel #feed-health { width: 100%; text-align: left; }
+    #workspace {
+      flex: 1 1 auto; min-height: 0; min-width: 0;
+      display: grid; grid-template-columns: 270px minmax(0, 1fr) 380px;
+    }
+    body.filters-closed #workspace { grid-template-columns: 36px minmax(0, 1fr) 380px; }
+    body.drawer-closed #workspace { grid-template-columns: 270px minmax(0, 1fr) 36px; }
+    body.filters-closed.drawer-closed #workspace { grid-template-columns: 36px minmax(0, 1fr) 36px; }
+    body.wall-mode #workspace { grid-template-columns: minmax(0, 1fr); }
+    body.wall-mode #sidebar,
+    body.wall-mode #drawer,
+    body.wall-mode #ticker,
+    body.wall-mode #filter-toggle,
+    body.wall-mode #drawer-toggle { display: none !important; }
+    #sidebar {
+      position: relative; top: auto; left: auto; right: auto; bottom: auto;
+      width: auto; height: 100%; transform: none; z-index: 2;
+      padding: 8px 10px 12px; overflow: auto; border-radius: 0;
+      border: 0; border-right: 1px solid rgba(212, 175, 55, 0.22); box-shadow: none;
+    }
+    body.filters-closed #sidebar { transform: none; padding: 8px 4px; overflow: hidden; }
+    body.filters-closed #sidebar > :not(#rail-head) { display: none !important; }
+    #stage { position: relative; height: 100%; min-width: 0; min-height: 0; }
+    #map { position: absolute; inset: 0; }
+    #drawer {
+      width: auto; height: 100%; min-width: 0; min-height: 0; z-index: 2;
+      display: flex; flex-direction: column; overflow: hidden;
+      border-left: 1px solid rgba(212, 175, 55, 0.22);
+      background: rgba(9, 13, 22, 0.92);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    body.drawer-closed #drawer > :not(#drawer-head) { display: none !important; }
+    #rail-head, #drawer-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    #rail-head { margin-bottom: 8px; color: #E6C667; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    #drawer-head { padding: 8px 8px 0; }
+    #filter-toggle, #drawer-toggle {
+      position: static; top: auto; left: auto; z-index: auto;
+      flex: 0 0 auto; background: #090C10; color: #E6C667;
+      border: 1px solid #232A34; border-radius: 8px;
+      padding: 4px 8px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    #drawer-tabs { display: flex; gap: 4px; min-width: 0; flex: 1; }
+    #drawer-tabs button {
+      flex: 1 1 0; min-width: 0; background: transparent; color: #94A3B8;
+      border: 1px solid transparent; border-radius: 6px; padding: 4px 2px;
+      font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    #drawer-tabs button[aria-pressed="true"] {
+      color: #E6C667; background: #0D285E; border: 1px solid #C5A059;
+    }
+    #drawer .drawer-panel {
+      flex: 1 1 auto; min-height: 0; overflow: auto; width: auto; margin: 0;
+      padding: 8px 10px 12px; background: transparent; border: 0; box-shadow: none;
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+    #drawer .drawer-panel[hidden] { display: none !important; }
+    #drawer #ticker { flex: 0 0 auto; width: 100%; }
+    #drawer #daily-brief, #drawer #headlines { padding: 8px 10px 12px; }
+    #drawer .brief-card { margin: 0; }
+    #drawer .brief-card:hover { transform: none; }
+    #brief-title, #drawer #headlines h2, #syria-index h2 { font-size: 15px; }
+    #headline-list { grid-template-columns: 1fr; }
+    .wire-tiers { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+    .wire-tiers button {
+      background: #090C10; color: #94A3B8; border: 1px solid #232A34; border-radius: 999px;
+      padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .wire-tiers button[aria-pressed="true"] { color: #E6C667; background: #0D285E; border: 1px solid #C5A059; }
+    #quick-jump, #basemap, #sidebar .legend {
+      position: static; top: auto; left: auto; right: auto; bottom: auto;
+      width: 100%; margin: 0; z-index: auto;
+    }
+    #quick-jump { display: flex; flex-wrap: wrap; gap: 4px; }
+    #overlay-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    #overlay-tools button, #basemap { margin-top: 8px; }
+    #basemap { flex-wrap: wrap; }
+    #sidebar .legend {
+      display: flex; flex-wrap: nowrap; gap: 8px; overflow-x: auto;
+      margin-top: 8px; background: #090C10; border: 1px solid #232A34;
+    }
+    .legend i.legend-solid, .legend i.legend-dashed {
+      width: 16px; height: 0; border-radius: 0; background: transparent; border: 0;
+      border-top: 2px solid #E6C667; vertical-align: middle;
+    }
+    .legend i.legend-dashed { border-top-style: dashed; border-top-color: #E2E8F0; }
+    .leaflet-bottom.leaflet-right { margin-bottom: 10px; margin-right: 8px; }
+    .leaflet-bottom.leaflet-left { margin-bottom: 8px; margin-left: 8px; }
+    #syria-index h2 { margin: 0 0 8px; color: #E6C667; }
+    .syria-index-scroll { overflow: auto; }
+    #syria-index table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+    #syria-index th, #syria-index td { padding: 3px 4px; border-bottom: 1px solid #232A34; text-align: right; white-space: nowrap; }
+    #syria-index th:first-child, #syria-index td:first-child, #syria-index th[scope="row"] {
+      text-align: left; position: sticky; left: 0; background: #090C10;
+    }
+    #syria-index thead th { color: #E6C667; font-weight: 700; }
+    #app-footer {
+      flex: 0 0 22px; height: 22px; display: flex; align-items: center; padding: 0 10px;
+      background: #090C10; border-top: 1px solid rgba(212, 175, 55, 0.22);
+      color: #94A3B8; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    @media print {
+      html, body { height: auto; overflow: visible; display: block; }
+      #workspace, #app-footer, #feed-modal, #ops-panel { display: none !important; }
+    }
   </style>
 </head>
-<body class="filters-open">
+<body class="filters-open drawer-open">
   <header id="live-bar">
-    <img src="/static/logo.png?v=4" alt="GeoRiskIntel" style="height: 36px; width: auto; object-fit: contain; border-radius: 6px;">
-    <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
-    <span id="last-updated">Last updated: not yet</span>
-    <div id="feed-health-wrap">
-      <button type="button" id="feed-health" aria-expanded="false" aria-controls="feed-modal">● 0/0 Feeds Online</button>
-      <div id="feed-popover" hidden>
-        <p>No failing sources.</p>
-      </div>
+    <div class="brand-lockup">
+      <img class="brand-logo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <span class="risk-pill">REGIONAL RISK</span>
     </div>
-    <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="ticker">Ticker</button>
-    <button type="button" id="daily-chart-toggle" aria-expanded="false" aria-controls="daily-chart-card">📊 07:00–07:00 Chart</button>
-    <div id="clock-strip">
-      <span id="clock-london">London --:--:--</span>
-      <span id="clock-utc">UTC --:--:--</span>
-      <div id="world-clocks">
+    <form id="header-search" class="search-row" role="search" autocomplete="off">
+      <input id="search-input" type="search" placeholder="Search country, city, crossing, or keyword..." aria-label="Search country, city, crossing, or keyword">
+      <button id="search-clear" type="button" aria-label="Clear">×</button>
+    </form>
+    <div id="header-tools">
+      <div id="clock-strip">
+        <span id="clock-london" hidden>London --:--:--</span>
+        <span id="clock-utc" hidden>UTC --:--:--</span>
+        <div id="world-clocks">
         <figure class="world-clock london" data-zone="Europe/London" title="--:--">
           <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
             <defs>
@@ -718,9 +865,24 @@
           <span class="clock-tip">--:--</span>
         </figure>
       </div>
-      <span id="clock-brief">Next briefing --:--:--</span>
+        <span id="clock-brief">Next briefing --:--:--</span>
+      </div>
+      <button type="button" id="export-pdf">Export PDF</button>
+      <details id="ops-menu">
+        <summary>⚙ Ops</summary>
+        <div id="ops-panel">
+          <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
+          <div id="feed-health-wrap">
+            <button type="button" id="feed-health" aria-expanded="false" aria-controls="feed-modal">● 0/0 Feeds Online</button>
+            <div id="feed-popover" hidden>
+              <p>No failing sources.</p>
+            </div>
+          </div>
+          <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall Mode</button>
+          <span id="last-updated">Last updated: not yet</span>
+        </div>
+      </details>
     </div>
-    <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall Mode</button>
   </header>
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
@@ -734,33 +896,37 @@
       </div>
     </div>
   </div>
-  <div id="ticker" role="region" aria-label="Breaking news">
-    <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
-    <div id="ticker-viewport">
-      <div id="ticker-track" class="is-still">
-        <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
-        <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+  <div id="workspace">
+    <aside id="sidebar">
+      <div id="rail-head">
+        <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar" aria-label="Collapse filters">☰</button>
+        <span>Filters</span>
       </div>
-    </div>
-  </div>
-  <div id="stage">
-  <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar">☰ Filters</button>
-  <aside id="sidebar">
-    <form class="search-row" role="search" autocomplete="off">
-      <input id="search-input" type="search" placeholder="Search city, base, keyword..." aria-label="Search city, base, or keyword">
-      <button id="search-clear" type="button" aria-label="Clear">×</button>
-    </form>
-    <h1>OSINT Map</h1>
-    <p id="updated">Loading incidents…</p>
-    <p id="status" role="status"></p>
-    <div class="chips">
-      <button type="button" class="chip" data-chip="UKMTO">UKMTO</button>
-      <button type="button" class="chip" data-chip="Hormuz">Hormuz</button>
-      <button type="button" class="chip" data-chip="Airport">Airport</button>
-      <button type="button" class="chip" data-chip="Missile / Drone">Missile / Drone</button>
-      <button type="button" class="chip" data-chip="Embassy">Embassy</button>
-    </div>
-    <p id="search-count"></p>
+      <h1>OSINT Map</h1>
+      <p id="updated">Loading incidents…</p>
+      <p id="status" role="status"></p>
+      <div class="chips">
+        <button type="button" class="chip" data-chip="UKMTO">UKMTO</button>
+        <button type="button" class="chip" data-chip="Hormuz">Hormuz</button>
+        <button type="button" class="chip" data-chip="Airport">Airport</button>
+        <button type="button" class="chip" data-chip="Missile / Drone">Missile / Drone</button>
+        <button type="button" class="chip" data-chip="Embassy">Embassy</button>
+      </div>
+      <p id="search-count"></p>
+      <details class="filter-dropdown" open>
+        <summary>
+          <span class="filter-label">Quick Theater Jump</span>
+          <span class="filter-current"><span class="filter-chevron" aria-hidden="true">▾</span></span>
+        </summary>
+  <nav id="quick-jump" aria-label="Quick jump">
+    <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
+    <button type="button" data-jump="bahrain">Bahrain</button>
+    <button type="button" data-jump="hormuz">Strait of Hormuz</button>
+    <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
+    <button type="button" data-jump="levant">Levant</button>
+    <button type="button" data-jump="sudan">Sudan</button>
+  </nav>
+      </details>
     <details class="filter-dropdown" open>
       <summary>
         <span class="filter-label">Region</span>
@@ -779,7 +945,7 @@
     </details>
     <details class="filter-dropdown">
       <summary>
-        <span class="filter-label">Time window</span>
+        <span class="filter-label">Time Window</span>
         <span class="filter-current"><span data-filter-summary="window">All Active</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
       </summary>
       <div class="row">
@@ -808,49 +974,52 @@
       </summary>
       <div class="row">
         <button type="button" class="pill" data-category="all" aria-pressed="true">All</button>
-        <button type="button" class="pill" data-category="Kinetic/Military">Kinetic/Military</button>
-        <button type="button" class="pill" data-category="Maritime">Maritime</button>
-        <button type="button" class="pill" data-category="Security/Clashes">Security/Clashes</button>
-        <button type="button" class="pill" data-category="Political/Other">Political/Other</button>
+        <button type="button" class="pill" data-category="ACT">ACT</button>
+        <button type="button" class="pill" data-category="SFA">SFA</button>
+        <button type="button" class="pill" data-category="VC">VC</button>
+        <button type="button" class="pill" data-category="CU">CU</button>
+        <button type="button" class="pill" data-category="HS">HS</button>
+        <button type="button" class="pill" data-category="OD">OD</button>
       </div>
     </details>
-  </aside>
+      <details class="filter-dropdown">
+        <summary>
+          <span class="filter-label">Map Overlays</span>
+          <span class="filter-current"><span class="filter-chevron" aria-hidden="true">▾</span></span>
+        </summary>
+        <div id="overlay-tools">
+    <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
+    <button type="button" id="chokepoints" aria-pressed="false">Chokepoints</button>
+    <button type="button" id="thermal-toggle" aria-pressed="false">Heatmap</button>
+    <button type="button" id="summarize-governorate">Summarize Governorate</button>
+        </div>
   <div id="basemap" role="group" aria-label="Basemap">
     <button type="button" data-basemap="tactical" aria-pressed="true">Tactical Dark</button>
     <button type="button" data-basemap="maritime">Maritime Dark</button>
     <button type="button" data-basemap="satellite">Satellite</button>
   </div>
-  <nav id="quick-jump" aria-label="Quick jump">
-    <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
-    <button type="button" data-jump="bahrain">Bahrain</button>
-    <button type="button" data-jump="hormuz">Strait of Hormuz</button>
-    <button type="button" data-jump="redsea">Red Sea &amp; Yemen</button>
-    <button type="button" data-jump="levant">Levant</button>
-    <button type="button" data-jump="sudan">Sudan</button>
-    <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
-    <button type="button" id="chokepoints" aria-pressed="false">Chokepoints</button>
-    <button type="button" id="thermal-toggle" aria-pressed="false">🔥 Satellite Heat (24h)</button>
-    <button type="button" id="summarize-governorate">Summarize Governorate</button>
-  </nav>
-  <div class="legend">
-    <span><i style="background:#F43F5E"></i>High</span>
-    <span><i style="background:#F59E0B"></i>Medium</span>
-    <span><i style="background:#3B82F6"></i>Low</span>
-  </div>
-  <div id="map" role="application" aria-label="Incident map"></div>
-  </div>
-  <section id="print-sheet" aria-hidden="true">
-    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
-    <h1>GeoRiskIntel</h1>
-    <p id="print-window"></p>
-    <h2>Overall</h2>
-    <p id="print-overall"></p>
-    <h2>Regions</h2>
-    <div id="print-regions"></div>
-    <h2>Active Syria governorates</h2>
-    <ul id="print-governorates"></ul>
-  </section>
-  <section id="daily-brief" aria-labelledby="brief-title">
+      </details>
+      <div class="legend">
+        <span><i style="background:#F43F5E"></i>High</span>
+        <span><i style="background:#F59E0B"></i>Medium</span>
+        <span><i style="background:#3B82F6"></i>Low</span>
+        <span><i class="legend-solid"></i>Solid = Confirmed</span>
+        <span><i class="legend-dashed"></i>Dashed = Claim</span>
+      </div>
+    </aside>
+    <div id="stage">
+      <div id="map" role="application" aria-label="Incident map"></div>
+    </div>
+    <aside id="drawer">
+      <div id="drawer-head">
+        <div id="drawer-tabs" role="tablist" aria-label="Briefing drawer">
+          <button type="button" data-tab="brief" aria-pressed="true">07:00 Brief</button>
+          <button type="button" data-tab="wire" aria-pressed="false">Live Wire</button>
+          <button type="button" data-tab="syria" aria-pressed="false">Syria Risk Index</button>
+        </div>
+        <button id="drawer-toggle" type="button" aria-expanded="true" aria-controls="drawer" aria-label="Collapse drawer">⟩</button>
+      </div>
+  <section id="daily-brief" class="drawer-panel" data-panel="brief" aria-labelledby="brief-title">
     <article class="brief-card">
       <div class="brief-bar" id="brief-controls">
         <h2 id="brief-title">Geopolitical Summary</h2>
@@ -866,7 +1035,7 @@
           <option value="Other / International">Other / International</option>
         </select>
         <button type="button" id="copy-briefing">📋 Copy Briefing</button>
-        <button type="button" id="export-pdf">📄 Export PDF</button>
+        <button type="button" id="daily-chart-toggle" aria-expanded="false" aria-controls="daily-chart-card">📊 07:00–07:00 Chart</button>
         <button type="button" id="refresh-summary">↻ Refresh Now</button>
       </div>
       <section id="daily-chart-card" hidden>
@@ -887,9 +1056,25 @@
       <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
     </article>
   </section>
-    <section id="headlines" class="drawer" aria-labelledby="updates-toggle">
+    <section id="headlines" class="drawer-panel" data-panel="wire" hidden aria-labelledby="updates-toggle">
     <div class="headlines-inner">
+      <div id="ticker" role="region" aria-label="Breaking news">
+        <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE WIRE</div>
+        <div id="ticker-viewport">
+          <div id="ticker-track" class="is-still">
+            <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
+            <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
       <input id="updates-filter" type="search" placeholder="Filter pins &amp; updates..." aria-label="Filter pins and updates">
+      <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="ticker">Ticker</button>
+      <div class="wire-tiers" role="group" aria-label="Source tier">
+        <button type="button" data-wire="all" aria-pressed="true">All</button>
+        <button type="button" data-wire="wire">UN / Wire</button>
+        <button type="button" data-wire="independent">Independent</button>
+        <button type="button" data-wire="claim">Claim — Verify</button>
+      </div>
       <div class="headlines-head">
         <h2 id="headlines-title"><button type="button" id="updates-toggle" aria-expanded="true" aria-controls="headline-list">Newest Updates</button></h2>
         <button type="button" id="export-headlines">Export Filtered Headlines</button>
@@ -897,6 +1082,41 @@
       <p class="headlines-note">All live events, newest first.</p>
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
     </div>
+  </section>
+      <section id="syria-index" class="drawer-panel" data-panel="syria" hidden aria-label="Syria Risk Index">
+        <h2>Syria Risk Index</h2>
+        <div class="syria-index-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Governorate</th>
+                <th scope="col">ACT</th>
+                <th scope="col">SFA</th>
+                <th scope="col">VC</th>
+                <th scope="col">CU</th>
+                <th scope="col">HS</th>
+                <th scope="col">OD</th>
+                <th scope="col">Total</th>
+                <th scope="col">Risk Index</th>
+              </tr>
+            </thead>
+            <tbody id="syria-index-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+  </div>
+  <footer id="app-footer">GeoRiskIntel · Operational Window: 07:00–07:00 GMT · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <section id="print-sheet" aria-hidden="true">
+    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    <h1>GeoRiskIntel</h1>
+    <p id="print-window"></p>
+    <h2>Overall</h2>
+    <p id="print-overall"></p>
+    <h2>Regions</h2>
+    <div id="print-regions"></div>
+    <h2>Active Syria governorates</h2>
+    <ul id="print-governorates"></ul>
   </section>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -927,10 +1147,10 @@
 
     const map = L.map("map", { zoomControl: false, minZoom: 2, maxZoom: 19, worldCopyJump: true });
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    const brandControl = L.control({ position: "bottomright" });
+    const brandControl = L.control({ position: "bottomleft" });
     brandControl.onAdd = function () {
       const div = L.DomUtil.create("div", "georisk-map-badge");
-      div.style.cssText = "background: #000000; border: 1px solid #C5A059; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 18px; margin-right: 10px;";
+      div.style.cssText = "background: #000000; border: 1px solid #C5A059; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 8px; margin-left: 8px;";
       div.innerHTML = `<img src="/static/logo.png?v=4" alt="GeoRiskIntel" style="height: 24px; width: auto; display: block; margin-bottom: 6px; object-fit: contain;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #94A3B8; font-weight: 600; border-top: 1px solid #C5A059; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #E6C667; box-shadow: 0 0 8px #E6C667; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
       return div;
     };
@@ -1175,15 +1395,28 @@
         props.source_label,
         props.source_tier,
         props.source_handle,
+        props.governorate,
+        props.country,
         sourceLabel(props)
       ];
       return fields.some((value) => String(value || "").toLowerCase().includes(needle));
     }
 
+    function incidentCode(props) {
+      const explicit = String(props.symbol || props.code || props.pin_type || props.incident_code || "").trim().toUpperCase();
+      if (explicit === "ACT" || explicit === "SFA" || explicit === "VC" || explicit === "CU" || explicit === "HS" || explicit === "OD") return explicit;
+      const kind = pinKind(props);
+      if (kind === "ACT" || kind === "SFA" || kind === "HS" || kind === "VC" || kind === "CU") return kind;
+      const blob = (String(props.title || "") + " " + String(props.summary || "") + " " + String(props.category || "")).toLowerCase();
+      if (/\b(riot|protest|demonstration|unrest|uprising)\b/.test(blob)) return "CU";
+      if (/\b(murder|kidnap|kidnapping|assassination|homicide)\b/.test(blob) || blob.includes("violent crime")) return "VC";
+      return "OD";
+    }
+
     function passes(feature, opts) {
       const props = feature.properties || {};
       if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
-      if (opts.category !== "all" && props.category !== opts.category) return false;
+      if (opts.category !== "all" && incidentCode(props) !== opts.category && props.category !== opts.category) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
@@ -1334,7 +1567,7 @@
 
     function pinKind(props) {
       const explicit = String(props.symbol || props.code || props.pin_type || props.incident_code || "").trim().toUpperCase();
-      if (explicit === "ACT" || explicit === "SFA" || explicit === "HS" || explicit === "OD" || explicit === "MARITIME") return explicit;
+      if (explicit === "ACT" || explicit === "SFA" || explicit === "VC" || explicit === "CU" || explicit === "HS" || explicit === "OD" || explicit === "MARITIME") return explicit;
       const category = String(props.category || "").toLowerCase();
       const region = String(props.region || "").toLowerCase();
       if (category.includes("kinetic") || category.includes("military")) return "ACT";
@@ -1523,6 +1756,7 @@
       syncControls(visible.length);
       updateSearchCount(visible.length);
       renderHeadlines(visible);
+      renderSyriaIndex(visible);
       paintSummaryRegionSelect();
       if (loadedOnce) {
         setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
@@ -1544,9 +1778,40 @@
       render(mode);
     }
 
+    let wireTier = "all";
+
+    function tierGroup(props) {
+      const tier = String(props.source_tier || "");
+      if (
+        tier === "State / Party-Aligned Claim" ||
+        tier === "Single-Source / Opposition Caution" ||
+        tier === "Tip-off" ||
+        tier === "Lead (Unverified)"
+      ) return "claim";
+      if (
+        tier === "Independent / Field Desk" ||
+        tier === "Specialist Analyst" ||
+        tier === "OSINT" ||
+        tier === "SOHR"
+      ) return "independent";
+      if (
+        tier.indexOf("UN / Wire") === 0 ||
+        tier === "Wire / Outlet" ||
+        tier === "Wire / Local Outlet" ||
+        tier === "Official" ||
+        tier === "Institutional / Research" ||
+        tier === "State Media" ||
+        tier === "Regional Media"
+      ) return "wire";
+      return "other";
+    }
+
     function renderHeadlines(visible) {
       const list = document.getElementById("headline-list");
-      const sorted = visible.slice().sort((a, b) => {
+      const sorted = visible.filter((feature) => {
+        if (wireTier === "all") return true;
+        return tierGroup(feature.properties || {}) === wireTier;
+      }).slice().sort((a, b) => {
         const am = Date.parse((a.properties || {}).timestamp);
         const bm = Date.parse((b.properties || {}).timestamp);
         return (Number.isNaN(bm) ? 0 : bm) - (Number.isNaN(am) ? 0 : am);
@@ -1578,7 +1843,7 @@
           ? '<p class="update-place">' + esc(props.location_name) + "</p>"
           : "";
         return (
-          '<article class="headline-card">' +
+          '<article class="headline-card" data-locate="' + esc(props.source || "") + '">' +
             '<div class="headline-meta">' +
               '<span class="source-pill">' + esc(sourceLabel(props)) + "</span>" +
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
@@ -1591,6 +1856,7 @@
             '<p class="summary">' + esc(twoSentences(props.summary)) + "</p>" +
             '<div class="headline-actions">' +
               source +
+              '<button type="button" class="copy-alert" data-alert="' + encodeURIComponent(alertLine(props)) + '">Copy Alert</button>' +
               '<button type="button" class="locate" data-locate="' + esc(props.source || "") + '">Locate on Map</button>' +
             "</div>" +
           "</article>"
@@ -2007,7 +2273,7 @@
       searchInput.value = "";
       applyQuery("", "clear");
     });
-    document.querySelector("#sidebar form").addEventListener("submit", (event) => {
+    document.querySelector("#header-search").addEventListener("submit", (event) => {
       event.preventDefault();
       clearTimeout(searchTimer);
       applyQuery(searchInput.value, searchInput.value.trim() ? "search" : "clear");
@@ -2016,6 +2282,36 @@
       const open = document.body.classList.toggle("filters-open");
       document.body.classList.toggle("filters-closed", !open);
       filterToggle.setAttribute("aria-expanded", String(open));
+      filterToggle.setAttribute("aria-label", open ? "Collapse filters" : "Expand filters");
+      window.setTimeout(() => map.invalidateSize(), 60);
+    });
+    document.getElementById("drawer-toggle").addEventListener("click", () => {
+      const open = document.body.classList.toggle("drawer-open");
+      document.body.classList.toggle("drawer-closed", !open);
+      const button = document.getElementById("drawer-toggle");
+      button.setAttribute("aria-expanded", String(open));
+      button.textContent = open ? "⟩" : "⟨";
+      button.setAttribute("aria-label", open ? "Collapse drawer" : "Expand drawer");
+      window.setTimeout(() => map.invalidateSize(), 60);
+    });
+    document.getElementById("drawer-tabs").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-tab]");
+      if (!button) return;
+      document.querySelectorAll("#drawer-tabs button").forEach((item) => {
+        item.setAttribute("aria-pressed", String(item === button));
+      });
+      document.querySelectorAll("#drawer .drawer-panel").forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-panel") !== button.dataset.tab;
+      });
+    });
+    document.querySelector(".wire-tiers").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-wire]");
+      if (!button) return;
+      wireTier = button.dataset.wire === wireTier && wireTier !== "all" ? "all" : button.dataset.wire;
+      document.querySelectorAll(".wire-tiers button").forEach((item) => {
+        item.setAttribute("aria-pressed", String(item.dataset.wire === wireTier));
+      });
+      render(searchQuery ? "search" : "none");
     });
 
     document.getElementById("basemap").addEventListener("click", (event) => {
@@ -2253,10 +2549,68 @@
     });
 
     document.getElementById("headline-list").addEventListener("click", (event) => {
+      if (event.target.closest("a, .copy-alert, .copy-pin")) return;
       const button = event.target.closest("[data-locate]");
-      if (!button) return;
-      locateFeature(button.dataset.locate);
+      const card = event.target.closest(".headline-card");
+      const source = button ? button.dataset.locate : (card ? card.dataset.locate : "");
+      if (source) locateFeature(source);
     });
+
+    const SYRIA_INDEX_NAMES = [
+      "Damascus", "Rif Dimashq", "Aleppo", "Idlib", "Latakia", "Tartus", "Hama", "Homs",
+      "Raqqa", "Deir ez-Zor", "Al-Hasakah", "Daraa", "Quneitra", "As-Suwayda"
+    ];
+
+    function featureGovernorate(props) {
+      const named = String(props.governorate || "").trim();
+      if (SYRIA_INDEX_NAMES.indexOf(named) !== -1) return named;
+      const blob = (String(props.location_name || "") + " " + String(props.title || "") + " " + String(props.summary || "")).toLowerCase();
+      const aliases = {
+        "rural damascus": "Rif Dimashq",
+        "damascus countryside": "Rif Dimashq",
+        "rif dimashq": "Rif Dimashq",
+        "deir ez-zor": "Deir ez-Zor",
+        "deir ezzor": "Deir ez-Zor",
+        "deir al-zour": "Deir ez-Zor",
+        "al-hasakah": "Al-Hasakah",
+        "hasakah": "Al-Hasakah",
+        "as-suwayda": "As-Suwayda",
+        "suwayda": "As-Suwayda",
+        "sweida": "As-Suwayda",
+        "quneitra": "Quneitra",
+        "idleb": "Idlib",
+        "lattakia": "Latakia",
+        "tartous": "Tartus"
+      };
+      const keys = Object.keys(aliases).concat(SYRIA_INDEX_NAMES.map((name) => name.toLowerCase()));
+      keys.sort((a, b) => b.length - a.length);
+      for (let i = 0; i < keys.length; i += 1) {
+        if (blob.indexOf(keys[i]) !== -1) return aliases[keys[i]] || SYRIA_INDEX_NAMES.filter((name) => name.toLowerCase() === keys[i])[0];
+      }
+      return "";
+    }
+
+    function renderSyriaIndex(visible) {
+      const body = document.getElementById("syria-index-body");
+      if (!body) return;
+      const codes = ["ACT", "SFA", "VC", "CU", "HS", "OD"];
+      body.innerHTML = SYRIA_INDEX_NAMES.map((name) => {
+        const counts = { ACT: 0, SFA: 0, VC: 0, CU: 0, HS: 0, OD: 0, total: 0, risk: 0 };
+        visible.forEach((feature) => {
+          const props = feature.properties || {};
+          if (featureGovernorate(props) !== name) return;
+          const code = incidentCode(props);
+          if (Object.prototype.hasOwnProperty.call(counts, code)) counts[code] += 1;
+          else counts.OD += 1;
+          counts.total += 1;
+          const sev = String(props.severity || "").toLowerCase();
+          counts.risk += sev === "high" ? 3 : sev === "medium" ? 2 : 1;
+        });
+        return "<tr><th scope=\"row\">" + esc(name) + "</th>" +
+          codes.map((code) => "<td>" + counts[code] + "</td>").join("") +
+          "<td>" + counts.total + "</td><td>" + counts.risk + "</td></tr>";
+      }).join("");
+    }
 
     let briefText = "";
 
