@@ -63,22 +63,29 @@
       color: #E2E8F0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: 0.01em;
     }
-    #world-clocks { display: flex; align-items: flex-start; gap: 10px; }
-    .world-clock { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0; }
-    .world-clock svg { display: block; width: 46px; height: 46px; }
+    #world-clocks {
+      display: grid; grid-template-columns: repeat(5, 66px); gap: 8px;
+      align-items: center; justify-items: center;
+    }
+    .world-clock {
+      width: 66px; box-sizing: border-box; margin: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      background: rgba(13, 20, 36, 0.75); border: 1px solid #1E293B; border-radius: 8px;
+      padding: 5px 4px;
+    }
+    .world-clock.london { border-color: #C5A059; background: rgba(16, 42, 99, 0.45); }
+    .world-clock svg { display: block; width: 44px; height: 44px; }
     .world-clock figcaption {
-      margin: 0; color: #c5ced6; font-family: "Segoe UI", system-ui, sans-serif;
-      font-size: 9px; font-weight: 700; letter-spacing: 0.14em; line-height: 1;
-      text-transform: uppercase; white-space: nowrap;
+      margin: 0; color: #E2E8F0; font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; line-height: 1;
+      text-transform: uppercase; white-space: nowrap; text-align: center;
     }
-    .world-clock.london figcaption { color: #D4AF37; }
-    .world-clock .clock-tip {
-      display: none; position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
-      background: #0D1424; color: #D4AF37; border: 1px solid #C5A059; border-radius: 4px;
-      padding: 1px 5px; font-size: 10px; letter-spacing: 0.04em; white-space: nowrap; pointer-events: none;
+    .clock-readout {
+      margin: 0; color: #94A3B8; font-size: 8.5px; line-height: 1; font-weight: 400;
+      letter-spacing: 0; text-align: center; white-space: nowrap;
       font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
-    .world-clock:hover .clock-tip { display: block; }
     #feed-health-wrap { position: relative; }
     #feed-health {
       color: #94A3B8; background: #0D1424; border: 1px solid #1E293B; border-radius: 999px;
@@ -556,18 +563,7 @@
     #header-tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
     #clock-strip { margin-left: 0; flex-wrap: nowrap; gap: 6px; }
     #clock-london, #clock-utc { display: none !important; }
-    #world-clocks { gap: 8px; align-items: flex-start; }
-    .world-clock { gap: 1px; }
-    .world-clock svg { width: 46px; height: 46px; }
-    .world-clock figcaption {
-      font-size: 9.5px; letter-spacing: 0.14em; color: #E2E8F0;
-    }
-    .world-clock.london figcaption { color: #D4AF37; }
-    .clock-readout {
-      color: #94A3B8; font-size: 9px; line-height: 1.1; letter-spacing: 0.01em;
-      font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: nowrap;
-    }
+
     #clock-brief { font-size: 11px; white-space: nowrap; }
     #export-pdf, #ops-menu > summary, #fetch-live, #wall-mode {
       padding: 4px 8px; font-size: 12px;
@@ -725,411 +721,371 @@
         <span id="clock-utc" hidden>UTC --:--:--</span>
         <div id="world-clocks">
         <figure class="world-clock london" data-zone="Europe/London" title="--:--">
-          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden="true">
-            <defs>
-            <radialGradient id="bezel-london" cx="36%" cy="30%" r="75%">
-              <stop offset="0%" stop-color="#E4CD8A"/>
-              <stop offset="48%" stop-color="#C5A059"/>
-              <stop offset="100%" stop-color="#6E5825"/>
-            </radialGradient>
-            <filter id="hand-shadow-london" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0.55" stdDeviation="0.4" flood-color="#000000" flood-opacity="0.7"/>
-            </filter>
-            </defs>
-            <circle cx="23" cy="23" r="22.2" fill="url(#bezel-london)"/>
-            <circle cx="23" cy="23" r="19.15" fill="#060A13"/>
-            <circle cx="23" cy="23" r="17.85" fill="none" stroke="#C5A059" stroke-width="0.7"/>
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#C5A059" stroke-width="3.5"/>
             <g>
-            <line x1="22.28" y1="8.30" x2="22.28" y2="5.45" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="23.72" y1="8.30" x2="23.72" y2="5.45" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="24.71" y1="6.74" x2="24.83" y2="5.55" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="7.01" x2="26.65" y2="5.83" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="7.45" x2="28.42" y2="6.31" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="29.65" y1="8.06" x2="30.14" y2="6.97" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="10.27" x2="31.78" y2="7.80" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="32.61" y1="9.77" x2="33.32" y2="8.80" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="10.85" x2="34.74" y2="9.96" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="12.06" x2="36.04" y2="11.26" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="36.23" y1="13.39" x2="37.20" y2="12.68" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="15.65" x2="38.20" y2="14.23" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="37.94" y1="16.35" x2="39.03" y2="15.86" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="17.95" x2="39.69" y2="17.58" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="19.60" x2="40.17" y2="19.35" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="39.26" y1="21.29" x2="40.45" y2="21.17" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.70" y1="23.00" x2="40.55" y2="23.00" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="39.26" y1="24.71" x2="40.45" y2="24.83" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="26.40" x2="40.17" y2="26.65" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="28.05" x2="39.69" y2="28.42" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.94" y1="29.65" x2="39.03" y2="30.14" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="30.35" x2="38.20" y2="31.77" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="36.23" y1="32.61" x2="37.20" y2="33.32" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="33.94" x2="36.04" y2="34.74" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="35.15" x2="34.74" y2="36.04" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="32.61" y1="36.23" x2="33.32" y2="37.20" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="35.73" x2="31.78" y2="38.20" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="29.65" y1="37.94" x2="30.14" y2="39.03" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="38.55" x2="28.42" y2="39.69" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="38.99" x2="26.65" y2="40.17" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="24.71" y1="39.26" x2="24.83" y2="40.45" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="23.00" y1="37.70" x2="23.00" y2="40.55" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="21.29" y1="39.26" x2="21.17" y2="40.45" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="38.99" x2="19.35" y2="40.17" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="38.55" x2="17.58" y2="39.69" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="16.35" y1="37.94" x2="15.86" y2="39.03" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="35.73" x2="14.23" y2="38.20" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="13.39" y1="36.23" x2="12.68" y2="37.20" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="35.15" x2="11.26" y2="36.04" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="33.94" x2="9.96" y2="34.74" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="9.77" y1="32.61" x2="8.80" y2="33.32" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="30.35" x2="7.80" y2="31.77" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="8.06" y1="29.65" x2="6.97" y2="30.14" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="28.05" x2="6.31" y2="28.42" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="26.40" x2="5.83" y2="26.65" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="6.74" y1="24.71" x2="5.55" y2="24.83" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.30" y1="23.00" x2="5.45" y2="23.00" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="6.74" y1="21.29" x2="5.55" y2="21.17" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="19.60" x2="5.83" y2="19.35" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="17.95" x2="6.31" y2="17.58" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.06" y1="16.35" x2="6.97" y2="15.86" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="15.65" x2="7.80" y2="14.22" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.77" y1="13.39" x2="8.80" y2="12.68" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="12.06" x2="9.96" y2="11.26" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="10.85" x2="11.26" y2="9.96" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="13.39" y1="9.77" x2="12.68" y2="8.80" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="10.27" x2="14.22" y2="7.80" stroke="#D4AF37" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="16.35" y1="8.06" x2="15.86" y2="6.97" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="7.45" x2="17.58" y2="6.31" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="7.01" x2="19.35" y2="5.83" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="21.29" y1="6.74" x2="21.17" y2="5.55" stroke="#C5A059" stroke-width="0.45" stroke-linecap="round"/>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
             </g>
-            <g class="hand-hour" filter="url(#hand-shadow-london)"><polygon points="23,24.2 21.55,22.4 23,10.2 24.45,22.4" fill="#F3E6C4"/></g>
-            <g class="hand-minute" filter="url(#hand-shadow-london)"><polygon points="23,24.6 22.15,22.6 23,6.3 23.85,22.6" fill="#F6E7C8"/></g>
-            <g class="hand-second"><line x1="23" y1="29.2" x2="23" y2="6.6" stroke="#E11D48" stroke-width="0.7" stroke-linecap="round"/><circle cx="23" cy="29.2" r="1.15" fill="#E11D48"/></g>
-            <circle cx="23" cy="23" r="1.85" fill="#D4AF37" stroke="#C5A059" stroke-width="0.45"/>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#E11D48" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
           </svg>
           <figcaption>LONDON</figcaption>
           <span class="clock-readout">--:--</span>
         </figure>
         <figure class="world-clock" data-zone="Europe/Paris" title="--:--">
-          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden="true">
-            <defs>
-            <filter id="hand-shadow-paris" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0.55" stdDeviation="0.4" flood-color="#000000" flood-opacity="0.7"/>
-            </filter>
-            </defs>
-            <circle cx="23" cy="23" r="22.2" fill="#26334D"/>
-            <circle cx="23" cy="23" r="19.15" fill="#060A13"/>
-            <circle cx="23" cy="23" r="17.85" fill="none" stroke="#8EA0B8" stroke-width="0.7"/>
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
             <g>
-            <line x1="22.28" y1="8.30" x2="22.28" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="23.72" y1="8.30" x2="23.72" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="24.71" y1="6.74" x2="24.83" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="7.01" x2="26.65" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="7.45" x2="28.42" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="29.65" y1="8.06" x2="30.14" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="10.27" x2="31.78" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="32.61" y1="9.77" x2="33.32" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="10.85" x2="34.74" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="12.06" x2="36.04" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="36.23" y1="13.39" x2="37.20" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="15.65" x2="38.20" y2="14.23" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="37.94" y1="16.35" x2="39.03" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="17.95" x2="39.69" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="19.60" x2="40.17" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="39.26" y1="21.29" x2="40.45" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.70" y1="23.00" x2="40.55" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="39.26" y1="24.71" x2="40.45" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="26.40" x2="40.17" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="28.05" x2="39.69" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.94" y1="29.65" x2="39.03" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="30.35" x2="38.20" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="36.23" y1="32.61" x2="37.20" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="33.94" x2="36.04" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="35.15" x2="34.74" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="32.61" y1="36.23" x2="33.32" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="35.73" x2="31.78" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="29.65" y1="37.94" x2="30.14" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="38.55" x2="28.42" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="38.99" x2="26.65" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="24.71" y1="39.26" x2="24.83" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="23.00" y1="37.70" x2="23.00" y2="40.55" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="21.29" y1="39.26" x2="21.17" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="38.99" x2="19.35" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="38.55" x2="17.58" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="16.35" y1="37.94" x2="15.86" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="35.73" x2="14.23" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="13.39" y1="36.23" x2="12.68" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="35.15" x2="11.26" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="33.94" x2="9.96" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="9.77" y1="32.61" x2="8.80" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="30.35" x2="7.80" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="8.06" y1="29.65" x2="6.97" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="28.05" x2="6.31" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="26.40" x2="5.83" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="6.74" y1="24.71" x2="5.55" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.30" y1="23.00" x2="5.45" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="6.74" y1="21.29" x2="5.55" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="19.60" x2="5.83" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="17.95" x2="6.31" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.06" y1="16.35" x2="6.97" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="15.65" x2="7.80" y2="14.22" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.77" y1="13.39" x2="8.80" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="12.06" x2="9.96" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="10.85" x2="11.26" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="13.39" y1="9.77" x2="12.68" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="10.27" x2="14.22" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="16.35" y1="8.06" x2="15.86" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="7.45" x2="17.58" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="7.01" x2="19.35" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="21.29" y1="6.74" x2="21.17" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
             </g>
-            <g class="hand-hour" filter="url(#hand-shadow-paris)"><polygon points="23,24.2 21.55,22.4 23,10.2 24.45,22.4" fill="#F3E6C4"/></g>
-            <g class="hand-minute" filter="url(#hand-shadow-paris)"><polygon points="23,24.6 22.15,22.6 23,6.3 23.85,22.6" fill="#F6E7C8"/></g>
-            <g class="hand-second"><line x1="23" y1="29.2" x2="23" y2="6.6" stroke="#E11D48" stroke-width="0.7" stroke-linecap="round"/><circle cx="23" cy="29.2" r="1.15" fill="#E11D48"/></g>
-            <circle cx="23" cy="23" r="1.85" fill="#D4AF37" stroke="#C5A059" stroke-width="0.45"/>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
           </svg>
           <figcaption>PARIS</figcaption>
           <span class="clock-readout">--:--</span>
         </figure>
         <figure class="world-clock" data-zone="America/New_York" title="--:--">
-          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden="true">
-            <defs>
-            <filter id="hand-shadow-newyork" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0.55" stdDeviation="0.4" flood-color="#000000" flood-opacity="0.7"/>
-            </filter>
-            </defs>
-            <circle cx="23" cy="23" r="22.2" fill="#26334D"/>
-            <circle cx="23" cy="23" r="19.15" fill="#060A13"/>
-            <circle cx="23" cy="23" r="17.85" fill="none" stroke="#8EA0B8" stroke-width="0.7"/>
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
             <g>
-            <line x1="22.28" y1="8.30" x2="22.28" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="23.72" y1="8.30" x2="23.72" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="24.71" y1="6.74" x2="24.83" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="7.01" x2="26.65" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="7.45" x2="28.42" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="29.65" y1="8.06" x2="30.14" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="10.27" x2="31.78" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="32.61" y1="9.77" x2="33.32" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="10.85" x2="34.74" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="12.06" x2="36.04" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="36.23" y1="13.39" x2="37.20" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="15.65" x2="38.20" y2="14.23" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="37.94" y1="16.35" x2="39.03" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="17.95" x2="39.69" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="19.60" x2="40.17" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="39.26" y1="21.29" x2="40.45" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.70" y1="23.00" x2="40.55" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="39.26" y1="24.71" x2="40.45" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="26.40" x2="40.17" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="28.05" x2="39.69" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.94" y1="29.65" x2="39.03" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="30.35" x2="38.20" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="36.23" y1="32.61" x2="37.20" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="33.94" x2="36.04" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="35.15" x2="34.74" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="32.61" y1="36.23" x2="33.32" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="35.73" x2="31.78" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="29.65" y1="37.94" x2="30.14" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="38.55" x2="28.42" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="38.99" x2="26.65" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="24.71" y1="39.26" x2="24.83" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="23.00" y1="37.70" x2="23.00" y2="40.55" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="21.29" y1="39.26" x2="21.17" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="38.99" x2="19.35" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="38.55" x2="17.58" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="16.35" y1="37.94" x2="15.86" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="35.73" x2="14.23" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="13.39" y1="36.23" x2="12.68" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="35.15" x2="11.26" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="33.94" x2="9.96" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="9.77" y1="32.61" x2="8.80" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="30.35" x2="7.80" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="8.06" y1="29.65" x2="6.97" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="28.05" x2="6.31" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="26.40" x2="5.83" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="6.74" y1="24.71" x2="5.55" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.30" y1="23.00" x2="5.45" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="6.74" y1="21.29" x2="5.55" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="19.60" x2="5.83" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="17.95" x2="6.31" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.06" y1="16.35" x2="6.97" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="15.65" x2="7.80" y2="14.22" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.77" y1="13.39" x2="8.80" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="12.06" x2="9.96" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="10.85" x2="11.26" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="13.39" y1="9.77" x2="12.68" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="10.27" x2="14.22" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="16.35" y1="8.06" x2="15.86" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="7.45" x2="17.58" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="7.01" x2="19.35" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="21.29" y1="6.74" x2="21.17" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
             </g>
-            <g class="hand-hour" filter="url(#hand-shadow-newyork)"><polygon points="23,24.2 21.55,22.4 23,10.2 24.45,22.4" fill="#F3E6C4"/></g>
-            <g class="hand-minute" filter="url(#hand-shadow-newyork)"><polygon points="23,24.6 22.15,22.6 23,6.3 23.85,22.6" fill="#F6E7C8"/></g>
-            <g class="hand-second"><line x1="23" y1="29.2" x2="23" y2="6.6" stroke="#E11D48" stroke-width="0.7" stroke-linecap="round"/><circle cx="23" cy="29.2" r="1.15" fill="#E11D48"/></g>
-            <circle cx="23" cy="23" r="1.85" fill="#D4AF37" stroke="#C5A059" stroke-width="0.45"/>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
           </svg>
           <figcaption>NEW YORK</figcaption>
           <span class="clock-readout">--:--</span>
         </figure>
         <figure class="world-clock" data-zone="Asia/Tokyo" title="--:--">
-          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden="true">
-            <defs>
-            <filter id="hand-shadow-tokyo" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0.55" stdDeviation="0.4" flood-color="#000000" flood-opacity="0.7"/>
-            </filter>
-            </defs>
-            <circle cx="23" cy="23" r="22.2" fill="#26334D"/>
-            <circle cx="23" cy="23" r="19.15" fill="#060A13"/>
-            <circle cx="23" cy="23" r="17.85" fill="none" stroke="#8EA0B8" stroke-width="0.7"/>
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
             <g>
-            <line x1="22.28" y1="8.30" x2="22.28" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="23.72" y1="8.30" x2="23.72" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="24.71" y1="6.74" x2="24.83" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="7.01" x2="26.65" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="7.45" x2="28.42" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="29.65" y1="8.06" x2="30.14" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="10.27" x2="31.78" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="32.61" y1="9.77" x2="33.32" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="10.85" x2="34.74" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="12.06" x2="36.04" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="36.23" y1="13.39" x2="37.20" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="15.65" x2="38.20" y2="14.23" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="37.94" y1="16.35" x2="39.03" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="17.95" x2="39.69" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="19.60" x2="40.17" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="39.26" y1="21.29" x2="40.45" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.70" y1="23.00" x2="40.55" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="39.26" y1="24.71" x2="40.45" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="26.40" x2="40.17" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="28.05" x2="39.69" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.94" y1="29.65" x2="39.03" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="30.35" x2="38.20" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="36.23" y1="32.61" x2="37.20" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="33.94" x2="36.04" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="35.15" x2="34.74" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="32.61" y1="36.23" x2="33.32" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="35.73" x2="31.78" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="29.65" y1="37.94" x2="30.14" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="38.55" x2="28.42" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="38.99" x2="26.65" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="24.71" y1="39.26" x2="24.83" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="23.00" y1="37.70" x2="23.00" y2="40.55" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="21.29" y1="39.26" x2="21.17" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="38.99" x2="19.35" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="38.55" x2="17.58" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="16.35" y1="37.94" x2="15.86" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="35.73" x2="14.23" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="13.39" y1="36.23" x2="12.68" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="35.15" x2="11.26" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="33.94" x2="9.96" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="9.77" y1="32.61" x2="8.80" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="30.35" x2="7.80" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="8.06" y1="29.65" x2="6.97" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="28.05" x2="6.31" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="26.40" x2="5.83" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="6.74" y1="24.71" x2="5.55" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.30" y1="23.00" x2="5.45" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="6.74" y1="21.29" x2="5.55" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="19.60" x2="5.83" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="17.95" x2="6.31" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.06" y1="16.35" x2="6.97" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="15.65" x2="7.80" y2="14.22" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.77" y1="13.39" x2="8.80" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="12.06" x2="9.96" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="10.85" x2="11.26" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="13.39" y1="9.77" x2="12.68" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="10.27" x2="14.22" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="16.35" y1="8.06" x2="15.86" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="7.45" x2="17.58" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="7.01" x2="19.35" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="21.29" y1="6.74" x2="21.17" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
             </g>
-            <g class="hand-hour" filter="url(#hand-shadow-tokyo)"><polygon points="23,24.2 21.55,22.4 23,10.2 24.45,22.4" fill="#F3E6C4"/></g>
-            <g class="hand-minute" filter="url(#hand-shadow-tokyo)"><polygon points="23,24.6 22.15,22.6 23,6.3 23.85,22.6" fill="#F6E7C8"/></g>
-            <g class="hand-second"><line x1="23" y1="29.2" x2="23" y2="6.6" stroke="#E11D48" stroke-width="0.7" stroke-linecap="round"/><circle cx="23" cy="29.2" r="1.15" fill="#E11D48"/></g>
-            <circle cx="23" cy="23" r="1.85" fill="#D4AF37" stroke="#C5A059" stroke-width="0.45"/>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
           </svg>
           <figcaption>TOKYO</figcaption>
           <span class="clock-readout">--:--</span>
         </figure>
         <figure class="world-clock" data-zone="Australia/Sydney" title="--:--">
-          <svg viewBox="0 0 46 46" width="46" height="46" aria-hidden="true">
-            <defs>
-            <filter id="hand-shadow-sydney" x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="0.55" stdDeviation="0.4" flood-color="#000000" flood-opacity="0.7"/>
-            </filter>
-            </defs>
-            <circle cx="23" cy="23" r="22.2" fill="#26334D"/>
-            <circle cx="23" cy="23" r="19.15" fill="#060A13"/>
-            <circle cx="23" cy="23" r="17.85" fill="none" stroke="#8EA0B8" stroke-width="0.7"/>
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
             <g>
-            <line x1="22.28" y1="8.30" x2="22.28" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="23.72" y1="8.30" x2="23.72" y2="5.45" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="24.71" y1="6.74" x2="24.83" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="7.01" x2="26.65" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="7.45" x2="28.42" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="29.65" y1="8.06" x2="30.14" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="10.27" x2="31.78" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="32.61" y1="9.77" x2="33.32" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="10.85" x2="34.74" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="12.06" x2="36.04" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="36.23" y1="13.39" x2="37.20" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="15.65" x2="38.20" y2="14.23" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="37.94" y1="16.35" x2="39.03" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="17.95" x2="39.69" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="19.60" x2="40.17" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="39.26" y1="21.29" x2="40.45" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.70" y1="23.00" x2="40.55" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="39.26" y1="24.71" x2="40.45" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.99" y1="26.40" x2="40.17" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="38.55" y1="28.05" x2="39.69" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="37.94" y1="29.65" x2="39.03" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.73" y1="30.35" x2="38.20" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="36.23" y1="32.61" x2="37.20" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="35.15" y1="33.94" x2="36.04" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="33.94" y1="35.15" x2="34.74" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="32.61" y1="36.23" x2="33.32" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="30.35" y1="35.73" x2="31.78" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="29.65" y1="37.94" x2="30.14" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="28.05" y1="38.55" x2="28.42" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="26.40" y1="38.99" x2="26.65" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="24.71" y1="39.26" x2="24.83" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="23.00" y1="37.70" x2="23.00" y2="40.55" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="21.29" y1="39.26" x2="21.17" y2="40.45" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="38.99" x2="19.35" y2="40.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="38.55" x2="17.58" y2="39.69" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="16.35" y1="37.94" x2="15.86" y2="39.03" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="35.73" x2="14.23" y2="38.20" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="13.39" y1="36.23" x2="12.68" y2="37.20" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="35.15" x2="11.26" y2="36.04" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="33.94" x2="9.96" y2="34.74" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="9.77" y1="32.61" x2="8.80" y2="33.32" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="30.35" x2="7.80" y2="31.77" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="8.06" y1="29.65" x2="6.97" y2="30.14" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="28.05" x2="6.31" y2="28.42" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="26.40" x2="5.83" y2="26.65" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="6.74" y1="24.71" x2="5.55" y2="24.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.30" y1="23.00" x2="5.45" y2="23.00" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="6.74" y1="21.29" x2="5.55" y2="21.17" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.01" y1="19.60" x2="5.83" y2="19.35" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="7.45" y1="17.95" x2="6.31" y2="17.58" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="8.06" y1="16.35" x2="6.97" y2="15.86" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.27" y1="15.65" x2="7.80" y2="14.22" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="9.77" y1="13.39" x2="8.80" y2="12.68" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="10.85" y1="12.06" x2="9.96" y2="11.26" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="12.06" y1="10.85" x2="11.26" y2="9.96" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="13.39" y1="9.77" x2="12.68" y2="8.80" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="15.65" y1="10.27" x2="14.22" y2="7.80" stroke="#E2E8F0" stroke-width="1.25" stroke-linecap="round"/>
-            <line x1="16.35" y1="8.06" x2="15.86" y2="6.97" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="17.95" y1="7.45" x2="17.58" y2="6.31" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="19.60" y1="7.01" x2="19.35" y2="5.83" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
-            <line x1="21.29" y1="6.74" x2="21.17" y2="5.55" stroke="#94A3B8" stroke-width="0.45" stroke-linecap="round"/>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
             </g>
-            <g class="hand-hour" filter="url(#hand-shadow-sydney)"><polygon points="23,24.2 21.55,22.4 23,10.2 24.45,22.4" fill="#F3E6C4"/></g>
-            <g class="hand-minute" filter="url(#hand-shadow-sydney)"><polygon points="23,24.6 22.15,22.6 23,6.3 23.85,22.6" fill="#F6E7C8"/></g>
-            <g class="hand-second"><line x1="23" y1="29.2" x2="23" y2="6.6" stroke="#E11D48" stroke-width="0.7" stroke-linecap="round"/><circle cx="23" cy="29.2" r="1.15" fill="#E11D48"/></g>
-            <circle cx="23" cy="23" r="1.85" fill="#D4AF37" stroke="#C5A059" stroke-width="0.45"/>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
           </svg>
           <figcaption>SYDNEY</figcaption>
           <span class="clock-readout">--:--</span>
@@ -2332,9 +2288,9 @@
         const secondAngle = second * 6;
         const minuteAngle = minute * 6 + second * 0.1;
         const hourAngle = (hour % 12) * 30 + minute * 0.5 + second * 0.008333;
-        node.querySelector(".hand-hour").setAttribute("transform", "rotate(" + hourAngle + " 23 23)");
-        node.querySelector(".hand-minute").setAttribute("transform", "rotate(" + minuteAngle + " 23 23)");
-        node.querySelector(".hand-second").setAttribute("transform", "rotate(" + secondAngle + " 23 23)");
+        node.querySelector(".hand-hour").setAttribute("transform", "rotate(" + hourAngle + " 50 50)");
+        node.querySelector(".hand-minute").setAttribute("transform", "rotate(" + minuteAngle + " 50 50)");
+        node.querySelector(".hand-second").setAttribute("transform", "rotate(" + secondAngle + " 50 50)");
         const ahead = localDay(now, zone) > londonDay ? " +1D" : "";
         const label = parts.hour + ":" + parts.minute + " " + zoneTag(now, zone) + ahead;
         node.title = label;
