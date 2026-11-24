@@ -698,6 +698,37 @@
     .legend i.legend-dashed { border-top-style: dashed; border-top-color: #E2E8F0; }
     .leaflet-bottom.leaflet-right { margin-bottom: 10px; margin-right: 8px; }
     .leaflet-bottom.leaflet-left { margin-bottom: 8px; margin-left: 8px; }
+    .coord-hud {
+      position: relative;
+      background: rgba(6, 10, 19, 0.88);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      color: #E2E8F0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      padding: 4px 10px;
+      border-radius: 6px;
+      line-height: 1.35;
+      margin: 0 0 6px 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .coord-hud-raw { display: block; }
+    .coord-hud-toast {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 6px);
+      background: rgba(6, 10, 19, 0.92);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      color: #E2E8F0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .coord-hud-toast.is-on { opacity: 1; }
     #syria-index h2 { margin: 0 0 8px; color: #D4AF37; }
     .syria-index-scroll { overflow: visible; width: 100%; }
     #syria-index table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -1423,6 +1454,67 @@
       return div;
     };
     brandControl.addTo(map);
+    const coordHud = L.control({ position: "bottomleft" });
+    coordHud.onAdd = function () {
+      const wrap = L.DomUtil.create("div", "coord-hud");
+      wrap.innerHTML = '<div class="coord-hud-toast" aria-live="polite"></div><div class="coord-hud-pretty">—</div><div class="coord-hud-raw"></div>';
+      return wrap;
+    };
+    coordHud.addTo(map);
+    const coordHudEl = document.querySelector(".coord-hud");
+    const coordPretty = coordHudEl.querySelector(".coord-hud-pretty");
+    const coordRaw = coordHudEl.querySelector(".coord-hud-raw");
+    const coordToast = coordHudEl.querySelector(".coord-hud-toast");
+    let coordToastTimer = 0;
+    function formatMapCoord(latlng) {
+      const lat = Number(latlng.lat);
+      const lng = Number(latlng.lng);
+      const pretty = Math.abs(lat).toFixed(4) + "° " + (lat >= 0 ? "N" : "S") + ", " + Math.abs(lng).toFixed(4) + "° " + (lng >= 0 ? "E" : "W");
+      const raw = lat.toFixed(4) + ", " + lng.toFixed(4);
+      return { pretty: pretty, raw: raw };
+    }
+    function resetCoordHud() {
+      coordPretty.textContent = "—";
+      coordRaw.textContent = "";
+    }
+    function showCoordToast(message) {
+      coordToast.textContent = message;
+      coordToast.classList.add("is-on");
+      window.clearTimeout(coordToastTimer);
+      coordToastTimer = window.setTimeout(() => coordToast.classList.remove("is-on"), 1400);
+    }
+    function copyCoordText(text) {
+      const fallback = () => {
+        try { fallbackCopyCoord(text); } catch (err) {}
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text).catch(fallback);
+      }
+      fallback();
+      return Promise.resolve();
+    }
+    function fallbackCopyCoord(text) {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    map.on("mousemove", (event) => {
+      const formatted = formatMapCoord(event.latlng);
+      coordPretty.textContent = formatted.pretty;
+      coordRaw.textContent = formatted.raw;
+    });
+    map.on("mouseout", resetCoordHud);
+    map.on("contextmenu", (event) => {
+      if (event.originalEvent) event.originalEvent.preventDefault();
+      const raw = formatMapCoord(event.latlng).raw;
+      copyCoordText(raw).then(() => showCoordToast("Coordinates copied"));
+    });
     let coordTip = null;
     map.on("click", (event) => {
       const raw = event.originalEvent && event.originalEvent.target;
