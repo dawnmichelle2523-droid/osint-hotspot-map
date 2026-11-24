@@ -446,6 +446,12 @@
     .badge-tier-sohr { background: #1a1214; color: #E2E8F0; border: 1px solid #C5A059; }
     .badge-tipoff { background: #000000; color: #F8FAFC; border: 1px dashed #D4AF37; }
     .badge-tier-tipoff { background: #000000; color: #F8FAFC; border: 1px solid #D4AF37; }
+    .badge-tier-diplomatic { background: #0B2559; color: #E6C667; border: 1px solid #D4AF37; }
+    .badge-tier-field { background: #090C10; color: #E2E8F0; border: 1px solid #1E3A8A; }
+    .badge-tier-claim { background: #1a1214; color: #E2E8F0; border: 1px solid #C5A059; }
+    .badge-claim { background: #000000; color: #E6C667; border: 1px dashed #D4AF37; }
+    .badge-tier-caution { background: #10161c; color: #F8FAFC; border: 1px solid #3B82F6; }
+    .badge-caution { background: #000000; color: #F8FAFC; border: 1px dashed #3B82F6; }
     .chokepoint-label { background: transparent; border: 0; color: #E6C667; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
     #daily-chart-toggle {
       color: #E6C667; background: #1E3A8A; border: 1px solid #3B82F6; border-radius: 999px;
@@ -1093,17 +1099,27 @@
         "Specialist Analyst": ["Specialist Analyst", "badge-tier-specialist"],
         "Wire / Local Outlet": ["Wire / Local Outlet", "badge-tier-local"],
         "SOHR": ["SOHR", "badge-tier-sohr"],
-        "Tip-off": ["Tip-off", "badge-tier-tipoff"]
+        "Tip-off": ["Tip-off", "badge-tier-tipoff"],
+        "UN / Wire / Diplomatic": ["UN / Wire / Diplomatic", "badge-tier-diplomatic"],
+        "Independent / Field Desk": ["Independent / Field Desk", "badge-tier-field"],
+        "State / Party-Aligned Claim": ["State / Party-Aligned Claim", "badge-tier-claim"],
+        "Single-Source / Opposition Caution": ["Single-Source / Opposition Caution", "badge-tier-caution"]
       };
-      const tier = labels[String(props.source_tier || "")];
+      const tierName = String(props.source_tier || "");
+      const tier = labels[tierName];
       const badge = unverifiedTipoff(props)
         ? '<span class="badge badge-tipoff">UNVERIFIED TIP-OFF</span>'
         : (tier ? '<span class="badge ' + tier[1] + '">' + esc(tier[0]) + "</span>" : "");
+      const claim = tierName === "State / Party-Aligned Claim"
+        ? '<span class="badge badge-claim">Claim — Verify</span>'
+        : (tierName === "Single-Source / Opposition Caution"
+          ? '<span class="badge badge-caution">Corroborate Figures / One-Sided Claim</span>'
+          : "");
       const count = Number(props.corroboration_count);
       const corroborated = Number.isFinite(count) && count > 1
         ? '<span class="badge badge-tier-corroborated">Corroborated (' + count + 'x)</span>'
         : "";
-      return badge + corroborated;
+      return badge + claim + corroborated;
     }
 
     function originalPostLink(props) {

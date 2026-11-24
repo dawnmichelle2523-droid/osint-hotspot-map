@@ -215,9 +215,10 @@ _X_HANDLE_GROUPS = [
         "USAbilAraby", "USAbehFarsi", "GermanyDiplo", "PorteParoleMEAE", "TheStudyofWar", "FCDOtravelGovUK",
         "TravelGoC", "SafeTravelNZ", "Smartraveller", "sentdefender", "InsiderGeo", "MATA_osint",
         "faytuksnetwork", "MenchOsint", "DefenceGeek", "WSJ", "uniindianews", "AlarabyTV", "AlHadath",
-        "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "AFP", "anadoluagency", "BBCWorld", "CNN",
+        "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "anadoluagency", "BBCWorld", "CNN",
         "SkyNews", "AJEnglish", "aawsat_News", "timesofisrael", "Jerusalem_Post", "ynetnews",
         "criticalthreats", "ACLEDINFO", "bellingcat", "ELINTNews", "Conflicts", "Osint613",
+        "ReutersWorld", "UNDSS",
     ],
     [
         "syr_television", "SyriacOSINT", "QalaatAlMudiq", "Charles_Lister", "GregoryPWaters", "OSINTWarfare",
@@ -226,11 +227,17 @@ _X_HANDLE_GROUPS = [
         "AymennJawad", "obretix", "CalibreObscura", "SyriaHR", "EnabBaladi", "Syria_Direct",
         "SyriacPress", "Joshua_Landis", "Hamdi_Malik", "MichaelPKnights", "Shelly_Kittleson",
         "tamerbadawi1", "ShafaqNewsEng", "Rudaw_English", "kurdistan_24",
+        "EnabBaladi_Eng", "syriadirect", "syrianmoi", "isfmoisy", "SyriaCivilDef",
+        "SyriaCivilDefe", "OCHA_Syria", "UNinSyria", "SDF_Syria", "farhad_shami", "hawarnews",
+        "kurdistan24tv", "k24_Kurmanci", "arabick24", "iraqiagency", "UNIraq", "IKRPresident",
+        "USCGERBIL", "ReutersAfrica", "BBCAfrica", "RadioDabanga", "AyinSudan", "UNOCHA_Sudan",
+        "UN_Sudan", "UNHCRinSudan", "IOMSudan", "iomchad", "SudanTribune_AR", "SDN154",
+        "SUNA_AGENCY_EN", "SUNA_AGENCY",
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
     ],
 ]
-EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72"}
+EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
 X_HANDLES = []
 _seen_x_handles = set()
 for _group in _X_HANDLE_GROUPS:
@@ -248,7 +255,21 @@ SUDAN_X_HANDLES = {
     "sudantribune_en",
     "patrickheinisc1",
     "vista_sudan",
+    "reutersafrica",
+    "bbcafrica",
+    "radiodabanga",
+    "ayinsudan",
+    "unocha_sudan",
+    "un_sudan",
+    "unhcrinsudan",
+    "iomsudan",
+    "iomchad",
+    "sudantribune_ar",
+    "sdn154",
+    "suna_agency_en",
+    "suna_agency",
 }
+SUDAN_RSS_NAMES = {"khartoum err"}
 IRAQ_X_HANDLES = {
     "iraqiosint",
     "rudawenglish",
@@ -267,6 +288,13 @@ IRAQ_X_HANDLES = {
     "shafaqnewseng",
     "rudaw_english",
     "kurdistan_24",
+    "kurdistan24tv",
+    "k24_kurmanci",
+    "arabick24",
+    "iraqiagency",
+    "uniraq",
+    "ikrpresident",
+    "uscgerbil",
 }
 SYRIA_X_HANDLES = {
     "qalaatalmudiq",
@@ -279,6 +307,20 @@ SYRIA_X_HANDLES = {
     "syria_direct",
     "syriacpress",
     "joshua_landis",
+    "enabbaladi_eng",
+    "syriadirect",
+    "asharqnewssyr",
+    "sanaenofficial",
+    "syrianmofaex",
+    "syrianmoi",
+    "isfmoisy",
+    "syriacivildef",
+    "syriacivildefe",
+    "ocha_syria",
+    "uninsyria",
+    "sdf_syria",
+    "farhad_shami",
+    "hawarnews",
 }
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
@@ -334,8 +376,10 @@ GEO_FALLBACKS = {
     "el obeid": (13.1833, 30.2167),
     "wad madani": (14.4, 33.52),
     "wad medani": (14.4, 33.52),
-    "khartoum": (15.5518, 32.5324),
-    "omdurman": (15.6445, 32.4773),
+    "adre crossing": (13.4667, 22.2000),
+    "tine crossing": (15.0167, 22.7833),
+    "khartoum": (15.5007, 32.5599),
+    "omdurman": (15.6445, 32.4777),
     "nyala": (12.05, 24.8833),
     "kadugli": (11.0167, 29.7167),
     "kassala": (15.45, 36.4),
@@ -416,6 +460,8 @@ GEO_FALLBACKS = {
 # Sudan places, (latitude, longitude). Longer names are matched first.
 SUDAN_GEO_FALLBACKS = {
     "adre border crossing": (13.4667, 22.2000),
+    "adre crossing": (13.4667, 22.2000),
+    "tine crossing": (15.0167, 22.7833),
     "khartoum north": (15.6150, 32.5480),
     "khartoum bahri": (15.6150, 32.5480),
     "red sea state": (19.6158, 37.2164),
@@ -851,6 +897,22 @@ _LOCAL_OUTLET_HANDLES = {
 _LOCAL_OUTLET_HOSTS = ("enabbaladi.net", "syriadirect.org", "syriacpress.com")
 _TIPOFF_HANDLES = {"elintnews", "intelcrab", "sentdefender", "osint613"}
 _SOHR_HANDLES = {"syriahr", "sohr"}
+_DIPLOMATIC_HANDLES = {
+    "ocha_syria", "uninsyria", "uniraq", "unocha_sudan", "un_sudan", "unhcrinsudan",
+    "iomsudan", "iomchad", "undss", "uscgerbil", "centcom", "reuters", "reutersworld",
+    "reutersafrica", "bbcafrica", "ajenglish", "acledinfo",
+}
+_FIELD_DESK_HANDLES = {
+    "enabbaladi_eng", "syriadirect", "asharqnewssyr", "syriacivildef", "syriacivildefe",
+    "charles_lister", "shafaqnewseng", "shafaqnewsarb", "radiodabanga", "ayinsudan",
+    "sudantribune_en", "sudantribune_ar", "sdn154",
+}
+_CLAIM_HANDLES = {
+    "sanaenofficial", "syrianmofaex", "syrianmoi", "isfmoisy", "sdf_syria", "farhad_shami",
+    "hawarnews", "rudawenglish", "k24english", "kurdistan24tv", "k24_kurmanci", "arabick24",
+    "iraqiagency", "iraqipmo", "ikrpresident", "suna_agency_en", "suna_agency",
+}
+_CAUTION_HANDLES = {"syriahr", "iranintl_en"}
 _SOHR_PHRASE = "according to SOHR, figures unverified"
 _CASUALTY_WORDS = re.compile(
     r"\b(?:killed|killing|dead|deaths|death toll|wounded|casualt(?:y|ies))\b",
@@ -861,6 +923,14 @@ _CASUALTY_WORDS = re.compile(
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _CAUTION_HANDLES):
+        return "Single-Source / Opposition Caution"
+    if _token_named(tokens, _CLAIM_HANDLES):
+        return "State / Party-Aligned Claim"
+    if _token_named(tokens, _FIELD_DESK_HANDLES) or "khartoumerr.org" in raw:
+        return "Independent / Field Desk"
+    if _token_named(tokens, _DIPLOMATIC_HANDLES):
+        return "UN / Wire / Diplomatic"
     if _token_named(tokens, _SOHR_HANDLES) or "sohr.org" in raw:
         return "SOHR"
     if "conflicts" in tokens or _token_named(tokens, _TIPOFF_HANDLES):
@@ -1616,6 +1686,111 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
     return found
 
 
+KHARTOUM_ERR_FEED = "https://khartoumerr.org/feed/"
+KHARTOUM_ERR_HOME = "https://khartoumerr.org/"
+_BLOCKED_SCRAPE_HOSTS = {"mofa.go.jp", "www.mofa.go.jp"}
+
+
+def blocked_scrape_url(url: str) -> bool:
+    """mofa.go.jp itself is never scraped. The Anzen notice page is a separate feed."""
+    match = re.search(r"https?://([^/?#]+)", str(url or ""), re.IGNORECASE)
+    if not match:
+        return False
+    return match.group(1).lower() in _BLOCKED_SCRAPE_HOSTS
+
+
+def _khartoum_err_items(entries: list) -> list[dict]:
+    found = []
+    for entry in entries[:20]:
+        title = plain_text(getattr(entry, "title", ""))
+        link = plain_text(getattr(entry, "link", ""))
+        if not title or not link.startswith("http") or blocked_scrape_url(link):
+            continue
+        summary = plain_text(getattr(entry, "summary", "") or getattr(entry, "description", "") or title)
+        published = getattr(entry, "published", "") or getattr(entry, "updated", "")
+        found.append(
+            {
+                "title": title[:240],
+                "summary": (summary or title)[:500],
+                "source_url": link,
+                "source_name": source_label("rss", "Khartoum Err"),
+                "source_kind": "rss",
+                "published_at": published,
+                "region": "Sudan & Horn",
+            }
+        )
+    return found
+
+
+def _khartoum_err_html(page: str) -> list[dict]:
+    soup = BeautifulSoup(page or "", "html.parser")
+    found = []
+    seen = set()
+    for node in soup.select("h2 a, h3 a, article a"):
+        title = plain_text(node.get_text(" ", strip=True))
+        link = plain_text(node.get("href") or "")
+        if link.startswith("/"):
+            link = "https://khartoumerr.org" + link
+        if not title or not link.startswith("https://khartoumerr.org/") or link in seen:
+            continue
+        if blocked_scrape_url(link):
+            continue
+        seen.add(link)
+        found.append(
+            {
+                "title": title[:240],
+                "summary": title[:500],
+                "source_url": link,
+                "source_name": source_label("rss", "Khartoum Err"),
+                "source_kind": "rss",
+                "published_at": "",
+                "region": "Sudan & Horn",
+            }
+        )
+        if len(found) >= 20:
+            break
+    return found
+
+
+def fetch_khartoum_err() -> list[dict]:
+    """RSS first, then the homepage. Timeout 6. A parse failure is logged and skipped."""
+    if blocked_scrape_url(KHARTOUM_ERR_FEED) or blocked_scrape_url(KHARTOUM_ERR_HOME):
+        print("Khartoum Err skipped: blocked host.")
+        return []
+    try:
+        response = requests.get(
+            KHARTOUM_ERR_FEED,
+            timeout=6,
+            headers={"User-Agent": BROWSER_USER_AGENT},
+        )
+        response.raise_for_status()
+        parsed = parse_feed(response.content or b"")
+        if getattr(parsed, "bozo", False) and not parsed.entries:
+            raise ValueError("invalid rss")
+        if not parsed.entries:
+            raise ValueError("no entries")
+        note_feed("rss", "Khartoum Err", True, "")
+        return _khartoum_err_items(parsed.entries)
+    except Exception as exc:
+        print(f"Khartoum Err RSS parse failed: {exc.__class__.__name__}.")
+    try:
+        response = requests.get(
+            KHARTOUM_ERR_HOME,
+            timeout=6,
+            headers={"User-Agent": BROWSER_USER_AGENT},
+        )
+        response.raise_for_status()
+        found = _khartoum_err_html(response.text)
+        if not found:
+            raise ValueError("no entries")
+        note_feed("rss", "Khartoum Err", True, "")
+        return found
+    except Exception as exc:
+        print(f"Khartoum Err parse failed: {exc.__class__.__name__}.")
+        note_feed("rss", "Khartoum Err", False, exc.__class__.__name__)
+        return []
+
+
 def newest_aljazeera_liveblog(text: str) -> str:
     """Newest /news/liveblog/YYYY/MM/DD/ link. Equal dates keep the first one."""
     best = ""
@@ -1811,6 +1986,14 @@ def mentions_syria_or_middle_east(text: str) -> bool:
     return any(term in text for term in ("سوريا", "سورية", "الشرق الأوسط", "الشرق الاوسط", "حلب", "دمشق", "إدلب", "حمص"))
 
 
+def mentions_chad_crossing(text: str) -> bool:
+    """Chad and the named border crossings. Bare 'tine' is not a place match."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("chad", "n'djamena", "ndjamena", "adre crossing", "tine crossing", "adré", "tiné")):
+        return True
+    return "تشاد" in str(text or "") or "نجامينا" in str(text or "")
+
+
 def mentions_sudan_or_horn(text: str) -> bool:
     if sudan_mention(text):
         return True
@@ -1860,7 +2043,7 @@ def keep_x_post(handle: str, text: str) -> bool:
     if mentions_syria_or_middle_east(text):
         return True
     lowered = handle.lower()
-    if lowered in SUDAN_X_HANDLES and mentions_sudan_or_horn(text):
+    if lowered in SUDAN_X_HANDLES and (mentions_sudan_or_horn(text) or mentions_chad_crossing(text)):
         return True
     if lowered in IRAQ_X_HANDLES and iraq_mention(text):
         return True
@@ -1982,9 +2165,21 @@ def needs_english(text: object) -> bool:
     english_hits = sum(1 for token in _ENGLISH_STOPS if token in lowered)
     if english_hits >= 2:
         return False
+    if re.search(r"[çêîûşÇÊÎÛŞ]", sample):
+        return True
     accented = re.search(r"[\u00C0-\u024F]", sample) is not None
     other_language = any(token in lowered for token in _OTHER_LANGUAGE_MARKERS)
     return (accented or other_language) and english_hits == 0
+
+
+def kurdish_handle_needs_english(handle: str, title: str, summary: str) -> bool:
+    """Kurmanji and Sorani accounts stay in the translation queue when the text is not English."""
+    if str(handle or "").lower() not in {"k24_kurmanci", "kurdistan24tv"}:
+        return False
+    sample = f" {title} {summary} ".casefold()
+    if sum(1 for token in _ENGLISH_STOPS if token in sample) >= 2:
+        return False
+    return len(re.findall(r"[A-Za-z\u00C0-\u024F']+", sample)) >= 4 or bool(_FOREIGN_SCRIPT.search(sample))
 
 
 def original_post_text(item: dict) -> str:
@@ -1994,8 +2189,19 @@ def original_post_text(item: dict) -> str:
     return chosen[:2000]
 
 
+_LATIN_FOLD = str.maketrans({
+    "á": "a", "à": "a", "â": "a", "ä": "a", "ã": "a",
+    "é": "e", "è": "e", "ë": "e",
+    "í": "i", "ì": "i", "ï": "i",
+    "ó": "o", "ò": "o", "ô": "o", "ö": "o",
+    "ú": "u", "ù": "u", "ü": "u",
+    "ý": "y", "ñ": "n",
+})
+
+
 def geo_blob(*parts: object) -> str:
     text = " ".join(str(part or "") for part in parts).lower().replace("'", " ")
+    text = text.translate(_KURDISH_FOLD).translate(_LATIN_FOLD)
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return " ".join(text.split())
 
@@ -2421,10 +2627,15 @@ def coverage_region(item: dict, placed: dict) -> dict:
             item.get("original_text"),
         )
     )
-    if sudan_mention(blob):
-        return placed
     handle = channel_handle(item)
     rss_name = str(item.get("source_name") or "").lower()
+    sudan_roster = handle in SUDAN_X_HANDLES or any(name in rss_name for name in SUDAN_RSS_NAMES)
+    if sudan_mention(blob):
+        placed["region"] = "Sudan & Horn"
+        return placed
+    if sudan_roster and not iraq_mention(blob) and not mentions_syria_or_middle_east(blob):
+        placed["region"] = "Sudan & Horn"
+        return placed
     syria_roster = (
         handle in SYRIA_LOCAL_CHANNELS
         or handle in SYRIA_X_HANDLES
@@ -2669,6 +2880,10 @@ def ingest_feeds() -> dict:
             rss_items = collect_fetched(
                 [(lambda name=name, url=url: fetch_rss_feed(name, url)) for name, url in feeds]
             )
+            try:
+                rss_items.extend(fetch_khartoum_err())
+            except Exception as exc:
+                print(f"Khartoum Err failed: {exc.__class__.__name__}.")
             try:
                 live_items = poll_aljazeera_liveblog()
             except Exception as exc:
@@ -3289,6 +3504,10 @@ def apply_summary_caveats(text: str, records: list[dict]) -> str:
         cleaned = cleaned.rstrip(".") + f". Casualty figures are cited {_SOHR_PHRASE}."
     if any(_single_tipoff(item) for item in records) and "unverified tip-off" not in cleaned.lower():
         cleaned = cleaned.rstrip(".") + ". A single-source aggregator post is an unverified tip-off and is not confirmed."
+    if any(str(item.get("source_tier") or "") == "State / Party-Aligned Claim" for item in records) and "until a wire" not in cleaned.lower():
+        cleaned = cleaned.rstrip(".") + ". State and party-aligned accounts are claims until a wire, UN agency, or independent outlet confirms them."
+    if any("iranintl" in f"{item.get('source_name') or ''} {item.get('source_tier') or ''}".lower() for item in records) and "opposition framing" not in cleaned.lower():
+        cleaned = cleaned.rstrip(".") + ". Iran International is attributed as opposition framing."
     return cleaned
 
 
@@ -3365,6 +3584,11 @@ def call_window_summary(records: list[dict], start: datetime, end: datetime, key
         "according to SOHR, figures unverified.\n"
         "A Tip-off item is an aggregator post. When corroboration_count is missing or not greater than 1, "
         "do not describe that post as confirmed. Call it an unverified tip-off.\n"
+        "Also use these tier labels when they apply: UN / Wire / Diplomatic, Independent / Field Desk, "
+        "State / Party-Aligned Claim, and Single-Source / Opposition Caution.\n"
+        "State / Party-Aligned Claim items are claims. Attribute them as claims until a wire, UN agency, "
+        "or independent outlet confirms them.\n"
+        "Hedge casualty figures from syriahr. Attribute IranIntl_En as opposition framing, not as confirmed fact.\n"
         "When a sentence states likelihood, use only this calibrated scale: "
         "remote chance, highly unlikely, unlikely, realistic possibility, likely, highly likely, almost certain. "
         "Do not assign a likelihood the records do not support.\n"
@@ -3994,16 +4218,16 @@ def summary_response() -> dict:
     return {"summaries": summary, "fallback": bool(summary.get("fallback"))}
 
 
-def apply_english_fields(title: str, summary: str, translated: dict) -> tuple[str, str] | None:
+def apply_english_fields(title: str, summary: str, translated: dict, force: bool = False) -> tuple[str, str] | None:
     new_title = osint.one_sentence(translated.get("title"))[:240]
     new_summary = osint.one_sentence(translated.get("summary"))[:500]
     updated_title = title
     updated_summary = summary
     changed = False
-    if needs_english(title) and new_title and not needs_english(new_title):
+    if (force or needs_english(title)) and new_title and not needs_english(new_title):
         updated_title = new_title
         changed = True
-    if needs_english(summary) and new_summary and not needs_english(new_summary):
+    if (force or needs_english(summary)) and new_summary and not needs_english(new_summary):
         updated_summary = new_summary
         changed = True
     if not changed:
@@ -4020,19 +4244,25 @@ def translate_existing_rows() -> int:
     with _db_lock:
         conn = db_connect()
         try:
-            rows = conn.execute("SELECT id, title, summary, original_text FROM items").fetchall()
+            rows = conn.execute("SELECT id, title, summary, original_text, source_name FROM items").fetchall()
         finally:
             conn.close()
     updated = 0
     for row in rows:
         title = str(row["title"] or "")
         summary = str(row["summary"] or "")
-        if not needs_english(title) and not needs_english(summary):
+        handle = channel_handle({"source_name": row["source_name"]})
+        if not needs_english(title) and not needs_english(summary) and not kurdish_handle_needs_english(handle, title, summary):
             continue
         translated = osint.translate_post(title, summary)
         if not translated:
             continue
-        applied = apply_english_fields(title, summary, translated)
+        applied = apply_english_fields(
+            title,
+            summary,
+            translated,
+            force=kurdish_handle_needs_english(handle, title, summary),
+        )
         if applied is None:
             print(f"Translation left item {row['id']} unchanged.")
             continue

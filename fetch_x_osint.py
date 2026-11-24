@@ -362,7 +362,9 @@ PLACES = {
     "bandar abbas": (56.2808, 27.1832, "Iran & Iraq"),
     "cairo": (31.2357, 30.0444, "Other / International"),
     "khartoum": (32.5599, 15.5007, "Sudan & Horn"),
-    "omdurman": (32.4773, 15.6445, "Sudan & Horn"),
+    "adre crossing": (22.2000, 13.4667, "Sudan & Horn"),
+    "tine crossing": (22.7833, 15.0167, "Sudan & Horn"),
+    "omdurman": (32.4777, 15.6445, "Sudan & Horn"),
     "port sudan": (37.2164, 19.6158, "Sudan & Horn"),
     "el fasher": (25.3494, 13.6289, "Sudan & Horn"),
     "el fashir": (25.3494, 13.6289, "Sudan & Horn"),
@@ -455,6 +457,14 @@ GOVERNORATE_ALIASES = {
 
 def place_key(value: object) -> str:
     text = str(value or "").lower().replace("'", " ")
+    text = text.translate(str.maketrans({
+        "á": "a", "à": "a", "â": "a", "ä": "a", "ã": "a",
+        "é": "e", "è": "e", "ê": "e", "ë": "e",
+        "í": "i", "ì": "i", "î": "i", "ï": "i",
+        "ó": "o", "ò": "o", "ô": "o", "ö": "o",
+        "ú": "u", "ù": "u", "û": "u", "ü": "u",
+        "ç": "c", "ş": "s", "ñ": "n", "ý": "y",
+    }))
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return " ".join(text.split())
 
@@ -609,7 +619,7 @@ def extract_location(headline: str) -> dict | None:
         "The Red Sea, Strait of Hormuz, Persian Gulf, and Gulf of Oman are Maritime. "
         "Sudan, including Khartoum, Omdurman, Bahri, Port Sudan, El Fasher, Nyala, El Geneina, "
         "Zalingei, Ed Daein, El Obeid, Kadugli, Al-Fulah, Wad Madani, Sennar, Kassala, Gedaref, "
-        "Atbara, Dongola, Adre, Darfur, Kordofan, the RSF, and the SAF, is Sudan & Horn. "
+        "Atbara, Dongola, Adre, Adré / Adre Crossing, Tiné / Tine Crossing, Darfur, Kordofan, the RSF, and the SAF, is Sudan & Horn. "
         "Do not use Other / International for Sudan, the RSF, the SAF, Darfur, Kordofan, or a Sudanese city. "
         "The Horn of Africa, including Eritrea, Ethiopia, Djibouti, Somalia, and South Sudan, is Sudan & Horn. "
         "Anything else is Other / International. "
@@ -618,7 +628,8 @@ def extract_location(headline: str) -> dict | None:
         "governorate is one of "
         + ", ".join(SYRIA_GOVERNORATES)
         + ", or an empty string when the event is not in a Syrian governorate. "
-        "When the title or summary is Arabic, including Sudanese or Iraqi Arabic, Kurdish, Persian, Farsi, or Hebrew, or when it is French, title and summary must be concise English. "
+        "When the title or summary is Arabic, Sorani Kurdish, Kurmanji, Persian, Farsi, Hebrew, or French, title and summary must be concise English. "
+        "Sorani from kurdistan24tv and Kurmanji from k24_Kurmanci must be translated into the English title and summary. "
         "Use the terms Ansarallah, coalition (Saudi Arabia), government forces, and truce. "
         "When AlekhbariahSY or NNALeb says enemy forces, write Israeli forces. "
         "Attribute state media and ISW assessments to the outlet in the title or summary. "
@@ -692,7 +703,8 @@ def translate_post(title: str, summary: str) -> dict | None:
         return None
     prompt = (
         "Translate this Telegram, X, or RSS post into clear English. "
-        "Arabic, including Sudanese Arabic, Farsi, or Hebrew title and summary must be English. "
+        "Arabic, including Sudanese Arabic, Sorani Kurdish, Kurmanji, Farsi, or Hebrew title and summary must be English. "
+        "Sorani from kurdistan24tv and Kurmanji from k24_Kurmanci must become an English title and summary. "
         "If it is already English, return it in English without adding facts. "
         "title is a concise neutral intelligence headline. "
         "summary is 1-2 clear sentences. "
