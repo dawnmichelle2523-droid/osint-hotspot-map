@@ -4,24 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoRiskIntel — Live Geospatial Intelligence</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png" />
-  <link rel="apple-touch-icon" href="/static/globe_icon.png" />
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=2" />
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
   <style>
     :root {
       color-scheme: dark;
-      --bg: #090C10;
-      --panel: #11161D;
-      --card-bg: #11161D;
+      --bg: #041222;
+      --panel: #090E16;
+      --card-bg: #090E16;
       --line: #232A34;
       --text: #E2E8F0;
       --muted: #94A3B8;
-      --active: #1c1810;
-      --active-line: #E6C667;
-      --gold: #E6C667;
-      --gold-border: #4A3B1C;
+      --active: #041222;
+      --active-line: #18D4C0;
+      --gold: #18D4C0;
+      --gold-border: #0F4C4C;
       --high: #F43F5E;
       --medium: #F59E0B;
       --low: #38BDF8;
@@ -33,10 +33,10 @@
     html, body { height: auto; min-height: 100%; margin: 0; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
     #live-bar {
       display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-      padding: 8px 12px; background: #090C10; border-bottom: 1px solid #232A34;
+      padding: 8px 12px; background: #041222; border-bottom: 1px solid #232A34;
     }
     #fetch-live {
-      color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 8px;
+      color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 8px;
       padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
     }
     #fetch-live:disabled { opacity: 0.7; cursor: wait; }
@@ -57,23 +57,23 @@
       font-size: 9px; font-weight: 700; letter-spacing: 0.14em; line-height: 1;
       text-transform: uppercase; white-space: nowrap;
     }
-    .world-clock.london figcaption { color: #E6C667; }
+    .world-clock.london figcaption { color: #18D4C0; }
     .world-clock .clock-tip {
       display: none; position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
-      background: #11161D; color: #E6C667; border: 1px solid #4A3B1C; border-radius: 4px;
+      background: #090E16; color: #18D4C0; border: 1px solid #0F4C4C; border-radius: 4px;
       padding: 1px 5px; font-size: 10px; letter-spacing: 0.04em; white-space: nowrap; pointer-events: none;
     }
     .world-clock:hover .clock-tip { display: block; }
     #feed-health-wrap { position: relative; }
     #feed-health {
-      color: #94A3B8; background: #11161D; border: 1px solid #232A34; border-radius: 999px;
+      color: #94A3B8; background: #090E16; border: 1px solid #232A34; border-radius: 999px;
       padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     }
-    #feed-health:hover:not(.has-fail) { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    #feed-health:hover:not(.has-fail) { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     #feed-health.has-fail { color: #F59E0B; }
     #feed-popover {
       position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: min(360px, 80vw);
-      background: #11161D; color: #E2E8F0; border: 1px solid #232A34; border-radius: 10px;
+      background: #090E16; color: #E2E8F0; border: 1px solid #232A34; border-radius: 10px;
       padding: 10px 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
     }
     #feed-popover[hidden] { display: none; }
@@ -82,22 +82,22 @@
     #feed-popover li { font-size: 12px; line-height: 1.35; }
     #feed-popover .fail-error { color: #F59E0B; }
     #ticker-toggle {
-      color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 999px;
+      color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 999px;
       padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
     }
-    #ticker-toggle[aria-pressed="false"] { color: #94A3B8; background: #11161D; border-color: #232A34; }
+    #ticker-toggle[aria-pressed="false"] { color: #94A3B8; background: #090E16; border-color: #232A34; }
     #ticker {
       display: flex; align-items: stretch; width: 100%; height: 34px; overflow: hidden;
-      background: #090c10; border-top: 1px solid #262012; border-bottom: 1px solid #262012;
+      background: #041222; border-top: 1px solid #0F4C4C; border-bottom: 1px solid #0F4C4C;
     }
     body.ticker-off #ticker { display: none; }
     #ticker-badge {
       flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
-      background: #1c1810; color: #E6C667; border-right: 1px solid #4A3B1C;
+      background: #041222; color: #18D4C0; border-right: 1px solid #0F4C4C;
       padding: 0 12px; font-weight: 700; font-size: 11px; letter-spacing: 1px; white-space: nowrap;
     }
     #ticker-badge .ticker-live-dot {
-      width: 7px; height: 7px; border-radius: 50%; background: #E6C667; box-shadow: 0 0 8px #E6C667;
+      width: 7px; height: 7px; border-radius: 50%; background: #18D4C0; box-shadow: 0 0 8px #18D4C0;
       animation: tickerPulse 1.6s ease-in-out infinite;
     }
     @keyframes tickerPulse {
@@ -117,8 +117,8 @@
       border: 0; background: transparent; color: #E2E8F0; font: inherit; font-size: 12.5px;
       white-space: nowrap; cursor: pointer;
     }
-    .ticker-item:hover { color: #E6C667; }
-    .ticker-region { color: #E6C667; font-weight: 700; letter-spacing: 0.04em; }
+    .ticker-item:hover { color: #18D4C0; }
+    .ticker-region { color: #18D4C0; font-weight: 700; letter-spacing: 0.04em; }
     .ticker-sev { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
     .ticker-age { color: #94A3B8; }
     .ticker-empty { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; color: #94A3B8; font-size: 12px; }
@@ -129,12 +129,12 @@
     #stage { position: relative; height: 75vh; background: var(--bg); }
     #map { position: absolute; inset: 0; background: var(--bg); }
     .leaflet-tooltip.coord-tip {
-      background: #11161D; color: #E2E8F0; border: 1px solid #E6C667; border-radius: 6px;
+      background: #090E16; color: #E2E8F0; border: 1px solid #18D4C0; border-radius: 6px;
       box-shadow: none; font-size: 12px; font-weight: 650; padding: 3px 6px;
     }
     .leaflet-tooltip.coord-tip::before { display: none; }
     .leaflet-tooltip.pin-tip {
-      background: #11161D; color: #E2E8F0; border: 1px solid #232A34; border-radius: 8px;
+      background: #090E16; color: #E2E8F0; border: 1px solid #232A34; border-radius: 8px;
       box-shadow: none; font-size: 12px; font-weight: 650; padding: 6px 8px; max-width: 240px;
     }
     .leaflet-tooltip.pin-tip::before { display: none; }
@@ -144,11 +144,11 @@
     .original-arabic div { margin-top: 4px; color: #c5ceda; font-size: 12px; line-height: 1.45; }
     #filter-toggle {
       position: absolute; z-index: 950; top: 12px; left: 12px;
-      background: #11161D; color: #94A3B8;
+      background: #090E16; color: #94A3B8;
       border: 1px solid #232A34; border-radius: 8px;
       padding: 7px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
     }
-    #filter-toggle:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    #filter-toggle:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     body.filters-open #filter-toggle { left: 12px; }
     #sidebar {
       position: absolute; z-index: 900; top: 0; left: 0; bottom: 0; width: 280px;
@@ -180,10 +180,10 @@
     .chips, .row { display: flex; flex-wrap: wrap; gap: 6px; }
     .chips { margin-top: 8px; }
     .group { margin-top: 14px; }
-    #sidebar h1, .group h2 { color: #E6C667; }
+    #sidebar h1, .group h2 { color: #18D4C0; }
     .group h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 650; }
     details.filter-dropdown {
-      background: #11161D; border: 1px solid #232A34; border-radius: 8px;
+      background: #090E16; border: 1px solid #232A34; border-radius: 8px;
       padding: 8px 12px; margin-top: 8px; margin-bottom: 8px;
     }
     details.filter-dropdown summary {
@@ -193,7 +193,7 @@
     details.filter-dropdown summary::-webkit-details-marker { display: none; }
     details.filter-dropdown summary::marker { content: ""; }
     .filter-label {
-      color: #E6C667; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+      color: #18D4C0; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
     }
     .filter-current {
       display: inline-flex; align-items: center; gap: 6px; min-width: 0;
@@ -206,14 +206,14 @@
     details.filter-dropdown[open] .filter-chevron { transform: rotate(180deg); }
     details.filter-dropdown .row { margin-top: 8px; }
     button.pill, button.chip {
-      background: #11161D; color: #94A3B8; border: 1px solid #232A34;
+      background: #090E16; color: #94A3B8; border: 1px solid #232A34;
       border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     }
     button.pill:hover:not([aria-pressed="true"]), button.chip:hover {
-      background: #181d24; border-color: #4A3B1C; color: #E6C667;
+      background: #0B2430; border-color: #0F4C4C; color: #18D4C0;
     }
     button.pill[aria-pressed="true"] {
-      background: #1c1810; border-color: #4A3B1C; color: #E6C667; font-weight: 600;
+      background: #041222; border-color: #0F4C4C; color: #18D4C0; font-weight: 600;
     }
     button.pill:focus-visible, button.chip:focus-visible, #filter-toggle:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .n { display: inline-block; margin-left: 4px; min-width: 1.1em; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); font-variant-numeric: tabular-nums; }
@@ -225,22 +225,22 @@
     #basemap {
       position: absolute; z-index: 860; top: 12px; right: 12px;
       display: flex; gap: 2px; padding: 3px;
-      background: #11161D; border: 1px solid #232A34; border-radius: 999px;
+      background: #090E16; border: 1px solid #232A34; border-radius: 999px;
     }
     #basemap button {
-      background: #11161D; color: #94A3B8; border: 1px solid #232A34;
+      background: #090E16; color: #94A3B8; border: 1px solid #232A34;
       border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
     }
-    #basemap button:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
-    #basemap button[aria-pressed="true"] { background: #1c1810; color: #E6C667; border: 1px solid #4A3B1C; font-weight: 600; }
-    #basemap button:focus-visible { outline: 2px solid #E6C667; outline-offset: 2px; }
+    #basemap button:hover:not([aria-pressed="true"]) { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
+    #basemap button[aria-pressed="true"] { background: #041222; color: #18D4C0; border: 1px solid #0F4C4C; font-weight: 600; }
+    #basemap button:focus-visible { outline: 2px solid #18D4C0; outline-offset: 2px; }
     #quick-jump button {
-      background: #11161D; color: #94A3B8; border: 1px solid #232A34;
+      background: #090E16; color: #94A3B8; border: 1px solid #232A34;
       border-radius: 999px; padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 600;
       cursor: pointer; white-space: nowrap;
     }
-    #quick-jump button:hover:not([aria-pressed="true"]) { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
-    #quick-jump button[aria-pressed="true"] { background: #1c1810; color: #E6C667; border: 1px solid #4A3B1C; font-weight: 600; }
+    #quick-jump button:hover:not([aria-pressed="true"]) { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
+    #quick-jump button[aria-pressed="true"] { background: #041222; color: #18D4C0; border: 1px solid #0F4C4C; font-weight: 600; }
     #quick-jump button:focus-visible, #copy-briefing:focus-visible, #export-headlines:focus-visible, .copy-pin:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .legend {
       position: absolute; z-index: 800; right: 12px; bottom: 12px;
@@ -273,11 +273,11 @@
     .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(212, 175, 55, 0.35); }
     .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
       width: 40px; height: 40px; margin-left: 3px; margin-top: 3px; line-height: 36px;
-      background: #1c1810; color: #E6C667; font-weight: 600;
+      background: #041222; color: #18D4C0; font-weight: 600;
       border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 3px 8px rgba(7, 19, 22, 0.5);
     }
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #11161D; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #090E16; color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
     .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid var(--line); }
     .leaflet-popup-content { margin: 10px 12px; max-width: 276px; }
     .leaflet-popup-close-button { color: #c5ceda !important; }
@@ -292,31 +292,31 @@
     .badge-high { background: #F43F5E; color: #1a0509; border: 1px solid #F43F5E; }
     .badge-medium { background: #F59E0B; color: #1a1200; border: 1px solid #F59E0B; }
     .badge-low { background: #38BDF8; color: #04221e; border: 1px solid #38BDF8; }
-    .badge-sources { background: #1a1504; color: #E6C667; border: 1px solid #E6C667; box-shadow: 0 0 8px rgba(243, 198, 79, 0.85); }
+    .badge-sources { background: #041222; color: #18D4C0; border: 1px solid #18D4C0; box-shadow: 0 0 8px rgba(24, 212, 192, 0.85); }
     .summary { margin: 6px 0; font-size: 13px; }
     .when { color: var(--muted); font-size: 12px; }
     a.popup-link { display: inline-block; margin-top: 8px; color: var(--active-line); text-decoration: none; font-size: 13px; font-weight: 650; }
-    .leaflet-bottom.leaflet-right { margin-bottom: 46px; }
+    .leaflet-bottom.leaflet-right { margin-bottom: 52px; }
     #headlines {
       width: 100%; background: var(--bg); color: var(--text);
       border: 1px solid var(--line); padding: 28px 20px 48px; overflow-y: auto;
     }
     .headlines-inner { width: 100%; margin: 0 auto; }
     .headlines-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 6px; border-bottom: 2px solid var(--active-line); padding-bottom: 8px; }
-    #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; color: #E6C667; }
-    #export-headlines, #copy-briefing, #export-pdf { color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    #export-headlines:hover, #copy-briefing:hover, #export-pdf:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    #headlines h2 { margin: 0; font-size: 22px; letter-spacing: -0.01em; flex: 1; color: #18D4C0; }
+    #export-headlines, #copy-briefing, #export-pdf { color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #export-headlines:hover, #copy-briefing:hover, #export-pdf:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     .popup-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
     .popup-actions .popup-link { margin-top: 0; }
-    .copy-pin { color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .copy-pin:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    .copy-pin { color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .copy-pin:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     .headlines-note { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
     #headline-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
     #headline-list[hidden], #headlines .headlines-note[hidden] { display: none !important; }
     .headline-card, .brief-card { position: relative; }
     .headline-card::before, .brief-card::before {
       content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 12px 12px 0 0;
-      background: linear-gradient(90deg, #b89438 0%, #c97a4b 55%, #d95f6b 100%);
+      background: linear-gradient(90deg, #18D4C0 0%, #14A89A 55%, #0F4C4C 100%);
     }
     .headline-card {
       background: var(--card-bg); border: 1px solid var(--line); border-top: 0;
@@ -325,7 +325,7 @@
     }
     .headline-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .headline-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .region-tag { background: #1c1810; color: #E6C667; border: 1px solid #4A3B1C; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+    .region-tag { background: #041222; color: #18D4C0; border: 1px solid #0F4C4C; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
     .headline-card h3 { margin: 0; font-size: 16px; line-height: 1.3; }
     .headline-card .summary { margin: 0; color: var(--text); }
     .headline-card time { color: var(--muted); font-size: 12px; margin-left: auto; }
@@ -334,15 +334,15 @@
       display: inline-block; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 650;
       text-decoration: none; cursor: pointer;
     }
-    .headline-source { color: #94A3B8; border: 1px solid #232A34; background: #11161D; }
-    .headline-source:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
-    .locate { color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; font-weight: 600; }
-    .locate:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    .headline-source { color: #94A3B8; border: 1px solid #232A34; background: #090E16; }
+    .headline-source:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
+    .locate { color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; font-weight: 600; }
+    .locate:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     .locate:focus-visible, .headline-source:focus-visible { outline: 2px solid var(--active-line); outline-offset: 2px; }
     .headline-empty { margin: 0; color: var(--muted); }
-    #daily-brief { width: 100%; background: #11161D; color: var(--text); border-top: 1px solid #232A34; border-bottom: 1px solid #232A34; padding: 20px 20px 8px; }
+    #daily-brief { width: 100%; background: #090E16; color: var(--text); border-top: 1px solid #232A34; border-bottom: 1px solid #232A34; padding: 20px 20px 8px; }
     .brief-card {
-      background: #11161D; border: 1px solid #232A34; border-top: 1px solid #232A34;
+      background: #090E16; border: 1px solid #232A34; border-top: 1px solid #232A34;
       border-radius: 12px; padding: 12px 14px 6px; margin: 0 0 16px;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
     }
@@ -350,16 +350,16 @@
     .brief-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(2, 6, 16, 0.45); }
     .brief-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     #summaryRegionSelect {
-      background: #11161D; color: #E6C667; border: 1px solid #4A3B1C; border-radius: 6px;
+      background: #090E16; color: #18D4C0; border: 1px solid #0F4C4C; border-radius: 6px;
       padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
     }
-    #summaryRegionSelect option { background: #11161D; color: #E6C667; }
+    #summaryRegionSelect option { background: #090E16; color: #18D4C0; }
     #summary-updated { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
-    #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #E6C667; }
+    #brief-title { margin: 0; font-size: 18px; font-weight: 700; color: #18D4C0; }
     #brief-time { color: var(--muted); font-size: 12px; }
     #copy-briefing { margin-left: auto; }
-    #refresh-summary { color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    #refresh-summary:hover { background: #181d24; border-color: #4A3B1C; color: #E6C667; }
+    #refresh-summary { color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #refresh-summary:hover { background: #0B2430; border-color: #0F4C4C; color: #18D4C0; }
     #refresh-summary:disabled { opacity: 0.7; cursor: wait; }
     .summary-lead { margin: 8px 0; }
     .summary-note { margin: 0 0 8px; color: var(--text); }
@@ -373,33 +373,33 @@
     .brief-section-body p { margin: 0; }
     .brief-section-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .brief-section-body li { display: flex; gap: 8px; align-items: flex-start; }
-    .badge-tier-official { background: #1c1810; color: #E6C667; border: 1px solid #4A3B1C; }
+    .badge-tier-official { background: #041222; color: #18D4C0; border: 1px solid #0F4C4C; }
     .badge-tier-state { background: #1a1214; color: #e7b3b0; border: 1px solid #6e3d3d; }
-    .badge-tier-lead { background: #16140f; color: #d9c48a; border: 1px solid #6d5a32; }
+    .badge-tier-lead { background: #041222; color: #9EE8DE; border: 1px solid #0F4C4C; }
     .badge-tier-wire { background: #10161c; color: #b9c7d6; border: 1px solid #3d4d5c; }
-    .badge-tier-osint { background: #11161D; color: #E2E8F0; border: 1px solid #3a4650; }
+    .badge-tier-osint { background: #090E16; color: #E2E8F0; border: 1px solid #3a4650; }
     .badge-tier-regional { background: #121614; color: #c5d2c4; border: 1px solid #3d4a40; }
-    .badge-tier-corroborated { background: #1a1504; color: #E6C667; border: 1px solid #E6C667; }
-    .chokepoint-label { background: transparent; border: 0; color: #E6C667; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+    .badge-tier-corroborated { background: #041222; color: #18D4C0; border: 1px solid #18D4C0; }
+    .chokepoint-label { background: transparent; border: 0; color: #18D4C0; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
     #daily-chart-toggle {
-      color: #E6C667; background: #1c1810; border: 1px solid #4A3B1C; border-radius: 999px;
+      color: #18D4C0; background: #041222; border: 1px solid #0F4C4C; border-radius: 999px;
       padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
     }
-    #daily-chart-toggle[aria-expanded="true"] { background: #11161D; }
+    #daily-chart-toggle[aria-expanded="true"] { background: #090E16; }
     #daily-chart-card {
-      background: #11161D; color: #E2E8F0; border: 1px solid #4A3B1C; border-radius: 12px;
+      background: #090E16; color: #E2E8F0; border: 1px solid #0F4C4C; border-radius: 12px;
       padding: 12px 14px; margin: 10px 0 12px;
     }
     #daily-chart-card[hidden] { display: none; }
     .chart-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .chart-head h3 { margin: 0; color: #E6C667; font-size: 14px; }
+    .chart-head h3 { margin: 0; color: #18D4C0; font-size: 14px; }
     #daily-chart-label { margin: 6px 0 0; color: #94A3B8; font-size: 12px; }
     .chart-pills { display: flex; flex-wrap: wrap; gap: 6px; }
     .chart-pills button {
-      background: #11161D; color: #94A3B8; border: 1px solid #232A34; border-radius: 999px;
+      background: #090E16; color: #94A3B8; border: 1px solid #232A34; border-radius: 999px;
       padding: 4px 9px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     }
-    .chart-pills button[aria-pressed="true"] { background: #1c1810; color: #E6C667; border: 1px solid #4A3B1C; }
+    .chart-pills button[aria-pressed="true"] { background: #041222; color: #18D4C0; border: 1px solid #0F4C4C; }
     .chart-counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 12px; font-weight: 650; }
     .chart-counts .high { color: #F43F5E; }
     .chart-counts .medium { color: #F59E0B; }
@@ -416,7 +416,7 @@
     .hour-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
     .hour-stack {
       width: 100%; height: 104px; display: flex; flex-direction: column; justify-content: flex-end;
-      background: #11161D; border-radius: 3px; overflow: hidden;
+      background: #090E16; border-radius: 3px; overflow: hidden;
     }
     .hour-stack span { display: block; width: 100%; min-height: 0; }
     .hour-stack .high { background: #F43F5E; }
@@ -426,15 +426,15 @@
     .chart-regions { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
     .chart-region { display: grid; grid-template-columns: 148px 1fr 28px; gap: 8px; align-items: center; font-size: 12px; }
     .chart-region span:first-child { color: #94A3B8; }
-    .chart-region-track { height: 8px; background: #11161D; border-radius: 999px; overflow: hidden; }
-    .chart-region-fill { display: block; height: 100%; width: 0; background: #E6C667; }
-    .source-pill { display: inline-block; color: var(--muted); background: #090C10; border: 1px solid #232A34; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
+    .chart-region-track { height: 8px; background: #090E16; border-radius: 999px; overflow: hidden; }
+    .chart-region-fill { display: block; height: 100%; width: 0; background: #18D4C0; }
+    .source-pill { display: inline-block; color: var(--muted); background: #041222; border: 1px solid #232A34; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; }
     .update-place { margin: 0; color: var(--muted); font-size: 12px; }
     #headlines.drawer { border-top: 1px solid #232A34; }
-    #updates-filter { width: 100%; margin: 0 0 10px; background: #090C10; color: var(--text); border: 1px solid #232A34; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
+    #updates-filter { width: 100%; margin: 0 0 10px; background: #041222; color: var(--text); border: 1px solid #232A34; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
     #updates-filter::placeholder { color: var(--muted); }
     #updates-toggle { background: transparent; color: var(--text); border: 0; font: inherit; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; cursor: pointer; padding: 0; }
-    #updates-toggle::before { content: "▾ "; color: #E6C667; }
+    #updates-toggle::before { content: "▾ "; color: #18D4C0; }
     #updates-toggle[aria-expanded="false"]::before { content: "▸ "; }
     @media (max-width: 720px) {
       #clock-strip { margin-left: 0; }
@@ -454,8 +454,8 @@
         font: 11.5px/1.35 "Segoe UI", system-ui, sans-serif;
       }
       #print-sheet img { height: 36px; width: auto; }
-      #print-sheet h1 { margin: 8px 0 2px; font-size: 18px; color: #8a6d29; }
-      #print-sheet h2 { margin: 12px 0 4px; font-size: 13px; color: #8a6d29; }
+      #print-sheet h1 { margin: 8px 0 2px; font-size: 18px; color: #0F4C4C; }
+      #print-sheet h2 { margin: 12px 0 4px; font-size: 13px; color: #0F4C4C; }
       #print-sheet p, #print-sheet li { margin: 0 0 4px; }
       #print-window { color: #444; }
     }
@@ -463,7 +463,7 @@
 </head>
 <body class="filters-open">
   <header id="live-bar">
-    <img src="/static/logo.png" alt="GeoRiskIntel" style="height: 36px; width: auto; mix-blend-mode: lighten;">
+    <img src="/static/logo.png?v=2" alt="GeoRiskIntel" style="height: 36px; width: auto; object-fit: contain; border-radius: 6px;">
     <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
     <span id="last-updated">Last updated: not yet</span>
     <div id="feed-health-wrap">
@@ -482,20 +482,20 @@
           <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
             <defs>
               <linearGradient id="bezel-london" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#e6d7a4"/>
-                <stop offset="28%" stop-color="#8a6d29"/>
-                <stop offset="52%" stop-color="#c6a85a"/>
-                <stop offset="78%" stop-color="#8a6d29"/>
-                <stop offset="100%" stop-color="#5c4818"/>
+                <stop offset="0%" stop-color="#9FF7EE"/>
+                <stop offset="28%" stop-color="#0F4C4C"/>
+                <stop offset="52%" stop-color="#18D4C0"/>
+                <stop offset="78%" stop-color="#0F4C4C"/>
+                <stop offset="100%" stop-color="#083636"/>
               </linearGradient>
               <linearGradient id="second-london" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#E6C667"/>
+                <stop offset="0%" stop-color="#18D4C0"/>
                 <stop offset="100%" stop-color="#c23b4a"/>
               </linearGradient>
             </defs>
             <circle cx="21" cy="21" r="20.2" fill="url(#bezel-london)"/>
             <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
-            <g stroke="#d9c7a2" stroke-linecap="round">
+            <g stroke="#B7F6EE" stroke-linecap="round">
               <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
               <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
               <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
@@ -509,10 +509,10 @@
               <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
               <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
             </g>
-            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#E2E8F0" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#C9E7E2" stroke-width="1.45" stroke-linecap="round"/></g>
             <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-london)" stroke-width="0.7" stroke-linecap="round"/></g>
-            <circle cx="21" cy="21" r="1.7" fill="#E6C667" stroke="#8a6d29" stroke-width="0.6"/>
+            <circle cx="21" cy="21" r="1.7" fill="#18D4C0" stroke="#0F4C4C" stroke-width="0.6"/>
           </svg>
           <figcaption>LONDON</figcaption>
           <span class="clock-tip">--:--</span>
@@ -521,13 +521,13 @@
           <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
             <defs>
               <linearGradient id="second-newyork" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#E6C667"/>
+                <stop offset="0%" stop-color="#18D4C0"/>
                 <stop offset="100%" stop-color="#c23b4a"/>
               </linearGradient>
             </defs>
             <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
             <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
-            <g stroke="#d9c7a2" stroke-linecap="round">
+            <g stroke="#B7F6EE" stroke-linecap="round">
               <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
               <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
               <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
@@ -541,10 +541,10 @@
               <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
               <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
             </g>
-            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#E2E8F0" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#C9E7E2" stroke-width="1.45" stroke-linecap="round"/></g>
             <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-newyork)" stroke-width="0.7" stroke-linecap="round"/></g>
-            <circle cx="21" cy="21" r="1.7" fill="#E6C667" stroke="#2e3642" stroke-width="0.6"/>
+            <circle cx="21" cy="21" r="1.7" fill="#18D4C0" stroke="#2e3642" stroke-width="0.6"/>
           </svg>
           <figcaption>NEW YORK</figcaption>
           <span class="clock-tip">--:--</span>
@@ -553,13 +553,13 @@
           <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
             <defs>
               <linearGradient id="second-tokyo" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#E6C667"/>
+                <stop offset="0%" stop-color="#18D4C0"/>
                 <stop offset="100%" stop-color="#c23b4a"/>
               </linearGradient>
             </defs>
             <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
             <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
-            <g stroke="#d9c7a2" stroke-linecap="round">
+            <g stroke="#B7F6EE" stroke-linecap="round">
               <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
               <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
               <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
@@ -573,10 +573,10 @@
               <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
               <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
             </g>
-            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#E2E8F0" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#C9E7E2" stroke-width="1.45" stroke-linecap="round"/></g>
             <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-tokyo)" stroke-width="0.7" stroke-linecap="round"/></g>
-            <circle cx="21" cy="21" r="1.7" fill="#E6C667" stroke="#2e3642" stroke-width="0.6"/>
+            <circle cx="21" cy="21" r="1.7" fill="#18D4C0" stroke="#2e3642" stroke-width="0.6"/>
           </svg>
           <figcaption>TOKYO</figcaption>
           <span class="clock-tip">--:--</span>
@@ -585,13 +585,13 @@
           <svg viewBox="0 0 42 42" width="42" height="42" aria-hidden="true">
             <defs>
               <linearGradient id="second-sydney" x1="21" y1="6" x2="21" y2="24" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#E6C667"/>
+                <stop offset="0%" stop-color="#18D4C0"/>
                 <stop offset="100%" stop-color="#c23b4a"/>
               </linearGradient>
             </defs>
             <circle cx="21" cy="21" r="20.2" fill="#2e3642"/>
             <circle cx="21" cy="21" r="16.6" fill="#0b0e13"/>
-            <g stroke="#d9c7a2" stroke-linecap="round">
+            <g stroke="#B7F6EE" stroke-linecap="round">
               <line x1="21.00" y1="7.90" x2="21.00" y2="4.80" stroke-width="1.3"/>
               <line x1="28.25" y1="8.44" x2="29.10" y2="6.97" stroke-width="0.8"/>
               <line x1="33.56" y1="13.75" x2="35.03" y2="12.90" stroke-width="0.8"/>
@@ -605,10 +605,10 @@
               <line x1="8.44" y1="13.75" x2="6.97" y2="12.90" stroke-width="0.8"/>
               <line x1="13.75" y1="8.44" x2="12.90" y2="6.97" stroke-width="0.8"/>
             </g>
-            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#f4ead4" stroke-width="2.1" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#e6d3a8" stroke-width="1.45" stroke-linecap="round"/></g>
+            <g class="hand-hour"><line x1="21" y1="22" x2="21" y2="12" stroke="#E2E8F0" stroke-width="2.1" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="21" y1="22.5" x2="21" y2="8" stroke="#C9E7E2" stroke-width="1.45" stroke-linecap="round"/></g>
             <g class="hand-second"><line x1="21" y1="24" x2="21" y2="6.5" stroke="url(#second-sydney)" stroke-width="0.7" stroke-linecap="round"/></g>
-            <circle cx="21" cy="21" r="1.7" fill="#E6C667" stroke="#2e3642" stroke-width="0.6"/>
+            <circle cx="21" cy="21" r="1.7" fill="#18D4C0" stroke="#2e3642" stroke-width="0.6"/>
           </svg>
           <figcaption>SYDNEY</figcaption>
           <span class="clock-tip">--:--</span>
@@ -723,7 +723,7 @@
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
   <section id="print-sheet" aria-hidden="true">
-    <img src="/static/logo.png" alt="GeoRiskIntel">
+    <img src="/static/logo.png?v=2" alt="GeoRiskIntel">
     <h1>GeoRiskIntel</h1>
     <p id="print-window"></p>
     <h2>Overall</h2>
@@ -813,8 +813,8 @@
     const brandControl = L.control({ position: "bottomright" });
     brandControl.onAdd = function () {
       const div = L.DomUtil.create("div", "georisk-map-badge");
-      div.style.cssText = "background: #000000; border: 1px solid #4A3B1C; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 14px; margin-right: 10px;";
-      div.innerHTML = `<img src="/static/logo.png" alt="GeoRiskIntel" style="height: 32px; width: auto; display: block; margin-bottom: 6px;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #a3aab5; font-weight: 600; border-top: 1px solid #1c1a14; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #E6C667; box-shadow: 0 0 8px #E6C667; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
+      div.style.cssText = "background: #041222; border: 1px solid #0F4C4C; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 18px; margin-right: 10px;";
+      div.innerHTML = `<img src="/static/logo.png?v=2" alt="GeoRiskIntel" style="height: 26px; width: auto; display: block; margin-bottom: 6px; object-fit: contain;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #94A3B8; font-weight: 600; border-top: 1px solid #0F4C4C; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #18D4C0; box-shadow: 0 0 8px #18D4C0; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
       return div;
     };
     brandControl.addTo(map);
@@ -1781,7 +1781,7 @@
           color: "#D4AF37",
           weight: 1.8,
           opacity: 0.85,
-          fillColor: "#E6C667",
+          fillColor: "#18D4C0",
           fillOpacity: 0.06
         },
         onEachFeature: (feature, layer) => {
@@ -1842,8 +1842,8 @@
       ];
       chokepointLayer = L.layerGroup(areas.map((area) => {
         const polygon = L.polygon(area.ring, {
-          color: "#E6C667", weight: 1.5, opacity: 0.85, dashArray: "6 5",
-          fillColor: "#E6C667", fillOpacity: 0.05, interactive: false
+          color: "#18D4C0", weight: 1.5, opacity: 0.85, dashArray: "6 5",
+          fillColor: "#18D4C0", fillOpacity: 0.05, interactive: false
         });
         const lat = area.ring.reduce((sum, pair) => sum + pair[0], 0) / area.ring.length;
         const lng = area.ring.reduce((sum, pair) => sum + pair[1], 0) / area.ring.length;

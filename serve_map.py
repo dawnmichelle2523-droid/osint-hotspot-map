@@ -3560,10 +3560,10 @@ class MapHandler(SimpleHTTPRequestHandler):
 def severity_color(value: object) -> str:
     rank = str(value or "").strip().lower()
     if rank == "high":
-        return "#ff4d6d"
+        return "#F43F5E"
     if rank == "low":
-        return "#19d3b8"
-    return "#ffb703"
+        return "#38BDF8"
+    return "#F59E0B"
 
 
 def dark_map_png() -> bytes:
@@ -3852,17 +3852,17 @@ def render_daily_chart_png(chart: dict) -> bytes:
 
         scale = 2
         width, height = 840 * scale, 560 * scale
-        image = Image.new("RGB", (width, height), (9, 12, 16))
+        image = Image.new("RGB", (width, height), (4, 18, 34))
         draw = ImageDraw.Draw(image)
         title_font = _chart_font(16 * scale, bold=True)
         body_font = _chart_font(12 * scale)
         small_font = _chart_font(9 * scale)
-        gold = (230, 198, 103)
+        gold = (24, 212, 192)
         muted = (148, 163, 184)
         high_color = (244, 63, 94)
         medium_color = (245, 158, 11)
         low_color = (56, 189, 248)
-        track = (17, 22, 29)
+        track = (9, 14, 22)
         label = str(chart.get("window_label") or "")
         draw.text((20 * scale, 16 * scale), label, font=title_font, fill=gold)
         counts = (
@@ -4056,13 +4056,13 @@ def briefing_html(
             "<div style=\"margin:8px 0;\">"
             f"<div style=\"color:#d5e4e8;font-size:13px;\">{html.escape(name)} {counts[name]}</div>"
             "<div style=\"background:#1c2229;border-radius:999px;height:10px;\">"
-            f"<div style=\"width:{width}%;height:10px;border-radius:999px;background:linear-gradient(90deg,#F3C64F 0%,#e09f3e 55%,#ff6b6b 100%);\"></div>"
+            f"<div style=\"width:{width}%;height:10px;border-radius:999px;background:linear-gradient(90deg,#18D4C0 0%,#14A89A 100%);\"></div>"
             "</div></div>"
         )
     region_notes = []
     for name in REGIONS:
         region_notes.append(
-            "<h3 style=\"color:#F3C64F;font-size:15px;margin:16px 0 6px;\">"
+            "<h3 style=\"color:#18D4C0;font-size:15px;margin:16px 0 6px;\">"
             f"{html.escape(name)}</h3><p style=\"margin:0;\">{html.escape(narrative['regions'][name])}</p>"
         )
     gov_lines = "".join(
@@ -4088,7 +4088,7 @@ def briefing_html(
                 f"{summary_line}"
                 f"{html.escape(item.get('location_name') or 'Location unavailable')}<br>"
                 f"{html.escape(coords)}<br>"
-                "<span style=\"display:inline-block;margin-top:4px;color:#F3C64F;border:1px solid #F3C64F;"
+                "<span style=\"display:inline-block;margin-top:4px;color:#18D4C0;border:1px solid #18D4C0;"
                 f"border-radius:999px;padding:1px 8px;font-size:12px;\">{html.escape(item.get('source') or 'Live')}</span>"
                 "</div>"
             )
@@ -4097,11 +4097,11 @@ def briefing_html(
         incidents = "<p>No high-severity or corroborated incidents in this window.</p>"
     title = f"{report_type.upper()} OSINT INTELLIGENCE BRIEFING"
     return (
-        "<html><body style=\"margin:0;background:#07090b;color:#e7eef0;font-family:Segoe UI,sans-serif;\">"
+        "<html><body style=\"margin:0;background:#041222;color:#E2E8F0;font-family:Segoe UI,sans-serif;\">"
         "<div style=\"max-width:720px;margin:0 auto;padding:24px;\">"
         + briefing_banner()
-        + "<div style=\"background:#0c1014;border:1px solid #1c2229;border-radius:12px;padding:16px 18px;\">"
-        f"<h1 style=\"color:#F3C64F;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
+        + "<div style=\"background:#090E16;border:1px solid #0F4C4C;border-radius:12px;padding:16px 18px;\">"
+        f"<h1 style=\"color:#18D4C0;font-size:20px;margin:0 0 8px;\">{html.escape(title)}</h1>"
         f"<p style=\"margin:0 0 12px;color:#d5e4e8;\">{html.escape(format_briefing_window(start, end))}</p>"
         + (
             "<table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"margin:0 0 8px;\">"
@@ -4115,13 +4115,13 @@ def briefing_html(
             if chart
             else "<img src=\"cid:incident_map\" alt=\"Incident map\" style=\"width:100%;border-radius:12px;\" />"
         )
-        + "<h2 style=\"color:#F3C64F;font-size:16px;\">Regions</h2>"
+        + "<h2 style=\"color:#18D4C0;font-size:16px;\">Regions</h2>"
         + "".join(bars)
-        + f"<h2 style=\"color:#F3C64F;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
+        + f"<h2 style=\"color:#18D4C0;font-size:16px;\">Overall</h2><p>{html.escape(narrative['overall'])}</p>"
         + "".join(region_notes)
-        + "<h2 style=\"color:#F3C64F;font-size:16px;\">Syria</h2>"
+        + "<h2 style=\"color:#18D4C0;font-size:16px;\">Syria</h2>"
         + f"<p>{html.escape(narrative['syria'])}</p><ul>{gov_lines}</ul>"
-        + "<h2 style=\"color:#F3C64F;font-size:16px;\">High-severity and corroborated incidents</h2>"
+        + "<h2 style=\"color:#18D4C0;font-size:16px;\">High-severity and corroborated incidents</h2>"
         + incidents
         + "</div></div></body></html>"
     )
@@ -4134,14 +4134,16 @@ def logo_path() -> Path:
 def briefing_banner() -> str:
     if logo_path().is_file():
         return (
-            "<div style=\"background:#000000;text-align:center;padding:14px 12px;\">"
-            "<img src=\"cid:georisk_logo\" alt=\"GeoRiskIntel\" height=\"34\" "
-            "style=\"height:34px;display:block;margin:0 auto;\" />"
+            "<div style=\"background:#041222;text-align:center;padding:16px 12px;"
+            "border-bottom:1px solid #0F4C4C;\">"
+            "<img src=\"cid:georisk_logo\" alt=\"GeoRiskIntel\" height=\"36\" "
+            "style=\"height:36px;width:auto;display:block;margin:0 auto;border:0;\" />"
             "</div>"
         )
     return (
-        "<div style=\"background:#000000;text-align:center;padding:14px 12px;"
-        "color:#F3C64F;font-size:22px;font-weight:700;letter-spacing:0.04em;\">GeoRiskIntel</div>"
+        "<div style=\"background:#041222;text-align:center;padding:16px 12px;"
+        "border-bottom:1px solid #0F4C4C;color:#18D4C0;font-size:22px;"
+        "font-weight:700;letter-spacing:0.04em;\">GeoRiskIntel</div>"
     )
 
 
