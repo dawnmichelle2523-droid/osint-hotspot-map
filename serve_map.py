@@ -95,6 +95,7 @@ RSS_FEEDS = [
     ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
     ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
     ("Kurdistan24", "https://www.kurdistan24.net/en/rss"),
+    ("The New Region", "https://thenewregion.com/feed"),
     ("ISW", "https://www.understandingwar.org/rss.xml"),
 ]
 # These two pages are notices, not always RSS. Never fetch https://mofa.go.jp itself.
@@ -116,6 +117,15 @@ TELEGRAM_CHANNELS = [
     "sn4hr",
     "D24net",
     "SweidaGov1",
+    "Daraa24_News",
+    "horanfree",
+    "Suwayda24",
+    "DeirEzzor24",
+    "EuphratesPost",
+    "northpressagency",
+    "damascusv011",
+    "AleppoTodayTV",
+    "syrianmoi",
     "syrianinfowar",
     "OsintTv",
     "syriahr",
@@ -131,6 +141,7 @@ TELEGRAM_CHANNELS = [
     "SabereenNews22",
     "IranIntl_En",
     "rudaw_english",
+    "Rudaw_arabic",
     "shafaqnews",
     "almaalomah",
     "INA_Iraq",
@@ -156,6 +167,21 @@ TELEGRAM_CHANNELS = [
     "alrakoba_sudan",
     "SudanTribune",
 ]
+# Hyper-local Syrian channels. Their posts stay Levant unless the text is Iraq or Sudan.
+SYRIA_LOCAL_CHANNELS = {
+    "daraa24_news",
+    "horanfree",
+    "suwayda24",
+    "deirezzor24",
+    "euphratespost",
+    "northpressagency",
+    "damascusv011",
+    "aleppotodaytv",
+    "syrianmoi",
+}
+# Iraq and Kurdistan channels added on top of the ones already polled.
+IRAQ_LOCAL_CHANNELS = {"rudaw_arabic"}
+IRAQ_RSS_NAMES = {"the new region"}
 # The first seven are the start of every rotation. Later names are added once.
 _X_HANDLE_GROUPS = [
     ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali"],
@@ -315,10 +341,29 @@ GEO_FALLBACKS = {
     "al hasakah": (36.5024, 40.7477),
     "hasakah": (36.5024, 40.7477),
     "daraa": (32.6189, 36.1021),
-    "quneitra": (33.1259, 35.8244),
+    "quneitra": (33.1256, 35.8244),
     "as suwayda": (32.7094, 36.5667),
     "suwayda": (32.7094, 36.5667),
     "sweida": (32.7094, 36.5667),
+    "jaber nasib crossing": (32.5594, 36.2244),
+    "dabousiya crossing": (34.6361, 36.0211),
+    "quneitra bir ajam": (33.1256, 35.8244),
+    "palmyra tadmur": (34.5600, 38.2842),
+    "al bukamal": (34.4514, 40.9186),
+    "abu kamal": (34.4514, 40.9186),
+    "al mayadin": (35.0183, 40.4517),
+    "tal tamer": (36.6553, 40.3694),
+    "tal tamr": (36.6553, 40.3694),
+    "bir ajam": (33.1256, 35.8244),
+    "beit jinn": (33.3144, 35.8797),
+    "qamishli": (37.0522, 41.2317),
+    "qamishlo": (37.0522, 41.2317),
+    "palmyra": (34.5600, 38.2842),
+    "tadmur": (34.5600, 38.2842),
+    "zabadani": (33.7247, 36.0972),
+    "manbij": (36.5281, 37.9549),
+    "baniyas": (35.1819, 35.9486),
+    "al tanf": (33.5089, 38.6531),
     "hormuz": (26.5667, 56.2667),
     "iran": (32.0, 53.0),
     "iraq": (33.0, 44.0),
@@ -578,7 +623,30 @@ _KURDISH_FOLD = str.maketrans({
     "ẍ": "x", "Ẍ": "x", "ḧ": "h", "Ḧ": "h",
     "ı": "i", "İ": "i",
 })
-_GEO_FALLBACK_ORDER = tuple(sorted(GEO_FALLBACKS, key=len, reverse=True))
+_LOCALITY_FALLBACKS = (
+    "jaber nasib crossing",
+    "dabousiya crossing",
+    "quneitra bir ajam",
+    "palmyra tadmur",
+    "al bukamal",
+    "abu kamal",
+    "al mayadin",
+    "tal tamer",
+    "tal tamr",
+    "bir ajam",
+    "beit jinn",
+    "qamishli",
+    "qamishlo",
+    "palmyra",
+    "tadmur",
+    "zabadani",
+    "manbij",
+    "baniyas",
+    "al tanf",
+)
+_GEO_FALLBACK_ORDER = _LOCALITY_FALLBACKS + tuple(
+    name for name in sorted(GEO_FALLBACKS, key=len, reverse=True) if name not in set(_LOCALITY_FALLBACKS)
+)
 _COUNTRY_STEMS = {
     "iran", "iraq", "syria", "yemen", "sudan", "oman", "qatar", "kuwait",
     "bahrain", "jordan", "israel", "saudi", "lebanon",
@@ -825,8 +893,11 @@ def backfill_source_tiers(conn: sqlite3.Connection) -> None:
         "SELECT id, source_url, source_name, source_kind, source_tier FROM items"
     ).fetchall()
     for row in rows:
+        current = row["source_tier"] or ""
+        if row["source_kind"] == "sweep" and current in {"Wire / Outlet", "OSINT Sweep"}:
+            continue
         tier = source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
-        if tier != (row["source_tier"] or ""):
+        if tier != current:
             conn.execute("UPDATE items SET source_tier = ? WHERE id = ?", (tier, row["id"]))
 
 
@@ -1644,7 +1715,9 @@ def mentions_syria_or_middle_east(text: str) -> bool:
     latin = (
         "syria", "syrian", "middle east", "middle-east", "aleppo", "damascus", "idlib", "idleb",
         "homs", "hama", "latakia", "tartus", "raqqa", "deir ez-zor", "deir ezzor", "hasakah",
-        "daraa", "suwayda", "sweida", "quneitra", "rif dimashq",
+        "daraa", "suwayda", "sweida", "quneitra", "rif dimashq", "palmyra", "tadmur",
+        "al-bukamal", "abu kamal", "mayadin", "tal tamr", "tal tamer", "bir ajam", "beit jinn",
+        "zabadani", "nasib", "dabousiya", "baniyas", "qamishli", "qamishlo", "manbij", "al-tanf",
     )
     if any(term in lowered for term in latin):
         return True
@@ -2240,6 +2313,51 @@ def purge_spam_rows_once(conn: sqlite3.Connection) -> int:
     return removed
 
 
+def channel_handle(item: dict) -> str:
+    name = str(item.get("source_name") or "")
+    if "·" in name:
+        name = name.split("·", 1)[1]
+    return name.strip().lstrip("@").lower()
+
+
+def coverage_region(item: dict, placed: dict) -> dict:
+    """Syrian local channels stay Levant. Iraq and Kurdistan sources stay Iran & Iraq.
+    Sudan text is left for the existing Sudan rule and is not retagged here."""
+    placed = dict(placed)
+    blob = " ".join(
+        str(part or "")
+        for part in (
+            placed.get("location_name"),
+            placed.get("governorate"),
+            item.get("title"),
+            item.get("summary"),
+            item.get("original_text"),
+        )
+    )
+    if sudan_mention(blob):
+        return placed
+    handle = channel_handle(item)
+    rss_name = str(item.get("source_name") or "").lower()
+    if handle in SYRIA_LOCAL_CHANNELS:
+        placed["region"] = "Levant"
+    elif handle in IRAQ_LOCAL_CHANNELS or any(name in rss_name for name in IRAQ_RSS_NAMES):
+        placed["region"] = "Iran & Iraq"
+    elif item.get("source_kind") == "sweep":
+        if iraq_mention(blob) or str(item.get("region") or placed.get("region")) == "Iran & Iraq":
+            placed["region"] = "Iran & Iraq"
+        else:
+            placed["region"] = "Levant"
+    return placed
+
+
+def item_source_tier(item: dict, source_url: str) -> str:
+    if item.get("source_kind") == "sweep":
+        explicit = str(item.get("source_tier") or "").strip()
+        if explicit in {"Wire / Outlet", "OSINT Sweep"}:
+            return explicit
+    return source_tier_for(item.get("source_kind") or "", item.get("source_name") or "", source_url)
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
         return False
@@ -2297,7 +2415,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     item.get("original_text") or "",
                     item.get("source_name") or "",
                     item.get("source_kind") or "",
-                    source_tier_for(item.get("source_kind") or "", item.get("source_name") or "", source_url),
+                    item_source_tier(item, source_url),
                     placed.get("region") or "Other / International",
                     placed.get("governorate") or "",
                     placed.get("location_name") or "",
@@ -2345,7 +2463,14 @@ def save_classified_item(item: dict, now: datetime) -> bool:
     ):
         return False
     original = original_post_text(item)
-    placed = osint.locate_event(item["title"], location_name=item.get("summary") or item["title"])
+    placed = osint.locate_event(
+        item["title"],
+        location_name=item.get("location_name") or item.get("summary") or item["title"],
+        lat=item.get("lat"),
+        lng=item.get("lng"),
+        region=item.get("region"),
+    )
+    placed = coverage_region(item, placed)
     if placed.get("relevant") is False:
         print(f"Dropped non-news spam from classifier: {str(item.get('title') or '')[:80]}")
         return False
@@ -2485,6 +2610,198 @@ def poll_loop() -> None:
         except Exception as exc:
             print(f"Feed poll failed: {exc.__class__.__name__}.")
         time.sleep(POLL_SECONDS)
+
+
+SWEEP_INTERVAL = 20 * 60
+SWEEP_MODEL = "grok-3"
+SWEEP_TIMEOUT = 25
+SWEEP_URL = "https://api.x.ai/v1/chat/completions"
+_sweep_started = False
+_sweep_key_noted = False
+_SWEEP_UNNAMED = {"", "osint sweep", "unknown", "unattributed", "n/a", "none", "null"}
+
+
+def get_xai_api_key() -> str:
+    """Return the xAI key. A missing key is an empty string and is never printed."""
+    return osint.read_api_key()
+
+
+def sweep_source_tier(name: object) -> str:
+    named = " ".join(str(name or "").split())
+    if named.lower() in _SWEEP_UNNAMED:
+        return "OSINT Sweep"
+    return "Wire / Outlet"
+
+
+def stored_events_since(cutoff: datetime) -> list[dict]:
+    with _db_lock:
+        conn = db_connect()
+        try:
+            rows = conn.execute(
+                "SELECT title, source_url, published_at FROM items ORDER BY id DESC LIMIT 400"
+            ).fetchall()
+        finally:
+            conn.close()
+    found = []
+    for row in rows:
+        moment = parse_event_time(row["published_at"])
+        if moment is None or moment < cutoff:
+            continue
+        found.append({"title": str(row["title"] or "")[:180], "source_url": str(row["source_url"] or "")})
+    return found[:80]
+
+
+def parse_sweep_payload(text: str) -> list[dict]:
+    raw = str(text or "").strip()
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?", "", raw, flags=re.IGNORECASE).strip()
+        raw = re.sub(r"```$", "", raw).strip()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    events = payload.get("events") if isinstance(payload, dict) else None
+    if not isinstance(events, list):
+        return []
+    return [event for event in events if isinstance(event, dict)]
+
+
+def request_sweep_events(key: str, known: list[dict], now: datetime) -> list[dict]:
+    governorates = ", ".join(osint.SYRIA_GOVERNORATES)
+    prompt = (
+        "Return strict JSON only. No markdown. Do not use tools or live search plugins. "
+        "List breaking security, border, energy, or infrastructure incidents from the past 2 hours "
+        "in Syria, covering all 14 governorates (" + governorates + "), and in Iraq or the "
+        "Kurdistan Region. Omit anything already stored. Each event is one object in events. "
+        "title and summary are concise English. location_name is the most specific place. "
+        "governorate is a Syrian governorate or an empty string. "
+        "region is exactly Levant for Syria and exactly Iran & Iraq for Iraq or Kurdistan. "
+        "lat and lng are decimal numbers for that place. severity is High, Medium, or Low. "
+        "category is Kinetic/Military, Maritime, Security/Clashes, or Political/Other. "
+        "source_name is the named wire or outlet, or an empty string when none is named. "
+        "source_url is the original http(s) URL, or an empty string. "
+        "published_at is an ISO-8601 UTC timestamp inside the past 2 hours. "
+        "Do not invent an incident that is not a real reported event. "
+        "If there is nothing new, return {\"events\": []}.\n"
+        f"As of {osint.format_timestamp(now)} UTC.\n"
+        "Already stored:\n"
+        + json.dumps(known, ensure_ascii=False)
+    )
+    response = requests.post(
+        SWEEP_URL,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json={
+            "model": SWEEP_MODEL,
+            "temperature": 0,
+            "messages": [
+                {"role": "system", "content": "Reply with one JSON object and nothing else."},
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+        },
+        timeout=SWEEP_TIMEOUT,
+    )
+    response.raise_for_status()
+    body = response.json()
+    content = ""
+    choices = body.get("choices") if isinstance(body, dict) else None
+    if isinstance(choices, list) and choices:
+        message = choices[0].get("message") if isinstance(choices[0], dict) else None
+        if isinstance(message, dict):
+            content = str(message.get("content") or "")
+    return parse_sweep_payload(content)
+
+
+def sweep_item(event: dict, now: datetime) -> dict | None:
+    title = osint.one_sentence(event.get("title") or "")[:240]
+    summary = osint.one_sentence(event.get("summary") or title)[:500]
+    if not title:
+        return None
+    published = parse_event_time(event.get("published_at"))
+    if published is not None and published < now - timedelta(hours=2, minutes=5):
+        return None
+    region = "Iran & Iraq" if str(event.get("region") or "") == "Iran & Iraq" or iraq_mention(f"{title} {summary}") else "Levant"
+    if region == "Levant" and not (
+        mentions_syria_or_middle_east(f"{title} {summary} {event.get('location_name') or ''}")
+        or str(event.get("region") or "") == "Levant"
+    ):
+        return None
+    source_name = " ".join(str(event.get("source_name") or "").split())
+    source_url = str(event.get("source_url") or "").strip()
+    if not source_url.startswith("http"):
+        source_url = "https://osint-sweep.local/event/" + headline_hash(title)
+    lat = event.get("lat")
+    lng = event.get("lng")
+    try:
+        lat = float(lat) if lat is not None and lat != "" else None
+        lng = float(lng) if lng is not None and lng != "" else None
+    except (TypeError, ValueError):
+        lat = lng = None
+    return {
+        "title": title,
+        "summary": summary or title,
+        "location_name": osint.one_sentence(event.get("location_name") or "")[:160],
+        "source_url": source_url,
+        "source_name": source_name or "OSINT Sweep",
+        "source_kind": "sweep",
+        "source_tier": sweep_source_tier(source_name),
+        "published_at": osint.format_timestamp(published or now),
+        "region": region,
+        "lat": lat,
+        "lng": lng,
+        "original_text": "",
+    }
+
+
+def run_grok_sweep() -> int:
+    """One Syria and Iraq sweep. A missing key skips the call and does not delete rows."""
+    global _sweep_key_noted
+    key = get_xai_api_key()
+    if not key:
+        if not _sweep_key_noted:
+            print("XAI_API_KEY is missing. Syria and Iraq live sweep skipped. Rows and hotspots were not changed.")
+            _sweep_key_noted = True
+        return 0
+    now = datetime.now(timezone.utc)
+    try:
+        events = request_sweep_events(key, stored_events_since(now - timedelta(hours=2)), now)
+    except Exception as exc:
+        print(f"Syria and Iraq live sweep failed: {osint.public_error(exc, key)}.")
+        return 0
+    inserted = 0
+    for event in events:
+        item = sweep_item(event, now)
+        if item is None:
+            continue
+        if is_spam_post(spam_post_text(item.get("title"), item.get("summary"), "", item.get("source_url"))):
+            print(f"Dropped spam before sweep insert: {item['title'][:80]}")
+            continue
+        try:
+            if save_classified_item(item, now):
+                inserted += 1
+        except Exception as exc:
+            print(f"Sweep insert failed: {exc.__class__.__name__}.")
+    if inserted:
+        print(f"Syria and Iraq live sweep ingested {inserted} event(s).")
+    return inserted
+
+
+def sweep_loop() -> None:
+    while True:
+        try:
+            run_grok_sweep()
+        except Exception as exc:
+            print(f"Syria and Iraq live sweep failed: {exc.__class__.__name__}.")
+        time.sleep(SWEEP_INTERVAL)
+
+
+def start_sweep_daemon() -> None:
+    global _sweep_started
+    with _start_lock:
+        if _sweep_started:
+            return
+        _sweep_started = True
+    threading.Thread(target=sweep_loop, name="grok-sweep", daemon=True).start()
 
 
 EMPTY_REGION_TEXT = "No significant incidents recorded in the past 24 hours."
@@ -3183,6 +3500,7 @@ def start_background() -> None:
         _threads_started = True
     start_translation_pass()
     start_poller()
+    start_sweep_daemon()
     start_summary_daemon()
     start_briefing_daemon()
 
