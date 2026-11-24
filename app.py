@@ -93,6 +93,16 @@ def api_daily_chart_png() -> Response:
     return _forward_api()
 
 
+@app.get("/api/export.csv")
+def api_export_csv() -> Response:
+    return _forward_api()
+
+
+@app.get("/api/export.geojson")
+def api_export_geojson() -> Response:
+    return _forward_api()
+
+
 @app.route("/api/<path:endpoint>", methods=["GET", "POST"])
 def api_forward(endpoint: str) -> Response:
     return _forward_api()

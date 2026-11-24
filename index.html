@@ -576,7 +576,11 @@
       border: 1px solid #6E5825; border-radius: 10px;
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
     }
-    #ops-panel #fetch-live, #ops-panel #wall-mode, #ops-panel #feed-health { width: 100%; text-align: left; }
+    #ops-panel #fetch-live, #ops-panel #wall-mode, #ops-panel #feed-health, #ops-panel #export-data { width: 100%; text-align: left; }
+    #export-data {
+      color: #F8FAFC; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
+      padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
     #workspace {
       flex: 1 1 auto; min-height: 0; min-width: 0;
       display: grid; grid-template-columns: 270px minmax(0, 1fr) 380px;
@@ -644,6 +648,21 @@
       padding: 3px 8px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
     }
     .wire-tiers button[aria-pressed="true"] { color: #D4AF37; background: #102A63; border: 1px solid #C5A059; }
+    .rail-select {
+      display: flex; flex-direction: column; gap: 4px; margin-top: 8px;
+      color: #D4AF37; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+    }
+    .rail-select select {
+      background: #0D1424; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-weight: 600;
+      letter-spacing: 0; text-transform: none;
+    }
+    .popup-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+    .badge-precision, .badge-actor, .badge-system {
+      display: inline-block; border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 700;
+      background: #0D1424; color: #D4AF37; border: 1px solid #C5A059;
+    }
+    .badge-system { color: #F8FAFC; border-color: #6E5825; }
     #quick-jump, #basemap, #sidebar .legend {
       position: static; top: auto; left: auto; right: auto; bottom: auto;
       width: 100%; margin: 0; z-index: auto;
@@ -879,6 +898,7 @@
             </div>
           </div>
           <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall Mode</button>
+          <button type="button" id="export-data">📥 Export CSV / GeoJSON</button>
           <span id="last-updated">Last updated: not yet</span>
         </div>
       </details>
@@ -982,6 +1002,33 @@
         <button type="button" class="pill" data-category="OD">OD</button>
       </div>
     </details>
+    <label class="rail-select">Actor
+      <select id="actor-filter" aria-label="Actor">
+        <option value="all">All</option>
+        <option>IDF</option>
+        <option>IRGC</option>
+        <option>SDF</option>
+        <option>RSF</option>
+        <option>SAF</option>
+        <option>Ansarallah</option>
+        <option>Militias</option>
+        <option>ISIS</option>
+        <option>Government Forces</option>
+        <option>Unattributed</option>
+      </select>
+    </label>
+    <label class="rail-select">System
+      <select id="system-filter" aria-label="System">
+        <option value="all">All</option>
+        <option>UAV / Drone</option>
+        <option>Missile</option>
+        <option>IED / Mine</option>
+        <option>Artillery / Shelling</option>
+        <option>Small Arms / Raid</option>
+        <option>Maritime / Naval</option>
+        <option>Infrastructure / Protest</option>
+      </select>
+    </label>
       <details class="filter-dropdown">
         <summary>
           <span class="filter-label">Map Overlays</span>
@@ -1237,6 +1284,8 @@
     let governorateSummary = false;
     let storedSummaries = null;
     let category = "all";
+    let actorFilter = "all";
+    let systemFilter = "all";
     let region = "all";
     let searchQuery = "";
     let searchTimer = null;
@@ -1417,6 +1466,8 @@
       const props = feature.properties || {};
       if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
       if (opts.category !== "all" && incidentCode(props) !== opts.category && props.category !== opts.category) return false;
+      if (opts.actor !== "all" && String(props.actor || "Unattributed") !== opts.actor) return false;
+      if (opts.system !== "all" && String(props.system_type || "") !== opts.system) return false;
       if (opts.region !== "all" && props.region !== opts.region) return false;
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
@@ -1424,7 +1475,7 @@
     }
 
     function currentOpts(regionId) {
-      return { severity, category, region: regionId, timeWindow, query: searchQuery };
+      return { severity, category, actor: actorFilter, system: systemFilter, region: regionId, timeWindow, query: searchQuery };
     }
 
     function countRegion(regionId) {
@@ -1538,6 +1589,23 @@
       return "• [" + region + " | " + severity + "] " + headline + " — " + location + " (" + tier + ")";
     }
 
+    function precisionLabel(props) {
+      const stored = String(props.geo_precision || "").trim();
+      if (stored === "Exact Site" || stored === "City / Governorate" || stored === "Country / Sea Fallback") return stored;
+      const label = String(props.location_name || props.governorate || "").toLowerCase();
+      const countryOrSea = ["iran", "iraq", "syria", "yemen", "sudan", "oman", "qatar", "kuwait", "bahrain", "jordan", "israel", "saudi", "saudi arabia", "lebanon", "uae", "red sea", "hormuz", "strait of hormuz", "persian gulf", "gulf of oman", "bab el mandeb", "bab al mandab"];
+      if (countryOrSea.indexOf(label) !== -1) return "Country / Sea Fallback";
+      if (/\b(crossing|airport|airbase|air base|checkpoint|refinery|terminal|canal|naval base)\b/.test(label)) return "Exact Site";
+      return "City / Governorate";
+    }
+
+    function analystTags(props) {
+      const tags = ['<span class="badge badge-precision">' + esc(precisionLabel(props)) + "</span>"];
+      if (props.actor) tags.push('<span class="badge badge-actor">' + esc(props.actor) + "</span>");
+      if (props.system_type) tags.push('<span class="badge badge-system">' + esc(props.system_type) + "</span>");
+      return '<div class="popup-tags">' + tags.join("") + "</div>";
+    }
+
     function popupHtml(props, id) {
       const badge = severityBadge(props);
       const headline = props.title || props.summary || "Incident";
@@ -1553,6 +1621,7 @@
             trustBadge(props) +
           "</div>" +
           "<h3>" + esc(headline) + "</h3>" +
+          analystTags(props) +
           place +
           '<p class="summary">' + esc(props.summary || "") + "</p>" +
           originalArabicBlock(props) +
@@ -2284,6 +2353,29 @@
       filterToggle.setAttribute("aria-expanded", String(open));
       filterToggle.setAttribute("aria-label", open ? "Collapse filters" : "Expand filters");
       window.setTimeout(() => map.invalidateSize(), 60);
+    });
+    document.getElementById("actor-filter").addEventListener("change", (event) => {
+      actorFilter = event.target.value || "all";
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("system-filter").addEventListener("change", (event) => {
+      systemFilter = event.target.value || "all";
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("export-data").addEventListener("click", () => {
+      const params = new URLSearchParams();
+      if (region && region !== "all") params.set("region", region);
+      if (severity && severity !== "all") params.set("severity", severity);
+      if (timeWindow && timeWindow !== "all") params.set("time", timeWindow);
+      const query = params.toString();
+      ["csv", "geojson"].forEach((ext) => {
+        const link = document.createElement("a");
+        link.href = "/api/export." + ext + (query ? "?" + query : "");
+        link.download = "georisk-export." + ext;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      });
     });
     document.getElementById("drawer-toggle").addEventListener("click", () => {
       const open = document.body.classList.toggle("drawer-open");

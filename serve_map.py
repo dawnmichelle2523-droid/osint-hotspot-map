@@ -732,6 +732,15 @@ _COUNTRY_OR_SEA = {
     "israel", "gaza", "sudan", "red sea", "bab el mandeb", "bab al mandab",
     "strait of hormuz", "hormuz", "persian gulf", "arabian gulf", "gulf of oman",
 }
+GEO_PRECISION_EXACT = "Exact Site"
+GEO_PRECISION_CITY = "City / Governorate"
+GEO_PRECISION_COUNTRY = "Country / Sea Fallback"
+GEO_PRECISIONS = (GEO_PRECISION_EXACT, GEO_PRECISION_CITY, GEO_PRECISION_COUNTRY)
+AMPLIFY_WINDOW = timedelta(minutes=30)
+_EXACT_SITE_RE = re.compile(
+    r"\b(crossing|airport|airbase|air base|checkpoint|refinery|terminal|canal|naval base)\b",
+    re.IGNORECASE,
+)
 RECENT_COORD_WINDOW = timedelta(days=7)
 
 SUMMARY_SCHEMA = {
@@ -1227,6 +1236,10 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "summary": "TEXT",
         "original_text": "TEXT",
         "source_tier": "TEXT",
+        "geo_precision": "TEXT",
+        "actor": "TEXT",
+        "system_type": "TEXT",
+        "amplification_count": "INTEGER NOT NULL DEFAULT 0",
     }
     for name, typedef in additions.items():
         if name not in existing:
@@ -1349,6 +1362,76 @@ def bump_corroboration(conn: sqlite3.Connection, row_id: int) -> None:
         "UPDATE items SET corroboration_count = COALESCE(corroboration_count, 1) + 1 WHERE id = ?",
         (row_id,),
     )
+
+
+def bump_amplification(conn: sqlite3.Connection, row_id: int) -> None:
+    conn.execute(
+        "UPDATE items SET amplification_count = COALESCE(amplification_count, 0) + 1 WHERE id = ?",
+        (row_id,),
+    )
+
+
+def classify_precision(name: object) -> str:
+    """Exact site, city or governorate, or a country/sea center."""
+    label = " ".join(str(name or "").casefold().split())
+    if not label:
+        return GEO_PRECISION_CITY
+    if label in _COUNTRY_OR_SEA or label in _COUNTRY_STEMS:
+        return GEO_PRECISION_COUNTRY
+    if label in _LOCALITY_FALLBACKS or _EXACT_SITE_RE.search(label):
+        return GEO_PRECISION_EXACT
+    return GEO_PRECISION_CITY
+
+
+def story_text(item: object) -> str:
+    if isinstance(item, sqlite3.Row):
+        parts = [item["title"], item["summary"]]
+        if "original_text" in item.keys():
+            parts.append(item["original_text"])
+        return " ".join(str(part or "") for part in parts)
+    if isinstance(item, dict):
+        return " ".join(str(item.get(key) or "") for key in ("title", "summary", "original_text"))
+    return str(item or "")
+
+
+def near_identical_text(left: object, right: object) -> bool:
+    """True when two posts are the same text, not merely the same story."""
+    folded_left = normalize_title(story_text(left))
+    folded_right = normalize_title(story_text(right))
+    if not folded_left or not folded_right:
+        return False
+    if folded_left == folded_right:
+        return True
+    if min(len(folded_left), len(folded_right)) >= 40 and (
+        folded_left in folded_right or folded_right in folded_left
+    ):
+        return True
+    return SequenceMatcher(None, folded_left, folded_right).ratio() >= 0.92
+
+
+def amplification_original(conn: sqlite3.Connection, item: dict):
+    """The stored pin whose text this post echoes inside 30 minutes, if any."""
+    moment = parse_when(item.get("published_at")) or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(timezone.utc)
+    cutoff = (moment - AMPLIFY_WINDOW).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = conn.execute(
+        "SELECT id, title, summary, original_text, published_at, ingested_at FROM items "
+        "WHERE COALESCE(published_at, ingested_at, '') >= ? ORDER BY id DESC LIMIT 80",
+        (cutoff,),
+    ).fetchall()
+    for row in rows:
+        other = parse_when(row["published_at"]) or parse_when(row["ingested_at"])
+        if other is None:
+            continue
+        if other.tzinfo is None:
+            other = other.replace(tzinfo=timezone.utc)
+        if abs((other.astimezone(timezone.utc) - moment).total_seconds()) > AMPLIFY_WINDOW.total_seconds():
+            continue
+        if near_identical_text(item, row):
+            return row
+    return None
 
 
 def titles_near(left: str, right: str) -> bool:
@@ -1501,7 +1584,11 @@ def feed_features() -> list[dict]:
             "warning_number": None,
             "location_name": row["location_name"] or "",
             "corroboration_count": int(row["corroboration_count"] or 1),
+            "amplification_count": int(row["amplification_count"] or 0) if "amplification_count" in row.keys() else 0,
             "original_text": row["original_text"] or "",
+            "geo_precision": (row["geo_precision"] or "") if "geo_precision" in row.keys() else "",
+            "actor": (row["actor"] or "") if "actor" in row.keys() else "",
+            "system_type": (row["system_type"] or "") if "system_type" in row.keys() else "",
         }
         if row["governorate"]:
             props["governorate"] = row["governorate"]
@@ -2311,8 +2398,11 @@ def _near_center(lat: float, lng: float, center: tuple[float, float], tolerance:
     return abs(lat - center[0]) <= tolerance and abs(lng - center[1]) <= tolerance
 
 
-def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | None]:
-    """Use a real model point. Otherwise a place-list center with a stable tiny offset."""
+def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | None, str]:
+    """Use a real model point. Otherwise a place-list center with a stable tiny offset.
+
+    The third value is a geo_precision label when GEO_FALLBACKS assigned the point.
+    """
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
     raw_blob = " ".join(
         str(part or "")
@@ -2330,13 +2420,13 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         if iraq_hit:
             shifted = offset_fallback(iraq_hit[1], iraq_hit[2], event_id)
             if shifted:
-                return shifted
+                return shifted[0], shifted[1], classify_precision(iraq_hit[0])
     if not coords:
         sudan_hit = match_sudan_fallback(raw_blob)
         if sudan_hit:
             shifted = offset_fallback(sudan_hit[1], sudan_hit[2], event_id)
             if shifted:
-                return shifted
+                return shifted[0], shifted[1], classify_precision(sudan_hit[0])
     blob = geo_blob(
         placed.get("location_name"),
         placed.get("governorate"),
@@ -2348,14 +2438,17 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
     if coords and hit and hit[0] in _COUNTRY_OR_SEA and _near_center(coords[1], coords[0], (hit[1], hit[2])):
         shifted = offset_fallback(hit[1], hit[2], event_id)
         if shifted:
-            return shifted
+            return shifted[0], shifted[1], classify_precision(hit[0])
     if coords:
-        return coords[1], coords[0]
+        precision = ""
+        if placed.get("_grok_coords"):
+            precision = classify_precision(placed.get("location_name") or "")
+        return coords[1], coords[0], precision
     if hit:
         shifted = offset_fallback(hit[1], hit[2], event_id)
         if shifted:
-            return shifted
-    return None, None
+            return shifted[0], shifted[1], classify_precision(hit[0])
+    return None, None, ""
 
 
 def backfill_coordinates(now: datetime | None = None) -> int:
@@ -2390,8 +2483,8 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                 if not shifted:
                     continue
                 conn.execute(
-                    "UPDATE items SET lat = ?, lng = ? WHERE id = ?",
-                    (shifted[0], shifted[1], row["id"]),
+                    "UPDATE items SET lat = ?, lng = ?, geo_precision = ? WHERE id = ?",
+                    (shifted[0], shifted[1], classify_precision(hit[0]), row["id"]),
                 )
                 updated += 1
             if updated:
@@ -2703,7 +2796,13 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     elif iraq_mention(blob):
         placed = dict(placed)
         placed["region"] = "Iran & Iraq"
-    lat, lng = placed_coordinates(item, placed)
+    lat, lng, fallback_precision = placed_coordinates(item, placed)
+    if fallback_precision:
+        placed = dict(placed)
+        placed["geo_precision"] = fallback_precision
+    elif placed.get("_grok_coords"):
+        placed = dict(placed)
+        placed["geo_precision"] = classify_precision(placed.get("location_name") or "")
     source_url = item["source_url"]
     if lat is None or lng is None:
         print(f"Stored unmapped {source_url}: no place keyword.")
@@ -2716,8 +2815,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
                     source_tier, region, governorate, location_name, lat, lng, severity, category,
-                    corroboration_count, published_at, ingested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    corroboration_count, published_at, ingested_at, geo_precision, actor, system_type,
+                    amplification_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -2739,6 +2839,10 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     1,
                     osint.format_timestamp(moment),
                     osint.format_timestamp(now),
+                    placed.get("geo_precision") or "",
+                    placed.get("actor") or osint.coerce_actor("", item.get("title") or ""),
+                    placed.get("system_type") or "",
+                    0,
                 ),
             )
             conn.commit()
@@ -2758,6 +2862,12 @@ def save_classified_item(item: dict, now: datetime) -> bool:
         conn = db_connect()
         try:
             if seen_url(conn, item["source_url"]):
+                return False
+            echo = amplification_original(conn, item)
+            if echo is not None:
+                bump_amplification(conn, echo["id"])
+                conn.commit()
+                print(f"Amplified story {echo['id']} inside 30 minutes: {str(item.get('title') or '')[:80]}")
                 return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:
@@ -4293,6 +4403,110 @@ def _api_json(payload: dict) -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
+EXPORT_FIELDS = (
+    "title", "summary", "timestamp", "region", "severity", "category",
+    "actor", "system_type", "geo_precision", "location_name", "governorate",
+    "lat", "lng", "source", "source_tier", "corroboration_count", "amplification_count",
+)
+_EXPORT_WINDOWS = {"2h": timedelta(hours=2), "24h": timedelta(hours=24), "7d": timedelta(days=7)}
+
+
+def _query_value(query: str, key: str, default: str = "all") -> str:
+    values = parse_qs(query or "", keep_blank_values=False).get(key) or []
+    text = " ".join(str(values[0] if values else "").split())
+    return text or default
+
+
+def feature_in_window(feature: dict, window_id: str, now: datetime | None = None) -> bool:
+    if window_id in ("", "all"):
+        return True
+    window = _EXPORT_WINDOWS.get(window_id)
+    if window is None:
+        return True
+    moment = osint.parse_timestamp((feature.get("properties") or {}).get("timestamp"))
+    if moment is None:
+        return False
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    age = (now or datetime.now(timezone.utc)) - moment.astimezone(timezone.utc)
+    if age < timedelta(minutes=-5):
+        return False
+    return age <= window
+
+
+def filtered_features(query: str, now: datetime | None = None) -> list[dict]:
+    """Live pins matching the map's region, severity, and time-window filters."""
+    region = _query_value(query, "region")
+    severity = _query_value(query, "severity").lower()
+    window_id = _query_value(query, "time")
+    chosen = []
+    for feature in combined_features():
+        props = feature.get("properties") or {}
+        if region != "all" and str(props.get("region") or "") != region:
+            continue
+        if severity != "all" and str(props.get("severity") or "").lower() != severity:
+            continue
+        if not feature_in_window(feature, window_id, now):
+            continue
+        chosen.append(feature)
+    return chosen
+
+
+def export_record(feature: dict) -> dict:
+    props = feature.get("properties") or {}
+    coords = (feature.get("geometry") or {}).get("coordinates") or [None, None]
+    precision = str(props.get("geo_precision") or "")
+    if precision not in GEO_PRECISIONS:
+        precision = classify_precision(props.get("location_name") or props.get("governorate") or "")
+    lng = coords[0] if len(coords) > 0 else ""
+    lat = coords[1] if len(coords) > 1 else ""
+    return {
+        "title": props.get("title") or "",
+        "summary": props.get("summary") or "",
+        "timestamp": props.get("timestamp") or "",
+        "region": props.get("region") or "",
+        "severity": props.get("severity") or "",
+        "category": props.get("category") or "",
+        "actor": props.get("actor") or "",
+        "system_type": props.get("system_type") or "",
+        "geo_precision": precision,
+        "location_name": props.get("location_name") or "",
+        "governorate": props.get("governorate") or "",
+        "lat": lat if lat is not None else "",
+        "lng": lng if lng is not None else "",
+        "source": props.get("source") or "",
+        "source_tier": props.get("source_tier") or "",
+        "corroboration_count": props.get("corroboration_count") or 1,
+        "amplification_count": props.get("amplification_count") or 0,
+    }
+
+
+def export_csv_bytes(query: str) -> bytes:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=EXPORT_FIELDS, extrasaction="ignore")
+    writer.writeheader()
+    for feature in filtered_features(query):
+        writer.writerow(export_record(feature))
+    return buffer.getvalue().encode("utf-8")
+
+
+def export_geojson_bytes(query: str) -> bytes:
+    features = []
+    for feature in filtered_features(query):
+        record = export_record(feature)
+        props = dict(feature.get("properties") or {})
+        props["geo_precision"] = record["geo_precision"]
+        props["actor"] = record["actor"]
+        props["system_type"] = record["system_type"]
+        props["amplification_count"] = record["amplification_count"]
+        features.append({
+            "type": "Feature",
+            "geometry": feature.get("geometry"),
+            "properties": props,
+        })
+    return json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False).encode("utf-8")
+
+
 def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
     """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
     route = path.split("?", 1)[0]
@@ -4313,6 +4527,10 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
         if verb == "GET" and route == "/api/daily-chart.png":
             return 200, "image/png", daily_chart_png_response(query)
+        if verb == "GET" and route == "/api/export.csv":
+            return 200, "text/csv; charset=utf-8", export_csv_bytes(query)
+        if verb == "GET" and route == "/api/export.geojson":
+            return 200, "application/geo+json; charset=utf-8", export_geojson_bytes(query)
         if verb == "POST" and route == "/api/report":
             return 200, "application/json; charset=utf-8", _api_json(report_response(body))
         if verb == "POST" and route == "/api/poll-now":

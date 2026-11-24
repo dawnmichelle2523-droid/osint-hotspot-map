@@ -550,6 +550,69 @@ LIVE_CATEGORIES = (
     "Security/Clashes",
     "Political/Other",
 )
+ACTORS = (
+    "IDF",
+    "IRGC",
+    "SDF",
+    "RSF",
+    "SAF",
+    "Ansarallah",
+    "Militias",
+    "ISIS",
+    "Government Forces",
+    "Unattributed",
+)
+SYSTEM_TYPES = (
+    "UAV / Drone",
+    "Missile",
+    "IED / Mine",
+    "Artillery / Shelling",
+    "Small Arms / Raid",
+    "Maritime / Naval",
+    "Infrastructure / Protest",
+)
+_ACTOR_CUES = (
+    (re.compile(r"\b(idf|idf's|israeli forces|israel defense forces)\b", re.I), "IDF"),
+    (re.compile(r"\b(irgc|sepah|revolutionary guard)\b", re.I), "IRGC"),
+    (re.compile(r"\b(sdf|syrian democratic forces)\b", re.I), "SDF"),
+    (re.compile(r"\brsf\b|rapid support forces", re.I), "RSF"),
+    (re.compile(r"\bsaf\b|sudanese armed forces", re.I), "SAF"),
+    (re.compile(r"ansarallah|houthi", re.I), "Ansarallah"),
+    (re.compile(r"\b(isis|daesh|islamic state)\b", re.I), "ISIS"),
+    (re.compile(r"\b(militia|militias|pmf|hashd)\b", re.I), "Militias"),
+    (re.compile(r"government forces|syrian army|regime forces", re.I), "Government Forces"),
+)
+_SYSTEM_CUES = (
+    (re.compile(r"\b(uav|uas|drone|shahed|loitering)\b", re.I), "UAV / Drone"),
+    (re.compile(r"\b(missile|rocket|ballistic)\b", re.I), "Missile"),
+    (re.compile(r"\b(ied|mine|mines|mined)\b", re.I), "IED / Mine"),
+    (re.compile(r"\b(artillery|shelling|shells|mortar|howitzer)\b", re.I), "Artillery / Shelling"),
+    (re.compile(r"\b(small arms|gunfire|raid|firefight|clashes)\b", re.I), "Small Arms / Raid"),
+    (re.compile(r"\b(naval|warship|maritime|vessel|ukmto)\b", re.I), "Maritime / Naval"),
+    (re.compile(r"\b(protest|demonstration|pipeline|power plant|infrastructure|refinery)\b", re.I), "Infrastructure / Protest"),
+)
+
+
+def coerce_actor(value: object, text: str = "") -> str:
+    raw = one_sentence(value)
+    if raw in ACTORS:
+        return raw
+    blob = str(text or "")
+    for pattern, label in _ACTOR_CUES:
+        if pattern.search(blob):
+            return label
+    return "Unattributed"
+
+
+def coerce_system(value: object, text: str = "") -> str:
+    raw = one_sentence(value)
+    if raw in SYSTEM_TYPES:
+        return raw
+    blob = str(text or "")
+    for pattern, label in _SYSTEM_CUES:
+        if pattern.search(blob):
+            return label
+    return ""
 
 
 def live_severity(value: object) -> str:
@@ -641,6 +704,11 @@ def extract_location(headline: str) -> dict | None:
         "If the post is already English, keep title and summary in English and do not add facts. "
         "severity is exactly High, Medium, or Low. "
         "category is exactly one of: Kinetic/Military, Maritime, Security/Clashes, Political/Other. "
+        "actor is exactly one of: " + ", ".join(ACTORS) + ". "
+        "Use Unattributed when the text does not name one of those actors. "
+        "system_type is exactly one of: " + ", ".join(SYSTEM_TYPES) + ". "
+        "Choose the system the text describes. Use Infrastructure / Protest only for protests or infrastructure damage. "
+        "Do not invent a weapon the text does not support. "
         "Every regional event must return numeric decimal lat and lng plus location_name. "
         "When the text names a city, governorate, port, airbase, border crossing, or maritime chokepoint, use that place. "
         "When only a country or sea is named, use that country or sea center. "
@@ -664,9 +732,11 @@ def extract_location(headline: str) -> dict | None:
             "lng": {"type": ["number", "null"]},
             "severity": {"type": "string", "enum": list(LIVE_SEVERITIES)},
             "category": {"type": "string", "enum": list(LIVE_CATEGORIES)},
+            "actor": {"type": "string", "enum": list(ACTORS)},
+            "system_type": {"type": "string", "enum": list(SYSTEM_TYPES)},
             "relevant": {"type": "boolean"},
         },
-        "required": ["title", "summary", "region", "location_name", "governorate", "lat", "lng", "severity", "category", "relevant"],
+        "required": ["title", "summary", "region", "location_name", "governorate", "lat", "lng", "severity", "category", "actor", "system_type", "relevant"],
     }
     try:
         response = make_client(key).responses.create(
@@ -680,7 +750,7 @@ def extract_location(headline: str) -> dict | None:
                     "strict": True,
                 }
             },
-            max_output_tokens=600,
+            max_output_tokens=800,
             timeout=API_TIMEOUT,
         )
         text = response_text(response)
@@ -777,6 +847,17 @@ def geocode_name(location_name: str) -> tuple[float, float] | None:
     return None
 
 
+def annotate_placement(result: dict, headline: str, extracted: dict | None = None) -> dict:
+    """Attach actor and system tags. Grok values win; otherwise the text is scanned."""
+    blob = " ".join(
+        str(part or "")
+        for part in (headline, result.get("title"), result.get("summary"), result.get("location_name"))
+    )
+    result["actor"] = coerce_actor((extracted or {}).get("actor"), blob)
+    result["system_type"] = coerce_system((extracted or {}).get("system_type"), blob)
+    return result
+
+
 def locate_event(
     headline: str,
     *,
@@ -796,7 +877,7 @@ def locate_event(
     severity = "Medium"
     category = "Political/Other"
     if known and known_region and not vague:
-        return {
+        return annotate_placement({
             "region": known_region,
             "governorate": governorate,
             "location_name": text,
@@ -807,10 +888,11 @@ def locate_event(
             "severity": severity,
             "category": category,
             "relevant": True,
-        }
+        }, headline)
     extracted = extract_location(one_sentence(headline) or text)
+    grok_coords = False
     if extracted and extracted.get("relevant") is False:
-        return {
+        return annotate_placement({
             "region": known_region or "Other / International",
             "governorate": governorate,
             "location_name": text,
@@ -821,7 +903,7 @@ def locate_event(
             "severity": severity,
             "category": category,
             "relevant": False,
-        }
+        }, headline, extracted)
     if extracted:
         english_title = one_sentence(extracted.get("title"))
         english_summary = one_sentence(extracted.get("summary"))
@@ -835,6 +917,7 @@ def locate_event(
         extracted_coord = valid_coord(extracted.get("lng"), extracted.get("lat"))
         if extracted_coord:
             known = extracted_coord
+            grok_coords = True
         severity = live_severity(extracted.get("severity"))
         category = live_category(extracted.get("category"))
         vague = is_vague_location(text) or is_vague_location(headline)
@@ -842,11 +925,13 @@ def locate_event(
         coded = geocode_name(text)
         if coded:
             known = coded
+            grok_coords = False
     if vague or known is None:
         place = lookup_place(text) or lookup_place(headline)
         if place:
             known = (place[0], place[1])
             known_region = known_region or place[2]
+            grok_coords = False
     sudan_place = lookup_place(text) or lookup_place(headline)
     if sudan_place and sudan_place[2] == "Sudan & Horn":
         if known is None:
@@ -860,9 +945,10 @@ def locate_event(
     if known is None and known_region in REGION_CAPITALS:
         capital = REGION_CAPITALS[known_region]
         known = (capital[0], capital[1])
+        grok_coords = False
     if not governorate:
         governorate = match_governorate(text) or match_governorate(headline)
-    return {
+    placed = {
         "region": known_region or "Other / International",
         "governorate": governorate,
         "location_name": text,
@@ -874,6 +960,9 @@ def locate_event(
         "category": category,
         "relevant": True,
     }
+    if grok_coords:
+        placed["_grok_coords"] = True
+    return annotate_placement(placed, headline, extracted if isinstance(extracted, dict) else None)
 
 
 def normalize_category(value: object, batch: str) -> str:
