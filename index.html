@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GeoRiskIntel — Live Geospatial Intelligence</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=3" />
-  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=3" />
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4" />
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=4" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
@@ -464,7 +464,7 @@
 </head>
 <body class="filters-open">
   <header id="live-bar">
-    <img src="/static/logo.png?v=3" alt="GeoRiskIntel" style="height: 36px; width: auto; object-fit: contain; border-radius: 6px;">
+    <img src="/static/logo.png?v=4" alt="GeoRiskIntel" style="height: 36px; width: auto; object-fit: contain; border-radius: 6px;">
     <button type="button" id="fetch-live">↻ Fetch Live Feeds</button>
     <span id="last-updated">Last updated: not yet</span>
     <div id="feed-health-wrap">
@@ -724,7 +724,7 @@
   <div id="map" role="application" aria-label="Incident map"></div>
   </div>
   <section id="print-sheet" aria-hidden="true">
-    <img src="/static/logo.png?v=3" alt="GeoRiskIntel">
+    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
     <h1>GeoRiskIntel</h1>
     <p id="print-window"></p>
     <h2>Overall</h2>
@@ -815,7 +815,7 @@
     brandControl.onAdd = function () {
       const div = L.DomUtil.create("div", "georisk-map-badge");
       div.style.cssText = "background: #000000; border: 1px solid #0F4C4C; border-radius: 8px; padding: 8px 12px 7px 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.85); pointer-events: none; margin-bottom: 18px; margin-right: 10px;";
-      div.innerHTML = `<img src="/static/logo.png?v=3" alt="GeoRiskIntel" style="height: 24px; width: auto; display: block; margin-bottom: 6px; object-fit: contain;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #94A3B8; font-weight: 600; border-top: 1px solid #0F4C4C; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #18D4C0; box-shadow: 0 0 8px #18D4C0; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
+      div.innerHTML = `<img src="/static/logo.png?v=4" alt="GeoRiskIntel" style="height: 24px; width: auto; display: block; margin-bottom: 6px; object-fit: contain;" /><div style="display: flex; align-items: center; gap: 6px; font-size: 9.5px; letter-spacing: 1.2px; color: #94A3B8; font-weight: 600; border-top: 1px solid #0F4C4C; padding-top: 5px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #18D4C0; box-shadow: 0 0 8px #18D4C0; display: inline-block;"></span>LIVE GEOSPATIAL OSINT</div>`;
       return div;
     };
     brandControl.addTo(map);
