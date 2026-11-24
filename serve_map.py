@@ -349,6 +349,237 @@ SAUDI_MEDIA_X = {
 }
 SAUDI_X_HANDLES = SAUDI_OFFICIAL_X | SAUDI_MEDIA_X
 SAUDI_RSS_NAMES = {"arab news", "al arabiya english"}
+# Country desks. Cross-cutting wires stay Dynamic and follow the incident.
+_DESK_META = (
+    ("Syria", "Levant", "Syria"),
+    ("Iraq", "Iran & Iraq", "Iraq"),
+    ("Saudi Arabia", "Saudi & Yemen", "Saudi Arabia"),
+    ("Sudan & Chad", "Sudan & Horn", "Sudan"),
+    ("Iran", "Iran & Iraq", "Iran"),
+    ("Gulf States", "Gulf", ""),
+    ("Levant Neighbors", "Levant", ""),
+    ("Maritime & Chokepoints", "Maritime", "Red Sea / Maritime"),
+    ("Cross-Cutting Wires", "Dynamic", "Dynamic"),
+)
+_DESK_HANDLES = {
+    "Syria": {
+        "conflictarchive", "suriyak_maps", "hawran_osint", "npasyria", "sananewsenglish",
+        "televisionsyria", "alekhbariahsy", "syrianarabnewsagency", "sn4hr", "d24net",
+        "sweidagov1", "daraa24_news", "horanfree", "suwayda24", "deirezzor24", "euphratespost",
+        "northpressagency", "damascusv011", "aleppotodaytv", "syrianmoi", "syrianinfowar",
+        "syriahr", "enabbaladi", "syrianmofaex", "levant_24_", "sanaenofficial", "sana__gov",
+        "asharqnewssyr", "syr_television", "syriacosint", "qalaatalmudiq", "charles_lister",
+        "gregorypwaters", "aymennjawad", "obretix", "calibreobscura", "syria_direct",
+        "syriacpress", "joshua_landis", "enabbaladi_eng", "syriadirect", "isfmoisy",
+        "syriacivildef", "syriacivildefe", "ocha_syria", "uninsyria", "sdf_syria",
+        "farhad_shami", "hawarnews",
+    },
+    "Iraq": {
+        "rudaw_english", "rudaw_arabic", "shafaqnews", "almaalomah", "ina_iraq", "kurdistan24",
+        "sabereennews22", "iraqipmo", "thenewregion", "rudawenglish", "shafaqnewsarb",
+        "iraqiosint", "k24english", "tammuz_intel", "iraqsecurity", "hamdi_malik",
+        "michaelpknights", "shelly_kittleson", "tamerbadawi1", "shafaqnewseng", "kurdistan_24",
+        "kurdistan24tv", "k24_kurmanci", "arabick24", "iraqiagency", "uniraq", "ikrpresident",
+        "uscgerbil",
+    },
+    "Saudi Arabia": set(SAUDI_X_HANDLES) | {
+        "alarabiya_brk", "alarabiya_eng", "asharqnewsbrk", "almasirah", "yah_saree", "mmy1444",
+        "faresalhemyari", "abda_sharif", "yemen_pm", "usainksa", "aawsat_news", "alhadath",
+    },
+    "Sudan & Chad": set(SUDAN_X_HANDLES) | {
+        "darfur24", "sudannews24", "alrakoba_sudan", "sudantribune",
+    },
+    "Iran": {
+        "mkhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "irimfa_spox",
+        "ir_rezaee", "mmohammadii61", "hatami_org", "gharibabadi", "iran_in_kuwait",
+        "smajid__moosavi", "iribnews_irib", "presstv", "tasnimarabic1", "iranintl_en",
+        "reutersiran", "s_m_marandi", "irna_english", "farsnews_agency", "iranintl_en",
+        "irna_en", "mehrnews_en",
+    },
+    "Gulf States": {
+        "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en",
+        "alsakaniali", "mba_althani_", "majedalansari", "mofauae", "anwargargash",
+        "gulfnewsuae", "gulfnews", "kuna_en", "bna_en",
+    },
+    "Levant Neighbors": {
+        "idf", "idfonline", "idfspokesperson", "avichayadraee", "netanyahu", "israelpresident",
+        "israelmfa", "israel_katz", "gadi_eisenkot", "gantzbe", "yairlapid", "naftalibennett",
+        "avigdorliberman", "yairgolan10", "ilredalert", "manniefabian", "barakravid",
+        "kaisos1987", "lbpresidency", "nnaleb", "lebarmyofficial", "kingabdullahii",
+        "usembassybeirut", "usembassyjordan", "lorientlejour", "timesofisrael", "jerusalem_post",
+        "ynetnews", "almanarnews", "royanews", "alghadnews", "petranewsagency", "qudsnen",
+    },
+    "Maritime & Chokepoints": {"uk_mto"},
+    "Cross-Cutting Wires": set(),
+}
+_HANDLE_COUNTRY = {
+    "moi_bahrain": "Bahrain", "bdf_bahrain": "Bahrain", "bna_en": "Bahrain",
+    "kuwaitarmyghq": "Kuwait", "moinformation": "Kuwait", "kuna_en": "Kuwait",
+    "mofaqatar_en": "Qatar", "mba_althani_": "Qatar", "majedalansari": "Qatar",
+    "mofauae": "UAE", "anwargargash": "UAE", "gulfnewsuae": "UAE", "gulfnews": "UAE",
+    "alsakaniali": "Oman",
+    "yah_saree": "Yemen", "yemen_pm": "Yemen", "mmy1444": "Yemen", "faresalhemyari": "Yemen",
+    "abda_sharif": "Yemen", "almasirah": "Yemen",
+    "idf": "Israel", "idfonline": "Israel", "idfspokesperson": "Israel", "avichayadraee": "Israel",
+    "netanyahu": "Israel", "israelpresident": "Israel", "israelmfa": "Israel", "israel_katz": "Israel",
+    "gadi_eisenkot": "Israel", "gantzbe": "Israel", "yairlapid": "Israel", "naftalibennett": "Israel",
+    "avigdorliberman": "Israel", "yairgolan10": "Israel", "ilredalert": "Israel",
+    "manniefabian": "Israel", "barakravid": "Israel", "timesofisrael": "Israel",
+    "jerusalem_post": "Israel", "ynetnews": "Israel",
+    "kaisos1987": "Lebanon", "lbpresidency": "Lebanon", "nnaleb": "Lebanon",
+    "lebarmyofficial": "Lebanon", "lorientlejour": "Lebanon", "almanarnews": "Lebanon",
+    "usembassybeirut": "Lebanon",
+    "kingabdullahii": "Jordan", "usembassyjordan": "Jordan", "royanews": "Jordan",
+    "alghadnews": "Jordan", "petranewsagency": "Jordan",
+    "qudsnen": "Palestine",
+    "iomchad": "Chad",
+    "usainksa": "Saudi Arabia",
+}
+_RSS_DESK = {
+    "https://english.enabbaladi.net/feed/": "Syria",
+    "https://syriadirect.org/feed/": "Syria",
+    "https://syriacpress.com/feed/": "Syria",
+    "https://shafaq.com/en/rss": "Iraq",
+    "https://www.iraqinews.com/feed/": "Iraq",
+    "https://www.rudaw.net/english/rss": "Iraq",
+    "https://www.kurdistan24.net/en/rss": "Iraq",
+    "https://thenewregion.com/feed": "Iraq",
+    "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed": "Iraq",
+    "https://www.iranintl.com/en/rss": "Iran",
+    "https://www.arabnews.com/rss.xml": "Saudi Arabia",
+    "https://english.alarabiya.net/tools/rss": "Saudi Arabia",
+    "https://www.dabangasudan.org/en/all-news/feed": "Sudan & Chad",
+    "https://sudantribune.com/feed/": "Sudan & Chad",
+    "https://reliefweb.int/updates/rss.xml?primary_country=220": "Sudan & Chad",
+    "https://khartoumerr.org/feed/": "Sudan & Chad",
+    "https://khartoumerr.org/": "Sudan & Chad",
+    "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
+    "https://www.jordantimes.com/rss.xml": "Levant Neighbors",
+    "https://www.ukmto.org/partner-products/jmic-products": "Maritime & Chokepoints",
+    "https://www.aljazeera.com/xml/rss/middleeast.xml": "Cross-Cutting Wires",
+    "https://www.aljazeera.com/xml/rss/all.xml": "Cross-Cutting Wires",
+    "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml": "Cross-Cutting Wires",
+    "https://news.google.com/rss/search?q=site:reuters.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en": "Cross-Cutting Wires",
+    "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en": "Cross-Cutting Wires",
+    "https://www.middleeastmonitor.com/feed/": "Cross-Cutting Wires",
+    "https://www.anzen.mofa.go.jp/": "Cross-Cutting Wires",
+    "https://www.understandingwar.org/rss.xml": "Cross-Cutting Wires",
+    "https://www.bellingcat.com/feed/": "Cross-Cutting Wires",
+}
+
+
+def _closest_desk(label: str) -> str:
+    """A polled source missing from the desk lists stays on the nearest desk."""
+    blob = str(label or "").lower()
+    rules = (
+        ("khartoum", "Sudan & Chad"), ("darfur", "Sudan & Chad"), ("sudan", "Sudan & Chad"),
+        ("chad", "Sudan & Chad"), ("syria", "Syria"), ("idlib", "Syria"), ("aleppo", "Syria"),
+        ("kurd", "Iraq"), ("rudaw", "Iraq"), ("shafaq", "Iraq"), ("iraq", "Iraq"),
+        ("iran", "Iran"), ("irna", "Iran"), ("presstv", "Iran"),
+        ("yemen", "Saudi Arabia"), ("houthi", "Saudi Arabia"), ("saudi", "Saudi Arabia"),
+        ("bahrain", "Gulf States"), ("kuwait", "Gulf States"), ("qatar", "Gulf States"),
+        ("emirates", "Gulf States"), ("uae", "Gulf States"), ("oman", "Gulf States"),
+        ("ukmto", "Maritime & Chokepoints"), ("jmic", "Maritime & Chokepoints"),
+        ("hormuz", "Maritime & Chokepoints"),
+        ("israel", "Levant Neighbors"), ("lebanon", "Levant Neighbors"), ("jordan", "Levant Neighbors"),
+        ("gaza", "Levant Neighbors"), ("palestine", "Levant Neighbors"),
+    )
+    for needle, desk in rules:
+        if needle in blob:
+            return desk
+    return "Cross-Cutting Wires"
+
+
+def _build_country_registry() -> tuple[dict, ...]:
+    """One desk each. Handles and feed URLs are not repeated across desks."""
+    desks = {
+        name: {"desk": name, "region": region, "default_country": country, "x": [], "telegram": [], "rss": []}
+        for name, region, country in _DESK_META
+    }
+    assigned: dict[str, str] = {}
+    seen_urls: set[str] = set()
+
+    def claim_handle(desk_name: str, kind: str, handle: str) -> None:
+        key = handle.lower()
+        if not key or key in EXCLUDED_SOURCE_HANDLES:
+            return
+        owner = assigned.get(key)
+        if owner and owner != desk_name:
+            return
+        assigned[key] = desk_name
+        bucket = desks[desk_name][kind]
+        if key not in {item.lower() for item in bucket}:
+            bucket.append(handle)
+
+    explicit = {}
+    for desk_name, handles in _DESK_HANDLES.items():
+        for handle in handles:
+            explicit.setdefault(handle.lower(), desk_name)
+    for handle in X_HANDLES:
+        desk_name = explicit.get(handle.lower()) or _closest_desk(handle)
+        claim_handle(desk_name, "x", handle)
+    for channel in TELEGRAM_CHANNELS:
+        desk_name = explicit.get(channel.lower()) or _closest_desk(channel)
+        claim_handle(desk_name, "telegram", channel)
+    for name, url in list(RSS_FEEDS) + [
+        ("Khartoum Err", "https://khartoumerr.org/feed/"),
+        ("Khartoum Err", "https://khartoumerr.org/"),
+    ]:
+        key = url.strip()
+        if key in seen_urls:
+            continue
+        seen_urls.add(key)
+        desk_name = _RSS_DESK.get(key) or _closest_desk(f"{name} {url}")
+        desks[desk_name]["rss"].append((name, key))
+    return tuple(desks[name] for name, _region, _country in _DESK_META)
+
+
+COUNTRY_SOURCE_REGISTRY = _build_country_registry()
+_DESK_BY_NAME = {desk["desk"]: desk for desk in COUNTRY_SOURCE_REGISTRY}
+_DESK_BY_HANDLE = {}
+_DESK_BY_URL = {}
+for _desk in COUNTRY_SOURCE_REGISTRY:
+    for _kind in ("x", "telegram"):
+        for _handle in _desk[_kind]:
+            _DESK_BY_HANDLE.setdefault(_handle.lower(), _desk)
+    for _name, _url in _desk["rss"]:
+        _DESK_BY_URL.setdefault(_url, _desk)
+del _desk, _kind, _handle, _name, _url
+COUNTRY_TAGS = (
+    "Syria", "Iraq", "Saudi Arabia", "Sudan", "Chad", "Iran", "Lebanon", "Israel",
+    "Palestine", "Jordan", "Yemen", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman",
+    "Red Sea / Maritime", "Strait of Hormuz / Gulf", "Other",
+)
+COUNTRY_CENTERS = {
+    "Syria": (33.5138, 36.2765),
+    "Iraq": (33.3152, 44.3661),
+    "Saudi Arabia": (24.7136, 46.6753),
+    "Sudan": (15.5007, 32.5599),
+    "Chad": (12.1348, 15.0557),
+    "Iran": (35.6892, 51.3890),
+    "Lebanon": (33.8938, 35.5018),
+    "Israel": (31.7683, 35.2137),
+    "Palestine": (31.9522, 35.2332),
+    "Jordan": (31.9454, 35.9284),
+    "Yemen": (15.3694, 44.1910),
+    "Bahrain": (26.0667, 50.5577),
+    "Kuwait": (29.3759, 47.9774),
+    "Qatar": (25.2854, 51.5310),
+    "UAE": (24.4539, 54.3773),
+    "Oman": (23.5880, 58.3829),
+    "Red Sea / Maritime": (20.0, 38.5),
+    "Strait of Hormuz / Gulf": (26.5667, 56.2667),
+    "Other": (26.5, 47.0),
+}
+_COUNTRY_REGION = {
+    "Syria": "Levant", "Lebanon": "Levant", "Israel": "Levant", "Palestine": "Levant", "Jordan": "Levant",
+    "Iraq": "Iran & Iraq", "Iran": "Iran & Iraq",
+    "Saudi Arabia": "Saudi & Yemen", "Yemen": "Saudi & Yemen",
+    "Sudan": "Sudan & Horn", "Chad": "Sudan & Horn",
+    "Bahrain": "Gulf", "Kuwait": "Gulf", "Qatar": "Gulf", "UAE": "Gulf", "Oman": "Gulf",
+    "Red Sea / Maritime": "Maritime", "Strait of Hormuz / Gulf": "Maritime",
+    "Other": "Other / International",
+}
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
     "https://xcancel.com/{handle}/rss",
@@ -1199,6 +1430,7 @@ def event_row(feature: dict) -> dict | None:
         "severity": osint.live_severity(props.get("severity")),
         "governorate": osint.match_governorate(props.get("governorate"))
         or osint.match_governorate(props.get("location_name")),
+        "country": str(props.get("country") or ""),
         "verification_tier": osint.one_sentence(props.get("verification_tier"))[:80],
         "_ms": moment.timestamp() if moment else 0,
     }
@@ -1340,6 +1572,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "original_text": "TEXT",
         "source_tier": "TEXT",
         "geo_precision": "TEXT",
+        "country": "TEXT",
         "actor": "TEXT",
         "system_type": "TEXT",
         "amplification_count": "INTEGER NOT NULL DEFAULT 0",
@@ -1703,6 +1936,7 @@ def feed_features() -> list[dict]:
             "amplification_count": int(row["amplification_count"] or 0) if "amplification_count" in row.keys() else 0,
             "original_text": row["original_text"] or "",
             "geo_precision": (row["geo_precision"] or "") if "geo_precision" in row.keys() else "",
+            "country": (row["country"] or "") if "country" in row.keys() else "",
             "actor": (row["actor"] or "") if "actor" in row.keys() else "",
             "system_type": (row["system_type"] or "") if "system_type" in row.keys() else "",
         }
@@ -2428,7 +2662,7 @@ def _grok_english(title: str, summary: str, key: str) -> dict | None:
     """One grok-3-mini JSON translation. A failure leaves the caller to keep the previous text."""
     prompt = (
         "Translate this post into clear English. "
-        "Arabic, Farsi, and Kurdish must become English. "
+        "Arabic, Farsi, Kurdish, and French must become English. "
         "title is a concise English headline. "
         "summary is 1-2 clear English sentences. "
         "Preserve place names, governorates, and unit names. "
@@ -2676,6 +2910,250 @@ def _near_center(lat: float, lng: float, center: tuple[float, float], tolerance:
     return abs(lat - center[0]) <= tolerance and abs(lng - center[1]) <= tolerance
 
 
+_IRAQ_COUNTRY_KEYS = {"iraq", "العراق", "عێراق"}
+_SUDAN_COUNTRY_KEYS = {"sudan", "rsf", "saf", "السودان"}
+_CHAD_KEYS = {
+    "adre", "adre crossing", "adre border crossing", "tine", "tine crossing",
+    "ndjamena", "n djamena", "chad", "تشاد", "أدري", "ادري",
+}
+_GEO_CITY_COUNTRY = {
+    "rif dimashq": "Syria", "damascus": "Syria", "aleppo": "Syria", "idlib": "Syria", "idleb": "Syria",
+    "latakia": "Syria", "tartus": "Syria", "hama": "Syria", "homs": "Syria", "raqqa": "Syria",
+    "deir ez zor": "Syria", "deir ezzor": "Syria", "al hasakah": "Syria", "hasakah": "Syria",
+    "daraa": "Syria", "quneitra": "Syria", "as suwayda": "Syria", "suwayda": "Syria", "sweida": "Syria",
+    "jaber nasib crossing": "Syria", "dabousiya crossing": "Syria", "quneitra bir ajam": "Syria",
+    "palmyra tadmur": "Syria", "al bukamal": "Syria", "abu kamal": "Syria", "al mayadin": "Syria",
+    "tal tamer": "Syria", "tal tamr": "Syria", "bir ajam": "Syria", "beit jinn": "Syria",
+    "qamishli": "Syria", "qamishlo": "Syria", "palmyra": "Syria", "tadmur": "Syria",
+    "zabadani": "Syria", "manbij": "Syria", "baniyas": "Syria", "al tanf": "Syria",
+    "port sudan": "Sudan", "el fasher": "Sudan", "el fashir": "Sudan", "al fashir": "Sudan",
+    "el geneina": "Sudan", "el obeid": "Sudan", "wad madani": "Sudan", "wad medani": "Sudan",
+    "khartoum": "Sudan", "omdurman": "Sudan", "nyala": "Sudan", "kadugli": "Sudan",
+    "kassala": "Sudan", "gedaref": "Sudan", "al qadarif": "Sudan", "atbara": "Sudan",
+    "dongola": "Sudan", "darfur": "Sudan", "kordofan": "Sudan", "sennar": "Sudan",
+    "north darfur": "Sudan", "south darfur": "Sudan", "west darfur": "Sudan",
+    "central darfur": "Sudan", "east darfur": "Sudan", "north kordofan": "Sudan",
+    "south kordofan": "Sudan", "west kordofan": "Sudan", "al jazirah": "Sudan",
+    "blue nile": "Sudan", "white nile": "Sudan", "river nile": "Sudan",
+    "strait of hormuz": "Strait of Hormuz / Gulf", "hormuz": "Strait of Hormuz / Gulf",
+    "gulf of oman": "Strait of Hormuz / Gulf", "persian gulf": "Strait of Hormuz / Gulf",
+    "arabian gulf": "Strait of Hormuz / Gulf",
+    "bab el mandeb": "Red Sea / Maritime", "bab al mandab": "Red Sea / Maritime",
+    "red sea": "Red Sea / Maritime",
+    "gaza": "Palestine",
+}
+_COUNTRY_NAME_ORDER = tuple(sorted((
+    ("strait of hormuz", "Strait of Hormuz / Gulf"),
+    ("bab el-mandeb", "Red Sea / Maritime"),
+    ("bab el mandeb", "Red Sea / Maritime"),
+    ("bab al-mandab", "Red Sea / Maritime"),
+    ("bab al mandab", "Red Sea / Maritime"),
+    ("persian gulf", "Strait of Hormuz / Gulf"),
+    ("arabian gulf", "Strait of Hormuz / Gulf"),
+    ("gulf of oman", "Strait of Hormuz / Gulf"),
+    ("united arab emirates", "UAE"),
+    ("saudi arabia", "Saudi Arabia"),
+    ("red sea", "Red Sea / Maritime"),
+    ("palestine", "Palestine"),
+    ("west bank", "Palestine"),
+    ("lebanon", "Lebanon"),
+    ("bahrain", "Bahrain"),
+    ("kuwait", "Kuwait"),
+    ("israel", "Israel"),
+    ("jordan", "Jordan"),
+    ("qatar", "Qatar"),
+    ("oman", "Oman"),
+    ("yemen", "Yemen"),
+    ("syria", "Syria"),
+    ("sudan", "Sudan"),
+    ("iran", "Iran"),
+    ("iraq", "Iraq"),
+    ("chad", "Chad"),
+    ("gaza", "Palestine"),
+    ("hormuz", "Strait of Hormuz / Gulf"),
+    ("ukmto", "Red Sea / Maritime"),
+    ("jmic", "Red Sea / Maritime"),
+    ("uae", "UAE"),
+    ("rsf", "Sudan"),
+    ("السعودية", "Saudi Arabia"),
+    ("سوريا", "Syria"),
+    ("العراق", "Iraq"),
+    ("إيران", "Iran"),
+    ("ايران", "Iran"),
+    ("لبنان", "Lebanon"),
+    ("الأردن", "Jordan"),
+    ("الاردن", "Jordan"),
+    ("اليمن", "Yemen"),
+    ("السودان", "Sudan"),
+    ("تشاد", "Chad"),
+    ("فلسطين", "Palestine"),
+    ("غزة", "Palestine"),
+    ("إسرائيل", "Israel"),
+    ("اسرائيل", "Israel"),
+    ("البحرين", "Bahrain"),
+    ("الكويت", "Kuwait"),
+    ("قطر", "Qatar"),
+    ("عمان", "Oman"),
+    ("الإمارات", "UAE"),
+    ("الامارات", "UAE"),
+), key=lambda item: len(item[0]), reverse=True))
+
+
+def region_for_country(country: str) -> str:
+    return _COUNTRY_REGION.get(country or "", "Other / International")
+
+
+def desk_for_item(item: dict) -> dict | None:
+    """The source desk, or None when the item is not in the registry."""
+    handle = channel_handle(item).lower()
+    if not handle:
+        handle = x_handle_from_item(item).lower()
+    if handle and handle in _DESK_BY_HANDLE:
+        return _DESK_BY_HANDLE[handle]
+    url = str(item.get("source_url") or "")
+    name = str(item.get("source_name") or "").lower()
+    if "khartoumerr.org" in url or "khartoum err" in name:
+        return _DESK_BY_NAME.get("Sudan & Chad")
+    for feed_url, desk in _DESK_BY_URL.items():
+        if feed_url and feed_url in url:
+            return desk
+    return None
+
+
+def incident_country(text: str) -> str:
+    """The country the text places the event in. A city beats a country name."""
+    raw = str(text or "")
+    iraq = match_iraq_fallback(raw)
+    if iraq and iraq[0] not in _IRAQ_COUNTRY_KEYS:
+        return "Iraq"
+    sudan = match_sudan_fallback(raw)
+    if sudan and sudan[0] in _CHAD_KEYS:
+        return "Chad"
+    if sudan and sudan[0] not in _SUDAN_COUNTRY_KEYS:
+        return "Sudan"
+    saudi = match_saudi_fallback(raw)
+    if saudi and saudi[0] not in _SAUDI_COUNTRY_KEYS:
+        return "Saudi Arabia"
+    hit = match_geo_fallback(geo_blob(raw))
+    if hit and hit[0] in _GEO_CITY_COUNTRY:
+        return _GEO_CITY_COUNTRY[hit[0]]
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword, country in _COUNTRY_NAME_ORDER:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                return country
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                return country
+            continue
+        if keyword in tokens or (len(keyword) >= 5 and keyword in padded):
+            return country
+    return ""
+
+
+def resolve_item_country(item: dict, blob: str) -> str:
+    """Desk country, unless the text names an event somewhere else. Wires follow the incident."""
+    named = incident_country(blob)
+    desk = desk_for_item(item)
+    handle = channel_handle(item).lower()
+    home = ""
+    if desk and desk.get("default_country") not in ("", "Dynamic"):
+        home = desk["default_country"]
+    elif handle in _HANDLE_COUNTRY:
+        home = _HANDLE_COUNTRY[handle]
+    if home:
+        if named and named != home:
+            return named
+        return home
+    if named:
+        return named
+    return "Other"
+
+
+def resolve_item_region(item: dict, placed: dict, blob: str) -> str:
+    """Incident location wins. A country desk fills the region when the text names no other country."""
+    named = incident_country(blob)
+    desk = desk_for_item(item)
+    if named:
+        home = (desk or {}).get("default_country") or ""
+        if not home or home == "Dynamic" or named != home or home == named:
+            return region_for_country(named)
+    if sudan_mention(blob):
+        return "Sudan & Horn"
+    if iraq_mention(blob):
+        return "Iran & Iraq"
+    if saudi_mention(blob):
+        return "Saudi & Yemen"
+    if desk and desk.get("region") not in ("", "Dynamic"):
+        return desk["region"]
+    return placed.get("region") or "Other / International"
+
+
+def _desk_place_hit(country: str, text: str) -> tuple[str, float, float] | None:
+    if country == "Iraq":
+        return match_iraq_fallback(text)
+    if country == "Sudan":
+        hit = match_sudan_fallback(text)
+        if hit and hit[0] in _CHAD_KEYS:
+            return None
+        return hit
+    if country == "Chad":
+        hit = match_sudan_fallback(text)
+        if hit and hit[0] in _CHAD_KEYS:
+            return hit
+        return None
+    if country == "Saudi Arabia":
+        return match_saudi_fallback(text)
+    if country == "Syria":
+        hit = match_geo_fallback(geo_blob(text))
+        if hit and _GEO_CITY_COUNTRY.get(hit[0]) == "Syria":
+            return hit
+        return None
+    if country in {"Red Sea / Maritime", "Strait of Hormuz / Gulf"}:
+        hit = match_geo_fallback(geo_blob(text))
+        if hit and _GEO_CITY_COUNTRY.get(hit[0]) == country:
+            return hit
+        return None
+    hit = match_geo_fallback(geo_blob(text))
+    if hit and _GEO_CITY_COUNTRY.get(hit[0]) == country:
+        return hit
+    return None
+
+
+def desk_anchor_point(item: dict, raw_blob: str, coords, event_id) -> tuple[float, float, str] | None:
+    """Pin a country desk to that country unless the text names an external event."""
+    desk = desk_for_item(item)
+    if not desk:
+        return None
+    home = desk.get("default_country") or ""
+    if home in ("", "Dynamic"):
+        return None
+    named = incident_country(raw_blob)
+    if named and named != home:
+        return None
+    hit = _desk_place_hit(home, raw_blob)
+    if hit:
+        if coords and not (hit[0] in _COUNTRY_OR_SEA or hit[0] in _SAUDI_COUNTRY_KEYS or hit[0] in _SUDAN_COUNTRY_KEYS or hit[0] in _IRAQ_COUNTRY_KEYS):
+            return None
+        shifted = offset_fallback(hit[1], hit[2], event_id)
+        if not shifted:
+            return None
+        if home == "Saudi Arabia":
+            return shifted[0], shifted[1], saudi_precision(hit[0])
+        return shifted[0], shifted[1], classify_precision(hit[0])
+    if coords:
+        return None
+    center = COUNTRY_CENTERS.get(home)
+    if not center:
+        return None
+    shifted = offset_fallback(center[0], center[1], event_id)
+    if not shifted:
+        return None
+    return shifted[0], shifted[1], "Country / Sea Fallback"
+
+
 def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | None, str]:
     """Use a real model point. Otherwise a place-list center with a stable tiny offset.
 
@@ -2693,6 +3171,9 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         )
     )
     event_id = item.get("source_url") or item.get("id") or item.get("title")
+    anchored = desk_anchor_point(item, raw_blob, coords, event_id)
+    if anchored:
+        return anchored
     if not coords and not sudan_mention(raw_blob):
         iraq_hit = match_iraq_fallback(raw_blob)
         if iraq_hit:
@@ -3084,15 +3565,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
             item.get("original_text"),
         )
     )
-    if sudan_mention(blob):
-        placed = dict(placed)
-        placed["region"] = "Sudan & Horn"
-    elif iraq_mention(blob):
-        placed = dict(placed)
-        placed["region"] = "Iran & Iraq"
-    elif saudi_mention(blob):
-        placed = dict(placed)
-        placed["region"] = "Saudi & Yemen"
+    placed = dict(placed)
+    placed["region"] = resolve_item_region(item, placed, blob)
+    placed["country"] = resolve_item_country(item, blob)
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
         placed = dict(placed)
@@ -3112,9 +3587,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
                     source_tier, region, governorate, location_name, lat, lng, severity, category,
-                    corroboration_count, published_at, ingested_at, geo_precision, actor, system_type,
+                    corroboration_count, published_at, ingested_at, geo_precision, country, actor, system_type,
                     amplification_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -3137,6 +3612,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     osint.format_timestamp(moment),
                     osint.format_timestamp(now),
                     placed.get("geo_precision") or "",
+                    placed.get("country") or "",
                     placed.get("actor") or osint.coerce_actor("", item.get("title") or ""),
                     placed.get("system_type") or "",
                     0,
