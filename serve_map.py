@@ -87,6 +87,7 @@ RSS_FEEDS = [
     ("Rudaw English", "https://www.rudaw.net/english/rss"),
     ("Iran International", "https://www.iranintl.com/en/rss"),
     ("Arab News", "https://www.arabnews.com/rss.xml"),
+    ("Al Arabiya English", "https://english.alarabiya.net/tools/rss"),
     ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
@@ -140,6 +141,7 @@ TELEGRAM_CHANNELS = [
     "warmonitors",
     "gulfnewsUAE",
     "AlArabiya_Brk",
+    "AsharqNewsBrk",
     "almasirah",
     "almanarnews",
     "SabereenNews22",
@@ -192,7 +194,9 @@ _X_HANDLE_GROUPS = [
     ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali"],
     [
         "CJFCSpox", "SaudiDCD", "kbsalsaud", "FaisalbinFarhan", "KKIASA", "ksagaca", "Spa_Eng", "SPAregions",
-        "SaudiNews50", "saudiexpat", "Yah_Saree", "MMY1444", "FaresALhemyari", "abda_sharif", "Yemen_PM",
+        "SaudiNews50", "saudiexpat", "KSAMOFA", "modgovksa", "MOISaudiArabia", "AlArabiya_Brk",
+        "AlArabiya_Eng", "AsharqNewsBrk", "ArabNews", "Yah_Saree", "MMY1444", "FaresALhemyari",
+        "abda_sharif", "Yemen_PM",
     ],
     [
         "MKhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "IRIMFA_SPOX", "ir_rezaee",
@@ -322,6 +326,29 @@ SYRIA_X_HANDLES = {
     "farhad_shami",
     "hawarnews",
 }
+SAUDI_OFFICIAL_X = {
+    "cjfcspox",
+    "saudidcd",
+    "kbsalsaud",
+    "faisalbinfarhan",
+    "kkiasa",
+    "ksagaca",
+    "spa_eng",
+    "sparegions",
+    "saudinews50",
+    "saudiexpat",
+    "ksamofa",
+    "modgovksa",
+    "moisaudiarabia",
+}
+SAUDI_MEDIA_X = {
+    "alarabiya_brk",
+    "alarabiya_eng",
+    "asharqnewsbrk",
+    "arabnews",
+}
+SAUDI_X_HANDLES = SAUDI_OFFICIAL_X | SAUDI_MEDIA_X
+SAUDI_RSS_NAMES = {"arab news", "al arabiya english"}
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
     "https://xcancel.com/{handle}/rss",
@@ -692,6 +719,80 @@ IRAQ_GEO_FALLBACKS = {
     "هیت": (33.7856, 42.4411),
 }
 _IRAQ_FALLBACK_ORDER = tuple(sorted(IRAQ_GEO_FALLBACKS, key=len, reverse=True))
+# Longer place names match before the country center. Country keys are tried last.
+SAUDI_GEO_FALLBACKS = {
+    "king khalid international airport": (24.7136, 46.6753),
+    "king abdulaziz international airport": (21.4858, 39.1925),
+    "king abdulaziz port": (21.4858, 39.1925),
+    "مطار الملك عبدالعزيز": (21.4858, 39.1925),
+    "ميناء الملك عبدالعزيز": (21.4858, 39.1925),
+    "المملكة العربية السعودية": (24.7136, 46.6753),
+    "king khalid airport": (24.7136, 46.6753),
+    "مطار الملك خالد": (24.7136, 46.6753),
+    "eastern province": (26.4207, 50.0888),
+    "khamis mushait": (18.3000, 42.7333),
+    "khamis mushayt": (18.3000, 42.7333),
+    "المنطقة الشرقية": (26.4207, 50.0888),
+    "jeddah airport": (21.4858, 39.1925),
+    "المدينة المنورة": (24.5247, 39.5692),
+    "مكة المكرمة": (21.3891, 39.8579),
+    "خميس مشيط": (18.3000, 42.7333),
+    "saudi arabia": (24.7136, 46.6753),
+    "ras tanura": (26.6436, 50.1592),
+    "رأس تنورة": (26.6436, 50.1592),
+    "راس تنورة": (26.6436, 50.1592),
+    "king khalid": (24.7136, 46.6753),
+    "السعودية": (24.7136, 46.6753),
+    "dhahran": (26.4207, 50.0888),
+    "dammam": (26.4207, 50.0888),
+    "khobar": (26.4207, 50.0888),
+    "abqaiq": (25.9371, 49.6776),
+    "shaybah": (25.9371, 49.6776),
+    "jubail": (27.0046, 49.6460),
+    "yanbu": (24.0895, 38.0618),
+    "yenbo": (24.0895, 38.0618),
+    "jizan": (16.8892, 42.5511),
+    "jazan": (16.8892, 42.5511),
+    "najran": (17.4924, 44.1277),
+    "abha": (18.3000, 42.7333),
+    "asir": (18.3000, 42.7333),
+    "tabuk": (28.3838, 36.5550),
+    "neom": (28.3838, 36.5550),
+    "makkah": (21.3891, 39.8579),
+    "mecca": (21.3891, 39.8579),
+    "madinah": (24.5247, 39.5692),
+    "medina": (24.5247, 39.5692),
+    "riyadh": (24.7136, 46.6753),
+    "jeddah": (21.4858, 39.1925),
+    "jiddah": (21.4858, 39.1925),
+    "الظهران": (26.4207, 50.0888),
+    "الدمام": (26.4207, 50.0888),
+    "الخبر": (26.4207, 50.0888),
+    "الجبيل": (27.0046, 49.6460),
+    "نجران": (17.4924, 44.1277),
+    "جازان": (16.8892, 42.5511),
+    "جيزان": (16.8892, 42.5511),
+    "ينبع": (24.0895, 38.0618),
+    "شيبة": (25.9371, 49.6776),
+    "بقيق": (25.9371, 49.6776),
+    "عسير": (18.3000, 42.7333),
+    "أبها": (18.3000, 42.7333),
+    "ابها": (18.3000, 42.7333),
+    "تبوك": (28.3838, 36.5550),
+    "نيوم": (28.3838, 36.5550),
+    "مكة": (21.3891, 39.8579),
+    "الرياض": (24.7136, 46.6753),
+    "جدة": (21.4858, 39.1925),
+    "جده": (21.4858, 39.1925),
+    "saudi": (24.7136, 46.6753),
+}
+_SAUDI_COUNTRY_KEYS = frozenset({
+    "saudi", "saudi arabia", "السعودية", "المملكة العربية السعودية",
+})
+_SAUDI_FALLBACK_ORDER = tuple(sorted(
+    SAUDI_GEO_FALLBACKS,
+    key=lambda key: (key in _SAUDI_COUNTRY_KEYS, -len(key)),
+))
 _KURDISH_FOLD = str.maketrans({
     "ê": "e", "Ê": "e", "î": "i", "Î": "i", "û": "u", "Û": "u",
     "ş": "s", "Ş": "s", "ç": "c", "Ç": "c",
@@ -819,8 +920,9 @@ _LEAD_HANDLES = {
 }
 _WIRE_NAMES = {
     "reuters", "arareuters", "reutersiran", "ap", "afp", "afpar", "bbc", "bbcarabic", "bbcworld",
-    "cnn", "sky", "skynews", "anadolu", "anadoluagency", "aljazeera", "ajenglish", "alarabiya",
-    "alarabytv", "alhadath", "asharq", "aawsat", "aawsat_news", "timesofisrael", "jerusalem_post",
+    "cnn", "sky", "skynews", "anadolu", "anadoluagency", "aljazeera", "ajenglish",     "alarabiya",
+    "alarabiya_brk", "alarabiya_eng", "alarabytv", "alhadath", "asharq", "asharqnewsbrk", "arabnews",
+    "aawsat", "aawsat_news", "timesofisrael", "jerusalem_post",
     "ynet", "ynetnews", "rudaw", "rudawenglish", "kurdistan24", "k24english", "shafaq", "shafaqnews",
     "shafaqnewsarb", "nna", "nnaleb", "thenewregion", "wsj", "uniindianews", "lorientlejour",
     "iranintl", "iranintl_en", "middleeastmonitor", "thestudyofwar", "understandingwar", "isw",
@@ -829,6 +931,7 @@ _WIRE_NAMES = {
 _OFFICIAL_HANDLES = {
     "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en", "uk_mto",
     "alsakaniali", "cjfcspox", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
+    "ksamofa", "modgovksa", "moisaudiarabia",
     "yemen_pm", "mkhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "irimfa_spox",
     "ir_rezaee", "mmohammadii61", "hatami_org", "gharibabadi", "iran_in_kuwait", "iraqipmo",
     "mba_althani_", "majedalansari", "mofauae", "anwargargash", "syrianmofaex", "idf", "idfonline",
@@ -2147,6 +2250,10 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in IRAQ_X_HANDLES and iraq_mention(text):
         return True
+    if lowered in SAUDI_OFFICIAL_X:
+        return True
+    if lowered in SAUDI_MEDIA_X and (saudi_mention(text) or mentions_broad_theater(text)):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
 
 
@@ -2486,6 +2593,43 @@ def iraq_mention(text: str) -> bool:
     return match_iraq_fallback(text) is not None
 
 
+def saudi_precision(keyword: str) -> str:
+    """Airports and ports are exact sites. The country name stays a country fallback."""
+    key = str(keyword or "")
+    if key in _SAUDI_COUNTRY_KEYS:
+        return "Country / Sea Fallback"
+    if any(marker in key for marker in ("airport", "port", "مطار", "ميناء")):
+        return "Exact Site"
+    return classify_precision(key)
+
+
+def match_saudi_fallback(text: str) -> tuple[str, float, float] | None:
+    """Longest Saudi place. Country names match only when no city or site is named."""
+    raw = str(text or "")
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword in _SAUDI_FALLBACK_ORDER:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                lat, lng = SAUDI_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                lat, lng = SAUDI_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword in tokens:
+            lat, lng = SAUDI_GEO_FALLBACKS[keyword]
+            return keyword, lat, lng
+    return None
+
+
+def saudi_mention(text: str) -> bool:
+    """A listed Saudi city, site, or the country name."""
+    return match_saudi_fallback(text) is not None
+
+
 def sudan_mention(text: str) -> bool:
     """Sudan, RSF, SAF, Darfur, Kordofan, or a listed city."""
     if match_sudan_fallback(text):
@@ -2561,6 +2705,12 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
             shifted = offset_fallback(sudan_hit[1], sudan_hit[2], event_id)
             if shifted:
                 return shifted[0], shifted[1], classify_precision(sudan_hit[0])
+    if not coords and not sudan_mention(raw_blob) and not iraq_mention(raw_blob):
+        saudi_hit = match_saudi_fallback(raw_blob)
+        if saudi_hit:
+            shifted = offset_fallback(saudi_hit[1], saudi_hit[2], event_id)
+            if shifted:
+                return shifted[0], shifted[1], saudi_precision(saudi_hit[0])
     blob = geo_blob(
         placed.get("location_name"),
         placed.get("governorate"),
@@ -2609,6 +2759,8 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                 hit = match_sudan_fallback(raw)
                 if hit is None and not sudan_mention(raw):
                     hit = match_iraq_fallback(raw)
+                if hit is None and not sudan_mention(raw) and not iraq_mention(raw):
+                    hit = match_saudi_fallback(raw)
                 if hit is None:
                     hit = match_geo_fallback(geo_blob(raw))
                 if not hit:
@@ -2616,9 +2768,10 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                 shifted = offset_fallback(hit[1], hit[2], row["id"])
                 if not shifted:
                     continue
+                precision = saudi_precision(hit[0]) if hit[0] in SAUDI_GEO_FALLBACKS else classify_precision(hit[0])
                 conn.execute(
                     "UPDATE items SET lat = ?, lng = ?, geo_precision = ? WHERE id = ?",
-                    (shifted[0], shifted[1], classify_precision(hit[0]), row["id"]),
+                    (shifted[0], shifted[1], precision, row["id"]),
                 )
                 updated += 1
             if updated:
@@ -2863,6 +3016,13 @@ def coverage_region(item: dict, placed: dict) -> dict:
     if sudan_roster and not iraq_mention(blob) and not mentions_syria_or_middle_east(blob):
         placed["region"] = "Sudan & Horn"
         return placed
+    saudi_roster = handle in SAUDI_OFFICIAL_X or any(name in rss_name for name in SAUDI_RSS_NAMES)
+    if saudi_mention(blob) and not iraq_mention(blob):
+        placed["region"] = "Saudi & Yemen"
+        return placed
+    if saudi_roster and not iraq_mention(blob) and not mentions_syria_or_middle_east(blob):
+        placed["region"] = "Saudi & Yemen"
+        return placed
     syria_roster = (
         handle in SYRIA_LOCAL_CHANNELS
         or handle in SYRIA_X_HANDLES
@@ -2930,6 +3090,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     elif iraq_mention(blob):
         placed = dict(placed)
         placed["region"] = "Iran & Iraq"
+    elif saudi_mention(blob):
+        placed = dict(placed)
+        placed["region"] = "Saudi & Yemen"
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
         placed = dict(placed)
