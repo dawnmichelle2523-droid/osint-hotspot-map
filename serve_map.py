@@ -1425,7 +1425,8 @@ def event_row(feature: dict) -> dict | None:
         "title": title[:240],
         "summary": osint.one_sentence(props.get("summary"))[:500],
         "region": region_name(props.get("region")),
-        "category": osint.live_category(props.get("category")),
+        "category": threat_category_label(props.get("category"), props.get("threat_code")),
+        "threat_code": props.get("threat_code"),
         "timestamp": osint.format_timestamp(moment) if moment else "",
         "severity": osint.live_severity(props.get("severity")),
         "governorate": osint.match_governorate(props.get("governorate"))
@@ -1575,6 +1576,7 @@ def ensure_feed_db(conn: sqlite3.Connection) -> None:
         "geo_precision": "TEXT",
         "country": "TEXT",
         "sub_region": "TEXT",
+        "threat_code": "INTEGER",
         "actor": "TEXT",
         "system_type": "TEXT",
         "amplification_count": "INTEGER NOT NULL DEFAULT 0",
@@ -1931,7 +1933,8 @@ def feed_features() -> list[dict]:
             "batch": "live_feed",
             "verification_tier": "Unverified Lead" if row["source_kind"] == "telegram" else "State-Affiliated / Single-Source",
             "region": region_name(row["region"]),
-            "category": osint.live_category(row["category"]),
+            "category": threat_category_label(row["category"], row["threat_code"] if "threat_code" in row.keys() else None),
+            "threat_code": row["threat_code"] if "threat_code" in row.keys() else None,
             "warning_number": None,
             "location_name": row["location_name"] or "",
             "corroboration_count": int(row["corroboration_count"] or 1),
@@ -2708,6 +2711,100 @@ def _grok_english(title: str, summary: str, key: str) -> dict | None:
     return payload
 
 
+THREAT_LABELS = {
+    1: "Small Arms Fire (SAF)",
+    2: "Indirect Fire (IDF) and Air Strikes",
+    3: "Suicide / Vehicle-Borne Improvised Explosive Device (S/VBIED)",
+    4: "Improvised Explosive Device (IED)",
+    5: "Explosively Formed Projectile (EFP)",
+    6: "Unexploded Ordnance (UXO)",
+    7: "Kidnap",
+    8: "Road Traffic Collision (RTC)",
+    9: "Civil Unrest",
+    10: "Trauma / Casualty",
+    11: "Detention / Arrest (Checkpoints)",
+}
+ADVISORY_LABEL = "Other / Advisory"
+_THREAT_BY_LABEL = {label: code for code, label in THREAT_LABELS.items()}
+_THREAT_PATTERNS = (
+    (5, re.compile(r"\befps?\b|explosively formed", re.I)),
+    (3, re.compile(r"\b(?:s/vbied|svbied|vbied)s?\b|suicide (?:bomb(?:er|ing)?|attack|vest)|vehicle[ -]borne|car bomb", re.I)),
+    (4, re.compile(r"\bieds?\b|improvised explosive", re.I)),
+    (6, re.compile(r"\buxo\b|unexploded", re.I)),
+    (2, re.compile(r"indirect fire|air ?strikes?|airstrikes?|\bmortar\b|\bartillery\b|\bshelling\b|\bmissile\b|drone strike|\brocket\b", re.I)),
+    (1, re.compile(r"small arms|\bgunfire\b|\bfirefight\b|\bshooting\b|\bclashes?\b", re.I)),
+    (7, re.compile(r"kidnapp?(?:ing|ed)?|\babduction\b|\bhostage\b", re.I)),
+    (8, re.compile(r"\brtc\b|road traffic|traffic collision|car crash|vehicle collision", re.I)),
+    (9, re.compile(r"\briots?\b|\bprotests?\b|\bdemonstration\b|civil unrest|\bunrest\b", re.I)),
+    (11, re.compile(r"\bcheckpoints?\b|\bdetention\b|\barrest(?:ed|s)?\b|\bdetained\b", re.I)),
+    (10, re.compile(r"\bcasualt(?:y|ies)\b|\bwounded\b|\bkilled\b|\btrauma\b|\binjured\b", re.I)),
+)
+_ADVISORY_RE = re.compile(
+    r"\b(?:notam|weather (?:warning|advisory)|flight (?:notice|cancellation|advisory)|"
+    r"embassy advisory|diplomatic (?:note|advisory)|travel advisory)\b",
+    re.I,
+)
+_OLD_THREAT_CODES = {
+    "SFA": 1,
+    "ACT": 2,
+    "VC": 10,
+    "CU": 9,
+    "KINETIC/MILITARY": 2,
+    "SECURITY/CLASHES": 1,
+}
+_OLD_ADVISORY = {"HS", "OD", "MARITIME", "POLITICAL/OTHER", "OTHER / ADVISORY"}
+
+
+def classify_threat(text: object, previous: object = None) -> tuple[int | None, str]:
+    """Map text and the old ACT/SFA buckets onto threat codes 1-11."""
+    blob = str(text or "")
+    prev = " ".join(str(previous or "").split())
+    for code, pattern in _THREAT_PATTERNS:
+        if pattern.search(blob) or pattern.search(prev):
+            return code, THREAT_LABELS[code]
+    if prev in _THREAT_BY_LABEL:
+        return _THREAT_BY_LABEL[prev], prev
+    if prev.isdigit() and int(prev) in THREAT_LABELS:
+        code = int(prev)
+        return code, THREAT_LABELS[code]
+    old = prev.upper()
+    if old in _OLD_THREAT_CODES:
+        code = _OLD_THREAT_CODES[old]
+        return code, THREAT_LABELS[code]
+    if old in _OLD_ADVISORY or _ADVISORY_RE.search(blob) or _ADVISORY_RE.search(prev):
+        return None, ADVISORY_LABEL
+    return None, ""
+
+
+def threat_category_label(category: object, threat_code: object = None) -> str:
+    try:
+        code = int(threat_code)
+    except (TypeError, ValueError):
+        code = None
+    if code in THREAT_LABELS:
+        return THREAT_LABELS[code]
+    _code, label = classify_threat("", category)
+    return label
+
+
+def _apply_threat(stored: dict, located: dict) -> dict:
+    blob = " ".join(
+        str(part or "")
+        for part in (
+            stored.get("title"), stored.get("summary"), stored.get("original_text"),
+            located.get("title"), located.get("summary"), located.get("category"),
+        )
+    )
+    code, label = classify_threat(blob, located.get("category") or stored.get("category"))
+    if label:
+        stored["category"] = label
+    if code:
+        stored["threat_code"] = code
+    elif label == ADVISORY_LABEL:
+        stored["threat_code"] = None
+    return stored
+
+
 def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict:
     """English title and summary via grok-3-mini. Raw text stays in original_text.
 
@@ -2734,7 +2831,7 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
             stored["title"] = title
         if summary:
             stored["summary"] = summary
-        return stored
+        return _apply_threat(stored, located)
     if not title or not summary:
         first = _grok_english(original or incoming_title, incoming_summary or incoming_title, key)
         if first:
@@ -2751,7 +2848,7 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
         stored["summary"] = summary
     elif stored.get("title") and not contains_arabic(stored.get("title")):
         stored["summary"] = stored["title"]
-    return stored
+    return _apply_threat(stored, located)
 
 
 _LATIN_FOLD = str.maketrans({
@@ -3722,6 +3819,47 @@ def backfill_syria_governorates() -> int:
     return updated
 
 
+def backfill_threat_codes() -> int:
+    """Remap ACT, SFA, VC, CU, HS, and OD onto threat codes 1-11. A stored code stays."""
+    updated = 0
+    old_labels = {
+        "ACT", "SFA", "VC", "CU", "HS", "OD",
+        "Kinetic/Military", "Maritime", "Security/Clashes", "Political/Other",
+    }
+    with _db_lock:
+        conn = db_connect()
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+            if "threat_code" not in columns:
+                return 0
+            rows = conn.execute(
+                "SELECT id, title, summary, original_text, category, threat_code FROM items "
+                "WHERE threat_code IS NULL OR threat_code = 0"
+            ).fetchall()
+            for row in rows:
+                if str(row["category"] or "") == ADVISORY_LABEL:
+                    continue
+                code, label = classify_threat(
+                    " ".join(str(row[key] or "") for key in ("title", "summary", "original_text", "category")),
+                    row["category"],
+                )
+                if not label and str(row["category"] or "") not in old_labels:
+                    continue
+                if not label:
+                    label = ADVISORY_LABEL
+                conn.execute(
+                    "UPDATE items SET threat_code = ?, category = ? WHERE id = ? AND (threat_code IS NULL OR threat_code = 0)",
+                    (code, label, row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+                print(f"Remapped {updated} threat code(s).")
+        finally:
+            conn.close()
+    return updated
+
+
 def drop_excluded_items() -> int:
     """Remove rows from the blocked accounts. Yah_Saree rows stay."""
     removed = 0
@@ -3909,6 +4047,10 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     elif placed.get("_grok_coords"):
         placed = dict(placed)
         placed["geo_precision"] = classify_precision(placed.get("location_name") or "")
+    threat_code, threat_label = classify_threat(blob, item.get("category") or placed.get("category"))
+    if threat_label:
+        placed["category"] = threat_label
+    placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({
             "country": "Syria" if placed.get("country") in ("", "Other") else placed.get("country"),
@@ -3943,9 +4085,9 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                 INSERT INTO items (
                     source_url, url_hash, headline_hash, title, summary, original_text, source_name, source_kind,
                     source_tier, region, governorate, location_name, lat, lng, severity, category,
-                    corroboration_count, published_at, ingested_at, geo_precision, country, sub_region, actor,
-                    system_type, amplification_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    corroboration_count, published_at, ingested_at, geo_precision, country, sub_region, threat_code,
+                    actor, system_type, amplification_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     source_url,
@@ -3963,13 +4105,14 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     lat,
                     lng,
                     osint.live_severity(placed.get("severity")),
-                    osint.live_category(placed.get("category")),
+                    placed.get("category") or "",
                     1,
                     osint.format_timestamp(moment),
                     osint.format_timestamp(now),
                     placed.get("geo_precision") or "",
                     placed.get("country") or "",
                     placed.get("sub_region") or "",
+                    placed.get("threat_code"),
                     placed.get("actor") or osint.coerce_actor("", item.get("title") or ""),
                     placed.get("system_type") or "",
                     0,
@@ -4105,6 +4248,7 @@ def ingest_feeds() -> dict:
             backfill_iraq_rows()
             backfill_country_tags()
             backfill_syria_governorates()
+            backfill_threat_codes()
             drop_excluded_items()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
@@ -4628,7 +4772,7 @@ def _summary_record(title: str, summary: str, moment: datetime, region: str, sev
         "timestamp": moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "region": region_name(region),
         "severity": osint.live_severity(severity),
-        "category": osint.live_category(category) if str(category or "").strip() else "",
+        "category": threat_category_label(category) if str(category or "").strip() else "",
         "location_name": osint.one_sentence(location)[:160],
         "title": osint.one_sentence(title or summary)[:240],
         "summary": osint.one_sentence(summary or title)[:500],
@@ -5914,6 +6058,7 @@ def start_background() -> None:
         backfill_iraq_rows()
         backfill_country_tags()
         backfill_syria_governorates()
+        backfill_threat_codes()
         drop_excluded_items()
         _threads_started = True
     start_translation_pass()

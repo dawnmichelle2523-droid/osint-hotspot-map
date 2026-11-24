@@ -730,8 +730,8 @@
     }
     .coord-hud-toast.is-on { opacity: 1; }
     #syria-index h2 { margin: 0 0 8px; color: #D4AF37; }
-    .syria-index-scroll { overflow: visible; width: 100%; }
-    #syria-index table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .syria-index-scroll { overflow-x: auto; overflow-y: visible; width: 100%; max-width: 100%; }
+    #syria-index table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
     #syria-index th, #syria-index td { padding: 3px 4px; border-bottom: 1px solid #1E293B; text-align: right; white-space: nowrap; }
     #syria-index th:first-child, #syria-index td:first-child, #syria-index th[scope="row"] {
       text-align: left; position: sticky; left: 0; background: #0D1424;
@@ -1305,14 +1305,19 @@
         <span class="filter-label">Category</span>
         <span class="filter-current"><span data-filter-summary="category">All</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
       </summary>
-      <div class="row">
-        <button type="button" class="pill" data-category="all" aria-pressed="true">All</button>
-        <button type="button" class="pill" data-category="ACT">ACT</button>
-        <button type="button" class="pill" data-category="SFA">SFA</button>
-        <button type="button" class="pill" data-category="VC">VC</button>
-        <button type="button" class="pill" data-category="CU">CU</button>
-        <button type="button" class="pill" data-category="HS">HS</button>
-        <button type="button" class="pill" data-category="OD">OD</button>
+      <div class="row" id="category-row">
+        <button type="button" class="pill" data-category="all" aria-pressed="true">All <span class="n" data-cat-count="all">0</span></button>
+        <button type="button" class="pill" data-category="1">1 Small Arms Fire (SAF) <span class="n" data-cat-count="1">0</span></button>
+        <button type="button" class="pill" data-category="2">2 Indirect Fire (IDF) and Air Strikes <span class="n" data-cat-count="2">0</span></button>
+        <button type="button" class="pill" data-category="3">3 Suicide / Vehicle-Borne Improvised Explosive Device (S/VBIED) <span class="n" data-cat-count="3">0</span></button>
+        <button type="button" class="pill" data-category="4">4 Improvised Explosive Device (IED) <span class="n" data-cat-count="4">0</span></button>
+        <button type="button" class="pill" data-category="5">5 Explosively Formed Projectile (EFP) <span class="n" data-cat-count="5">0</span></button>
+        <button type="button" class="pill" data-category="6">6 Unexploded Ordnance (UXO) <span class="n" data-cat-count="6">0</span></button>
+        <button type="button" class="pill" data-category="7">7 Kidnap <span class="n" data-cat-count="7">0</span></button>
+        <button type="button" class="pill" data-category="8">8 Road Traffic Collision (RTC) <span class="n" data-cat-count="8">0</span></button>
+        <button type="button" class="pill" data-category="9">9 Civil Unrest <span class="n" data-cat-count="9">0</span></button>
+        <button type="button" class="pill" data-category="10">10 Trauma / Casualty <span class="n" data-cat-count="10">0</span></button>
+        <button type="button" class="pill" data-category="11">11 Detention / Arrest (Checkpoints) <span class="n" data-cat-count="11">0</span></button>
       </div>
     </details>
     <label class="rail-select">Actor
@@ -1441,14 +1446,20 @@
             <thead>
               <tr>
                 <th scope="col">Governorate</th>
-                <th scope="col">ACT</th>
-                <th scope="col">SFA</th>
-                <th scope="col">VC</th>
-                <th scope="col">CU</th>
-                <th scope="col">HS</th>
-                <th scope="col">OD</th>
-                <th scope="col">Total</th>
-                <th scope="col">Risk Index</th>
+                <th scope="col" title="Small Arms Fire (SAF)">SAF</th>
+                <th scope="col" title="Indirect Fire (IDF) and Air Strikes">IDF/Air</th>
+                <th scope="col" title="Suicide / Vehicle-Borne Improvised Explosive Device (S/VBIED)">S/VBIED</th>
+                <th scope="col" title="Improvised Explosive Device (IED)">IED</th>
+                <th scope="col" title="Explosively Formed Projectile (EFP)">EFP</th>
+                <th scope="col" title="Unexploded Ordnance (UXO)">UXO</th>
+                <th scope="col" title="Kidnap">Kidnap</th>
+                <th scope="col" title="Road Traffic Collision (RTC)">RTC</th>
+                <th scope="col" title="Civil Unrest">Unrest</th>
+                <th scope="col" title="Trauma / Casualty">Casualty</th>
+                <th scope="col" title="Detention / Arrest (Checkpoints)">Checkpoint</th>
+                <th scope="col" title="Total incidents">Total</th>
+                <th scope="col" title="Severity-weighted total">Risk</th>
+                <th scope="col" title="Average severity weight">Index</th>
               </tr>
             </thead>
             <tbody id="syria-index-body"></tbody>
@@ -1652,6 +1663,19 @@
     let governorateSummary = false;
     let storedSummaries = null;
     let category = "all";
+    const THREAT_LABELS = {
+      1: "Small Arms Fire (SAF)",
+      2: "Indirect Fire (IDF) and Air Strikes",
+      3: "Suicide / Vehicle-Borne Improvised Explosive Device (S/VBIED)",
+      4: "Improvised Explosive Device (IED)",
+      5: "Explosively Formed Projectile (EFP)",
+      6: "Unexploded Ordnance (UXO)",
+      7: "Kidnap",
+      8: "Road Traffic Collision (RTC)",
+      9: "Civil Unrest",
+      10: "Trauma / Casualty",
+      11: "Detention / Arrest (Checkpoints)"
+    };
     let actorFilter = "all";
     let systemFilter = "all";
     let region = "all";
@@ -1866,15 +1890,50 @@
       return fields.some((value) => String(value || "").toLowerCase().includes(needle));
     }
 
+    function threatCodeOf(props) {
+      const code = Number(props && props.threat_code);
+      if (code >= 1 && code <= 11) return String(code);
+      const label = String((props && props.category) || "");
+      const keys = Object.keys(THREAT_LABELS);
+      for (let i = 0; i < keys.length; i += 1) {
+        if (THREAT_LABELS[keys[i]] === label) return String(keys[i]);
+      }
+      const blob = [props && props.title, props && props.summary, label].join(" ");
+      const rules = [
+        ["5", /\befps?\b|explosively formed/i],
+        ["3", /\b(?:s\/vbied|svbied|vbied)s?\b|suicide (?:bomb(?:er|ing)?|attack|vest)|vehicle[ -]borne|car bomb/i],
+        ["4", /\bieds?\b|improvised explosive/i],
+        ["6", /\buxo\b|unexploded/i],
+        ["2", /indirect fire|air ?strikes?|airstrikes?|\bmortar\b|\bartillery\b|\bshelling\b|\bmissile\b|drone strike|\brocket\b/i],
+        ["1", /small arms|\bgunfire\b|\bfirefight\b|\bshooting\b|\bclashes?\b/i],
+        ["7", /kidnapp?(?:ing|ed)?|\babduction\b|\bhostage\b/i],
+        ["8", /\brtc\b|road traffic|traffic collision|car crash|vehicle collision/i],
+        ["9", /\briots?\b|\bprotests?\b|\bdemonstration\b|civil unrest|\bunrest\b/i],
+        ["11", /\bcheckpoints?\b|\bdetention\b|\barrest(?:ed|s)?\b|\bdetained\b/i],
+        ["10", /\bcasualt(?:y|ies)\b|\bwounded\b|\bkilled\b|\btrauma\b|\binjured\b/i]
+      ];
+      for (let i = 0; i < rules.length; i += 1) {
+        if (rules[i][1].test(blob)) return rules[i][0];
+      }
+      const old = label.toUpperCase();
+      if (old === "SFA" || old === "SECURITY/CLASHES") return "1";
+      if (old === "ACT" || old === "KINETIC/MILITARY") return "2";
+      if (old === "VC") return "10";
+      if (old === "CU") return "9";
+      return "";
+    }
+
+    function threatPill(props) {
+      const code = threatCodeOf(props);
+      if (!code) {
+        const label = String((props && props.category) || "").trim();
+        return label ? '<span class="place-pill">' + esc(label) + "</span>" : "";
+      }
+      return '<span class="place-pill">[' + code + "] " + esc(THREAT_LABELS[code]) + "</span>";
+    }
+
     function incidentCode(props) {
-      const explicit = String(props.symbol || props.code || props.pin_type || props.incident_code || "").trim().toUpperCase();
-      if (explicit === "ACT" || explicit === "SFA" || explicit === "VC" || explicit === "CU" || explicit === "HS" || explicit === "OD") return explicit;
-      const kind = pinKind(props);
-      if (kind === "ACT" || kind === "SFA" || kind === "HS" || kind === "VC" || kind === "CU") return kind;
-      const blob = (String(props.title || "") + " " + String(props.summary || "") + " " + String(props.category || "")).toLowerCase();
-      if (/\b(riot|protest|demonstration|unrest|uprising)\b/.test(blob)) return "CU";
-      if (/\b(murder|kidnap|kidnapping|assassination|homicide)\b/.test(blob) || blob.includes("violent crime")) return "VC";
-      return "OD";
+      return threatCodeOf(props);
     }
 
     function passes(feature, opts) {
@@ -2094,6 +2153,7 @@
             '<span class="badge ' + badge.cls + '">' + esc(badge.label) + "</span> " +
             '<span class="source-pill">' + esc(sourceLabel(props)) + "</span> " +
             trustBadge(props) +
+            threatPill(props) +
             placePill(props) +
           "</div>" +
           "<h3>" + esc(headline) + "</h3>" +
@@ -2230,8 +2290,18 @@
       if (severitySummary) {
         severitySummary.textContent = { all: "All", high: "High", medium: "Medium", low: "Low" }[severity] || "All";
       }
+      document.querySelectorAll("[data-cat-count]").forEach((node) => {
+        const id = node.dataset.catCount;
+        const opts = currentOpts(region);
+        opts.category = id;
+        node.textContent = String(features.filter((feature) => passes(feature, opts)).length);
+      });
       const categorySummary = document.querySelector('[data-filter-summary="category"]');
-      if (categorySummary) categorySummary.textContent = category === "all" ? "All" : category;
+      if (categorySummary) {
+        categorySummary.textContent = category === "all"
+          ? "All (" + features.filter((feature) => passes(feature, currentOpts(region))).length + ")"
+          : "[" + category + "] " + (THREAT_LABELS[category] || category);
+      }
       const newest = features.reduce((best, feature) => {
         const ms = Date.parse((feature.properties || {}).timestamp);
         if (Number.isNaN(ms)) return best;
@@ -2423,6 +2493,7 @@
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
               trustBadge(props) +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
+              threatPill(props) +
               placePill(props) +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
@@ -3239,22 +3310,23 @@
     function renderSyriaIndex(visible) {
       const body = document.getElementById("syria-index-body");
       if (!body) return;
-      const codes = ["ACT", "SFA", "VC", "CU", "HS", "OD"];
+      const codes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
       body.innerHTML = SYRIA_INDEX_NAMES.map((name) => {
-        const counts = { ACT: 0, SFA: 0, VC: 0, CU: 0, HS: 0, OD: 0, total: 0, risk: 0 };
+        const counts = { total: 0, risk: 0 };
+        codes.forEach((code) => { counts[code] = 0; });
         visible.forEach((feature) => {
           const props = feature.properties || {};
           if (featureGovernorate(props) !== name) return;
           const code = incidentCode(props);
           if (Object.prototype.hasOwnProperty.call(counts, code)) counts[code] += 1;
-          else counts.OD += 1;
           counts.total += 1;
           const sev = String(props.severity || "").toLowerCase();
           counts.risk += sev === "high" ? 3 : sev === "medium" ? 2 : 1;
         });
+        const index = counts.total ? (counts.risk / counts.total).toFixed(1) : "0.0";
         return "<tr><th scope=\"row\">" + esc(name) + "</th>" +
           codes.map((code) => "<td>" + counts[code] + "</td>").join("") +
-          "<td>" + counts.total + "</td><td>" + counts.risk + "</td></tr>";
+          "<td>" + counts.total + "</td><td>" + counts.risk + "</td><td>" + index + "</td></tr>";
       }).join("");
     }
 
