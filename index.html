@@ -294,6 +294,7 @@
     .pin { position: relative; width: 32px; height: 32px; }
     .pin svg { display: block; overflow: visible; }
     .pin.is-old { opacity: 0.55; }
+    .pin.is-tipoff svg circle.tip-ring { stroke: #E2E8F0; stroke-dasharray: 2.4 2.2; }
     .pin.is-radar::after {
       content: ""; position: absolute; left: 4px; top: 4px; width: 24px; height: 24px;
       border-radius: 50%; border: 1.5px solid #F43F5E; pointer-events: none;
@@ -439,6 +440,12 @@
     .badge-tier-osint { background: #090C10; color: #E2E8F0; border: 1px solid #3a4650; }
     .badge-tier-regional { background: #121614; color: #c5d2c4; border: 1px solid #3d4a40; }
     .badge-tier-corroborated { background: #000000; color: #E6C667; border: 1px solid #D4AF37; }
+    .badge-tier-institutional { background: #0B2559; color: #E6C667; border: 1px solid #D4AF37; }
+    .badge-tier-specialist { background: #090C10; color: #E2E8F0; border: 1px solid #1E3A8A; }
+    .badge-tier-local { background: #10161c; color: #b9c7d6; border: 1px solid #3d4d5c; }
+    .badge-tier-sohr { background: #1a1214; color: #E2E8F0; border: 1px solid #C5A059; }
+    .badge-tipoff { background: #000000; color: #F8FAFC; border: 1px dashed #D4AF37; }
+    .badge-tier-tipoff { background: #000000; color: #F8FAFC; border: 1px solid #D4AF37; }
     .chokepoint-label { background: transparent; border: 0; color: #E6C667; font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
     #daily-chart-toggle {
       color: #E6C667; background: #1E3A8A; border: 1px solid #3B82F6; border-radius: 999px;
@@ -1068,6 +1075,12 @@
       return fields.some((value) => String(value || "").toLowerCase().includes(needle));
     }
 
+    function unverifiedTipoff(props) {
+      if (String(props.source_tier || "") !== "Tip-off") return false;
+      const count = Number(props.corroboration_count);
+      return !(Number.isFinite(count) && count > 1);
+    }
+
     function trustBadge(props) {
       const labels = {
         "Official": ["Official", "badge-tier-official"],
@@ -1075,12 +1088,17 @@
         "Lead (Unverified)": ["Lead (Unverified)", "badge-tier-lead"],
         "Wire / Outlet": ["Wire / Outlet", "badge-tier-wire"],
         "OSINT": ["OSINT", "badge-tier-osint"],
-        "Regional Media": ["Regional Media", "badge-tier-regional"]
+        "Regional Media": ["Regional Media", "badge-tier-regional"],
+        "Institutional / Research": ["Institutional / Research", "badge-tier-institutional"],
+        "Specialist Analyst": ["Specialist Analyst", "badge-tier-specialist"],
+        "Wire / Local Outlet": ["Wire / Local Outlet", "badge-tier-local"],
+        "SOHR": ["SOHR", "badge-tier-sohr"],
+        "Tip-off": ["Tip-off", "badge-tier-tipoff"]
       };
       const tier = labels[String(props.source_tier || "")];
-      const badge = tier
-        ? '<span class="badge ' + tier[1] + '">' + esc(tier[0]) + "</span>"
-        : "";
+      const badge = unverifiedTipoff(props)
+        ? '<span class="badge badge-tipoff">UNVERIFIED TIP-OFF</span>'
+        : (tier ? '<span class="badge ' + tier[1] + '">' + esc(tier[0]) + "</span>" : "");
       const count = Number(props.corroboration_count);
       const corroborated = Number.isFinite(count) && count > 1
         ? '<span class="badge badge-tier-corroborated">Corroborated (' + count + 'x)</span>'
@@ -1303,7 +1321,9 @@
       const color = pinColor(props);
       const ring = goldRingPin(props)
         ? '<circle cx="16" cy="16" r="14.2" fill="none" stroke="#E6C667" stroke-width="2"/>'
-        : "";
+        : (unverifiedTipoff(props)
+          ? '<circle class="tip-ring" cx="16" cy="16" r="14.2" fill="none" stroke="#E2E8F0" stroke-width="1.6" stroke-dasharray="2.4 2.2"/>'
+          : "");
       return '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">' +
         ring +
         '<circle cx="16" cy="16" r="11" fill="' + color + '"/>' +
@@ -1322,6 +1342,7 @@
       if (old) classes.push("is-old");
       if (recentHigh) classes.push("is-radar");
       if (goldRingPin(props)) classes.push("is-gold-ring");
+      if (unverifiedTipoff(props)) classes.push("is-tipoff");
       const icon = L.divIcon({
         className: "pin-icon",
         html: '<div class="' + classes.join(" ") + '">' + pinSvg(props) + "</div>",

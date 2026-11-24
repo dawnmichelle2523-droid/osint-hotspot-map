@@ -98,6 +98,9 @@ RSS_FEEDS = [
     ("Kurdistan24", "https://www.kurdistan24.net/en/rss"),
     ("The New Region", "https://thenewregion.com/feed"),
     ("ISW", "https://www.understandingwar.org/rss.xml"),
+    ("Militia Spotlight", "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed"),
+    ("Bellingcat", "https://www.bellingcat.com/feed/"),
+    ("Syriac Press", "https://syriacpress.com/feed/"),
 ]
 # These two pages are notices, not always RSS. Never fetch https://mofa.go.jp itself.
 HTML_NOTICE_FEEDS = {
@@ -182,7 +185,8 @@ SYRIA_LOCAL_CHANNELS = {
 }
 # Iraq and Kurdistan channels added on top of the ones already polled.
 IRAQ_LOCAL_CHANNELS = {"rudaw_arabic"}
-IRAQ_RSS_NAMES = {"the new region"}
+IRAQ_RSS_NAMES = {"the new region", "militia spotlight"}
+SYRIA_RSS_NAMES = {"syriac press"}
 # The first seven are the start of every rotation. Later names are added once.
 _X_HANDLE_GROUPS = [
     ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali"],
@@ -213,11 +217,16 @@ _X_HANDLE_GROUPS = [
         "faytuksnetwork", "MenchOsint", "DefenceGeek", "WSJ", "uniindianews", "AlarabyTV", "AlHadath",
         "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "AFP", "anadoluagency", "BBCWorld", "CNN",
         "SkyNews", "AJEnglish", "aawsat_News", "timesofisrael", "Jerusalem_Post", "ynetnews",
+        "criticalthreats", "ACLEDINFO", "bellingcat", "ELINTNews", "Conflicts", "Osint613",
     ],
     [
         "syr_television", "SyriacOSINT", "QalaatAlMudiq", "Charles_Lister", "GregoryPWaters", "OSINTWarfare",
         "Osinttechnical", "AfriMEOSINT", "AuroraIntel", "OSINTdefender", "IntelCrab", "clashreport",
-        "IraqiOsint", "K24English", "ShafaqNews", "Tammuz_Intel", "IraqSecurity", "SudanWarMonitor",
+        "IraqiOsint", "K24English", "ShafaqNews", "Tammuz_Intel", "IraqSecurity",
+        "AymennJawad", "obretix", "CalibreObscura", "SyriaHR", "EnabBaladi", "Syria_Direct",
+        "SyriacPress", "Joshua_Landis", "Hamdi_Malik", "MichaelPKnights", "Shelly_Kittleson",
+        "tamerbadawi1", "ShafaqNewsEng", "Rudaw_English", "kurdistan_24",
+        "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
     ],
 ]
@@ -251,6 +260,25 @@ IRAQ_X_HANDLES = {
     "thenewregion",
     "kurdistan24",
     "shafaqnewsarb",
+    "hamdi_malik",
+    "michaelpknights",
+    "shelly_kittleson",
+    "tamerbadawi1",
+    "shafaqnewseng",
+    "rudaw_english",
+    "kurdistan_24",
+}
+SYRIA_X_HANDLES = {
+    "qalaatalmudiq",
+    "aymennjawad",
+    "charles_lister",
+    "obretix",
+    "calibreobscura",
+    "syriahr",
+    "enabbaladi",
+    "syria_direct",
+    "syriacpress",
+    "joshua_landis",
 }
 # First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
 X_FEED_URLS = [
@@ -777,6 +805,11 @@ def _identity_parts(kind: str = "", name: str = "", url: str = "") -> tuple[str,
     return raw, tokens, compact
 
 
+def _token_named(tokens: set[str], names: set[str]) -> bool:
+    """Exact handle token. Underscore spellings do not absorb the unpunctuated twin."""
+    return any(name.lower().strip("@") in tokens for name in names)
+
+
 def _named(tokens: set[str], compact: str, names: set[str]) -> bool:
     for name in names:
         key = name.lower().strip("@")
@@ -800,9 +833,48 @@ def is_excluded_source(*parts: object) -> bool:
     return False
 
 
+_INSTITUTIONAL_HANDLES = {
+    "thestudyofwar", "criticalthreats", "acledinfo", "bellingcat",
+}
+_INSTITUTIONAL_HOSTS = (
+    "understandingwar.org", "criticalthreats.org", "acleddata.com",
+    "bellingcat.com", "washingtoninstitute.org",
+)
+_SPECIALIST_HANDLES = {
+    "qalaatalmudiq", "aymennjawad", "charles_lister", "obretix", "calibreobscura",
+    "hamdi_malik", "michaelpknights", "shelly_kittleson", "tamerbadawi1", "joshua_landis",
+}
+_LOCAL_OUTLET_HANDLES = {
+    "enabbaladi", "syria_direct", "syriacpress", "shafaqnewseng",
+    "rudaw_english", "k24english", "kurdistan_24",
+}
+_LOCAL_OUTLET_HOSTS = ("enabbaladi.net", "syriadirect.org", "syriacpress.com")
+_TIPOFF_HANDLES = {"elintnews", "intelcrab", "sentdefender", "osint613"}
+_SOHR_HANDLES = {"syriahr", "sohr"}
+_SOHR_PHRASE = "according to SOHR, figures unverified"
+_CASUALTY_WORDS = re.compile(
+    r"\b(?:killed|killing|dead|deaths|death toll|wounded|casualt(?:y|ies))\b",
+    re.IGNORECASE,
+)
+
+
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _SOHR_HANDLES) or "sohr.org" in raw:
+        return "SOHR"
+    if "conflicts" in tokens or _token_named(tokens, _TIPOFF_HANDLES):
+        return "Tip-off"
+    if (
+        _token_named(tokens, _INSTITUTIONAL_HANDLES)
+        or any(host in raw for host in _INSTITUTIONAL_HOSTS)
+        or "militiaspotlight" in compact
+    ):
+        return "Institutional / Research"
+    if _token_named(tokens, _SPECIALIST_HANDLES):
+        return "Specialist Analyst"
+    if _token_named(tokens, _LOCAL_OUTLET_HANDLES) or any(host in raw for host in _LOCAL_OUTLET_HOSTS):
+        return "Wire / Local Outlet"
     if _named(tokens, compact, _LEAD_HANDLES):
         return "Lead (Unverified)"
     state_prefix = ("sana", "irna", "irib", "presstv", "tasnim", "alekhbariah", "almasirah", "farsnews")
@@ -831,8 +903,18 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
 
 
 def claim_outlet(kind: str = "", name: str = "", url: str = "") -> str:
-    """State media and ISW need the outlet named in the English title or summary."""
+    """State media and research outlets need the institution named in the English summary."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if "bellingcat" in compact:
+        return "Bellingcat"
+    if "criticalthreat" in compact:
+        return "Critical Threats"
+    if "acledinfo" in compact or "acleddata" in compact:
+        return "ACLED"
+    if "washingtoninstitute" in compact or "militiaspotlight" in compact:
+        return "Militia Spotlight"
+    if "syriahr" in compact or "sohr" in tokens or "sohr.org" in raw:
+        return "SOHR"
     if "understandingwar" in compact or "thestudyofwar" in compact or "isw" in tokens:
         return "ISW"
     if "fars" in tokens or "farsnews" in compact:
@@ -2343,9 +2425,24 @@ def coverage_region(item: dict, placed: dict) -> dict:
         return placed
     handle = channel_handle(item)
     rss_name = str(item.get("source_name") or "").lower()
-    if handle in SYRIA_LOCAL_CHANNELS:
+    syria_roster = (
+        handle in SYRIA_LOCAL_CHANNELS
+        or handle in SYRIA_X_HANDLES
+        or any(name in rss_name for name in SYRIA_RSS_NAMES)
+    )
+    iraq_roster = (
+        handle in IRAQ_LOCAL_CHANNELS
+        or handle in IRAQ_X_HANDLES
+        or any(name in rss_name for name in IRAQ_RSS_NAMES)
+    )
+    if syria_roster and not iraq_mention(blob):
         placed["region"] = "Levant"
-    elif handle in IRAQ_LOCAL_CHANNELS or any(name in rss_name for name in IRAQ_RSS_NAMES):
+    elif iraq_roster and (
+        iraq_mention(blob)
+        or not mentions_syria_or_middle_east(blob)
+        or handle in IRAQ_LOCAL_CHANNELS
+        or any(name in rss_name for name in IRAQ_RSS_NAMES)
+    ):
         placed["region"] = "Iran & Iraq"
     elif item.get("source_kind") == "sweep":
         if iraq_mention(blob) or str(item.get("region") or placed.get("region")) == "Iran & Iraq":
@@ -3054,7 +3151,11 @@ def _clean_summary_text(text: str) -> str:
     return " ".join(_HOUTHI.sub("Ansarallah", strip_lateness(text)).split())
 
 
-def _summary_record(title: str, summary: str, moment: datetime, region: str, severity: str, category: str, location: str, source_name: str, source_tier: str) -> dict:
+def _summary_record(title: str, summary: str, moment: datetime, region: str, severity: str, category: str, location: str, source_name: str, source_tier: str, corroboration_count: object = 1) -> dict:
+    try:
+        count = int(corroboration_count or 1)
+    except (TypeError, ValueError):
+        count = 1
     return {
         "timestamp": moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "region": region_name(region),
@@ -3065,6 +3166,7 @@ def _summary_record(title: str, summary: str, moment: datetime, region: str, sev
         "summary": osint.one_sentence(summary or title)[:500],
         "source_name": osint.one_sentence(source_name)[:160],
         "source_tier": osint.one_sentence(source_tier)[:80],
+        "corroboration_count": count if count > 0 else 1,
     }
 
 
@@ -3091,7 +3193,8 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
         try:
             rows = conn.execute(
                 "SELECT title, summary, region, severity, category, location_name, "
-                "source_name, source_kind, source_url, source_tier, published_at, ingested_at FROM items"
+                "source_name, source_kind, source_url, source_tier, corroboration_count, "
+                "published_at, ingested_at FROM items"
             ).fetchall()
         finally:
             conn.close()
@@ -3099,7 +3202,12 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
         if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"]):
             continue
         moment = parse_event_time(row["published_at"]) or parse_event_time(row["ingested_at"])
-        tier = row["source_tier"] or source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
+        stored = row["source_tier"] or ""
+        computed = source_tier_for(row["source_kind"], row["source_name"], row["source_url"])
+        if row["source_kind"] == "sweep" and stored in {"Wire / Outlet", "OSINT Sweep"}:
+            tier = stored
+        else:
+            tier = computed or stored
         name = row["source_name"] or source_label(row["source_kind"] or "", "")
         add(
             _summary_record(
@@ -3112,6 +3220,7 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
                 row["location_name"],
                 name,
                 tier,
+                row["corroboration_count"],
             ) if moment else None,
             moment,
         )
@@ -3125,6 +3234,10 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
         if is_excluded_source(props.get("source_name"), props.get("source"), props.get("source_handle")):
             continue
         moment = parse_event_time(props.get("timestamp"))
+        source_name = props.get("source_name") or props.get("source_label") or props.get("source_handle") or ""
+        computed = source_tier_for("", source_name, props.get("source_url") or props.get("source") or "")
+        stored = str(props.get("source_tier") or "")
+        tier = stored if stored in {"Wire / Outlet", "OSINT Sweep"} and computed == "Regional Media" else (computed or stored)
         add(
             _summary_record(
                 props.get("title"),
@@ -3134,8 +3247,9 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
                 props.get("severity"),
                 props.get("category"),
                 props.get("location_name") or props.get("location"),
-                props.get("source_name") or props.get("source_label") or props.get("source_handle") or "",
-                props.get("source_tier") or "",
+                source_name,
+                tier,
+                props.get("corroboration_count"),
             ) if moment else None,
             moment,
         )
@@ -3149,6 +3263,33 @@ def _top_records(records: list[dict]) -> list[dict]:
         return (_SEVERITY_RANK.get(str(item.get("severity") or "").lower(), 1), -moment.timestamp())
 
     return sorted(records, key=sort_key)
+
+
+def _sohr_record(record: dict) -> bool:
+    blob = f"{record.get('source_name') or ''} {record.get('source_tier') or ''}".lower()
+    return str(record.get("source_tier") or "") == "SOHR" or "syriahr" in blob or "sohr" in re.findall(r"[a-z0-9_]+", blob)
+
+
+def _single_tipoff(record: dict) -> bool:
+    if str(record.get("source_tier") or "") != "Tip-off":
+        return False
+    try:
+        count = int(record.get("corroboration_count") or 1)
+    except (TypeError, ValueError):
+        count = 1
+    return count <= 1
+
+
+def apply_summary_caveats(text: str, records: list[dict]) -> str:
+    """Keep SOHR casualty wording and single-source tip-offs out of the confirmed voice."""
+    cleaned = " ".join(str(text or "").split())
+    if not cleaned or cleaned in {EMPTY_WINDOW_TEXT, EMPTY_REGION_TEXT}:
+        return cleaned
+    if any(_sohr_record(item) for item in records) and _CASUALTY_WORDS.search(cleaned) and _SOHR_PHRASE not in cleaned.lower():
+        cleaned = cleaned.rstrip(".") + f". Casualty figures are cited {_SOHR_PHRASE}."
+    if any(_single_tipoff(item) for item in records) and "unverified tip-off" not in cleaned.lower():
+        cleaned = cleaned.rstrip(".") + ". A single-source aggregator post is an unverified tip-off and is not confirmed."
+    return cleaned
 
 
 def deterministic_window_summary(records: list[dict], start: datetime, end: datetime) -> tuple[str, dict[str, str]]:
@@ -3181,6 +3322,11 @@ def deterministic_window_summary(records: list[dict], start: datetime, end: date
             regions[name] = EMPTY_WINDOW_TEXT
         else:
             regions[name] = f"{name}: " + " ".join(cited(item) for item in chosen)
+    overall = apply_summary_caveats(overall, records)
+    regions = {
+        name: apply_summary_caveats(text, grouped[name])
+        for name, text in regions.items()
+    }
     return overall, regions
 
 
@@ -3188,10 +3334,13 @@ def _grouped_records(records: list[dict]) -> dict[str, list[dict]]:
     grouped = {name: [] for name in REGIONS}
     for item in records:
         grouped[region_name(item.get("region"))].append(
-            {key: item.get(key) or "" for key in (
-                "timestamp", "region", "severity", "category", "location_name",
-                "title", "summary", "source_name", "source_tier",
-            )}
+            {
+                key: item.get(key) if key == "corroboration_count" else (item.get(key) or "")
+                for key in (
+                    "timestamp", "region", "severity", "category", "location_name",
+                    "title", "summary", "source_name", "source_tier", "corroboration_count",
+                )
+            }
         )
     return grouped
 
@@ -3205,7 +3354,17 @@ def call_window_summary(records: list[dict], start: datetime, end: datetime, key
         f"Window: {format_briefing_window(start, end)}. "
         "This is a Europe/London 07:00–07:00 cycle already stored in the event database.\n"
         "Attribute each point with its source_name and source tier. Use these tier labels when they apply: "
-        "Official, State Media, Wire / Outlet, and Lead (Unverified).\n"
+        "Official, State Media, Wire / Outlet, Wire / Local Outlet, Lead (Unverified), "
+        "Institutional / Research, Specialist Analyst, SOHR, and Tip-off.\n"
+        "Institutional / Research is attributed to the institution: TheStudyofWar is the Institute for the Study of War, "
+        "criticalthreats is Critical Threats, ACLEDINFO is ACLED, bellingcat is Bellingcat, "
+        "and Militia Spotlight is the Washington Institute for Near East Policy.\n"
+        "Specialist Analyst is a named analyst, not official confirmation. "
+        "Wire / Local Outlet is a local outlet.\n"
+        "When a casualty figure comes from SOHR or SyriaHR, the sentence must include exactly: "
+        "according to SOHR, figures unverified.\n"
+        "A Tip-off item is an aggregator post. When corroboration_count is missing or not greater than 1, "
+        "do not describe that post as confirmed. Call it an unverified tip-off.\n"
         "When a sentence states likelihood, use only this calibrated scale: "
         "remote chance, highly unlikely, unlikely, realistic possibility, likely, highly likely, almost certain. "
         "Do not assign a likelihood the records do not support.\n"
@@ -3249,6 +3408,11 @@ def call_window_summary(records: list[dict], start: datetime, end: datetime, key
         if not grouped.get(name) or not note:
             note = EMPTY_WINDOW_TEXT
         regions[name] = note
+    overall = apply_summary_caveats(overall, records)
+    regions = {
+        name: apply_summary_caveats(text, [item for item in records if region_name(item.get("region")) == name])
+        for name, text in regions.items()
+    }
     return overall, regions
 
 
