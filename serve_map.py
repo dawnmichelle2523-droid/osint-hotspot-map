@@ -3562,7 +3562,7 @@ def severity_color(value: object) -> str:
     if rank == "high":
         return "#F43F5E"
     if rank == "low":
-        return "#38BDF8"
+        return "#3B82F6"
     return "#F59E0B"
 
 
@@ -3861,7 +3861,7 @@ def render_daily_chart_png(chart: dict) -> bytes:
         muted = (148, 163, 184)
         high_color = (244, 63, 94)
         medium_color = (245, 158, 11)
-        low_color = (56, 189, 248)
+        low_color = (59, 130, 246)
         track = (9, 14, 22)
         label = str(chart.get("window_label") or "")
         draw.text((20 * scale, 16 * scale), label, font=title_font, fill=gold)
