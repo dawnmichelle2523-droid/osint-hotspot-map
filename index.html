@@ -1782,10 +1782,20 @@
       return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(text || ""));
     }
 
+    function englishSurface(props) {
+      const title = String((props && props.title) || "").trim();
+      const summary = String((props && props.summary) || "").trim();
+      const titleEn = title && !hasArabicScript(title) ? title : "";
+      const summaryEn = summary && !hasArabicScript(summary) ? summary : "";
+      return {
+        title: titleEn || summaryEn || "Incident",
+        summary: summaryEn || titleEn || ""
+      };
+    }
+
     function originalArabicBlock(props) {
       const original = String(props.original_text || "").trim();
-      const title = String(props.title || "").trim();
-      if (!original || original === title || !hasArabicScript(original)) return "";
+      if (!original) return "";
       return (
         '<details class="original-arabic">' +
           "<summary>Original Arabic</summary>" +
@@ -1795,8 +1805,9 @@
     }
 
     function tooltipHtml(props) {
-      const headline = props.title || props.summary || "Incident";
-      const summary = twoSentences(props.summary || "");
+      const surface = englishSurface(props);
+      const headline = surface.title;
+      const summary = twoSentences(surface.summary);
       const extra = summary && summary !== headline
         ? '<span class="pin-tip-summary">' + esc(summary) + "</span>"
         : "";
@@ -1806,7 +1817,7 @@
     function alertLine(props) {
       const region = String(props.region || "Unknown").toUpperCase();
       const severity = String(props.severity || "Medium").toUpperCase();
-      const headline = String(props.title || props.summary || "Incident").replace(/\s+/g, " ").trim();
+      const headline = englishSurface(props).title.replace(/\s+/g, " ").trim();
       const location = String(props.location_name || props.location || "Location unavailable").replace(/\s+/g, " ").trim();
       const tier = String(props.source_tier || "OSINT").replace(/\s+/g, " ").trim();
       return "• [" + region + " | " + severity + "] " + headline + " — " + location + " (" + tier + ")";
@@ -1831,7 +1842,8 @@
 
     function popupHtml(props, id) {
       const badge = severityBadge(props);
-      const headline = props.title || props.summary || "Incident";
+      const surface = englishSurface(props);
+      const headline = surface.title;
       const link = originalPostLink(props);
       const place = props.location_name
         ? '<div class="update-place">' + esc(props.location_name) + "</div>"
@@ -1846,7 +1858,7 @@
           "<h3>" + esc(headline) + "</h3>" +
           analystTags(props) +
           place +
-          '<p class="summary">' + esc(props.summary || "") + "</p>" +
+          '<p class="summary">' + esc(surface.summary) + "</p>" +
           originalArabicBlock(props) +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
           '<div class="popup-actions">' + link +
@@ -2115,18 +2127,20 @@
       }
       headlineExport = "Newest Updates\n\n" + sorted.map((feature) => {
         const props = feature.properties || {};
+        const surface = englishSurface(props);
         const href = safeUrl(props.source);
         return [
-          props.title || props.summary || "Incident",
+          surface.title,
           sourceLabel(props),
           gmtStamp(props.timestamp),
           props.location_name || "",
-          twoSentences(props.summary),
+          twoSentences(surface.summary),
           href
         ].filter(Boolean).join("\n");
       }).join("\n\n");
       list.innerHTML = sorted.map((feature) => {
         const props = feature.properties || {};
+        const surface = englishSurface(props);
         const href = safeUrl(props.source_url || props.source || "");
         const source = href
           ? '<a class="headline-source original-post" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">↗ View Original Post</a>'
@@ -2143,9 +2157,9 @@
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               "<time>" + esc(gmtStamp(props.timestamp)) + "</time>" +
             "</div>" +
-            "<h3>" + esc(props.title || props.summary || "Incident") + "</h3>" +
+            "<h3>" + esc(surface.title) + "</h3>" +
             place +
-            '<p class="summary">' + esc(twoSentences(props.summary)) + "</p>" +
+            '<p class="summary">' + esc(twoSentences(surface.summary)) + "</p>" +
             '<div class="headline-actions">' +
               source +
               '<button type="button" class="copy-alert" data-alert="' + encodeURIComponent(alertLine(props)) + '">Copy Alert</button>' +
@@ -2429,7 +2443,7 @@
 
     function tickerItemHtml(feature) {
       const props = feature.properties || {};
-      const title = props.title || props.summary || "Incident";
+      const title = englishSurface(props).title;
       const regionName = props.region || "Other / International";
       const when = relativeTime(props.timestamp);
       return (

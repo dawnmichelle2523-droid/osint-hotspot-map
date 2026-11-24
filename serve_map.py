@@ -1577,10 +1577,11 @@ def feed_features() -> list[dict]:
             continue
         if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"]):
             continue
+        title, summary = visible_english(row["title"], row["summary"])
         props = {
             "severity": osint.live_severity(row["severity"]),
-            "title": row["title"],
-            "summary": row["summary"] or row["title"],
+            "title": title or "Incident",
+            "summary": summary or title or "",
             "timestamp": row["published_at"] or row["ingested_at"],
             "source": row["source_url"],
             "source_url": row["source_url"] or "",
@@ -2288,6 +2289,127 @@ def original_post_text(item: dict) -> str:
     return chosen[:2000]
 
 
+_ARABIC_SCRIPT = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
+_translate_lock = threading.Lock()
+_translation_key_noted = False
+
+
+def contains_arabic(text: object) -> bool:
+    """Arabic, Farsi, and Sorani Kurdish share these script blocks."""
+    return _ARABIC_SCRIPT.search(str(text or "")) is not None
+
+
+def _english_sentence(text: object, limit: int) -> str:
+    cleaned = osint.one_sentence(text)[:limit]
+    if cleaned and not contains_arabic(cleaned):
+        return cleaned
+    return ""
+
+
+def visible_english(title: object, summary: object) -> tuple[str, str]:
+    """Ticker, brief, live wire, and email copy. Arabic stays out of these fields."""
+    clean_title = _english_sentence(title, 240)
+    clean_summary = _english_sentence(summary, 500)
+    if not clean_title:
+        clean_title = clean_summary
+    if not clean_summary:
+        clean_summary = clean_title
+    return clean_title, clean_summary
+
+
+def _grok_english(title: str, summary: str, key: str) -> dict | None:
+    """One grok-3-mini JSON translation. A failure leaves the caller to keep the previous text."""
+    prompt = (
+        "Translate this post into clear English. "
+        "Arabic, Farsi, and Kurdish must become English. "
+        "title is a concise English headline. "
+        "summary is 1-2 clear English sentences. "
+        "Preserve place names, governorates, and unit names. "
+        "Do not add facts. If the post is already English, keep it in English.\n\n"
+        f"Title: {osint.one_sentence(title)}\n"
+        f"Summary: {osint.one_sentence(summary) or osint.one_sentence(title)}"
+    )
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "title": {"type": "string"},
+            "summary": {"type": "string"},
+        },
+        "required": ["title", "summary"],
+    }
+    try:
+        response = osint.make_client(key).responses.create(
+            model=osint.GEO_MODEL,
+            input=prompt,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "english_headline",
+                    "schema": schema,
+                    "strict": True,
+                }
+            },
+            max_output_tokens=400,
+            timeout=getattr(osint, "API_TIMEOUT", 25),
+        )
+        text = osint.response_text(response)
+        payload = osint.parse_json_object(text) if text else None
+    except Exception as exc:
+        print(f"Translation failed: {osint.public_error(exc, key)}.")
+        return None
+    if not isinstance(payload, dict):
+        print("Translation failed: response was not an object.")
+        return None
+    return payload
+
+
+def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict:
+    """English title and summary via grok-3-mini. Raw text stays in original_text.
+
+    A missing xAI key leaves title and summary unchanged and does not wipe the row.
+    Arabic is never written into title or summary when a key is present.
+    """
+    stored = dict(item)
+    original = " ".join(str(stored.get("original_text") or "").split())
+    if not original:
+        original = original_post_text(stored)
+    stored["original_text"] = original[:2000]
+    incoming_title = str(stored.get("title") or "")
+    incoming_summary = str(stored.get("summary") or "")
+    located = placed or {}
+    title = _english_sentence(located.get("title"), 240)
+    summary = _english_sentence(located.get("summary"), 500)
+    key = get_xai_api_key()
+    if not key:
+        global _translation_key_noted
+        if not _translation_key_noted:
+            print("XAI_API_KEY is missing. Left title and summary unchanged.")
+            _translation_key_noted = True
+        if title:
+            stored["title"] = title
+        if summary:
+            stored["summary"] = summary
+        return stored
+    if not title or not summary:
+        first = _grok_english(original or incoming_title, incoming_summary or incoming_title, key)
+        if first:
+            title = _english_sentence(first.get("title"), 240) or title
+            summary = _english_sentence(first.get("summary"), 500) or summary
+    if contains_arabic(title) or contains_arabic(summary) or not title or not summary:
+        second = _grok_english(original or incoming_title, summary or incoming_summary or incoming_title, key)
+        if second:
+            title = _english_sentence(second.get("title"), 240) or title
+            summary = _english_sentence(second.get("summary"), 500) or summary
+    if title and not contains_arabic(title):
+        stored["title"] = title
+    if summary and not contains_arabic(summary):
+        stored["summary"] = summary
+    elif stored.get("title") and not contains_arabic(stored.get("title")):
+        stored["summary"] = stored["title"]
+    return stored
+
+
 _LATIN_FOLD = str.maketrans({
     "á": "a", "à": "a", "â": "a", "ä": "a", "ã": "a",
     "é": "e", "è": "e", "ë": "e",
@@ -2909,14 +3031,14 @@ def save_classified_item(item: dict, now: datetime) -> bool:
     if placed.get("relevant") is False:
         print(f"Dropped non-news spam from classifier: {str(item.get('title') or '')[:80]}")
         return False
-    stored = dict(item)
-    stored["original_text"] = original
-    english_title = osint.one_sentence(placed.get("title") or "")
-    english_summary = osint.one_sentence(placed.get("summary") or "")
-    if english_title and not needs_english(english_title):
-        stored["title"] = english_title[:240]
-    if english_summary and not needs_english(english_summary):
-        stored["summary"] = english_summary[:500]
+    stored = classify_and_translate_event(item, placed)
+    if not str(stored.get("original_text") or "").strip():
+        stored["original_text"] = original
+    if get_xai_api_key() and (
+        contains_arabic(stored.get("title")) or contains_arabic(stored.get("summary"))
+    ):
+        print("Translation did not return English. The item was not stored.")
+        return False
     stored["title"], stored["summary"] = apply_house_style(
         stored.get("title") or "",
         stored.get("summary") or "",
@@ -3040,6 +3162,10 @@ def ingest_feeds() -> dict:
                 schedule_brief_after_scrape()
             except Exception as exc:
                 print(f"Geopolitical summary schedule failed: {exc.__class__.__name__}.")
+            try:
+                translate_arabic_rows()
+            except Exception as exc:
+                print(f"Arabic translation pass failed: {exc.__class__.__name__}.")
 
 
 def run_poll() -> dict:
@@ -3553,10 +3679,13 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
         else:
             tier = computed or stored
         name = row["source_name"] or source_label(row["source_kind"] or "", "")
+        english_title, english_summary = visible_english(row["title"], row["summary"])
+        if not english_title:
+            continue
         add(
             _summary_record(
-                row["title"],
-                row["summary"],
+                english_title,
+                english_summary,
                 moment,
                 row["region"],
                 row["severity"],
@@ -3582,10 +3711,13 @@ def window_records(start: datetime, end: datetime) -> list[dict]:
         computed = source_tier_for("", source_name, props.get("source_url") or props.get("source") or "")
         stored = str(props.get("source_tier") or "")
         tier = stored if stored in {"Wire / Outlet", "OSINT Sweep"} and computed == "Regional Media" else (computed or stored)
+        english_title, english_summary = visible_english(props.get("title"), props.get("summary"))
+        if not english_title:
+            continue
         add(
             _summary_record(
-                props.get("title"),
-                props.get("summary"),
+                english_title,
+                english_summary,
                 moment,
                 props.get("region"),
                 props.get("severity"),
@@ -4544,54 +4676,79 @@ def apply_english_fields(title: str, summary: str, translated: dict, force: bool
     return updated_title, updated_summary or updated_title
 
 
-def translate_existing_rows() -> int:
-    """Rewrite stored non-English titles and summaries. Leaves rows unchanged when the key is missing."""
-    key = osint.read_api_key()
-    if not key:
-        print("XAI_API_KEY is missing. Translation of existing non-English rows was skipped.")
+def translate_arabic_rows() -> int:
+    """Rewrite stored rows whose title or summary still contains Arabic.
+
+    A missing xAI key leaves every row unchanged. A failed translation does not blank the row.
+    """
+    if not get_xai_api_key():
+        print("XAI_API_KEY is missing. Arabic titles and summaries were left unchanged.")
         return 0
-    with _db_lock:
-        conn = db_connect()
-        try:
-            rows = conn.execute("SELECT id, title, summary, original_text, source_name FROM items").fetchall()
-        finally:
-            conn.close()
-    updated = 0
-    for row in rows:
-        title = str(row["title"] or "")
-        summary = str(row["summary"] or "")
-        handle = channel_handle({"source_name": row["source_name"]})
-        if not needs_english(title) and not needs_english(summary) and not kurdish_handle_needs_english(handle, title, summary):
-            continue
-        translated = osint.translate_post(title, summary)
-        if not translated:
-            continue
-        applied = apply_english_fields(
-            title,
-            summary,
-            translated,
-            force=kurdish_handle_needs_english(handle, title, summary),
-        )
-        if applied is None:
-            print(f"Translation left item {row['id']} unchanged.")
-            continue
-        english_title, english_summary = applied
-        original = str(row["original_text"] or "").strip()
-        if not original:
-            original = original_post_text({"title": title, "summary": summary})
+    if not _translate_lock.acquire(blocking=False):
+        return 0
+    try:
         with _db_lock:
             conn = db_connect()
             try:
-                conn.execute(
-                    "UPDATE items SET title = ?, summary = ?, original_text = ? WHERE id = ?",
-                    (english_title, english_summary, original, row["id"]),
-                )
-                conn.commit()
+                rows = conn.execute(
+                    "SELECT id, title, summary, original_text, source_name, source_kind, source_url FROM items"
+                ).fetchall()
             finally:
                 conn.close()
-        updated += 1
-        print(f"Translated item {row['id']} into English.")
-    return updated
+        updated = 0
+        for row in rows:
+            title = str(row["title"] or "")
+            summary = str(row["summary"] or "")
+            if not contains_arabic(title) and not contains_arabic(summary):
+                continue
+            original = str(row["original_text"] or "").strip()
+            if not original:
+                original = original_post_text({"title": title, "summary": summary})
+            result = classify_and_translate_event(
+                {
+                    "title": title,
+                    "summary": summary,
+                    "original_text": original,
+                    "source_name": row["source_name"],
+                    "source_kind": row["source_kind"],
+                    "source_url": row["source_url"],
+                }
+            )
+            english_title, english_summary = apply_house_style(
+                result.get("title") or "",
+                result.get("summary") or "",
+                row["source_kind"] or "",
+                row["source_name"] or "",
+                row["source_url"] or "",
+            )
+            if (
+                not english_title
+                or contains_arabic(english_title)
+                or contains_arabic(english_summary)
+            ):
+                print(f"Translation left item {row['id']} unchanged.")
+                continue
+            kept_original = str(result.get("original_text") or original).strip() or original
+            with _db_lock:
+                conn = db_connect()
+                try:
+                    conn.execute(
+                        "UPDATE items SET title = ?, summary = ?, original_text = ? WHERE id = ?",
+                        (english_title, english_summary or english_title, kept_original, row["id"]),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+            updated += 1
+            print(f"Translated item {row['id']} into English.")
+        return updated
+    finally:
+        _translate_lock.release()
+
+
+def translate_existing_rows() -> int:
+    """Startup pass. Leaves rows unchanged when the xAI key is missing."""
+    return translate_arabic_rows()
 
 
 def start_translation_pass() -> None:
@@ -4960,10 +5117,11 @@ def period_events(start: datetime, end: datetime) -> list[dict]:
             placed = osint.valid_coord(coords[0], coords[1])
             if placed:
                 lng, lat = placed
+        title, summary = visible_english(props.get("title"), props.get("summary"))
         found.append(
             {
-                "title": osint.one_sentence(props.get("title") or props.get("summary"))[:240],
-                "summary": osint.one_sentence(props.get("summary") or props.get("title"))[:500],
+                "title": title or "Incident",
+                "summary": summary,
                 "location_name": osint.one_sentence(props.get("location_name"))[:160],
                 "governorate": osint.match_governorate(props.get("governorate"))
                 or osint.match_governorate(props.get("location_name")),
@@ -5244,17 +5402,22 @@ def briefing_narrative(events: list[dict], report_type: str, start: datetime, en
             "daily_brief.json and hotspots.json were not changed."
         )
         return fallback
-    sample = [
-        {
-            "title": item["title"],
-            "location": item["location_name"],
-            "region": item["region"],
-            "governorate": item["governorate"],
-            "severity": item["severity"],
-            "corroboration": item["corroboration"],
-        }
-        for item in events[:40]
-    ]
+    sample = []
+    for item in events[:40]:
+        title, summary = visible_english(item.get("title"), item.get("summary"))
+        if not title:
+            continue
+        sample.append(
+            {
+                "title": title,
+                "summary": summary,
+                "location": item["location_name"],
+                "region": item["region"],
+                "governorate": item["governorate"],
+                "severity": item["severity"],
+                "corroboration": item["corroboration"],
+            }
+        )
     prompt = (
         "Write an English OSINT briefing from only the incidents below. "
         "Do not use live search and do not add events that are not listed. "
@@ -5342,12 +5505,15 @@ def briefing_html(
                 coords = "Coordinates unavailable"
             else:
                 coords = f"{item['lat']:.4f}, {item['lng']:.4f}"
+            title, summary = visible_english(item.get("title"), item.get("summary"))
+            if not title:
+                continue
             summary_line = ""
-            if str(item.get("summary") or "").strip():
-                summary_line = f"{html.escape(item.get('summary') or '')}<br>"
+            if summary:
+                summary_line = f"{html.escape(summary)}<br>"
             incident_html.append(
                 "<div style=\"border-top:1px solid #1c2229;padding:8px 0;\">"
-                f"<strong>{html.escape(item.get('title') or 'Incident')}</strong><br>"
+                f"<strong>{html.escape(title)}</strong><br>"
                 f"{summary_line}"
                 f"{html.escape(item.get('location_name') or 'Location unavailable')}<br>"
                 f"{html.escape(coords)}<br>"
