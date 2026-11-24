@@ -3550,8 +3550,131 @@ def backfill_country_tags() -> int:
     return updated
 
 
+SYRIA_GOVERNORATE_COORDS = {
+    "Damascus": (33.5138, 36.2765),
+    "Rif Dimashq": (33.6500, 36.5500),
+    "Aleppo": (36.2021, 37.1343),
+    "Idlib": (35.9306, 36.6339),
+    "Latakia": (35.5317, 35.7901),
+    "Tartus": (34.8959, 35.8867),
+    "Homs": (34.7324, 36.7137),
+    "Hama": (35.1318, 36.7578),
+    "Deir ez-Zor": (35.3359, 40.1408),
+    "Raqqa": (35.9594, 39.0079),
+    "Al-Hasakah": (36.5072, 40.7485),
+    "Daraa": (32.6189, 36.1021),
+    "Quneitra": (33.1256, 35.8244),
+    "As-Suwayda": (32.7090, 36.5662),
+}
+SYRIA_GOVERNORATE_KEYWORDS = {
+    "Rif Dimashq": (
+        "damascus countryside", "rural damascus", "rif dimashq",
+        "ريف دمشق", "الزبداني", "zabadani",
+    ),
+    "Deir ez-Zor": (
+        "deir ez-zor", "deir ez zor", "deir ezzor", "deir al-zor", "deir al zor", "deir al-zour",
+        "al mayadin", "al bukamal", "abu kamal", "دير الزور", "الميادين", "البوكمال",
+    ),
+    "Al-Hasakah": (
+        "al-hasakah", "al hasakah", "hasakah", "tal tamer", "tal tamr", "qamishli", "qamishlo",
+        "الحسكة", "القامشلي",
+    ),
+    "As-Suwayda": ("as-suwayda", "as suwayda", "suwayda", "sweida", "السويداء"),
+    "Quneitra": ("quneitra bir ajam", "quneitra", "bir ajam", "beit jinn", "القنيطرة"),
+    "Latakia": ("latakia", "lattakia", "اللاذقية"),
+    "Damascus": ("damascus", "دمشق"),
+    "Aleppo": ("aleppo", "manbij", "حلب", "منبج"),
+    "Idlib": ("idlib", "idleb", "إدلب", "ادلب"),
+    "Tartus": ("tartous", "tartus", "baniyas", "طرطوس", "بانياس"),
+    "Homs": ("palmyra tadmur", "dabousiya crossing", "palmyra", "tadmur", "homs", "al tanf", "حمص", "تدمر"),
+    "Hama": ("hama", "حماة"),
+    "Raqqa": ("raqqa", "الرقة"),
+    "Daraa": ("jaber nasib crossing", "daraa", "درعا"),
+}
+_SYRIA_GOVERNORATE_ORDER = tuple(sorted(
+    ((keyword, name) for name, keywords in SYRIA_GOVERNORATE_KEYWORDS.items() for keyword in keywords),
+    key=lambda item: len(item[0]),
+    reverse=True,
+))
+_MATCHED_SITE_PRECISION = {GEO_PRECISION_EXACT, GEO_PRECISION_CITY}
+
+
+def _syria_row_scope(item: dict, country: str) -> bool:
+    """Syria rows, and Syria-desk rows that were not placed in another country."""
+    if country == "Syria":
+        return True
+    desk = desk_for_item(item)
+    return bool(desk and desk.get("desk") == "Syria" and country in ("", "Other"))
+
+
+def _syria_keyword_hit(record: dict) -> str:
+    """Longer place names win. Rural Damascus is Rif Dimashq, not Damascus."""
+    raw = " ".join(
+        str(record.get(key) or "")
+        for key in ("governorate", "location_name", "title", "summary")
+    )
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword, name in _SYRIA_GOVERNORATE_ORDER:
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                return name
+            continue
+        folded = geo_blob(keyword)
+        if " " in folded:
+            if f" {folded} " in padded:
+                return name
+            continue
+        if folded in tokens:
+            return name
+    return ""
+
+
+def _exact_syria_coordinates(record: dict) -> bool:
+    if osint.valid_coord(record.get("lng"), record.get("lat")) is None:
+        return False
+    precision = str(record.get("geo_precision") or "")
+    if precision in ("", "Country / Sea Fallback", "Damascus Default Fallback"):
+        return False
+    return True
+
+
+def _damascus_default_point(event_id: object) -> tuple[float, float]:
+    digest = hashlib.sha256(str(event_id or "event").encode("utf-8")).digest()
+    lat_shift = (digest[0] - 128) / 128 * 0.015
+    lng_shift = (digest[1] - 128) / 128 * 0.015
+    return 33.5138 + lat_shift, 36.2765 + lng_shift
+
+
+def resolve_syria_governorate(record: dict) -> dict:
+    """Match a Syrian governorate. Unmatched Syria rows fall back to Damascus."""
+    country = str(record.get("country") or "")
+    if country != "Syria" and not _syria_row_scope(record, country):
+        return {}
+    name = _syria_keyword_hit(record)
+    event_id = record.get("id") or record.get("source_url") or record.get("title")
+    if name:
+        result = {"governorate": name, "sub_region": name}
+        if not _exact_syria_coordinates(record):
+            center = SYRIA_GOVERNORATE_COORDS[name]
+            shifted = offset_fallback(center[0], center[1], event_id)
+            if shifted:
+                result["lat"] = shifted[0]
+                result["lng"] = shifted[1]
+                result["geo_precision"] = GEO_PRECISION_CITY
+        return result
+    result = {"governorate": "Damascus", "sub_region": "Damascus"}
+    if _exact_syria_coordinates(record):
+        return result
+    lat, lng = _damascus_default_point(event_id)
+    result["lat"] = lat
+    result["lng"] = lng
+    result["geo_precision"] = "Damascus Default Fallback"
+    return result
+
+
 def backfill_syria_governorates() -> int:
-    """Normalize Syrian governorate names. Unmatched Syria rows are left for the Damascus fallback."""
+    """Match Syria rows to a governorate. Unmatched rows use the Damascus fallback."""
     updated = 0
     with _db_lock:
         conn = db_connect()
@@ -3560,35 +3683,40 @@ def backfill_syria_governorates() -> int:
             if "country" not in columns:
                 return 0
             rows = conn.execute(
-                "SELECT id, title, summary, original_text, location_name, governorate, sub_region "
-                "FROM items WHERE country = 'Syria'"
+                "SELECT id, title, summary, location_name, governorate, sub_region, lat, lng, "
+                "geo_precision, country, source_name, source_kind, source_url FROM items "
+                "WHERE country = 'Syria'"
             ).fetchall()
             for row in rows:
-                blob = " ".join(
-                    str(part or "")
-                    for part in (
-                        row["governorate"], row["location_name"], row["title"],
-                        row["summary"], row["original_text"],
-                    )
+                resolved = resolve_syria_governorate(dict(row))
+                if not resolved:
+                    continue
+                same = (
+                    str(row["governorate"] or "") == resolved["governorate"]
+                    and str(row["sub_region"] or "") == resolved["sub_region"]
+                    and ("lat" not in resolved or (row["lat"] == resolved["lat"] and row["lng"] == resolved["lng"]))
+                    and ("geo_precision" not in resolved or str(row["geo_precision"] or "") == resolved["geo_precision"])
                 )
-                name = osint.match_governorate(blob)
-                if not name:
+                if same:
                     continue
-                current = str(row["governorate"] or "")
-                sub = str(row["sub_region"] or "") if "sub_region" in columns else ""
-                if current == name and sub == name:
-                    continue
-                if "sub_region" in columns:
+                if "lat" in resolved:
                     conn.execute(
-                        "UPDATE items SET governorate = ?, sub_region = ? WHERE id = ?",
-                        (name, name, row["id"]),
+                        "UPDATE items SET governorate = ?, sub_region = ?, lat = ?, lng = ?, geo_precision = ? "
+                        "WHERE id = ?",
+                        (
+                            resolved["governorate"], resolved["sub_region"], resolved["lat"], resolved["lng"],
+                            resolved["geo_precision"], row["id"],
+                        ),
                     )
                 else:
-                    conn.execute("UPDATE items SET governorate = ? WHERE id = ?", (name, row["id"]))
+                    conn.execute(
+                        "UPDATE items SET governorate = ?, sub_region = ? WHERE id = ?",
+                        (resolved["governorate"], resolved["sub_region"], row["id"]),
+                    )
                 updated += 1
             if updated:
                 conn.commit()
-                print(f"Normalized {updated} Syria governorate(s).")
+                print(f"Resolved {updated} Syria governorate(s).")
         finally:
             conn.close()
     return updated
@@ -3774,11 +3902,6 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     placed["region"] = resolve_item_region(item, placed, blob)
     placed["country"] = resolve_item_country(item, blob)
     placed["sub_region"] = sub_region_for(blob, placed["country"])
-    if placed["country"] == "Syria":
-        governorate = osint.match_governorate(blob) or osint.match_governorate(placed.get("governorate"))
-        if governorate:
-            placed["governorate"] = governorate
-            placed["sub_region"] = governorate
     lat, lng, fallback_precision = placed_coordinates(item, placed)
     if fallback_precision:
         placed = dict(placed)
@@ -3786,6 +3909,28 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     elif placed.get("_grok_coords"):
         placed = dict(placed)
         placed["geo_precision"] = classify_precision(placed.get("location_name") or "")
+    if _syria_row_scope(item, placed.get("country") or ""):
+        resolved = resolve_syria_governorate({
+            "country": "Syria" if placed.get("country") in ("", "Other") else placed.get("country"),
+            "governorate": placed.get("governorate") or "",
+            "location_name": placed.get("location_name") or "",
+            "title": item.get("title") or "",
+            "summary": item.get("summary") or "",
+            "lat": lat,
+            "lng": lng,
+            "geo_precision": placed.get("geo_precision") or "",
+            "source_name": item.get("source_name") or "",
+            "source_kind": item.get("source_kind") or "",
+            "source_url": item.get("source_url") or "",
+            "id": item.get("source_url") or item.get("title") or "",
+        })
+        if resolved:
+            placed["governorate"] = resolved["governorate"]
+            placed["sub_region"] = resolved["sub_region"]
+            if "lat" in resolved:
+                lat = resolved["lat"]
+                lng = resolved["lng"]
+                placed["geo_precision"] = resolved["geo_precision"]
     source_url = item["source_url"]
     if lat is None or lng is None:
         print(f"Stored unmapped {source_url}: no place keyword.")

@@ -3206,8 +3206,8 @@
     ];
 
     function featureGovernorate(props) {
-      const named = String(props.governorate || "").trim();
-      if (SYRIA_INDEX_NAMES.indexOf(named) !== -1) return named;
+      const named = String(props.governorate || props.sub_region || "").trim();
+      if (SYRIA_INDEX_NAMES.indexOf(named) !== -1 || (typeof SYRIA_GOV_NAMES !== "undefined" && SYRIA_GOV_NAMES.indexOf(named) !== -1)) return named;
       const blob = (String(props.location_name || "") + " " + String(props.title || "") + " " + String(props.summary || "")).toLowerCase();
       const aliases = {
         "rural damascus": "Rif Dimashq",
