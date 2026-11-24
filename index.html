@@ -1318,6 +1318,7 @@
         <button type="button" class="pill" data-category="9">9 Civil Unrest <span class="n" data-cat-count="9">0</span></button>
         <button type="button" class="pill" data-category="10">10 Trauma / Casualty <span class="n" data-cat-count="10">0</span></button>
         <button type="button" class="pill" data-category="11">11 Detention / Arrest (Checkpoints) <span class="n" data-cat-count="11">0</span></button>
+        <button type="button" class="pill" data-category="12">12 Miscellaneous <span class="n" data-cat-count="12">0</span></button>
       </div>
     </details>
     <label class="rail-select">Actor
@@ -1457,7 +1458,8 @@
                 <th scope="col" title="Civil Unrest">Unrest</th>
                 <th scope="col" title="Trauma / Casualty">Casualty</th>
                 <th scope="col" title="Detention / Arrest (Checkpoints)">Checkpoint</th>
-                <th scope="col" title="Total incidents">Total</th>
+                <th scope="col" title="Miscellaneous">Misc</th>
+                <th scope="col" title="Sum of categories 1 through 12">Total</th>
                 <th scope="col" title="Severity-weighted total">Risk</th>
                 <th scope="col" title="Average severity weight">Index</th>
               </tr>
@@ -1674,7 +1676,8 @@
       8: "Road Traffic Collision (RTC)",
       9: "Civil Unrest",
       10: "Trauma / Casualty",
-      11: "Detention / Arrest (Checkpoints)"
+      11: "Detention / Arrest (Checkpoints)",
+      12: "Miscellaneous"
     };
     let actorFilter = "all";
     let systemFilter = "all";
@@ -1892,7 +1895,7 @@
 
     function threatCodeOf(props) {
       const code = Number(props && props.threat_code);
-      if (code >= 1 && code <= 11) return String(code);
+      if (code >= 1 && code <= 12) return String(code);
       const label = String((props && props.category) || "");
       const keys = Object.keys(THREAT_LABELS);
       for (let i = 0; i < keys.length; i += 1) {
@@ -1920,6 +1923,12 @@
       if (old === "ACT" || old === "KINETIC/MILITARY") return "2";
       if (old === "VC") return "10";
       if (old === "CU") return "9";
+      if (
+        old === "HS" || old === "OD" || old === "MARITIME" || old === "POLITICAL/OTHER" ||
+        old === "OTHER / ADVISORY" || old === "MISCELLANEOUS" ||
+        /border crossings?|\bpower\b|\bfuel\b|blackout|electricity|airspace|no-fly|\bnotams?\b|ministry directives?|ministerial (?:order|directive)|infrastructure|embassy advisory|diplomatic|travel advisory/i.test(blob)
+      ) return "12";
+      if (String((props && props.country) || "") === "Syria") return "12";
       return "";
     }
 
@@ -3310,7 +3319,7 @@
     function renderSyriaIndex(visible) {
       const body = document.getElementById("syria-index-body");
       if (!body) return;
-      const codes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
+      const codes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
       body.innerHTML = SYRIA_INDEX_NAMES.map((name) => {
         const counts = { total: 0, risk: 0 };
         codes.forEach((code) => { counts[code] = 0; });
@@ -3318,7 +3327,8 @@
           const props = feature.properties || {};
           if (featureGovernorate(props) !== name) return;
           const code = incidentCode(props);
-          if (Object.prototype.hasOwnProperty.call(counts, code)) counts[code] += 1;
+          if (!Object.prototype.hasOwnProperty.call(counts, code)) return;
+          counts[code] += 1;
           counts.total += 1;
           const sev = String(props.severity || "").toLowerCase();
           counts.risk += sev === "high" ? 3 : sev === "medium" ? 2 : 1;

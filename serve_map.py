@@ -2723,6 +2723,7 @@ THREAT_LABELS = {
     9: "Civil Unrest",
     10: "Trauma / Casualty",
     11: "Detention / Arrest (Checkpoints)",
+    12: "Miscellaneous",
 }
 ADVISORY_LABEL = "Other / Advisory"
 _THREAT_BY_LABEL = {label: code for code, label in THREAT_LABELS.items()}
@@ -2744,6 +2745,11 @@ _ADVISORY_RE = re.compile(
     r"embassy advisory|diplomatic (?:note|advisory)|travel advisory)\b",
     re.I,
 )
+_MISC_RE = re.compile(
+    r"border crossings?|\bpower\b|\bfuel\b|blackout|electricity|airspace|no-fly|\bnotams?\b|"
+    r"ministry directives?|ministerial (?:order|directive)|infrastructure",
+    re.I,
+)
 _OLD_THREAT_CODES = {
     "SFA": 1,
     "ACT": 2,
@@ -2752,11 +2758,17 @@ _OLD_THREAT_CODES = {
     "KINETIC/MILITARY": 2,
     "SECURITY/CLASHES": 1,
 }
-_OLD_ADVISORY = {"HS", "OD", "MARITIME", "POLITICAL/OTHER", "OTHER / ADVISORY"}
+_OLD_ADVISORY = {"HS", "OD", "MARITIME", "POLITICAL/OTHER", "OTHER / ADVISORY", "MISCELLANEOUS"}
 
 
 def classify_threat(text: object, previous: object = None) -> tuple[int | None, str]:
-    """Map text and the old ACT/SFA buckets onto threat codes 1-11."""
+    """Map text onto the single best of threat codes 1-11, or 12 Miscellaneous.
+
+    Codes 1-11 keep their existing patterns and win over 12. Category 12 is the
+    old Other / Advisory bucket plus operational, security, infrastructure, or
+    diplomatic news that matches none of 1-11. An empty result means the text
+    named none of those; callers still leave spam unstored.
+    """
     blob = str(text or "")
     prev = " ".join(str(previous or "").split())
     for code, pattern in _THREAT_PATTERNS:
@@ -2771,9 +2783,21 @@ def classify_threat(text: object, previous: object = None) -> tuple[int | None, 
     if old in _OLD_THREAT_CODES:
         code = _OLD_THREAT_CODES[old]
         return code, THREAT_LABELS[code]
-    if old in _OLD_ADVISORY or _ADVISORY_RE.search(blob) or _ADVISORY_RE.search(prev):
-        return None, ADVISORY_LABEL
+    if (
+        old in _OLD_ADVISORY
+        or _ADVISORY_RE.search(blob) or _ADVISORY_RE.search(prev)
+        or _MISC_RE.search(blob) or _MISC_RE.search(prev)
+    ):
+        return 12, THREAT_LABELS[12]
     return None, ""
+
+
+def assigned_threat(text: object, previous: object = None) -> tuple[int, str]:
+    """Single best of 1-11, otherwise 12 Miscellaneous."""
+    code, label = classify_threat(text, previous)
+    if code:
+        return code, label
+    return 12, THREAT_LABELS[12]
 
 
 def threat_category_label(category: object, threat_code: object = None) -> str:
@@ -2795,19 +2819,20 @@ def _apply_threat(stored: dict, located: dict) -> dict:
             located.get("title"), located.get("summary"), located.get("category"),
         )
     )
-    code, label = classify_threat(blob, located.get("category") or stored.get("category"))
-    if label:
-        stored["category"] = label
-    if code:
-        stored["threat_code"] = code
-    elif label == ADVISORY_LABEL:
-        stored["threat_code"] = None
+    if is_spam_post(blob):
+        stored["relevant"] = False
+        return stored
+    code, label = assigned_threat(blob, located.get("category") or stored.get("category"))
+    stored["category"] = label
+    stored["threat_code"] = code
     return stored
 
 
 def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict:
     """English title and summary via grok-3-mini. Raw text stays in original_text.
 
+    The stored category is the single best of threat codes 1-11, or 12 Miscellaneous.
+    Spam stays relevant false and is not given a threat code.
     A missing xAI key leaves title and summary unchanged and does not wipe the row.
     Arabic is never written into title or summary when a key is present.
     """
@@ -3820,11 +3845,17 @@ def backfill_syria_governorates() -> int:
 
 
 def backfill_threat_codes() -> int:
-    """Remap ACT, SFA, VC, CU, HS, and OD onto threat codes 1-11. A stored code stays."""
+    """Remap unlabeled rows onto threat codes 1-12. A stored code 1-11 stays.
+
+    Syria rows with no code are filled with 1-12. Other / Advisory becomes 12
+    unless the text matches an earlier code. Spam is left for the spam purge
+    and is not labeled Miscellaneous.
+    """
     updated = 0
     old_labels = {
         "ACT", "SFA", "VC", "CU", "HS", "OD",
         "Kinetic/Military", "Maritime", "Security/Clashes", "Political/Other",
+        ADVISORY_LABEL, "Miscellaneous",
     }
     with _db_lock:
         conn = db_connect()
@@ -3832,23 +3863,51 @@ def backfill_threat_codes() -> int:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
             if "threat_code" not in columns:
                 return 0
+            fields = ["id", "title", "summary", "original_text", "category", "threat_code"]
+            for extra in ("country", "source_name", "source_kind", "source_url"):
+                if extra in columns:
+                    fields.append(extra)
             rows = conn.execute(
-                "SELECT id, title, summary, original_text, category, threat_code FROM items "
-                "WHERE threat_code IS NULL OR threat_code = 0"
+                f"SELECT {', '.join(fields)} FROM items "
+                "WHERE threat_code IS NULL OR threat_code = 0 OR threat_code = '' "
+                "OR category IN ('Other / Advisory', 'Political/Other', 'Miscellaneous')"
             ).fetchall()
             for row in rows:
-                if str(row["category"] or "") == ADVISORY_LABEL:
+                blob = " ".join(str(row[key] or "") for key in ("title", "summary", "original_text", "category"))
+                if is_spam_post(blob):
                     continue
-                code, label = classify_threat(
-                    " ".join(str(row[key] or "") for key in ("title", "summary", "original_text", "category")),
-                    row["category"],
+                existing = row["threat_code"]
+                try:
+                    existing_code = int(existing) if existing not in (None, "") else None
+                except (TypeError, ValueError):
+                    existing_code = None
+                if existing_code in THREAT_LABELS:
+                    label = THREAT_LABELS[existing_code]
+                    if str(row["category"] or "") == label:
+                        continue
+                    conn.execute(
+                        "UPDATE items SET category = ? WHERE id = ?",
+                        (label, row["id"]),
+                    )
+                    updated += 1
+                    continue
+                code, label = classify_threat(blob, row["category"])
+                country = str(row["country"] or "") if "country" in row.keys() else ""
+                syria = _syria_row_scope(
+                    {
+                        "source_name": row["source_name"] if "source_name" in row.keys() else "",
+                        "source_kind": row["source_kind"] if "source_kind" in row.keys() else "",
+                        "source_url": row["source_url"] if "source_url" in row.keys() else "",
+                    },
+                    country,
                 )
-                if not label and str(row["category"] or "") not in old_labels:
+                legacy = str(row["category"] or "") in old_labels or str(row["category"] or "").upper() in _OLD_ADVISORY
+                if not code and (syria or legacy):
+                    code, label = 12, THREAT_LABELS[12]
+                if not code:
                     continue
-                if not label:
-                    label = ADVISORY_LABEL
                 conn.execute(
-                    "UPDATE items SET threat_code = ?, category = ? WHERE id = ? AND (threat_code IS NULL OR threat_code = 0)",
+                    "UPDATE items SET threat_code = ?, category = ? WHERE id = ?",
                     (code, label, row["id"]),
                 )
                 updated += 1
@@ -4047,9 +4106,11 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     elif placed.get("_grok_coords"):
         placed = dict(placed)
         placed["geo_precision"] = classify_precision(placed.get("location_name") or "")
-    threat_code, threat_label = classify_threat(blob, item.get("category") or placed.get("category"))
-    if threat_label:
-        placed["category"] = threat_label
+    if is_spam_post(blob):
+        print(f"Dropped spam before insert: {str(item.get('title') or '')[:80]}")
+        return False
+    threat_code, threat_label = assigned_threat(blob, item.get("category") or placed.get("category"))
+    placed["category"] = threat_label
     placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({
@@ -4171,6 +4232,11 @@ def save_classified_item(item: dict, now: datetime) -> bool:
         print(f"Dropped non-news spam from classifier: {str(item.get('title') or '')[:80]}")
         return False
     stored = classify_and_translate_event(item, placed)
+    if stored.get("relevant") is False or is_spam_post(
+        spam_post_text(stored.get("title"), stored.get("summary"), stored.get("original_text"), stored.get("source_url"))
+    ):
+        print(f"Dropped non-news spam from classifier: {str(item.get('title') or '')[:80]}")
+        return False
     if not str(stored.get("original_text") or "").strip():
         stored["original_text"] = original
     if get_xai_api_key() and (
