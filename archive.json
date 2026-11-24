@@ -300,6 +300,156 @@
         "category": "Travel / Embassy Advisory",
         "warning_number": null
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          35.8886,
+          33.8547
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism.",
+        "summary": "Do not travel to Lebanon due to the volatile security situation, armed conflict, civil unrest and terrorism.",
+        "timestamp": "2026-09-24T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/lebanon",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Levant",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          51.4215,
+          35.6892
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Iran due to the extremely volatile security situation and risk of attacks and escalation.",
+        "summary": "Do not travel to Iran due to the extremely volatile security situation and risk of attacks and escalation.",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/iran",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Iran & Iraq",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          44.3661,
+          33.3152
+        ]
+      },
+      "properties": {
+        "severity": "high",
+        "title": "Do not travel to Iraq including the Kurdistan Region due to the volatile security situation, terrorism, armed conflict, kidnapping and violent crime.",
+        "summary": "Do not travel to Iraq including the Kurdistan Region due to the volatile security situation, terrorism, armed conflict, kidnapping and violent crime.",
+        "timestamp": "2026-09-02T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/iraq",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Iran & Iraq",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          50.5575,
+          26.2285
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider your need to travel to Bahrain due to the unpredictable security situation in the region and risk of attacks on infrastructure.",
+        "summary": "Reconsider your need to travel to Bahrain due to the unpredictable security situation in the region and risk of attacks on infrastructure.",
+        "timestamp": "2026-10-23T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/bahrain",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.3829,
+          23.5859
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Reconsider travel to Oman due to risk of armed conflict and terrorism, with do not travel to the Yemen border area.",
+        "summary": "Reconsider travel to Oman due to risk of armed conflict and terrorism, with do not travel to the Yemen border area.",
+        "timestamp": "2026-03-13T00:00:00Z",
+        "source": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/oman-travel-advisory.html",
+        "account": "TravelGov",
+        "handle": "TravelGov",
+        "source_handle": "TravelGov",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          54.3667,
+          24.4667
+        ]
+      },
+      "properties": {
+        "severity": "low",
+        "title": "Exercise a high degree of caution in the United Arab Emirates due to terrorism and the unpredictable security situation in the region.",
+        "summary": "Exercise a high degree of caution in the United Arab Emirates due to terrorism and the unpredictable security situation in the region.",
+        "timestamp": "2026-10-08T00:00:00Z",
+        "source": "https://www.smartraveller.gov.au/destinations/middle-east/united-arab-emirates",
+        "account": "Smartraveller",
+        "handle": "Smartraveller",
+        "source_handle": "Smartraveller",
+        "batch": "travel_advisories_and_embassies",
+        "verification_tier": "Official / Primary",
+        "region": "Gulf",
+        "category": "Travel / Embassy Advisory",
+        "warning_number": null
+      }
     }
   ]
 }
