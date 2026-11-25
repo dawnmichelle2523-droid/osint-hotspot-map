@@ -118,6 +118,16 @@ def briefing_page() -> Response:
     return send_from_directory(serve_map.ROOT, "briefing.html")
 
 
+@app.get("/world-risk")
+def world_risk_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "world-risk.html")
+
+
+@app.get("/api/travel-advisories")
+def api_travel_advisories() -> Response:
+    return _json(serve_map.travel_advisories_payload())
+
+
 @app.get("/<path:filename>")
 def static_file(filename: str) -> Response:
     name = filename.rsplit("/", 1)[-1]

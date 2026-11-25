@@ -27,6 +27,8 @@ import sqlite3
 from difflib import SequenceMatcher
 import threading
 import time
+import unicodedata
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.mime.image import MIMEImage
@@ -6214,6 +6216,407 @@ def export_geojson_bytes(query: str) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False).encode("utf-8")
 
 
+ADVISORY_CACHE_PATH = ROOT / "advisory_cache.json"
+ADVISORY_TTL_SECONDS = 8 * 60 * 60
+US_ADVISORY_URL = "https://cadataapi.state.gov/api/TravelAdvisories"
+UK_ADVISORY_INDEX = "https://www.gov.uk/api/content/foreign-travel-advice"
+ADVISORY_LEVELS = {
+    4: ("Level 4: Do Not Travel / Advise Against All Travel", "#dc2626"),
+    3: ("Level 3: Reconsider Travel / Advise Against All But Essential Travel", "#ea580c"),
+    2: ("Level 2: Exercise Increased Caution / Regional Warnings", "#eab308"),
+    1: ("Level 1: Exercise Normal Precautions", "#0d9488"),
+    0: ("Unrated / No Data", "#1e293b"),
+}
+UK_ALERT_LEVEL = {
+    "avoid_all_travel_to_whole_country": 4,
+    "avoid_all_but_essential_travel_to_whole_country": 3,
+    "avoid_all_travel_to_parts": 2,
+    "avoid_all_but_essential_travel_to_parts": 2,
+}
+ADVISORY_ALIASES = {
+    "united states": "USA",
+    "united states of america": "USA",
+    "usa": "USA",
+    "uk": "GBR",
+    "united kingdom": "GBR",
+    "great britain": "GBR",
+    "russia": "RUS",
+    "russian federation": "RUS",
+    "syria": "SYR",
+    "syrian arab republic": "SYR",
+    "iran": "IRN",
+    "south korea": "KOR",
+    "republic of korea": "KOR",
+    "north korea": "PRK",
+    "czechia": "CZE",
+    "czech republic": "CZE",
+    "laos": "LAO",
+    "myanmar": "MMR",
+    "burma": "MMR",
+    "cote d ivoire": "CIV",
+    "ivory coast": "CIV",
+    "democratic republic of the congo": "COD",
+    "democratic republic of congo": "COD",
+    "dr congo": "COD",
+    "republic of the congo": "COG",
+    "republic of congo": "COG",
+    "palestine": "PSE",
+    "gaza": "PSE",
+    "west bank": "PSE",
+    "the west bank": "PSE",
+    "uae": "ARE",
+    "united arab emirates": "ARE",
+    "venezuela": "VEN",
+    "vietnam": "VNM",
+    "viet nam": "VNM",
+    "tanzania": "TZA",
+    "united republic of tanzania": "TZA",
+    "kosovo": "XKX",
+    "taiwan": "TWN",
+    "turkey": "TUR",
+    "turkiye": "TUR",
+    "eswatini": "SWZ",
+    "swaziland": "SWZ",
+    "cabo verde": "CPV",
+    "cape verde": "CPV",
+    "timor leste": "TLS",
+    "east timor": "TLS",
+    "north macedonia": "MKD",
+    "czech republic": "CZE",
+}
+_WARNING_RULES = (
+    ("terrorism", ("terrorism", "terrorist")),
+    ("armed conflict", ("armed conflict", "armed clashes")),
+    ("civil unrest", ("civil unrest", "unrest")),
+    ("kidnapping", ("kidnapping", "kidnap")),
+)
+_advisory_lock = threading.Lock()
+_advisory_memory: dict = {"at": 0.0, "payload": None}
+_country_index_cache: dict | None = None
+
+
+def _advisory_norm(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower().replace("&", " and ")
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", text).split())
+
+
+def _country_indexes() -> tuple[dict[str, str], dict[str, dict]]:
+    """Name and ISO indexes from the vendored World Countries file."""
+    global _country_index_cache
+    if _country_index_cache is not None:
+        return _country_index_cache["by_name"], _country_index_cache["by_iso3"]
+    by_name: dict[str, str] = {}
+    by_iso3: dict[str, dict] = {}
+    path = ROOT / "static" / "world-countries.geojson"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"World countries file was not readable ({exc.__class__.__name__}).")
+        payload = {}
+    for feature in payload.get("features") or []:
+        props = feature.get("properties") or {}
+        iso3 = str(props.get("ISO_A3") or "").upper()
+        admin = str(props.get("ADMIN") or "")
+        if not iso3 or not admin:
+            continue
+        by_iso3[iso3] = {
+            "name": admin,
+            "iso2": str(props.get("ISO_A2") or "").upper(),
+            "iso3": iso3,
+        }
+        by_name[_advisory_norm(admin)] = iso3
+    for alias, iso3 in ADVISORY_ALIASES.items():
+        if iso3 in by_iso3:
+            by_name[_advisory_norm(alias)] = iso3
+    _country_index_cache = {"by_name": by_name, "by_iso3": by_iso3}
+    return by_name, by_iso3
+
+
+def _strip_advisory_html(value: object) -> str:
+    text = re.sub(r"<[^>]+>", " ", str(value or ""))
+    return " ".join(html.unescape(text).split())
+
+
+def _advisory_warnings(text: str) -> list[str]:
+    lowered = text.lower()
+    found = []
+    for label, keys in _WARNING_RULES:
+        if any(key in lowered for key in keys):
+            found.append(label)
+    return found
+
+
+def _blank_advisory(meta: dict) -> dict:
+    label, color = ADVISORY_LEVELS[0]
+    admin = meta["name"]
+    iso3 = meta["iso3"]
+    map_country = "UAE" if iso3 == "ARE" else admin if admin in REGIONS else admin
+    return {
+        "name": admin,
+        "iso2": meta.get("iso2") or "",
+        "iso3": iso3,
+        "level": 0,
+        "label": label,
+        "color": color,
+        "summary": "",
+        "url": "",
+        "updated": "",
+        "warnings": [],
+        "source": "",
+        "mapCountry": map_country,
+    }
+
+
+def _apply_advisory(bucket: dict[str, dict], iso3: str, level: int, summary: str, url: str, updated: str, source: str) -> None:
+    _by_name, by_iso3 = _country_indexes()
+    meta = by_iso3.get(iso3)
+    if not meta or level not in ADVISORY_LEVELS or level == 0:
+        return
+    label, color = ADVISORY_LEVELS[level]
+    current = bucket.get(iso3) or _blank_advisory(meta)
+    warnings = list(dict.fromkeys(list(current.get("warnings") or []) + _advisory_warnings(summary)))
+    if level > int(current.get("level") or 0) or not current.get("summary"):
+        current["summary"] = summary[:700]
+        current["url"] = url
+        current["updated"] = updated
+        current["source"] = source
+    elif source and source not in str(current.get("source") or ""):
+        current["source"] = (str(current.get("source") or "") + " / " + source).strip(" /")
+    current["level"] = max(int(current.get("level") or 0), level)
+    current["label"], current["color"] = ADVISORY_LEVELS[current["level"]]
+    current["warnings"] = warnings
+    bucket[iso3] = current
+
+
+def _advisory_request_headers() -> dict[str, str]:
+    headers = feed_request_headers()
+    headers["Accept"] = "application/json, " + FEED_ACCEPT
+    return headers
+
+
+def _xml_local(tag: str) -> str:
+    return str(tag).rsplit("}", 1)[-1]
+
+
+def _advisory_xml_rows(content: bytes) -> list[dict]:
+    root = ET.fromstring(content)
+    rows = []
+    for node in root:
+        if _xml_local(node.tag) != "Rss":
+            continue
+        row = {}
+        for child in list(node):
+            row[_xml_local(child.tag)] = "".join(child.itertext())
+        rows.append(row)
+    return rows
+
+
+def _advisory_get_json(url: str):
+    response = requests.get(url, timeout=FEED_TIMEOUT, headers=_advisory_request_headers())
+    response.raise_for_status()
+    sample = (response.content or b"").lstrip()[:1]
+    if sample == b"<":
+        return _advisory_xml_rows(response.content)
+    return response.json()
+
+
+def _ingest_us_advisories(bucket: dict[str, dict]) -> int:
+    payload = _advisory_get_json(US_ADVISORY_URL)
+    rows = payload if isinstance(payload, list) else []
+    by_name, _by_iso3 = _country_indexes()
+    kept = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        title = str(row.get("Title") or "")
+        match = re.search(r"level\s*([1-4])", title, re.IGNORECASE)
+        if not match:
+            continue
+        country_name = title.split(" - ")[0].strip()
+        iso3 = by_name.get(_advisory_norm(country_name))
+        if not iso3:
+            continue
+        summary = _strip_advisory_html(row.get("Summary"))
+        _apply_advisory(
+            bucket,
+            iso3,
+            int(match.group(1)),
+            summary,
+            str(row.get("Link") or ""),
+            str(row.get("Updated") or row.get("Published") or ""),
+            "US State Department",
+        )
+        kept += 1
+    print(f"US travel advisories: {len(rows)} raw items, {kept} matched.")
+    return kept
+
+
+def _uk_level(statuses: list) -> int:
+    levels = [UK_ALERT_LEVEL[str(item)] for item in statuses if str(item) in UK_ALERT_LEVEL]
+    if not levels:
+        return 1
+    return max(levels)
+
+
+def _ingest_uk_advisories(bucket: dict[str, dict]) -> int:
+    index = _advisory_get_json(UK_ADVISORY_INDEX)
+    children = ((index.get("links") or {}).get("children") or []) if isinstance(index, dict) else []
+    pages = []
+    for child in children:
+        if not isinstance(child, dict):
+            continue
+        url = str(child.get("api_url") or "")
+        if not url and str(child.get("api_path") or "").startswith("/"):
+            url = "https://www.gov.uk" + str(child.get("api_path"))
+        if url:
+            pages.append(url)
+    by_name, _by_iso3 = _country_indexes()
+    kept = 0
+
+    def one(url: str) -> dict | None:
+        try:
+            return _advisory_get_json(url)
+        except Exception as exc:
+            print(f"UK travel advice page failed: {exc.__class__.__name__}.")
+            return None
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        for page in pool.map(one, pages):
+            if not isinstance(page, dict):
+                continue
+            details = page.get("details") or {}
+            country = (details.get("country") or {}).get("name") or ""
+            iso3 = by_name.get(_advisory_norm(country))
+            if not iso3:
+                continue
+            parts = details.get("parts") or []
+            body = ""
+            if isinstance(parts, list) and parts:
+                body = _strip_advisory_html((parts[0] or {}).get("body"))
+            _apply_advisory(
+                bucket,
+                iso3,
+                _uk_level(list(details.get("alert_status") or [])),
+                body or _strip_advisory_html(page.get("description")),
+                str(page.get("web_url") or ""),
+                str(page.get("public_updated_at") or details.get("updated_at") or ""),
+                "UK FCDO",
+            )
+            kept += 1
+    print(f"UK travel advisories: {len(pages)} raw items, {kept} matched.")
+    return kept
+
+
+def _read_advisory_disk() -> dict | None:
+    if not ADVISORY_CACHE_PATH.exists() or ADVISORY_CACHE_PATH.stat().st_size == 0:
+        return None
+    try:
+        payload = json.loads(ADVISORY_CACHE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Travel advisory cache was not readable ({exc.__class__.__name__}).")
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
+def _store_advisories(payload: dict) -> None:
+    global _advisory_memory
+    _advisory_memory = {"at": time.time(), "payload": payload}
+    try:
+        temporary = ADVISORY_CACHE_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(ADVISORY_CACHE_PATH)
+    except OSError as exc:
+        print(f"Travel advisory cache was not written ({exc.__class__.__name__}).")
+
+
+def _advisory_age(payload: dict) -> float | None:
+    stamp = str(payload.get("fetched_at") or "")
+    moment = osint.parse_timestamp(stamp)
+    if moment is None:
+        return None
+    return (datetime.now(timezone.utc) - moment).total_seconds()
+
+
+def empty_travel_advisories() -> dict:
+    return {
+        "ok": True,
+        "cached": False,
+        "updated_at": None,
+        "fetched_at": None,
+        "sources": [],
+        "countries": [],
+        "note": "unrated",
+    }
+
+
+def travel_advisories_payload() -> dict:
+    """Official US and UK travel levels. A failed refresh keeps the last cache."""
+    try:
+        with _advisory_lock:
+            memory = _advisory_memory.get("payload")
+            if isinstance(memory, dict) and time.time() - float(_advisory_memory.get("at") or 0) < ADVISORY_TTL_SECONDS:
+                return memory
+            disk = _read_advisory_disk()
+            if isinstance(disk, dict):
+                age = _advisory_age(disk)
+                if age is not None and age < ADVISORY_TTL_SECONDS:
+                    _advisory_memory["at"] = time.time()
+                    _advisory_memory["payload"] = disk
+                    return disk
+            bucket: dict[str, dict] = {}
+            sources = []
+            try:
+                if _ingest_us_advisories(bucket):
+                    sources.append("US State Department")
+            except Exception as exc:
+                print(f"US travel advisories failed: {exc.__class__.__name__}.")
+            try:
+                if _ingest_uk_advisories(bucket):
+                    sources.append("UK FCDO")
+            except Exception as exc:
+                print(f"UK travel advisories failed: {exc.__class__.__name__}.")
+            if bucket:
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                payload = {
+                    "ok": True,
+                    "cached": False,
+                    "updated_at": now,
+                    "fetched_at": now,
+                    "sources": sources,
+                    "countries": sorted(bucket.values(), key=lambda item: item["name"]),
+                    "note": "",
+                }
+                _store_advisories(payload)
+                print(f"Travel advisories: {len(payload['countries'])} countries.")
+                return payload
+            if isinstance(disk, dict) and disk.get("countries"):
+                stale = dict(disk)
+                stale["ok"] = True
+                stale["cached"] = True
+                stale["note"] = "cached"
+                return stale
+            if isinstance(memory, dict) and memory.get("countries"):
+                stale = dict(memory)
+                stale["cached"] = True
+                stale["note"] = "cached"
+                return stale
+            print("Travel advisories: no cache, countries left unrated.")
+            return empty_travel_advisories()
+    except Exception as exc:
+        print(f"Travel advisories failed: {exc.__class__.__name__}.")
+        disk = _read_advisory_disk()
+        if isinstance(disk, dict):
+            disk = dict(disk)
+            disk["ok"] = True
+            disk["cached"] = True
+            return disk
+        return empty_travel_advisories()
+
+
 def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
     """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
     route = path.split("?", 1)[0]
@@ -6230,6 +6633,8 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(data_post_response(body))
         if verb == "GET" and route == "/api/feed-status":
             return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
+        if verb == "GET" and route == "/api/travel-advisories":
+            return 200, "application/json; charset=utf-8", _api_json(travel_advisories_payload())
         if verb == "GET" and route == "/api/daily-chart":
             return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
         if verb == "GET" and route == "/api/daily-chart.png":
@@ -6250,6 +6655,8 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(empty_daily_chart())
         if route == "/api/daily-chart.png":
             return 200, "image/png", dark_map_png()
+        if route == "/api/travel-advisories":
+            return 200, "application/json; charset=utf-8", _api_json(empty_travel_advisories())
     return None
 
 

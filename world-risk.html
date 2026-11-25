@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoRiskIntel — World Risk</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060A13; --panel: #0D1424; --line: #1E293B; --text: #E2E8F0; --muted: #94A3B8;
+      --gold: #D4AF37; --gold-border: #C5A059;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    #live-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px;
+      border-bottom: 1px solid transparent;
+      background-image: linear-gradient(#060A13, #060A13), linear-gradient(90deg, #102A63 0%, #D4AF37 45%, rgba(110, 88, 37, 0.05) 100%);
+      background-origin: padding-box, border-box; background-clip: padding-box, border-box;
+    }
+    .brand-lockup { display: flex; align-items: center; gap: 8px; }
+    #brandLogo { height: 36px; width: auto; display: block; }
+    .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; }
+    #page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+    #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+    #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+    #world-clocks { display: grid; grid-template-columns: repeat(5, 66px); gap: 8px; }
+    .world-clock { width: 66px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(13, 20, 36, 0.75); border: 1px solid #1E293B; border-radius: 8px; padding: 5px 4px; }
+    .world-clock.london { border-color: #C5A059; background: rgba(16, 42, 99, 0.45); }
+    .world-clock svg { display: block; width: 44px; height: 44px; }
+    .world-clock figcaption { margin: 0; color: #E2E8F0; font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .clock-readout { color: #94A3B8; font-size: 8.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #spike-toggle, #wall-mode { color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #spike-toggle[aria-pressed="true"] { color: #F8FAFC; }
+    body.wall-mode #risk-drawer, body.wall-mode #app-footer { display: none !important; }
+    #liveWireTickerBar { display: flex; align-items: stretch; height: 34px; overflow: hidden; background: #060A13; border-bottom: 1px solid #1E293B; }
+    #ticker-badge { display: flex; align-items: center; gap: 8px; background: #102A63; color: #D4AF37; border-right: 1px solid #C5A059; padding: 0 12px; font-weight: 700; font-size: 11px; letter-spacing: 1px; }
+    #ticker-badge .ticker-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #D4AF37; box-shadow: 0 0 8px #D4AF37; }
+    #ticker-viewport { flex: 1; overflow: hidden; }
+    #ticker-track { display: flex; width: max-content; height: 34px; animation: tickerScroll 45s linear infinite; }
+    #ticker-track.is-still { animation: none; }
+    .ticker-seq { display: flex; align-items: center; height: 34px; }
+    .ticker-item, .ticker-empty { padding: 0 16px; white-space: nowrap; }
+    .ticker-empty { color: #94A3B8; }
+    @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    #risk-stage { position: relative; flex: 1; min-height: 420px; }
+    #risk-map { position: absolute; inset: 0; background: #060A13; }
+    #risk-legend {
+      position: absolute; z-index: 500; left: 12px; bottom: 12px;
+      background: rgba(13, 20, 36, 0.94); border: 1px solid #1E293B; border-radius: 10px;
+      padding: 10px 12px; color: #E2E8F0; font-size: 12px;
+    }
+    #risk-legend div { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    #risk-legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #334155; display: inline-block; }
+    .leaflet-tooltip.risk-tip { background: #0D1424; color: #E2E8F0; border: 1px solid #C5A059; border-radius: 8px; }
+    #risk-drawer {
+      position: absolute; z-index: 600; top: 12px; right: 12px; width: min(380px, calc(100% - 24px));
+      max-height: calc(100% - 24px); overflow: auto; background: #0D1424; color: #E2E8F0;
+      border: 1px solid #C5A059; border-radius: 12px; padding: 14px 14px 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    }
+    #risk-drawer[hidden] { display: none; }
+    #risk-drawer h2 { margin: 0 28px 6px 0; color: #D4AF37; font-size: 18px; }
+    #drawer-close { position: absolute; top: 8px; right: 8px; color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; cursor: pointer; }
+    .drawer-level { margin: 0 0 8px; font-weight: 700; }
+    .drawer-meta, .drawer-summary { color: #94A3B8; font-size: 13px; }
+    .warn-list { margin: 8px 0; padding-left: 18px; }
+    .incident-list { list-style: none; margin: 8px 0; padding: 0; }
+    .incident-list li { padding: 6px 0; border-bottom: 1px solid #1E293B; font-size: 13px; }
+    .map-link, .official-link { display: inline-block; margin-top: 8px; margin-right: 8px; color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 6px 10px; text-decoration: none; font-weight: 700; font-size: 12px; }
+    .spike-pin { background: transparent; border: 0; }
+    .spike-badge { background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 6px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <span class="risk-pill">REGIONAL RISK</span>
+    </div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">OSINT Map</a>
+      <a href="/briefing">Briefing</a>
+      <a href="/world-risk" aria-current="page">World Risk</a>
+    </nav>
+    <div id="header-tools">
+      <div id="clock-strip"><div id="world-clocks">
+        <figure class="world-clock london" data-zone="Europe/London" title="--:--">
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#C5A059" stroke-width="3.5"/>
+            <g>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
+            </g>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#E11D48" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
+          </svg>
+          <figcaption>LONDON</figcaption>
+          <span class="clock-readout">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="Europe/Paris" title="--:--">
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
+            <g>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
+            </g>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
+          </svg>
+          <figcaption>PARIS</figcaption>
+          <span class="clock-readout">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="America/New_York" title="--:--">
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
+            <g>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
+            </g>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
+          </svg>
+          <figcaption>NEW YORK</figcaption>
+          <span class="clock-readout">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="Asia/Tokyo" title="--:--">
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
+            <g>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
+            </g>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
+          </svg>
+          <figcaption>TOKYO</figcaption>
+          <span class="clock-readout">--:--</span>
+        </figure>
+        <figure class="world-clock" data-zone="Australia/Sydney" title="--:--">
+          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
+            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
+            <g>
+            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
+            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
+            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
+            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
+            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
+            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
+            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
+            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
+            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
+            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
+            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
+            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
+            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
+            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
+            </g>
+            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
+            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
+            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
+            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
+          </svg>
+          <figcaption>SYDNEY</figcaption>
+          <span class="clock-readout">--:--</span>
+        </figure>
+      </div></div>
+      <button type="button" id="spike-toggle" aria-pressed="false">+ Live Incident Spike</button>
+      <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall View</button>
+    </div>
+  </header>
+  <div id="liveWireTickerBar" role="region" aria-label="News Stream">
+    <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>NEWS STREAM</div>
+    <div id="ticker-viewport">
+      <div id="ticker-track" class="is-still">
+        <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
+        <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+  <div id="risk-stage">
+    <div id="risk-map" role="application" aria-label="World advisory map"></div>
+    <aside id="risk-legend" aria-label="Advisory levels">
+      <div><i style="background:#dc2626"></i> Level 4 Do Not Travel</div>
+      <div><i style="background:#ea580c"></i> Level 3 Reconsider Travel</div>
+      <div><i style="background:#eab308"></i> Level 2 Increased Caution</div>
+      <div><i style="background:#0d9488"></i> Level 1 Normal Precautions</div>
+      <div><i style="background:#1e293b"></i> Unrated / No Data</div>
+    </aside>
+    <aside id="risk-drawer" hidden>
+      <button type="button" id="drawer-close" aria-label="Close">×</button>
+      <h2 id="drawer-name">Country</h2>
+      <p class="drawer-level" id="drawer-level"></p>
+      <p class="drawer-meta" id="drawer-updated"></p>
+      <p class="drawer-summary" id="drawer-summary"></p>
+      <ul class="warn-list" id="drawer-warnings"></ul>
+      <a class="official-link" id="drawer-official" href="" target="_blank" rel="noopener noreferrer" hidden>Official advisory</a>
+      <h3>Live incidents</h3>
+      <ul class="incident-list" id="drawer-incidents"></ul>
+      <a class="map-link" id="drawer-map" href="/">View on Tactical OSINT Map</a>
+    </aside>
+  </div>
+  <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const UNRATED = { level: 0, label: "Unrated / No Data", color: "#1e293b", summary: "", url: "", updated: "", warnings: [], source: "", mapCountry: "" };
+    let advisories = [];
+    let byIso3 = {};
+    let byIso2 = {};
+    let byName = {};
+    let incidents = [];
+    let countriesLayer = null;
+    let spikeLayer = L.layerGroup();
+    let spikesOn = false;
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function norm(value) {
+      return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+    }
+    function zonedParts(date, timeZone) {
+      const bag = {};
+      new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(date).forEach((part) => { bag[part.type] = part.value; });
+      if (bag.hour === "24") bag.hour = "00";
+      return bag;
+    }
+    function localDay(now, timeZone) {
+      const parts = zonedParts(now, timeZone);
+      return parts.year + "-" + parts.month + "-" + parts.day;
+    }
+    function zoneTag(now, timeZone) {
+      const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(now);
+      const raw = (parts.find((part) => part.type === "timeZoneName") || {}).value || "";
+      const named = { "GMT+1": "CET", "GMT+2": "CEST", "GMT+9": "JST", "GMT+10": "AEST", "GMT+11": "AEDT" };
+      return named[raw] || raw;
+    }
+    function paintWorldClocks(now) {
+      const fraction = now.getMilliseconds() / 1000;
+      const londonDay = localDay(now, "Europe/London");
+      document.querySelectorAll("#world-clocks .world-clock").forEach((node) => {
+        const zone = node.getAttribute("data-zone");
+        const parts = zonedParts(now, zone);
+        const hour = Number(parts.hour);
+        const minute = Number(parts.minute);
+        const second = Number(parts.second) + fraction;
+        node.querySelector(".hand-hour").setAttribute("transform", "rotate(" + ((hour % 12) * 30 + minute * 0.5) + " 50 50)");
+        node.querySelector(".hand-minute").setAttribute("transform", "rotate(" + (minute * 6 + second * 0.1) + " 50 50)");
+        node.querySelector(".hand-second").setAttribute("transform", "rotate(" + (second * 6) + " 50 50)");
+        const readout = node.querySelector(".clock-readout");
+        if (readout) readout.textContent = parts.hour + ":" + parts.minute + " " + zoneTag(now, zone) + (localDay(now, zone) > londonDay ? " +1D" : "");
+      });
+    }
+    function tick() { paintWorldClocks(new Date()); requestAnimationFrame(tick); }
+    requestAnimationFrame(tick);
+
+    const map = L.map("risk-map", { worldCopyJump: true, minZoom: 2 }).setView([20, 15], 2);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri",
+      maxZoom: 16
+    }).addTo(map);
+    spikeLayer.addTo(map);
+
+    function indexAdvisories(rows) {
+      advisories = Array.isArray(rows) ? rows : [];
+      byIso3 = {}; byIso2 = {}; byName = {};
+      advisories.forEach((row) => {
+        if (row.iso3) byIso3[String(row.iso3).toUpperCase()] = row;
+        if (row.iso2) byIso2[String(row.iso2).toUpperCase()] = row;
+        if (row.name) byName[norm(row.name)] = row;
+        if (row.mapCountry) byName[norm(row.mapCountry)] = row;
+      });
+    }
+    function advisoryFor(props) {
+      const iso3 = String((props && props.ISO_A3) || "").toUpperCase();
+      const iso2 = String((props && props.ISO_A2) || "").toUpperCase();
+      return byIso3[iso3] || byIso2[iso2] || byName[norm(props && props.ADMIN)] || null;
+    }
+    function incidentsFor(row, admin) {
+      const keys = {};
+      [row && row.name, row && row.mapCountry, admin].forEach((name) => { if (name) keys[norm(name)] = true; });
+      if (row && norm(row.name) === "united arab emirates") keys.uae = true;
+      return incidents.filter((feature) => {
+        const props = feature.properties || {};
+        const name = norm(props.country || props.region || "");
+        return name && keys[name];
+      });
+    }
+    function styleFor(feature) {
+      const row = advisoryFor(feature.properties || {});
+      return { fillColor: (row && row.color) || "#1e293b", color: "#334155", weight: 1, fillOpacity: 0.88 };
+    }
+    function tooltipHtml(feature) {
+      const props = feature.properties || {};
+      const row = advisoryFor(props) || UNRATED;
+      const count = incidentsFor(row.iso3 ? row : null, props.ADMIN).length;
+      const updated = row.updated ? "Updated " + row.updated : "Updated unavailable";
+      return "<strong>" + esc(props.ADMIN || row.name || "Country") + "</strong><br>" +
+        esc(row.label || "Unrated / No Data") + "<br>" + esc(updated) + "<br>" +
+        count + " active OSINT incident" + (count === 1 ? "" : "s");
+    }
+    function openDrawer(feature) {
+      const props = feature.properties || {};
+      const row = advisoryFor(props) || Object.assign({}, UNRATED, { name: props.ADMIN || "Country", mapCountry: props.ADMIN || "" });
+      const matches = incidentsFor(row, props.ADMIN);
+      document.getElementById("drawer-name").textContent = props.ADMIN || row.name;
+      document.getElementById("drawer-level").textContent = row.label || "Unrated / No Data";
+      document.getElementById("drawer-level").style.color = row.color || "#1e293b";
+      document.getElementById("drawer-updated").textContent = (row.source ? row.source + " · " : "") + (row.updated ? "Updated " + row.updated : "No official update time");
+      document.getElementById("drawer-summary").textContent = row.summary || "No advisory summary is available for this country.";
+      document.getElementById("drawer-warnings").innerHTML = (row.warnings || []).map((item) => "<li>" + esc(item) + "</li>").join("");
+      const official = document.getElementById("drawer-official");
+      if (row.url) { official.hidden = false; official.href = row.url; }
+      else official.hidden = true;
+      document.getElementById("drawer-incidents").innerHTML = matches.length
+        ? matches.slice(0, 8).map((item) => "<li>" + esc((item.properties || {}).title || "Incident") + "</li>").join("")
+        : "<li>No matching live incidents.</li>";
+      const country = row.mapCountry || props.ADMIN || "";
+      document.getElementById("drawer-map").href = "/?country=" + encodeURIComponent(country);
+      document.getElementById("risk-drawer").hidden = false;
+    }
+    function paintSpikes() {
+      spikeLayer.clearLayers();
+      if (!spikesOn || !countriesLayer) return;
+      countriesLayer.eachLayer((layer) => {
+        const props = (layer.feature && layer.feature.properties) || {};
+        const row = advisoryFor(props);
+        const count = incidentsFor(row, props.ADMIN).length;
+        if (!count) return;
+        const center = layer.getBounds().getCenter();
+        const icon = L.divIcon({
+          className: "spike-pin",
+          html: '<span class="spike-badge">+ Live Incident Spike ' + count + "</span>",
+          iconSize: [150, 22],
+          iconAnchor: [75, 11]
+        });
+        L.marker(center, { icon: icon, interactive: false }).addTo(spikeLayer);
+      });
+    }
+    function paintTicker() {
+      const seq = document.getElementById("ticker-seq");
+      const clone = document.getElementById("ticker-seq-clone");
+      const track = document.getElementById("ticker-track");
+      const titles = incidents.map((feature) => (feature.properties || {}).title).filter(Boolean).slice(0, 12);
+      if (!titles.length) {
+        track.classList.add("is-still");
+        seq.innerHTML = '<span class="ticker-empty">Waiting for live incidents</span>';
+        clone.innerHTML = "";
+        return;
+      }
+      const html = titles.map((title) => '<span class="ticker-item">' + esc(title) + "</span>").join("");
+      seq.innerHTML = html;
+      clone.innerHTML = html;
+      track.classList.remove("is-still");
+    }
+    async function load() {
+      const [geoResult, adviceResult, dataResult] = await Promise.allSettled([
+        fetch("/static/world-countries.geojson", { cache: "force-cache" }).then((response) => response.json()),
+        fetch("/api/travel-advisories", { cache: "no-store" }).then((response) => response.json()),
+        fetch("/api/data", { cache: "no-store" }).then((response) => response.json())
+      ]);
+      if (dataResult.status === "fulfilled") incidents = Array.isArray(dataResult.value.features) ? dataResult.value.features : [];
+      if (adviceResult.status === "fulfilled") indexAdvisories((adviceResult.value && adviceResult.value.countries) || []);
+      paintTicker();
+      const geo = geoResult.status === "fulfilled" ? geoResult.value : { type: "FeatureCollection", features: [] };
+      countriesLayer = L.geoJSON(geo, {
+        style: styleFor,
+        onEachFeature: (feature, layer) => {
+          layer.bindTooltip(tooltipHtml(feature), { sticky: true, className: "risk-tip" });
+          layer.on("mouseover", () => { layer.setStyle({ weight: 2, color: "#F8FAFC" }); });
+          layer.on("mouseout", () => { if (countriesLayer) countriesLayer.resetStyle(layer); });
+          layer.on("click", () => openDrawer(feature));
+        }
+      }).addTo(map);
+      paintSpikes();
+    }
+    document.getElementById("drawer-close").addEventListener("click", () => { document.getElementById("risk-drawer").hidden = true; });
+    document.getElementById("spike-toggle").addEventListener("click", () => {
+      spikesOn = !spikesOn;
+      document.getElementById("spike-toggle").setAttribute("aria-pressed", String(spikesOn));
+      paintSpikes();
+    });
+    document.getElementById("wall-mode").addEventListener("click", () => {
+      const on = document.body.classList.toggle("wall-mode");
+      document.getElementById("wall-mode").setAttribute("aria-pressed", String(on));
+      setTimeout(() => map.invalidateSize(), 60);
+    });
+    load();
+  </script>
+</body>
+</html>
