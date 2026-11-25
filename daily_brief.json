@@ -1,8 +1,8 @@
 {
-  "window_label": "23 Nov 2026, 07:00 → 24 Nov 2026, 07:00 Europe/London",
-  "generated_at": "2026-11-25T05:01:27Z",
-  "source_count": 0,
-  "overall": "No significant incidents recorded in this 07:00–07:00 window.",
+  "window_label": "24 Nov 2026, 07:00 → 25 Nov 2026, 07:00 Europe/London",
+  "generated_at": "2026-11-25T07:06:13Z",
+  "source_count": 3,
+  "overall": "During 24 Nov 2026, 07:00 → 25 Nov 2026, 07:00 Europe/London, 3 recorded incidents are on file. The leading recorded item is IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza. (IDF eliminated Naim Muhammad Ashour Abu Nahal, head of Hamas’ Internal Security Apparatus in Gaza.; Medium; Official; IDF).",
   "regions": {
     "Syria": "No significant incidents recorded in this 07:00–07:00 window.",
     "Lebanon": "No significant incidents recorded in this 07:00–07:00 window.",
@@ -20,6 +20,6 @@
     "Qatar": "No significant incidents recorded in this 07:00–07:00 window.",
     "UAE": "No significant incidents recorded in this 07:00–07:00 window.",
     "Oman": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Maritime": "No significant incidents recorded in this 07:00–07:00 window."
+    "Maritime": "Maritime: UKMTO issued Maritime Security Warning 218-26. (UKMTO issued Maritime Security Warning 218-26.; Low; Official; UK_MTO)"
   }
 }
