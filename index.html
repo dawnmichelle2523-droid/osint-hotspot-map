@@ -567,7 +567,6 @@
     #clock-strip { margin-left: 0; flex-wrap: nowrap; gap: 6px; }
     #clock-london, #clock-utc { display: none !important; }
 
-    #clock-brief { font-size: 11px; white-space: nowrap; }
     #export-pdf, #ops-menu > summary, #fetch-live, #wall-mode {
       padding: 4px 8px; font-size: 12px;
     }
@@ -1135,7 +1134,6 @@
           <span class="clock-readout">--:--</span>
         </figure>
       </div>
-        <span id="clock-brief">Next briefing --:--:--</span>
       </div>
       <button type="button" id="export-pdf">Export PDF</button>
       <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall View</button>
@@ -1377,57 +1375,7 @@
     </div>
     </div>
     <section id="intel-panel" aria-label="Intelligence">
-      <div id="drawer-head">
-        <div id="drawer-tabs" role="tablist" aria-label="Intelligence">
-          <button type="button" data-tab="brief" aria-pressed="true">07:00 Brief</button>
-          <button type="button" data-tab="wire" aria-pressed="false">News Stream Update</button>
-          <button type="button" data-tab="syria" aria-pressed="false">Syria Risk Index</button>
-        </div>
-      </div>
-  <section id="daily-brief" class="drawer-panel" data-panel="brief" aria-labelledby="brief-title">
-    <article class="brief-card">
-      <div class="brief-bar" id="brief-controls">
-        <h2 id="brief-title">Geopolitical Summary</h2>
-        <time id="brief-time"></time>
-        <select id="summaryRegionSelect" aria-label="07:00 to 07:00 summary">
-          <option value="overall" selected>Overall Briefing (07:00–07:00)</option>
-          <option value="Syria">Syria</option>
-          <option value="Iraq">Iraq</option>
-          <option value="Saudi Arabia">Saudi Arabia</option>
-          <option value="Iran">Iran</option>
-          <option value="Lebanon">Lebanon</option>
-          <option value="Israel">Israel</option>
-          <option value="Palestine">Palestine</option>
-          <option value="Jordan">Jordan</option>
-          <option value="Yemen">Yemen</option>
-          <option value="Sudan">Sudan</option>
-          <option value="Chad">Chad</option>
-          <option value="Gulf States">Gulf States</option>
-          <option value="Maritime">Maritime</option>
-        </select>
-        <button type="button" id="copy-briefing">📋 Copy Briefing</button>
-        <button type="button" id="daily-chart-toggle" aria-expanded="false" aria-controls="daily-chart-card">📊 07:00–07:00 Chart</button>
-        <button type="button" id="refresh-summary">↻ Refresh Now</button>
-      </div>
-      <section id="daily-chart-card" hidden>
-        <div class="chart-head">
-          <h3>📊 07:00–07:00 Chart</h3>
-          <div class="chart-pills" role="group" aria-label="Chart window">
-            <button type="button" data-chart-window="yesterday" aria-pressed="true">Yesterday (07:00–07:00)</button>
-            <button type="button" data-chart-window="current" aria-pressed="false">Live Window (07:00–Now)</button>
-          </div>
-        </div>
-        <p id="daily-chart-label">Loading chart…</p>
-        <div id="daily-chart-counts" class="chart-counts"></div>
-        <div class="chart-legend" aria-hidden="true"><span><i class="high"></i>High</span><span><i class="medium"></i>Medium</span><span><i class="low"></i>Low</span></div>
-        <div id="daily-chart-hours" aria-label="Incidents by hour"></div>
-        <div id="daily-chart-regions" class="chart-regions" aria-label="Incidents by region"></div>
-      </section>
-      <p id="summary-updated">Last auto-updated: not yet</p>
-      <div id="brief-body"><p class="headline-empty">Loading brief…</p></div>
-    </article>
-  </section>
-    <section id="headlines" class="drawer-panel" data-panel="wire" hidden aria-labelledby="updates-toggle">
+    <section id="headlines" class="drawer-panel" aria-labelledby="updates-toggle">
     <div class="headlines-inner">
       <input id="updates-filter" type="search" placeholder="Filter pins &amp; updates..." aria-label="Filter pins and updates">
       <button type="button" id="ticker-toggle" aria-pressed="true" aria-controls="liveWireTickerBar">Ticker</button>
@@ -1445,7 +1393,7 @@
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
     </div>
   </section>
-      <section id="syria-index" class="drawer-panel" data-panel="syria" hidden aria-label="Syria Risk Index">
+      <section id="syria-index" class="drawer-panel" aria-label="Syria Risk Index">
         <h2>Syria Risk Index</h2>
         <div class="syria-index-scroll">
           <table>
@@ -1475,14 +1423,12 @@
       </section>
     </section>
   </div>
-  <footer id="app-footer">GeoRiskIntel · Operational Window: 07:00–07:00 GMT · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
   <section id="print-sheet" aria-hidden="true">
     <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
     <h1>GeoRiskIntel</h1>
     <p id="print-window"></p>
-    <h2>Overall</h2>
-    <p id="print-overall"></p>
-    <h2>Regions</h2>
+    <h2>Live incidents</h2>
     <div id="print-regions"></div>
     <h2>Active Syria governorates</h2>
     <ul id="print-governorates"></ul>
@@ -1664,9 +1610,7 @@
     let timeWindow = "all";
     let severity = "all";
     let updatesQuery = "";
-    let summaryScope = "overall";
-    let governorateSummary = false;
-    let storedSummaries = null;
+    let governorateCounts = {};
     let category = "all";
     const THREAT_LABELS = {
       1: "Small Arms Fire (SAF)",
@@ -2432,7 +2376,6 @@
       updateSearchCount(filteredIncidents.length);
       renderHeadlines(filteredIncidents);
       renderSyriaIndex(filteredIncidents);
-      paintSummaryRegionSelect();
       if (loadedOnce) {
         if (!allIncidents.length) setStatus("No live incidents ingested yet — check feed sources or server logs.");
         else if (!filteredIncidents.length) setStatus("No incidents match these filters.");
@@ -2635,40 +2578,6 @@
       return parts.hour + ":" + parts.minute + ":" + parts.second;
     }
 
-    function londonOffsetMs(date) {
-      const parts = zonedParts(date, "Europe/London");
-      const wall = Date.UTC(
-        Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-        Number(parts.hour), Number(parts.minute), Number(parts.second)
-      );
-      return wall - date.getTime();
-    }
-
-    function nextLondonBriefing(now) {
-      const parts = zonedParts(now, "Europe/London");
-      function at(dayShift) {
-        const year = Number(parts.year);
-        const month = Number(parts.month) - 1;
-        const day = Number(parts.day) + dayShift;
-        let instant = Date.UTC(year, month, day, 7, 0, 0);
-        for (let step = 0; step < 3; step += 1) {
-          instant = Date.UTC(year, month, day, 7, 0, 0) - londonOffsetMs(new Date(instant));
-        }
-        return instant;
-      }
-      let target = at(0);
-      if (target <= now.getTime()) target = at(1);
-      return Math.max(0, target - now.getTime());
-    }
-
-    function countdownLabel(ms) {
-      const total = Math.floor(ms / 1000);
-      const hh = String(Math.floor(total / 3600)).padStart(2, "0");
-      const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
-      const ss = String(total % 60).padStart(2, "0");
-      return hh + ":" + mm + ":" + ss;
-    }
-
     function zoneTag(now, timeZone) {
       const parts = new Intl.DateTimeFormat("en-US", {
         timeZone: timeZone,
@@ -2717,7 +2626,6 @@
       const now = new Date();
       document.getElementById("clock-london").textContent = "London " + clockLabel(zonedParts(now, "Europe/London"));
       document.getElementById("clock-utc").textContent = "UTC " + clockLabel(zonedParts(now, "UTC"));
-      document.getElementById("clock-brief").textContent = "Next briefing " + countdownLabel(nextLondonBriefing(now));
       paintWorldClocks(now);
     }
 
@@ -2921,9 +2829,7 @@
         if (!(await refreshFeedStatus())) renderFeedHealth(data.feed_health);
         const incoming = Array.isArray(data.features) ? data.features : [];
         features = incoming;
-        regionTrends = (data && data.region_trends) || {};
         governorateCounts = (data && data.counts_by_governorate) || {};
-        briefingWindow = (data && data.briefing_window) || "";
         loadedOnce = true;
         render();
         renderTicker();
@@ -3074,16 +2980,6 @@
         document.body.appendChild(link);
         link.click();
         link.remove();
-      });
-    });
-    document.getElementById("drawer-tabs").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-tab]");
-      if (!button) return;
-      document.querySelectorAll("#drawer-tabs button").forEach((item) => {
-        item.setAttribute("aria-pressed", String(item === button));
-      });
-      document.querySelectorAll("#intel-panel .drawer-panel").forEach((panel) => {
-        panel.hidden = panel.getAttribute("data-panel") !== button.dataset.tab;
       });
     });
     document.querySelector(".wire-tiers").addEventListener("click", (event) => {
@@ -3304,10 +3200,7 @@
       const text = matches.length
         ? name + " has " + matches.length + " recent update" + (matches.length === 1 ? "" : "s") + " on the live map."
         : "No live updates are tagged to " + name + " yet.";
-      renderLiveSummary({ text: text, regional_notes: notes.map((note) => ({ region: name, note: note })) });
-      governorateSummary = true;
-      summaryPinned = true;
-      setStatus("");
+      setStatus(text + (notes.length ? " " + notes.join(" · ") : ""));
     });
     document.getElementById("updates-toggle").addEventListener("click", () => {
       const button = document.getElementById("updates-toggle");
@@ -3398,255 +3291,6 @@
       }).join("");
     }
 
-    let briefText = "";
-
-    const ADVISORY_TITLE = "Official Travel & Embassy Advisories";
-
-    function briefBullets(text) {
-      return String(text || "").split(/\n|•/).map((line) => line.trim()).filter(Boolean);
-    }
-
-    function bulletHtml(text) {
-      const match = /^(Verified Official|Corroborated|Attributed)\s*[—–:-]\s*/i.exec(text);
-      if (!match) return "<li><span>" + esc(text) + "</span></li>";
-      const tag = match[1].toLowerCase().startsWith("verified")
-        ? "Verified Official"
-        : match[1].toLowerCase().startsWith("corrobor")
-          ? "Corroborated"
-          : "Attributed";
-      const cls = tag === "Verified Official" ? "badge-official" : tag === "Corroborated" ? "badge-corroborated" : "badge-claim";
-      return "<li><span class=\"badge " + cls + "\">" + esc(tag) + "</span><span>" + esc(text.slice(match[0].length)) + "</span></li>";
-    }
-
-    function briefSection(title, bullets) {
-      const id = "brief-sec-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      const items = bullets.length ? bullets : ["Nothing new in the last 24 hours."];
-      return "<div class=\"brief-section\"><button type=\"button\" class=\"brief-section-toggle\" aria-expanded=\"true\" aria-controls=\"" + id + "\">" + esc(title) + "</button><div class=\"brief-section-body\" id=\"" + id + "\"><ul>" + items.map(bulletHtml).join("") + "</ul></div></div>";
-    }
-
-    function briefCycleStamp(timestamp) {
-      const ms = Date.parse(timestamp || "");
-      if (Number.isNaN(ms)) return "";
-      const date = new Date(ms);
-      return String(date.getUTCHours()).padStart(2, "0") + ":" + String(date.getUTCMinutes()).padStart(2, "0");
-    }
-
-    function paintBriefHeader(generatedAt, windowLabel) {
-      const time = document.getElementById("brief-time");
-      if (!time) return;
-      const hhmm = briefCycleStamp(generatedAt);
-      const updated = hhmm ? "Brief Updated: " + hhmm + " GMT (4-hr cycle)" : "";
-      const label = windowLabel ? String(windowLabel) : "";
-      time.textContent = [label, updated].filter(Boolean).join(" · ");
-      if (generatedAt && hhmm) time.setAttribute("datetime", generatedAt);
-      else time.removeAttribute("datetime");
-    }
-
-    function renderBrief(data) {
-      const body = document.getElementById("brief-body");
-      if (data && !data.executive_summary && data.overall) {
-        const regions = data.regions || {};
-        data = {
-          generated_at: data.generated_at,
-          window_label: data.window_label,
-          executive_summary: data.overall,
-          regional_sections: LIVE_REGIONS.map((name) => ({
-            region: name,
-            summary: regions[name] || ""
-          })).filter((item) => item.summary),
-          advisory_highlights: []
-        };
-      }
-      if (!data || !data.executive_summary) {
-        paintBriefHeader("", "");
-        briefText = "";
-        body.innerHTML = '<p class="headline-empty">No daily brief yet.</p>';
-        return;
-      }
-      const stamp = gmtStamp(data.generated_at);
-      paintBriefHeader(data.generated_at, data.window_label);
-      const sections = (Array.isArray(data.regional_sections) ? data.regional_sections : []).map((item) => ({
-        title: item.region || "",
-        bullets: briefBullets(item.summary)
-      })).filter((item) => item.title);
-      const highlights = (Array.isArray(data.advisory_highlights) ? data.advisory_highlights : []).flatMap(briefBullets);
-      body.innerHTML =
-        briefSection("Executive Summary", [data.executive_summary]) +
-        sections.map((item) => briefSection(item.title, item.bullets)).join("") +
-        (highlights.length ? briefSection(ADVISORY_TITLE, highlights) : "");
-      const lines = ["Geopolitical Summary", stamp, "", "Executive Summary", data.executive_summary, ""];
-      sections.forEach((item) => {
-        lines.push(item.title);
-        (item.bullets.length ? item.bullets : ["Nothing new in the last 24 hours."]).forEach((line) => lines.push("- " + line));
-        lines.push("");
-      });
-      if (highlights.length) {
-        lines.push(ADVISORY_TITLE);
-        highlights.forEach((item) => lines.push("- " + item));
-      }
-      briefText = lines.join("\n").trim();
-    }
-
-    async function loadBrief() {
-      try {
-        const response = await fetch(`daily_brief.json?v=${Date.now()}`, { cache: "no-store" });
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        renderBrief(await response.json());
-      } catch (err) {
-        renderBrief(null);
-      }
-    }
-
-    let summaryPinned = false;
-
-    function summaryTextFor(scope) {
-      const data = storedSummaries || {};
-      if (scope === "overall") return String(data.overall || "");
-      const regions = data.regions || {};
-      if (scope === "Gulf States") {
-        return GULF_COUNTRIES.map((name) => regions[name]).filter(Boolean).join("\n\n");
-      }
-      if (scope === "Maritime") {
-        return [regions.Maritime, regions["Red Sea / Maritime"], regions["Strait of Hormuz / Gulf"]].filter(Boolean).join("\n\n");
-      }
-      return String(regions[scope] || "");
-    }
-
-    function showSummaryUpdated(stamp, label) {
-      const node = document.getElementById("summary-updated");
-      const windowLabel = label ? " · " + label : "";
-      if (!stamp) {
-        node.textContent = label ? "Window: " + label : "Last auto-updated: not yet";
-        return;
-      }
-      const shown = gmtStamp(stamp);
-      node.textContent = "Last auto-updated: " + (shown === "Unknown time" ? stamp : shown) + windowLabel;
-    }
-
-    function paintSummaryRegionSelect() {
-      const select = document.getElementById("summaryRegionSelect");
-      if (!select) return;
-      const counts = {};
-      LIVE_REGIONS.forEach((name) => { counts[name] = 0; });
-      features.forEach((feature) => {
-        LIVE_REGIONS.forEach((name) => {
-          if (matchesArea(feature.properties || {}, name)) counts[name] += 1;
-        });
-      });
-      const selected = summaryScope || "overall";
-      Array.from(select.options).forEach((option) => {
-        if (option.value === "overall") {
-          option.textContent = "Overall Briefing (07:00–07:00)";
-          return;
-        }
-        option.textContent = option.value + " (" + Number(counts[option.value] || 0) + ")";
-      });
-      if (select.value !== selected) select.value = selected;
-    }
-
-    function renderSelectedSummary() {
-      if (governorateSummary) return false;
-      const text = summaryTextFor(summaryScope);
-      const select = document.getElementById("summaryRegionSelect");
-      if (select && select.value !== summaryScope) select.value = summaryScope;
-      const generated = (storedSummaries && (storedSummaries.generated_at || storedSummaries.updated_at)) || "";
-      const label = (storedSummaries && storedSummaries.window_label) || "";
-      paintBriefHeader(generated, label);
-      if (!text) return false;
-      const body = document.getElementById("brief-body");
-      body.innerHTML = "<p class=\"summary-lead\">" + esc(text) + "</p>";
-      const updated = (storedSummaries && storedSummaries.updated_at) || "";
-      briefText = ["Geopolitical Summary", summaryScope, gmtStamp(updated), "", text].join("\n").trim();
-      return true;
-    }
-
-    function selectSummaryScope(scope) {
-      governorateSummary = false;
-      summaryPinned = false;
-      summaryScope = scope || "overall";
-      renderSelectedSummary();
-    }
-
-    function renderLiveSummary(summary) {
-      const body = document.getElementById("brief-body");
-      const text = summary && summary.text ? String(summary.text) : "";
-      if (!text) return false;
-      const stamp = gmtStamp(summary.generated_at);
-      paintBriefHeader(summary.generated_at, summary.window_label || "");
-      const notes = Array.isArray(summary.regional_notes) ? summary.regional_notes : [];
-      body.innerHTML =
-        "<p class=\"summary-lead\">" + esc(text) + "</p>" +
-        notes.map((item) => "<p class=\"summary-note\"><strong>" + esc(item.region || "") + ".</strong> " + esc(item.note || "") + "</p>").join("");
-      const lines = ["Geopolitical Summary", stamp, "", text];
-      notes.forEach((item) => lines.push("", (item.region || "") + ": " + (item.note || "")));
-      briefText = lines.join("\n").trim();
-      return true;
-    }
-
-    async function loadSummaryPanel() {
-      try {
-        const response = await fetch("/api/data", { cache: "no-store" });
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.region_trends) regionTrends = data.region_trends;
-          if (data && data.counts_by_governorate) governorateCounts = data.counts_by_governorate;
-          if (data && data.briefing_window) briefingWindow = data.briefing_window;
-          if (data && data.summaries) {
-            storedSummaries = data.summaries;
-            showSummaryUpdated(data.summaries.updated_at || data.summaries.generated_at, data.summaries.window_label);
-            paintSummaryRegionSelect();
-            if (!governorateSummary && renderSelectedSummary()) return;
-            if (governorateSummary) return;
-          }
-          if (!governorateSummary && data && data.summary && renderLiveSummary(data.summary)) return;
-        }
-      } catch (err) {}
-      if (governorateSummary) return;
-      try {
-        const cached = await fetch(`summary_cache.json?v=${Date.now()}`, { cache: "no-store" });
-        if (cached.ok && renderLiveSummary(await cached.json())) return;
-      } catch (err) {}
-      await loadBrief();
-    }
-
-    async function refreshSummary() {
-      const button = document.getElementById("refresh-summary");
-      button.disabled = true;
-      try {
-        const response = await fetch("/api/summary", { method: "POST", cache: "no-store" });
-        const data = response.ok ? await response.json() : null;
-        const summaries = data && data.summaries ? data.summaries : null;
-        if (summaries) {
-          storedSummaries = summaries;
-          showSummaryUpdated(summaries.updated_at || summaries.generated_at, summaries.window_label);
-          governorateSummary = false;
-          summaryPinned = false;
-          renderSelectedSummary();
-          paintSummaryRegionSelect();
-        }
-      } catch (err) {
-        setStatus("Summary refresh failed.");
-      } finally {
-        button.disabled = false;
-        button.textContent = "↻ Refresh Now";
-      }
-    }
-
-    const LIVE_REGIONS = ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime"];
-    let regionTrends = {};
-    let governorateCounts = {};
-    let briefingWindow = "";
-
-    document.getElementById("daily-brief").addEventListener("click", (event) => {
-      const button = event.target.closest(".brief-section-toggle");
-      if (!button) return;
-      const panel = document.getElementById(button.getAttribute("aria-controls"));
-      if (!panel) return;
-      const open = panel.hasAttribute("hidden");
-      if (open) panel.removeAttribute("hidden");
-      else panel.setAttribute("hidden", "");
-      button.setAttribute("aria-expanded", String(open));
-    });
     document.addEventListener("click", (event) => {
       const alertButton = event.target.closest(".copy-alert");
       if (alertButton) {
@@ -3669,220 +3313,31 @@
       copyText(headlineExport, document.getElementById("export-headlines"), "Export Filtered Headlines");
     });
     function fillPrintSheet() {
-      const regions = (storedSummaries && storedSummaries.regions) || {};
-      const overall = (storedSummaries && storedSummaries.overall) || "No overall summary is available.";
-      document.getElementById("print-window").textContent = briefingWindow || "07:00–07:00 Europe/London";
-      document.getElementById("print-overall").textContent = overall;
-      document.getElementById("print-regions").innerHTML = LIVE_REGIONS.map((name) => {
-        return "<p><strong>" + esc(name) + ".</strong> " + esc(regions[name] || "No regional summary is available.") + "</p>";
-      }).join("");
+      const rows = (Array.isArray(features) ? features : []).slice(0, 40);
+      document.getElementById("print-window").textContent = rows.length + " live incident" + (rows.length === 1 ? "" : "s");
+      document.getElementById("print-regions").innerHTML = rows.length
+        ? rows.map((feature) => {
+            const props = feature.properties || {};
+            const title = (props.title || "Incident");
+            const place = props.country || props.region || props.location_name || "";
+            return "<p><strong>" + esc(place) + ".</strong> " + esc(title) + "</p>";
+          }).join("")
+        : "<p>No live incidents ingested yet.</p>";
       const active = Object.keys(governorateCounts).filter((name) => Number(governorateCounts[name]) > 0);
       document.getElementById("print-governorates").innerHTML = active.length
         ? active.map((name) => "<li>" + esc(name) + " (" + Number(governorateCounts[name]) + ")</li>").join("")
-        : "<li>None in the current window.</li>";
+        : "<li>None reported.</li>";
     }
     document.getElementById("export-pdf").addEventListener("click", () => {
       fillPrintSheet();
       window.print();
     });
-    document.getElementById("copy-briefing").addEventListener("click", () => {
-      const text = briefText || document.getElementById("brief-body").innerText.trim();
-      if (!text) return;
-      copyText(text, document.getElementById("copy-briefing"), "📋 Copy Briefing", "✓ Copied!");
-    });
     document.getElementById("updates-filter").addEventListener("input", (event) => {
       updatesQuery = event.target.value;
       render("none");
     });
-    document.getElementById("summaryRegionSelect").addEventListener("change", (event) => {
-      selectSummaryScope(event.target.value);
-    });
-    const CHART_REGIONS = ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime"];
-    let chartWindow = "yesterday";
-
-    function renderDailyChart(data) {
-      const payload = data || {};
-      const buckets = Array.isArray(payload.hourly_buckets) ? payload.hourly_buckets : [];
-      const maxStack = Math.max(1, ...buckets.map((bucket) => Number(bucket.high || 0) + Number(bucket.medium || 0) + Number(bucket.low || 0)));
-      document.getElementById("daily-chart-label").textContent = payload.window_label || "";
-      document.getElementById("daily-chart-counts").innerHTML =
-        "<span>" + Number(payload.total_incidents || 0) + " incidents</span>" +
-        "<span class=\"high\">High " + Number(payload.high_count || 0) + "</span>" +
-        "<span class=\"medium\">Medium " + Number(payload.medium_count || 0) + "</span>" +
-        "<span class=\"low\">Low " + Number(payload.low_count || 0) + "</span>";
-      document.getElementById("daily-chart-hours").innerHTML = buckets.map((bucket) => {
-        const high = Number(bucket.high || 0);
-        const medium = Number(bucket.medium || 0);
-        const low = Number(bucket.low || 0);
-        const hour = esc(String(bucket.hour_label || "").slice(0, 2));
-        return "<div class=\"hour-col\" title=\"" + esc(bucket.hour_label || "") + "\">" +
-          "<div class=\"hour-stack\">" +
-            "<span class=\"spacer\" style=\"flex-grow:" + (maxStack - high - medium - low) + "\"></span>" +
-            "<span class=\"high\" style=\"flex-grow:" + high + "\"></span>" +
-            "<span class=\"medium\" style=\"flex-grow:" + medium + "\"></span>" +
-            "<span class=\"low\" style=\"flex-grow:" + low + "\"></span>" +
-          "</div><span class=\"hour-label\">" + hour + "</span></div>";
-      }).join("");
-      const regions = payload.region_counts || {};
-      const chartValue = (name) => {
-        if (name === "Gulf States") return GULF_COUNTRIES.reduce((sum, item) => sum + Number(regions[item] || 0), 0);
-        if (name === "Maritime") {
-          return Number(regions.Maritime || 0) + Number(regions["Red Sea / Maritime"] || 0) + Number(regions["Strait of Hormuz / Gulf"] || 0);
-        }
-        return Number(regions[name] || 0);
-      };
-      const maxRegion = Math.max(1, ...CHART_REGIONS.map((name) => chartValue(name)));
-      document.getElementById("daily-chart-regions").innerHTML = CHART_REGIONS.map((name) => {
-        const count = chartValue(name);
-        const width = Math.round((count / maxRegion) * 100);
-        return "<div class=\"chart-region\"><span>" + esc(name) + "</span><span class=\"chart-region-track\"><span class=\"chart-region-fill\" style=\"width:" + width + "%\"></span></span><span>" + count + "</span></div>";
-      }).join("");
-    }
-
-    function londonParts(date) {
-      const parts = {};
-      new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/London",
-        hourCycle: "h23",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      }).formatToParts(date).forEach((part) => { parts[part.type] = part.value; });
-      if (parts.hour === "24") parts.hour = "00";
-      return parts;
-    }
-
-    function londonWallToUtc(year, month, day, hour, minute) {
-      const guess = Date.UTC(year, month - 1, day, hour, minute);
-      const offset = (instant) => {
-        const parts = londonParts(new Date(instant));
-        return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second) - instant;
-      };
-      return new Date(guess - offset(guess - offset(guess)));
-    }
-
-    function chartBoundsClient(windowName, now) {
-      const parts = londonParts(now);
-      let end = londonWallToUtc(+parts.year, +parts.month, +parts.day, 7, 0);
-      if (now < end) end = new Date(end.getTime() - 24 * 60 * 60 * 1000);
-      if (windowName === "current") {
-        let start = end;
-        if (start > now) start = new Date(start.getTime() - 24 * 60 * 60 * 1000);
-        return { start: start, end: now };
-      }
-      return { start: new Date(end.getTime() - 24 * 60 * 60 * 1000), end: end };
-    }
-
-    function chartEventTime(value) {
-      try {
-        if (typeof value === "number" && Number.isFinite(value)) {
-          const ms = Math.abs(value) >= 1e11 ? value : value * 1000;
-          const date = new Date(ms);
-          return Number.isNaN(date.getTime()) ? null : date;
-        }
-        const text = String(value == null ? "" : value).trim();
-        if (!text) return null;
-        if (/^-?\d+(?:\.\d+)?$/.test(text)) return chartEventTime(Number(text));
-        let normalized = text.replace(" ", "T");
-        if (/[zZ]$/.test(normalized)) normalized = normalized.slice(0, -1) + "Z";
-        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(normalized)) normalized += "Z";
-        const date = new Date(normalized);
-        return Number.isNaN(date.getTime()) ? null : date;
-      } catch (err) {
-        return null;
-      }
-    }
-
-    function chartFromFeatures(windowName) {
-      const now = new Date();
-      const bounds = chartBoundsClient(windowName, now);
-      const hours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
-      const buckets = {};
-      hours.forEach((hour) => { buckets[hour] = { high: 0, medium: 0, low: 0 }; });
-      const regions = {};
-      CHART_REGIONS.forEach((name) => { regions[name] = 0; });
-      let high = 0;
-      let medium = 0;
-      let low = 0;
-      (Array.isArray(features) ? features : []).forEach((feature) => {
-        const props = (feature && feature.properties) || {};
-        const moment = chartEventTime(props.timestamp);
-        if (!moment || moment < bounds.start || moment >= bounds.end) return;
-        const rank = String(props.severity || "").toLowerCase();
-        const hour = Number(londonParts(moment).hour);
-        const slot = Object.prototype.hasOwnProperty.call(buckets, hour) ? buckets[hour] : buckets[0];
-        if (rank === "high") { slot.high += 1; high += 1; }
-        else if (rank === "low") { slot.low += 1; low += 1; }
-        else { slot.medium += 1; medium += 1; }
-        CHART_REGIONS.forEach((name) => {
-          if (matchesArea(props, name)) regions[name] += 1;
-        });
-      });
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const piece = (date) => {
-        const parts = londonParts(date);
-        return Number(parts.day) + " " + months[Number(parts.month) - 1] + " " + parts.hour + ":" + parts.minute;
-      };
-      const zone = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", timeZoneName: "short" })
-        .formatToParts(bounds.start)
-        .find((part) => part.type === "timeZoneName");
-      return {
-        window_label: piece(bounds.start) + " – " + piece(bounds.end) + " " + (zone ? zone.value : "GMT"),
-        total_incidents: high + medium + low,
-        high_count: high,
-        medium_count: medium,
-        low_count: low,
-        hourly_buckets: hours.map((hour) => ({
-          hour_label: String(hour).padStart(2, "0") + ":00",
-          high: buckets[hour].high,
-          medium: buckets[hour].medium,
-          low: buckets[hour].low
-        })),
-        region_counts: regions
-      };
-    }
-
-    async function loadDailyChart() {
-      const label = document.getElementById("daily-chart-label");
-      label.textContent = "Loading chart…";
-      try {
-        const response = await fetch("/api/daily-chart?window=" + encodeURIComponent(chartWindow), { cache: "no-store" });
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        const data = await response.json();
-        if (!data || !Array.isArray(data.hourly_buckets)) throw new Error("not chart json");
-        renderDailyChart(data);
-      } catch (err) {
-        renderDailyChart(chartFromFeatures(chartWindow));
-      }
-    }
-
-    document.getElementById("daily-chart-toggle").addEventListener("click", () => {
-      const card = document.getElementById("daily-chart-card");
-      const open = card.hasAttribute("hidden");
-      if (open) card.removeAttribute("hidden");
-      else card.setAttribute("hidden", "");
-      document.getElementById("daily-chart-toggle").setAttribute("aria-expanded", String(open));
-      if (open) {
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        loadDailyChart();
-      }
-    });
-    document.querySelector("#daily-chart-card .chart-pills").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-chart-window]");
-      if (!button) return;
-      chartWindow = button.dataset.chartWindow;
-      document.querySelectorAll("[data-chart-window]").forEach((item) => {
-        item.setAttribute("aria-pressed", String(item === button));
-      });
-      loadDailyChart();
-    });
-    document.getElementById("refresh-summary").addEventListener("click", () => refreshSummary());
     async function loadData() {
       await loadLive();
-      await loadSummaryPanel();
     }
     document.getElementById("fetch-live").addEventListener("click", async () => {
       const button = document.getElementById("fetch-live");
