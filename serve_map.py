@@ -30,7 +30,7 @@ import time
 import unicodedata
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -7459,6 +7459,224 @@ def country_assets_payload(country: str) -> dict:
         return blank
 
 
+
+CALENDAR_PATH = ROOT / "operational_calendar.json"
+CALENDAR_CACHE_PATH = ROOT / "country_calendar_cache.json"
+CALENDAR_TTL_SECONDS = 24 * 60 * 60
+NAGER_URL = "https://date.nager.at/api/v3/PublicHolidays/{year}/{iso2}"
+_calendar_lock = threading.Lock()
+_calendar_memory: dict[str, dict] = {}
+_calendar_file_cache: dict | None = None
+_CAL_GOV = ("GOV / EMBASSY / BANK CLOSURE", "#eab308", "embassy/bank closure", "Expect embassy and bank closures. Confirm visas 48 hours ahead.")
+_CAL_MOVE = ("MOVEMENT / CURFEW IMPACT", "#ea580c", "movement impact", "Expect slower roads and possible curfews. Confirm routes a day ahead.")
+_CAL_FLASH = ("HIGH FLASHPOINT / PROTEST RISK", "#dc2626", "protest risk", "Avoid central squares and confirm visas 48 hours ahead.")
+
+
+def _empty_calendar(iso2: str, today: date | None = None) -> dict:
+    day = today or datetime.now(timezone.utc).date()
+    return {"ok": True, "iso2": iso2, "today": day.isoformat(), "cached": False, "events": []}
+
+
+def _known_iso2(iso2: str) -> bool:
+    if not re.fullmatch(r"[A-Z]{2}", iso2):
+        return False
+    _by_name, by_iso3 = _country_indexes()
+    return any(str((meta or {}).get("iso2") or "") == iso2 for meta in by_iso3.values())
+
+
+def _calendar_dictionary() -> dict:
+    global _calendar_file_cache
+    if isinstance(_calendar_file_cache, dict):
+        return _calendar_file_cache
+    try:
+        payload = json.loads(CALENDAR_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Operational calendar file was not readable ({exc.__class__.__name__}).")
+        payload = {}
+    _calendar_file_cache = payload if isinstance(payload, dict) else {}
+    return _calendar_file_cache
+
+
+def _calendar_public_event(item: dict) -> dict:
+    return {
+        "date": item["date"],
+        "name": item["name"],
+        "tier": item["tier"],
+        "color": item["color"],
+        "impact": item.get("impact") or "",
+        "note": item.get("note") or "",
+    }
+
+
+def _local_calendar_events(iso2: str, start: date, end: date) -> list[dict]:
+    data = _calendar_dictionary()
+    events = []
+    for item in data.get("anniversaries") or []:
+        if iso2 not in (item.get("iso2") or []):
+            continue
+        for year in (start.year, end.year):
+            try:
+                moment = date(year, int(item["month"]), int(item["day"]))
+            except (TypeError, ValueError):
+                continue
+            if start <= moment <= end:
+                row = dict(item)
+                row["date"] = moment.isoformat()
+                events.append(_calendar_public_event(row))
+    for item in data.get("observances") or []:
+        if iso2 not in (item.get("iso2") or []):
+            continue
+        try:
+            moment = date.fromisoformat(str(item.get("date") or ""))
+        except ValueError:
+            continue
+        if start <= moment <= end:
+            events.append(_calendar_public_event(item))
+    return events
+
+
+def _nager_tier(name: str) -> tuple[str, str, str, str]:
+    if re.search(r"\b(revolution|uprising|intifada)\b", name, re.I):
+        return _CAL_FLASH
+    if re.search(r"\b(ramadan|eid al-fitr|eid al-adha|eid ul-fitr|eid ul-adha|ashura)\b", name, re.I):
+        return _CAL_MOVE
+    return _CAL_GOV
+
+
+def _nager_headers() -> dict[str, str]:
+    headers = feed_request_headers()
+    headers["Accept"] = "application/json, text/plain, */*"
+    return headers
+
+
+def _nager_holidays(iso2: str, year: int) -> list[dict]:
+    response = requests.get(NAGER_URL.format(year=year, iso2=iso2), headers=_nager_headers(), timeout=FEED_TIMEOUT)
+    if response.status_code == 204 or not response.content:
+        return []
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, list):
+        return []
+    events = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or item.get("localName") or "").strip()
+        raw = str(item.get("date") or "")
+        if not name or not raw:
+            continue
+        try:
+            date.fromisoformat(raw)
+        except ValueError:
+            continue
+        tier, color, impact, note = _nager_tier(name)
+        events.append({
+            "date": raw,
+            "name": name,
+            "tier": tier,
+            "color": color,
+            "impact": impact,
+            "note": note,
+        })
+    return events
+
+
+def _calendar_overlaps(left: dict, right: dict) -> bool:
+    if left.get("date") != right.get("date"):
+        return False
+    a = _advisory_norm(left.get("name"))
+    b = _advisory_norm(right.get("name"))
+    return bool(a and b and (a in b or b in a))
+
+
+def _merge_calendar(local: list[dict], remote: list[dict]) -> list[dict]:
+    merged = list(local)
+    for item in remote:
+        if any(_calendar_overlaps(item, existing) for existing in merged):
+            continue
+        merged.append(item)
+    merged.sort(key=lambda item: (item.get("date") or "", item.get("name") or ""))
+    return merged
+
+
+def _read_calendar_disk() -> dict:
+    if not CALENDAR_CACHE_PATH.exists() or CALENDAR_CACHE_PATH.stat().st_size == 0:
+        return {}
+    try:
+        payload = json.loads(CALENDAR_CACHE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Country calendar cache was not readable ({exc.__class__.__name__}).")
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _write_calendar_disk(store: dict) -> None:
+    try:
+        temporary = CALENDAR_CACHE_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(store, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(CALENDAR_CACHE_PATH)
+    except OSError as exc:
+        print(f"Country calendar cache was not written ({exc.__class__.__name__}).")
+
+
+def country_calendar_payload(iso2: str, today: date | None = None) -> dict:
+    """Public holidays and fixed anniversaries from today through 90 days."""
+    code = str(iso2 or "").strip().upper()
+    day = today or datetime.now(timezone.utc).date()
+    if not _known_iso2(code):
+        return _empty_calendar(code, day)
+    end = day + timedelta(days=90)
+    try:
+        with _calendar_lock:
+            cached = _calendar_memory.get(code)
+            if not isinstance(cached, dict):
+                cached = _read_calendar_disk().get(code)
+                if isinstance(cached, dict):
+                    _calendar_memory[code] = cached
+            if isinstance(cached, dict) and cached.get("today") == day.isoformat():
+                moment = osint.parse_timestamp(str(cached.get("fetched_at") or ""))
+                if moment is not None and (datetime.now(timezone.utc) - moment).total_seconds() < CALENDAR_TTL_SECONDS:
+                    fresh = dict(cached)
+                    fresh["cached"] = True
+                    fresh["ok"] = True
+                    return fresh
+            local = _local_calendar_events(code, day, end)
+            remote: list[dict] = []
+            remote_ok = True
+            for year in (day.year, end.year):
+                try:
+                    remote.extend(_nager_holidays(code, year))
+                except Exception as exc:
+                    remote_ok = False
+                    print(f"Nager calendar failed for {code} {year}: {exc.__class__.__name__}.")
+            if not remote_ok:
+                if isinstance(cached, dict) and cached.get("events"):
+                    stale = dict(cached)
+                    stale["ok"] = True
+                    stale["cached"] = True
+                    stale["today"] = day.isoformat()
+                    return stale
+                remote = []
+            remote = [item for item in remote if day.isoformat() <= str(item.get("date") or "") <= end.isoformat()]
+            payload = _empty_calendar(code, day)
+            payload["events"] = _merge_calendar(local, remote)
+            payload["fetched_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            _calendar_memory[code] = payload
+            store = _read_calendar_disk()
+            store[code] = payload
+            _write_calendar_disk(store)
+            return payload
+    except Exception as exc:
+        print(f"Country calendar failed for {code}: {exc.__class__.__name__}.")
+        cached = _calendar_memory.get(code) or _read_calendar_disk().get(code)
+        if isinstance(cached, dict):
+            stale = dict(cached)
+            stale["ok"] = True
+            stale["cached"] = True
+            return stale
+        return _empty_calendar(code, day)
+
+
 def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
     """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
     route = path.split("?", 1)[0]
@@ -7480,6 +7698,9 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
         if verb == "GET" and route.startswith("/api/country-assets/"):
             country = unquote(route[len("/api/country-assets/"):]).strip("/")
             return 200, "application/json; charset=utf-8", _api_json(country_assets_payload(country))
+        if verb == "GET" and route.startswith("/api/country-calendar/"):
+            iso2 = unquote(route[len("/api/country-calendar/"):]).strip("/")
+            return 200, "application/json; charset=utf-8", _api_json(country_calendar_payload(iso2))
         if verb == "GET" and route == "/api/daily-chart":
             return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
         if verb == "GET" and route == "/api/daily-chart.png":
@@ -7505,6 +7726,9 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
         if route.startswith("/api/country-assets/"):
             country = unquote(route[len("/api/country-assets/"):]).strip("/")
             return 200, "application/json; charset=utf-8", _api_json(_blank_assets(country or "Unknown"))
+        if route.startswith("/api/country-calendar/"):
+            iso2 = unquote(route[len("/api/country-calendar/"):]).strip("/")
+            return 200, "application/json; charset=utf-8", _api_json(_empty_calendar(iso2))
     return None
 
 

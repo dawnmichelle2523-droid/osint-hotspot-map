@@ -108,6 +108,11 @@ def api_country_assets(country: str) -> Response:
     return _json(serve_map.country_assets_payload(country))
 
 
+@app.get("/api/country-calendar/<iso2>")
+def api_country_calendar(iso2: str) -> Response:
+    return _json(serve_map.country_calendar_payload(iso2))
+
+
 @app.route("/api/<path:endpoint>", methods=["GET", "POST"])
 def api_forward(endpoint: str) -> Response:
     return _forward_api()

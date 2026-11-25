@@ -116,6 +116,13 @@
     .asset-card a { color: #93c5fd; }
     .asset-card li { margin: 0 0 8px; }
     .emergency-badge { display: inline-block; margin-left: 6px; color: #fecaca; background: #450a0a; border: 1px solid #dc2626; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800; }
+    .cal-badge { display: block; margin-top: 6px; color: #fde68a; font-size: 12px; font-weight: 750; }
+    .impact-badge { display: inline-block; margin-left: 6px; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800; color: #0f172a; }
+    .month-strip { display: flex; gap: 10px; overflow-x: auto; margin: 0 0 8px; }
+    .month-col span { display: block; color: #94A3B8; font-size: 11px; margin-bottom: 4px; }
+    .month-days { display: flex; flex-wrap: wrap; gap: 2px; width: 126px; }
+    .month-days i { width: 16px; text-align: center; font-style: normal; font-size: 9px; color: #64748b; }
+    .month-days i.has-event { color: #0f172a; background: #eab308; border-radius: 3px; }
     .pulse { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
     .pulse strong { display: block; }
     .pulse span { color: var(--muted); }
@@ -206,6 +213,7 @@
         <button type="button" data-filter="critical" aria-pressed="false">Critical / Level 4</button>
         <button type="button" data-filter="high" aria-pressed="false">High / Level 3</button>
         <button type="button" data-filter="spikes" aria-pressed="false">Active OSINT Spikes</button>
+        <button type="button" data-filter="flashpoints" aria-pressed="false">Upcoming Flashpoints (14d)</button>
       </div>
       <input id="country-search" type="search" placeholder="Search country or ISO code" aria-label="Search country or ISO code">
     </div>
@@ -247,6 +255,11 @@
     <section id="asset-hospitals" class="asset-card">
       <h3>Hospitals & Medical Facilities</h3>
       <div id="asset-hospital-body"><p>Loading contacts…</p></div>
+    </section>
+    <section id="calendar-card" class="asset-card">
+      <h3>Operational Calendar (Next 90 Days)</h3>
+      <div id="calendar-strip"></div>
+      <div id="calendar-body"><p>Loading calendar…</p></div>
     </section>
     <h3>Live incidents</h3>
     <ul id="profile-incidents"></ul>
@@ -335,6 +348,9 @@
       ]
     };
     let cards = [];
+    const calendars = {};
+    const calendarFailed = {};
+    let calendarToday = "";
     let filter = "all";
     let openKey = "";
 
@@ -661,6 +677,7 @@
         if (filter === "critical" && card.level !== 4) return false;
         if (filter === "high" && card.level !== 3) return false;
         if (filter === "spikes" && !card.incidents.length) return false;
+        if (filter === "flashpoints" && !calendarSoon(card, 14)) return false;
         if (!query) return true;
         return [card.name, card.mapCountry, card.iso2, card.iso3].some((token) => norm(token).includes(query));
       }).sort((a, b) => {
@@ -697,7 +714,7 @@
         "<div class=\"card-top\"><button type=\"button\" class=\"star\" aria-pressed=\"" + pinned + "\" aria-label=\"" + (pinned ? "Unpin " : "Pin ") + esc(card.name) + "\">" + (pinned ? "★" : "☆") + "</button>" +
         "<span class=\"flag\" aria-hidden=\"true\">" + flag + "</span><div class=\"identity\"><h2>" + esc(card.name) + "</h2><span class=\"iso\">" + esc(iso) + "</span>" + sectorMark + "</div>" +
         "<div class=\"score-block\"><span class=\"score\">" + card.score + "</span><span class=\"trend " + card.trend.kind + "\" title=\"" + esc(card.trend.title) + "\">" + esc(card.trend.text) + "</span></div></div>" +
-        "<div class=\"advisory-banner\"><span class=\"advisory-pill\">" + esc(card.label) + "</span><span class=\"advisory-updated\">" + esc([card.source, formatUpdated(card.updated) ? "Updated " + formatUpdated(card.updated) : "Updated unavailable"].filter(Boolean).join(" · ")) + "</span></div>" +
+        "<div class=\"advisory-banner\"><span class=\"advisory-pill\">" + esc(card.label) + "</span><span class=\"advisory-updated\">" + esc([card.source, formatUpdated(card.updated) ? "Updated " + formatUpdated(card.updated) : "Updated unavailable"].filter(Boolean).join(" · ")) + "</span>" + calendarBadgeHtml(card) + "</div>" +
         "<div class=\"pillars\">" + pills + "</div><div class=\"pulse\">" + pulse + "</div>" +
         "<div class=\"card-foot\"><button type=\"button\" class=\"profile-btn\">Threat Profile & Protocols</button>" +
         "<a href=\"/?country=" + encodeURIComponent(card.mapCountry || card.name) + "\">OSINT Map ↗</a></div></article>";
@@ -710,6 +727,135 @@
     }
     function careFor(level) {
       return CARE[Number(level)] || CARE[0];
+    }
+    function daysUntil(today, isoDate) {
+      const start = Date.parse(today + "T00:00:00Z");
+      const end = Date.parse(String(isoDate || "") + "T00:00:00Z");
+      if (!Number.isFinite(start) || !Number.isFinite(end)) return 9999;
+      return Math.round((end - start) / 86400000);
+    }
+    function addDays(iso, count) {
+      const date = new Date(iso + "T00:00:00Z");
+      date.setUTCDate(date.getUTCDate() + count);
+      return date.toISOString().slice(0, 10);
+    }
+    function calendarEvents(card) {
+      return calendars[String(card.iso2 || "").toUpperCase()] || [];
+    }
+    function calendarSoon(card, days) {
+      if (!calendarToday) return false;
+      return calendarEvents(card).some((event) => {
+        const delta = daysUntil(calendarToday, event.date);
+        return delta >= 0 && delta <= days;
+      });
+    }
+    function soonestCalendarEvent(card, days) {
+      if (!calendarToday) return null;
+      return calendarEvents(card).filter((event) => {
+        const delta = daysUntil(calendarToday, event.date);
+        return delta >= 0 && delta <= days;
+      }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)[0] || null;
+    }
+    function calendarBadgeHtml(card) {
+      const event = soonestCalendarEvent(card, 14);
+      if (!event) return "";
+      const delta = daysUntil(calendarToday, event.date);
+      const impact = event.impact || event.tier || "";
+      const text = delta <= 1
+        ? "⚠ " + event.name + " (" + impact + ")"
+        : "In " + delta + "d: " + event.name + " (" + impact + ")";
+      return "<span class=\"cal-badge\">" + esc(text) + "</span>";
+    }
+    function calendarBriefLines(card) {
+      const code = String(card.iso2 || "").toUpperCase();
+      if (calendarFailed[code]) return ["Operational calendar was unavailable."];
+      const events = calendarEvents(card).filter((event) => daysUntil(calendarToday, event.date) <= 30);
+      const lines = ["Operational Calendar & Flashpoint Dates:"];
+      if (!events.length) lines.push("- No calendar events in the next 30 days.");
+      else events.forEach((event) => lines.push("- " + event.date + " " + event.name + " (" + (event.impact || event.tier) + ") — " + (event.note || "")));
+      return lines;
+    }
+    function calendarPrintHtml(card) {
+      const lines = calendarBriefLines(card);
+      if (lines[0] !== "Operational Calendar & Flashpoint Dates:") {
+        return "<h2>Operational Calendar & Flashpoint Dates</h2><p>" + esc(lines[0]) + "</p>";
+      }
+      const items = lines.slice(1).map((line) => "<li>" + esc(line.replace(/^- /, "")) + "</li>").join("");
+      return "<h2>Operational Calendar & Flashpoint Dates</h2>" + (items ? "<ul>" + items + "</ul>" : "");
+    }
+    function monthStrip(events) {
+      if (!calendarToday) return "";
+      const marked = {};
+      events.forEach((event) => { marked[event.date] = event.color || "#eab308"; });
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      let html = "<div class=\"month-strip\">";
+      let current = "";
+      for (let offset = 0; offset <= 90; offset += 1) {
+        const iso = addDays(calendarToday, offset);
+        const key = iso.slice(0, 7);
+        if (key !== current) {
+          if (current) html += "</div></div>";
+          current = key;
+          html += "<div class=\"month-col\"><span>" + months[Number(key.slice(5)) - 1] + " " + key.slice(0, 4) + "</span><div class=\"month-days\">";
+        }
+        const hit = marked[iso];
+        html += "<i" + (hit ? " class=\"has-event\" style=\"background:" + esc(hit) + "\"" : "") + ">" + Number(iso.slice(8)) + "</i>";
+      }
+      html += "</div></div></div>";
+      return html;
+    }
+    function paintCalendar(card) {
+      const body = document.getElementById("calendar-body");
+      const strip = document.getElementById("calendar-strip");
+      const code = String(card.iso2 || "").toUpperCase();
+      if (calendarFailed[code]) {
+        strip.innerHTML = "";
+        body.innerHTML = "<p>Operational calendar was unavailable.</p>";
+        return;
+      }
+      const events = calendarEvents(card);
+      strip.innerHTML = monthStrip(events);
+      if (!events.length) {
+        body.innerHTML = "<p>No operational calendar events in the next 90 days.</p>";
+        return;
+      }
+      body.innerHTML = "<ul>" + events.map((event) => "<li><strong>" + esc(event.date) + "</strong> " + esc(event.name) +
+        "<span class=\"impact-badge\" style=\"background:" + esc(event.color || "#eab308") + "\">" + esc(event.impact || event.tier) + "</span>" +
+        "<div>" + esc(event.note || "") + "</div></li>").join("") + "</ul>";
+    }
+    async function loadCalendars() {
+      const codes = [];
+      cards.forEach((card) => {
+        const code = String(card.iso2 || "").toUpperCase();
+        if (/^[A-Z]{2}$/.test(code) && codes.indexOf(code) === -1) codes.push(code);
+      });
+      let cursor = 0;
+      async function worker() {
+        while (cursor < codes.length) {
+          const code = codes[cursor];
+          cursor += 1;
+          try {
+            const response = await fetch("/api/country-calendar/" + code, { cache: "no-store" });
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const payload = await response.json();
+            calendars[code] = Array.isArray(payload.events) ? payload.events : [];
+            if (payload.today) calendarToday = payload.today;
+            calendarFailed[code] = false;
+          } catch (err) {
+            calendars[code] = [];
+            calendarFailed[code] = true;
+          }
+        }
+      }
+      await Promise.all([worker(), worker(), worker(), worker()]);
+      render();
+      if (openKey) {
+        const card = cards.find((item) => item.key === openKey);
+        if (card) {
+          paintCalendar(card);
+          fillPrint(card);
+        }
+      }
     }
     function assetHref(card, item) {
       const lat = Number(item.lat);
@@ -868,6 +1014,7 @@
         protocols.comms.forEach((item) => lines.push("- " + item));
       }
       lines.push("", ...assetBriefLines(card));
+      lines.push("", ...calendarBriefLines(card));
       lines.push("", card.incidents.length ? "Live incidents:" : "No live incidents.");
       card.incidents.forEach((item) => lines.push("- [" + item.severity + "] " + item.title + (item.source ? " " + item.source : "")));
       return lines.join("\n");
@@ -891,6 +1038,7 @@
         (card.regions.length ? "<h2>Regional notes</h2><ul>" + card.regions.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "") +
         protocolHtml +
         assetPrintHtml(card) +
+        calendarPrintHtml(card) +
         "<h2>Live incidents</h2>" + incidents;
     }
     function openProfile(key, focusClose) {
@@ -929,6 +1077,7 @@
       document.getElementById("copy-note").textContent = "";
       fillPrint(card);
       paintAssets(card);
+      paintCalendar(card);
       document.getElementById("profile").classList.add("is-open");
       document.getElementById("profile").setAttribute("aria-hidden", "false");
       document.getElementById("profile-overlay").hidden = false;
@@ -1061,6 +1210,7 @@
       cards = buildCards(advisories, features, Date.now());
       paintTicker(features);
       render();
+      loadCalendars();
       if (!cards.length) document.getElementById("grid-status").textContent = "No country records yet. The grid fills when advisories or live incidents arrive.";
     }
     load();
