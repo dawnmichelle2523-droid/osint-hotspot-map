@@ -111,6 +111,11 @@
     #sector-protocols[hidden] { display: none; }
     #sector-protocols h3 { margin-top: 0; }
     #sector-protocols h4 { margin: 10px 0 4px; font-size: 13px; color: #E2E8F0; }
+    .asset-card { margin-top: 12px; background: #020617; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; }
+    .asset-card h3 { margin-top: 0; }
+    .asset-card a { color: #93c5fd; }
+    .asset-card li { margin: 0 0 8px; }
+    .emergency-badge { display: inline-block; margin-left: 6px; color: #fecaca; background: #450a0a; border: 1px solid #dc2626; border-radius: 999px; padding: 1px 6px; font-size: 10px; font-weight: 800; }
     .pulse { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
     .pulse strong { display: block; }
     .pulse span { color: var(--muted); }
@@ -235,6 +240,14 @@
     <ul id="profile-warnings"></ul>
     <h3>Duty of care</h3>
     <ul id="profile-care"></ul>
+    <section id="asset-missions" class="asset-card">
+      <h3>Embassies & Consulates</h3>
+      <div id="asset-mission-body"><p>Loading contacts…</p></div>
+    </section>
+    <section id="asset-hospitals" class="asset-card">
+      <h3>Hospitals & Medical Facilities</h3>
+      <div id="asset-hospital-body"><p>Loading contacts…</p></div>
+    </section>
     <h3>Live incidents</h3>
     <ul id="profile-incidents"></ul>
     <div class="drawer-actions">
@@ -698,6 +711,129 @@
     function careFor(level) {
       return CARE[Number(level)] || CARE[0];
     }
+    function assetHref(card, item) {
+      const lat = Number(item.lat);
+      const lng = Number(item.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+      const params = new URLSearchParams();
+      params.set("country", card.mapCountry || card.name);
+      params.set("lat", String(lat));
+      params.set("lng", String(lng));
+      params.set("zoom", "14");
+      params.set("focusAsset", item.name || "");
+      params.set("showAssets", "true");
+      return "/?" + params.toString();
+    }
+    function telLink(phone, label) {
+      const cleaned = String(phone || "").trim();
+      if (!cleaned) return "";
+      const href = "tel:" + cleaned.replace(/[^\d+]/g, "");
+      return "<a href=\"" + esc(href) + "\">" + esc(label || cleaned) + "</a>";
+    }
+    function assetBriefLines(card) {
+      const assets = card.assets;
+      if (!assets) return ["Embassy and hospital contacts were unavailable."];
+      if (assets.contacts_available === false) return ["Embassy and hospital contacts were unavailable."];
+      const lines = ["Embassies & Consulates:"];
+      const missions = assets.missions || [];
+      if (!missions.length) lines.push("- No vetted missions returned for this country.");
+      missions.forEach((item) => {
+        const bits = [item.name];
+        if (item.address) bits.push(item.address);
+        if (item.phone) bits.push(item.phone);
+        lines.push("- " + bits.filter(Boolean).join(" — "));
+      });
+      if (assets.police) lines.push("Police: " + assets.police);
+      else lines.push("Police: not listed");
+      if (assets.ambulance) lines.push("Ambulance: " + assets.ambulance);
+      else lines.push("Ambulance: not listed");
+      lines.push("", "Hospitals & Emergency Numbers:");
+      const hospitals = assets.hospitals || [];
+      if (!hospitals.length) lines.push("- No vetted facilities returned for this country.");
+      hospitals.forEach((item) => {
+        const bits = [item.name];
+        if (item.city) bits.push(item.city);
+        if (item.emergency) bits.push("24/7 Emergency");
+        if (item.phone) bits.push(item.phone);
+        lines.push("- " + bits.filter(Boolean).join(" — "));
+      });
+      if (assets.medical_note) lines.push(assets.medical_note);
+      return lines;
+    }
+    function assetPrintHtml(card) {
+      const assets = card.assets;
+      if (!assets || assets.contacts_available === false) {
+        return "<h2>Embassies & Consulates</h2><p>Embassy and hospital contacts were unavailable.</p>";
+      }
+      const missions = assets.missions || [];
+      const hospitals = assets.hospitals || [];
+      const missionItems = missions.length
+        ? missions.map((item) => "<li>" + esc([item.name, item.address, item.phone].filter(Boolean).join(" — ")) + "</li>").join("")
+        : "<li>No vetted missions returned for this country.</li>";
+      const hospitalItems = hospitals.length
+        ? hospitals.map((item) => "<li>" + esc([item.name, item.city, item.emergency ? "24/7 Emergency" : "", item.phone].filter(Boolean).join(" — ")) + "</li>").join("")
+        : "<li>No vetted facilities returned for this country.</li>";
+      const numbers = "<p>Police: " + esc(assets.police || "not listed") + ". Ambulance: " + esc(assets.ambulance || "not listed") + ".</p>";
+      return "<h2>Embassies & Consulates</h2><ul>" + missionItems + "</ul>" + numbers +
+        "<h2>Hospitals & Emergency Numbers</h2><ul>" + hospitalItems + "</ul>" +
+        (assets.medical_note ? "<p>" + esc(assets.medical_note) + "</p>" : "");
+    }
+    function missionHtml(card, item) {
+      const plot = assetHref(card, item);
+      const phone = item.consular && item.phone
+        ? telLink(item.phone, "Call 24/7 Consular Line")
+        : (item.phone ? telLink(item.phone, item.phone) : "");
+      return "<li><strong>" + esc(item.name || "Mission") + "</strong>" +
+        (item.address ? "<div>" + esc(item.address) + "</div>" : "") +
+        (phone ? "<div>" + phone + "</div>" : "") +
+        (plot ? "<div><a href=\"" + esc(plot) + "\">Plot on OSINT Map</a></div>" : "") +
+        "</li>";
+    }
+    function hospitalHtml(card, item) {
+      const plot = assetHref(card, item);
+      return "<li><strong>" + esc(item.name || "Facility") + "</strong>" +
+        (item.emergency ? "<span class=\"emergency-badge\">24/7 Emergency</span>" : "") +
+        (item.city ? "<div>" + esc(item.city) + "</div>" : "") +
+        (item.phone ? "<div>" + telLink(item.phone, item.phone) + "</div>" : "") +
+        (plot ? "<div><a href=\"" + esc(plot) + "\">View Safe Route / Map</a></div>" : "") +
+        "</li>";
+    }
+    function renderAssetCards(card) {
+      const assets = card.assets;
+      const missionBody = document.getElementById("asset-mission-body");
+      const hospitalBody = document.getElementById("asset-hospital-body");
+      if (!assets || assets.contacts_available === false) {
+        const unavailable = "<p>Embassy and hospital contacts were unavailable.</p>";
+        missionBody.innerHTML = unavailable;
+        hospitalBody.innerHTML = unavailable;
+        return;
+      }
+      const missions = assets.missions || [];
+      const numbers = "<p>Police: " + esc(assets.police || "not listed") + "</p><p>Ambulance: " + esc(assets.ambulance || "not listed") + "</p>";
+      missionBody.innerHTML = (missions.length ? "<ul>" + missions.map((item) => missionHtml(card, item)).join("") + "</ul>" : "<p>No vetted missions returned for this country.</p>") + numbers;
+      const hospitals = assets.hospitals || [];
+      hospitalBody.innerHTML = (hospitals.length ? "<ul>" + hospitals.map((item) => hospitalHtml(card, item)).join("") + "</ul>" : "<p>No vetted facilities returned for this country.</p>") +
+        (assets.medical_note ? "<p>" + esc(assets.medical_note) + "</p>" : "");
+    }
+    let assetSerial = 0;
+    async function paintAssets(card) {
+      const serial = ++assetSerial;
+      document.getElementById("asset-mission-body").innerHTML = "<p>Loading contacts…</p>";
+      document.getElementById("asset-hospital-body").innerHTML = "<p>Loading contacts…</p>";
+      try {
+        const response = await fetch("/api/country-assets/" + encodeURIComponent(card.name), { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const payload = await response.json();
+        if (serial !== assetSerial) return;
+        card.assets = payload && typeof payload === "object" ? payload : { contacts_available: false };
+      } catch (err) {
+        if (serial !== assetSerial) return;
+        card.assets = { contacts_available: false };
+      }
+      if (openKey !== card.key) return;
+      renderAssetCards(card);
+      fillPrint(card);
+    }
     function briefText(card) {
       const lines = [
         "Travel Risk Brief — " + card.name,
@@ -731,6 +867,7 @@
         lines.push("Comms & Medical Contingency:");
         protocols.comms.forEach((item) => lines.push("- " + item));
       }
+      lines.push("", ...assetBriefLines(card));
       lines.push("", card.incidents.length ? "Live incidents:" : "No live incidents.");
       card.incidents.forEach((item) => lines.push("- [" + item.severity + "] " + item.title + (item.source ? " " + item.source : "")));
       return lines.join("\n");
@@ -753,6 +890,7 @@
         "<h2>Official advice</h2><p>" + esc(card.summary || "No official summary is available.") + "</p>" +
         (card.regions.length ? "<h2>Regional notes</h2><ul>" + card.regions.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "") +
         protocolHtml +
+        assetPrintHtml(card) +
         "<h2>Live incidents</h2>" + incidents;
     }
     function openProfile(key, focusClose) {
@@ -790,6 +928,7 @@
         : "<li>No live incidents for this country.</li>";
       document.getElementById("copy-note").textContent = "";
       fillPrint(card);
+      paintAssets(card);
       document.getElementById("profile").classList.add("is-open");
       document.getElementById("profile").setAttribute("aria-hidden", "false");
       document.getElementById("profile-overlay").hidden = false;

@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 venv/
 advisory_cache.json
+country_assets_cache.json

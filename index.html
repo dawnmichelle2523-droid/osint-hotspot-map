@@ -324,6 +324,12 @@
     .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0D1424; color: #E2E8F0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
     .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid #C5A059; }
     .leaflet-popup-content { margin: 12px 14px; max-width: 276px; color: #E2E8F0; font-size: 14px; }
+    .asset-pin-body { width: 28px; height: 28px; display: grid; place-items: center; filter: drop-shadow(0 1px 2px #000); }
+    .asset-alert { display: inline-block; margin-top: 6px; color: #fecaca; background: #7f1d1d; border: 1px solid #ea580c; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 800; }
+    .threat-ring-btn, #clear-rings { color: #E2E8F0; background: #111827; border: 1px solid #334155; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+    #ring-summary { position: absolute; z-index: 600; top: 12px; right: 12px; width: 230px; background: #0f172a; color: #E2E8F0; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; }
+    #ring-summary[hidden] { display: none; }
+    #ring-summary p { margin: 4px 0; }
     .leaflet-popup-close-button { color: #c5ceda !important; }
     .popup { width: 260px; max-width: 276px; color: #E2E8F0; font-size: 14px; }
     .popup-head {
@@ -985,6 +991,10 @@
     <button type="button" id="syria-governorates" aria-pressed="true">Syria Governorates</button>
     <button type="button" id="chokepoints" aria-pressed="false">Chokepoints</button>
     <button type="button" id="thermal-toggle" aria-pressed="false">Heatmap</button>
+    <button type="button" id="embassy-layer" aria-pressed="false">Embassies / Consulates</button>
+    <button type="button" id="hospital-layer" aria-pressed="false">Hospitals / Medical</button>
+    <button type="button" id="airport-layer" aria-pressed="false">Airports / Helipads</button>
+    <button type="button" id="drop-threat-ring" aria-pressed="false">Drop Threat Ring</button>
     <button type="button" id="summarize-governorate">Summarize Governorate</button>
         </div>
   <div id="basemap" role="group" aria-label="Basemap">
@@ -999,10 +1009,20 @@
         <span><i style="background:#3B82F6"></i>Low</span>
         <span><i class="legend-solid"></i>Solid = Confirmed</span>
         <span><i class="legend-dashed"></i>Dashed = Claim</span>
+        <span><i style="background:#38bdf8"></i>Embassy / Consulate</span>
+        <span><i style="background:#10b981"></i>Hospital / Medical</span>
+        <span><i style="background:#22d3ee"></i>Airport / Helipad</span>
       </div>
     </aside>
     <div id="stage">
       <div id="map" role="application" aria-label="Incident map"></div>
+      <div id="ring-summary" hidden>
+        <strong>Ring Exposure Summary</strong>
+        <p>Inside 1 km: <span id="ring-count-1">0</span></p>
+        <p>Inside 5 km: <span id="ring-count-5">0</span></p>
+        <p>Inside 10 km: <span id="ring-count-10">0</span></p>
+        <button type="button" id="clear-rings">Clear Rings</button>
+      </div>
     </div>
     </div>
     <section id="intel-panel" aria-label="Intelligence">
@@ -1161,8 +1181,16 @@
       const raw = formatMapCoord(event.latlng).raw;
       copyCoordText(raw).then(() => showCoordToast("Coordinates copied"));
     });
+    let ringDropArmed = false;
     let coordTip = null;
     map.on("click", (event) => {
+      if (ringDropArmed) {
+        ringDropArmed = false;
+        const ringButton = document.getElementById("drop-threat-ring");
+        if (ringButton) ringButton.setAttribute("aria-pressed", "false");
+        dropThreatRings(event.latlng.lat, event.latlng.lng);
+        return;
+      }
       const raw = event.originalEvent && event.originalEvent.target;
       if (raw && raw.closest && raw.closest(".leaflet-marker-icon, .marker-cluster, .leaflet-popup, .leaflet-interactive")) return;
       if (coordTip) map.closeTooltip(coordTip);
@@ -1237,6 +1265,12 @@
     let clusterLayer = null;
     let thermalOn = false;
     const thermalLayer = L.layerGroup();
+    const embassyLayer = L.layerGroup();
+    const hospitalLayer = L.layerGroup();
+    const airportLayer = L.layerGroup();
+    const threatRingLayer = L.layerGroup().addTo(map);
+    const assetPayloads = {};
+    let assetMarkers = [];
     let loadedOnce = false;
     let timeWindow = "all";
     let severity = "all";
@@ -1287,6 +1321,20 @@
     };
     const _bootQuery = new URLSearchParams(window.location.search);
     let countryFilter = COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0 ? _bootQuery.get("country") : "all";
+    const bootLat = Number(_bootQuery.get("lat"));
+    const bootLng = Number(_bootQuery.get("lng"));
+    const bootZoomRaw = Number(_bootQuery.get("zoom"));
+    const bootFocusAsset = _bootQuery.get("focusAsset") || "";
+    const bootShowAssets = _bootQuery.get("showAssets") === "true";
+    const bootCountryRaw = _bootQuery.get("country") || "";
+    function bootPoint() {
+      if (!Number.isFinite(bootLat) || !Number.isFinite(bootLng)) return null;
+      if (Math.abs(bootLat) > 90 || Math.abs(bootLng) > 180) return null;
+      const zoom = Number.isFinite(bootZoomRaw) && bootZoomRaw >= 2 && bootZoomRaw <= 19 ? bootZoomRaw : 14;
+      return { lat: bootLat, lng: bootLng, zoom: zoom };
+    }
+    const openingPoint = bootPoint();
+    if (openingPoint) map.setView([openingPoint.lat, openingPoint.lng], openingPoint.zoom);
     const SYRIA_GOV_CENTERS = {
       Damascus: [33.5138, 36.2765],
       "Rif Dimashq": [33.6500, 36.5500],
@@ -1770,6 +1818,7 @@
           '<div class="popup-actions">' + link +
             '<button type="button" class="copy-alert" data-alert="' + encodeURIComponent(alertLine(props)) + '">📋 Copy Alert</button>' +
             '<button type="button" class="copy-pin" data-pin="' + esc(id) + '">Copy Link</button>' +
+            threatRingButton(Number(props._ringLat), Number(props._ringLng)) +
           "</div>" +
         "</div>"
       );
@@ -1841,8 +1890,9 @@
         iconAnchor: [16, 16],
         popupAnchor: [0, -16]
       });
+      const popupProps = Object.assign({}, props, { _ringLat: coords[1], _ringLng: coords[0] });
       return L.marker([coords[1], coords[0]], { icon })
-        .bindPopup(popupHtml(props, id), { maxWidth: 300, minWidth: 180 })
+        .bindPopup(popupHtml(popupProps, id), { maxWidth: 300, minWidth: 180 })
         .bindTooltip(tooltipHtml(props), { direction: "top", offset: [0, -16], opacity: 0.96, className: "pin-tip" });
     }
 
@@ -2414,11 +2464,15 @@
         loadedOnce = true;
         render();
         renderTicker();
+        if (assetLayerWanted()) refreshAssetLayers();
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
           if (!window.location.hash && governorateFilter && SYRIA_GOV_CENTERS[governorateFilter]) {
             map.flyTo(SYRIA_GOV_CENTERS[governorateFilter], 9, { duration: 0.75 });
+          } else if (!window.location.hash && bootPoint()) {
+            const point = bootPoint();
+            map.flyTo([point.lat, point.lng], point.zoom, { duration: 0.75 });
           } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
         return;
@@ -2439,11 +2493,15 @@
         loadedOnce = true;
         render();
         renderTicker();
+        if (assetLayerWanted()) refreshAssetLayers();
         if (!hashApplied) {
           hashApplied = true;
           openHashedPin();
           if (!window.location.hash && governorateFilter && SYRIA_GOV_CENTERS[governorateFilter]) {
             map.flyTo(SYRIA_GOV_CENTERS[governorateFilter], 9, { duration: 0.75 });
+          } else if (!window.location.hash && bootPoint()) {
+            const point = bootPoint();
+            map.flyTo([point.lat, point.lng], point.zoom, { duration: 0.75 });
           } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
         }
       } catch (err) {
@@ -2499,6 +2557,7 @@
         }
         writeFilterUrl();
         render(searchQuery ? "search" : "country");
+        refreshAssetLayers();
         return;
       }
       if (button.dataset.governorate) {
@@ -2671,6 +2730,209 @@
         return L.layerGroup([polygon, label]);
       }));
       return chokepointLayer;
+    }
+    function threatRingButton(lat, lng) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+      return '<button type="button" class="threat-ring-btn" data-lat="' + lat + '" data-lng="' + lng + '">Threat Rings (1/5/10 km)</button>';
+    }
+    function haversineKm(lat1, lng1, lat2, lng2) {
+      const radius = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 2 * radius * Math.asin(Math.min(1, Math.sqrt(a)));
+    }
+    function incidentPoints() {
+      return (features || []).map((feature) => {
+        if (!feature || !feature.geometry || feature.geometry.type !== "Point") return null;
+        const coords = feature.geometry.coordinates || [];
+        const lat = Number(coords[1]);
+        const lng = Number(coords[0]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { lat: lat, lng: lng, props: feature.properties || {} };
+      }).filter(Boolean);
+    }
+    function nearestIncident(lat, lng) {
+      let best = null;
+      incidentPoints().forEach((point) => {
+        const km = haversineKm(lat, lng, point.lat, point.lng);
+        if (!best || km < best.km) best = { km: km, props: point.props, lat: point.lat, lng: point.lng };
+      });
+      return best;
+    }
+    function incidentBlob(props) {
+      return [props.title, props.summary, props.category, props.system_type, props.threat_code, props.actor].join(" ").toLowerCase();
+    }
+    function incidentKinds(props) {
+      const blob = incidentBlob(props);
+      const kinds = [];
+      if (/drone|\buav\b/.test(blob)) kinds.push("drone");
+      if (/missile/.test(blob)) kinds.push("missile");
+      if (/airspace|no-fly|nofly|airport clos|flight suspension|air closure/.test(blob)) kinds.push("airspace");
+      if (/road closure|roadblock|blockade|road disruption/.test(blob)) kinds.push("road disruption");
+      return kinds;
+    }
+    function proximityHtml(lat, lng, limitKm, callout) {
+      const nearest = nearestIncident(lat, lng);
+      if (!nearest) return "<p>No active incident in range.</p>";
+      let html = "";
+      if (nearest.km <= limitKm) {
+        html += '<p><span class="asset-alert">⚠ Active incident ' + nearest.km.toFixed(1) + " km away</span></p>";
+      } else {
+        html += "<p>Nearest active incident " + nearest.km.toFixed(1) + " km away.</p>";
+      }
+      if (callout) {
+        const kinds = [];
+        incidentPoints().forEach((point) => {
+          const km = haversineKm(lat, lng, point.lat, point.lng);
+          if (km > 10) return;
+          incidentKinds(point.props).forEach((kind) => { if (kinds.indexOf(kind) === -1) kinds.push(kind); });
+        });
+        if (kinds.length) html += "<p>Within 10 km: " + esc(kinds.join(", ")) + ".</p>";
+      }
+      return html;
+    }
+    function assetIcon(color, glyph) {
+      return L.divIcon({
+        className: "asset-pin",
+        html: '<div class="asset-pin-body">' + glyph.replace("COLOR", color) + "</div>",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14]
+      });
+    }
+    const EMBASSY_GLYPH = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><path d="M14 2.5l8 3.2v6.4c0 5.2-3.2 8.8-8 10.4-4.8-1.6-8-5.2-8-10.4V5.7z" fill="COLOR"/><path d="M14 8.2v7.2M10.6 11.8h6.8" stroke="#0f172a" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    const HOSPITAL_GLYPH = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="COLOR"/><path d="M14 7.5v13M7.5 14h13" stroke="#042f2e" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    const AIRPORT_GLYPH = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="COLOR"/><path d="M6 15.5h16M14 7.5l3.2 8H10.8z" fill="none" stroke="#083344" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    function assetPopup(item, kind) {
+      const lat = Number(item.lat);
+      const lng = Number(item.lng);
+      const limit = kind === "airport" ? 10 : 5;
+      const phone = item.phone ? '<p><a href="tel:' + esc(String(item.phone).replace(/[^\d+]/g, "")) + '">' + esc(item.phone) + "</a></p>" : "";
+      const codeLine = kind === "airport" && (item.icao || item.iata)
+        ? "<p>" + esc([item.icao ? "ICAO " + item.icao : "", item.iata ? "IATA " + item.iata : ""].filter(Boolean).join(" · ")) + "</p>"
+        : "";
+      const place = item.address || item.city || "";
+      return '<div class="popup"><h3>' + esc(item.name || "Facility") + "</h3>" +
+        "<p>" + esc(item.type || (kind === "hospital" ? "Hospital / Medical" : kind === "airport" ? "Airport" : "Embassy / Consulate")) + "</p>" +
+        (place ? "<p>" + esc(place) + "</p>" : "") +
+        codeLine +
+        phone +
+        "<p>" + lat.toFixed(4) + ", " + lng.toFixed(4) + "</p>" +
+        proximityHtml(lat, lng, limit, kind === "airport") +
+        '<div class="popup-actions">' + threatRingButton(lat, lng) + "</div></div>";
+    }
+    function selectedAssetCountry() {
+      if (countryFilter && countryFilter !== "all") return countryFilter;
+      return bootCountryRaw || "";
+    }
+    function assetLayerWanted() {
+      return document.getElementById("embassy-layer").getAttribute("aria-pressed") === "true" ||
+        document.getElementById("hospital-layer").getAttribute("aria-pressed") === "true" ||
+        document.getElementById("airport-layer").getAttribute("aria-pressed") === "true";
+    }
+    function clearAssetLayers() {
+      embassyLayer.clearLayers();
+      hospitalLayer.clearLayers();
+      airportLayer.clearLayers();
+      assetMarkers = [];
+    }
+    function addAssetMarker(item, layer, glyph, color, kind) {
+      const lat = Number(item.lat);
+      const lng = Number(item.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const marker = L.marker([lat, lng], { icon: assetIcon(color, glyph) })
+        .bindPopup(assetPopup(item, kind), { maxWidth: 300, minWidth: 180 });
+      marker._assetName = item.name || "";
+      marker.addTo(layer);
+      assetMarkers.push(marker);
+    }
+    async function refreshAssetLayers() {
+      const wantEmbassy = document.getElementById("embassy-layer").getAttribute("aria-pressed") === "true";
+      const wantHospital = document.getElementById("hospital-layer").getAttribute("aria-pressed") === "true";
+      const wantAirport = document.getElementById("airport-layer").getAttribute("aria-pressed") === "true";
+      clearAssetLayers();
+      if (!wantEmbassy && !wantHospital && !wantAirport) return;
+      const country = selectedAssetCountry();
+      if (!country) {
+        setStatus("Pick a country to show embassies, hospitals, and airports.");
+        return;
+      }
+      let payload = assetPayloads[country];
+      if (!payload) {
+        try {
+          const response = await fetch("/api/country-assets/" + encodeURIComponent(country), { cache: "no-store" });
+          payload = await response.json();
+          assetPayloads[country] = payload;
+        } catch (err) {
+          setStatus("Country assets could not be loaded.");
+          return;
+        }
+      }
+      if (wantEmbassy) (payload.missions || []).forEach((item) => addAssetMarker(item, embassyLayer, EMBASSY_GLYPH, "#38bdf8", "embassy"));
+      if (wantHospital) (payload.hospitals || []).forEach((item) => addAssetMarker(item, hospitalLayer, HOSPITAL_GLYPH, "#10b981", "hospital"));
+      if (wantAirport) (payload.airports || []).forEach((item) => addAssetMarker(item, airportLayer, AIRPORT_GLYPH, "#22d3ee", "airport"));
+      if (wantEmbassy && !map.hasLayer(embassyLayer)) embassyLayer.addTo(map);
+      if (!wantEmbassy && map.hasLayer(embassyLayer)) map.removeLayer(embassyLayer);
+      if (wantHospital && !map.hasLayer(hospitalLayer)) hospitalLayer.addTo(map);
+      if (!wantHospital && map.hasLayer(hospitalLayer)) map.removeLayer(hospitalLayer);
+      if (wantAirport && !map.hasLayer(airportLayer)) airportLayer.addTo(map);
+      if (!wantAirport && map.hasLayer(airportLayer)) map.removeLayer(airportLayer);
+      if (bootFocusAsset) {
+        const wanted = bootFocusAsset.trim().toLowerCase();
+        const match = assetMarkers.find((marker) => String(marker._assetName || "").trim().toLowerCase() === wanted);
+        if (match) match.openPopup();
+      }
+    }
+    function toggleAssetButton(id) {
+      const button = document.getElementById(id);
+      const on = button.getAttribute("aria-pressed") !== "true";
+      button.setAttribute("aria-pressed", String(on));
+      refreshAssetLayers();
+    }
+    function dropThreatRings(lat, lng) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      threatRingLayer.clearLayers();
+      threatRingLayer.addLayer(L.circle([lat, lng], { radius: 1000, color: "#dc2626", weight: 2, fillColor: "#dc2626", fillOpacity: 0.08 }));
+      threatRingLayer.addLayer(L.circle([lat, lng], { radius: 5000, color: "#ea580c", weight: 2, fillColor: "#ea580c", fillOpacity: 0.05 }));
+      threatRingLayer.addLayer(L.circle([lat, lng], { radius: 10000, color: "#eab308", weight: 2, dashArray: "6 6", fillColor: "#eab308", fillOpacity: 0.03 }));
+      let inside1 = 0;
+      let inside5 = 0;
+      let inside10 = 0;
+      incidentPoints().forEach((point) => {
+        const km = haversineKm(lat, lng, point.lat, point.lng);
+        if (km <= 10) inside10 += 1;
+        if (km <= 5) inside5 += 1;
+        if (km <= 1) inside1 += 1;
+      });
+      document.getElementById("ring-count-1").textContent = String(inside1);
+      document.getElementById("ring-count-5").textContent = String(inside5);
+      document.getElementById("ring-count-10").textContent = String(inside10);
+      document.getElementById("ring-summary").hidden = false;
+    }
+    function clearThreatRings() {
+      threatRingLayer.clearLayers();
+      document.getElementById("ring-summary").hidden = true;
+    }
+    document.getElementById("embassy-layer").addEventListener("click", () => toggleAssetButton("embassy-layer"));
+    document.getElementById("hospital-layer").addEventListener("click", () => toggleAssetButton("hospital-layer"));
+    document.getElementById("airport-layer").addEventListener("click", () => toggleAssetButton("airport-layer"));
+    document.getElementById("drop-threat-ring").addEventListener("click", () => {
+      ringDropArmed = !ringDropArmed;
+      document.getElementById("drop-threat-ring").setAttribute("aria-pressed", String(ringDropArmed));
+      setStatus(ringDropArmed ? "Click the map to drop 1, 5, and 10 km threat rings." : "");
+    });
+    document.getElementById("clear-rings").addEventListener("click", clearThreatRings);
+    document.getElementById("map").addEventListener("click", (event) => {
+      const button = event.target.closest(".threat-ring-btn");
+      if (!button) return;
+      event.preventDefault();
+      dropThreatRings(Number(button.dataset.lat), Number(button.dataset.lng));
+    });
+    if (bootShowAssets) {
+      document.getElementById("embassy-layer").setAttribute("aria-pressed", "true");
+      document.getElementById("hospital-layer").setAttribute("aria-pressed", "true");
+      refreshAssetLayers();
     }
     document.getElementById("chokepoints").addEventListener("click", () => {
       const button = document.getElementById("chokepoints");

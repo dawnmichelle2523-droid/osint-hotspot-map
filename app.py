@@ -103,6 +103,11 @@ def api_export_geojson() -> Response:
     return _forward_api()
 
 
+@app.get("/api/country-assets/<path:country>")
+def api_country_assets(country: str) -> Response:
+    return _json(serve_map.country_assets_payload(country))
+
+
 @app.route("/api/<path:endpoint>", methods=["GET", "POST"])
 def api_forward(endpoint: str) -> Response:
     return _forward_api()

@@ -37,7 +37,7 @@ from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 from zoneinfo import ZoneInfo
 
 import feedparser
@@ -6811,6 +6811,654 @@ def travel_advisories_payload() -> dict:
         return empty_travel_advisories()
 
 
+
+ASSET_CACHE_PATH = ROOT / "country_assets_cache.json"
+ASSET_TTL_SECONDS = 24 * 60 * 60
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+_asset_lock = threading.Lock()
+_asset_memory: dict[str, dict] = {}
+_fcdo_slug_cache: dict = {"at": 0.0, "slugs": None}
+_EU_ISO = {
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+    "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+}
+# Search centers only. Facilities themselves come from Overpass or the FCDO page.
+_ASSET_HUBS = {
+    "syria": (("Damascus", 33.5138, 36.2765), ("Aleppo", 36.2021, 37.1343)),
+    "iraq": (("Baghdad", 33.3152, 44.3661), ("Erbil", 36.1911, 44.0092), ("Basra", 30.5081, 47.7835)),
+    "saudi arabia": (("Riyadh", 24.7136, 46.6753), ("Jeddah", 21.5433, 39.1728), ("Dammam", 26.4207, 50.0888)),
+    "sudan": (("Khartoum", 15.5007, 32.5599), ("Port Sudan", 19.6158, 37.2164)),
+    "chad": (("N'Djamena", 12.1348, 15.0557),),
+    "iran": (("Tehran", 35.6892, 51.3890), ("Isfahan", 32.6546, 51.6680)),
+    "lebanon": (("Beirut", 33.8938, 35.5018),),
+    "israel": (("Jerusalem", 31.7683, 35.2137), ("Tel Aviv", 32.0853, 34.7818)),
+    "palestine": (("Ramallah", 31.9038, 35.2034), ("Gaza", 31.5017, 34.4668)),
+    "jordan": (("Amman", 31.9454, 35.9284),),
+    "yemen": (("Sanaa", 15.3694, 44.1910), ("Aden", 12.7855, 45.0187)),
+    "bahrain": (("Manama", 26.2235, 50.5876),),
+    "kuwait": (("Kuwait City", 29.3759, 47.9774),),
+    "qatar": (("Doha", 25.2854, 51.5310),),
+    "united arab emirates": (("Abu Dhabi", 24.4539, 54.3773), ("Dubai", 25.2048, 55.2708)),
+    "oman": (("Muscat", 23.5880, 58.3829),),
+}
+_MEDEVAC_NAIROBI = {
+    "sudan", "chad", "south sudan", "ethiopia", "eritrea", "somalia", "kenya", "uganda",
+    "tanzania", "democratic republic of the congo", "rwanda", "burundi", "djibouti",
+}
+_MEDEVAC_DUBAI = {
+    "saudi arabia", "united arab emirates", "uae", "oman", "qatar", "bahrain", "kuwait",
+    "yemen", "iran",
+}
+_MEDEVAC_AMMAN = {"syria", "lebanon", "jordan", "israel", "palestine", "iraq"}
+_BRITISH_MISSION_RE = re.compile(
+    r"British\s+(?:Embassy|High Commission|Consulate(?:-General| General)?)"
+    r"(?:\s+in\s+[A-Z][A-Za-z'’.\-]+(?:\s+[A-Z][A-Za-z'’.\-]+){0,3})?"
+)
+
+
+def _blank_assets(country: str, iso2: str = "", iso3: str = "") -> dict:
+    return {
+        "ok": True,
+        "country": country,
+        "iso2": iso2,
+        "iso3": iso3,
+        "cached": False,
+        "fetched_at": None,
+        "contacts_available": False,
+        "missions": [],
+        "hospitals": [],
+        "airports": [],
+        "police": "",
+        "ambulance": "",
+        "emergency_note": "Local police and ambulance numbers are not listed.",
+        "medical_note": "",
+    }
+
+
+def _asset_identity(raw: str) -> dict:
+    text = unquote(str(raw or "")).strip()
+    norm = _advisory_norm(text)
+    if norm in {"uae"}:
+        norm = "united arab emirates"
+    by_name, by_iso3 = _country_indexes()
+    iso3 = ""
+    if len(text) == 3 and text.upper() in by_iso3:
+        iso3 = text.upper()
+    else:
+        iso3 = by_name.get(norm) or by_name.get(_advisory_norm(text)) or ""
+    if iso3 and iso3 in by_iso3:
+        meta = by_iso3[iso3]
+        iso2 = str(meta.get("iso2") or "")
+        if iso2 in {"-99", "-1"}:
+            iso2 = ""
+        return {"name": meta["name"], "iso2": iso2, "iso3": iso3, "key": iso3, "norm": _advisory_norm(meta["name"])}
+    return {"name": text or "Unknown", "iso2": "", "iso3": "", "key": norm or "unknown", "norm": norm}
+
+
+def _medevac_hub(norm: str) -> str:
+    if norm in _MEDEVAC_NAIROBI:
+        return "Nairobi"
+    if norm in _MEDEVAC_DUBAI:
+        return "Dubai"
+    if norm in _MEDEVAC_AMMAN:
+        return "Amman"
+    return "London"
+
+
+def _medical_note_for(level: int, norm: str) -> str:
+    if int(level or 0) >= 3:
+        return (
+            "Local trauma care may not meet international standards. "
+            f"Air-ambulance medevac to {_medevac_hub(norm)} should be arranged before travel."
+        )
+    return "Confirm the facility can take trauma before relying on it."
+
+
+def _cached_advisory_level(iso3: str) -> int:
+    if not iso3:
+        return 0
+    payload = _advisory_memory.get("payload")
+    if not isinstance(payload, dict):
+        payload = _read_advisory_disk()
+    if not isinstance(payload, dict):
+        return 0
+    for row in payload.get("countries") or []:
+        if isinstance(row, dict) and str(row.get("iso3") or "") == iso3:
+            try:
+                return int(row.get("level") or 0)
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def _read_asset_disk() -> dict:
+    if not ASSET_CACHE_PATH.exists() or ASSET_CACHE_PATH.stat().st_size == 0:
+        return {}
+    try:
+        payload = json.loads(ASSET_CACHE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Country asset cache was not readable ({exc.__class__.__name__}).")
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _write_asset_disk(store: dict) -> None:
+    try:
+        temporary = ASSET_CACHE_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(store, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(ASSET_CACHE_PATH)
+    except OSError as exc:
+        print(f"Country asset cache was not written ({exc.__class__.__name__}).")
+
+
+def _asset_cache_get(key: str) -> dict | None:
+    memory = _asset_memory.get(key)
+    if isinstance(memory, dict):
+        return memory
+    disk = _read_asset_disk().get(key)
+    if isinstance(disk, dict):
+        _asset_memory[key] = disk
+        return disk
+    return None
+
+
+def _asset_cache_put(key: str, payload: dict) -> None:
+    _asset_memory[key] = payload
+    store = _read_asset_disk()
+    store[key] = payload
+    _write_asset_disk(store)
+
+
+def _asset_fresh(payload: dict) -> bool:
+    stamp = str(payload.get("fetched_at") or "")
+    moment = osint.parse_timestamp(stamp)
+    if moment is None:
+        return False
+    return (datetime.now(timezone.utc) - moment).total_seconds() < ASSET_TTL_SECONDS
+
+
+def _overpass_headers() -> dict[str, str]:
+    headers = feed_request_headers()
+    headers["Accept"] = "application/json, text/plain, */*"
+    headers["Content-Type"] = "application/x-www-form-urlencoded"
+    return headers
+
+
+def _overpass(query: str) -> dict:
+    response = requests.post(OVERPASS_URL, data={"data": query}, headers=_overpass_headers(), timeout=FEED_TIMEOUT)
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("overpass")
+    return payload
+
+
+def _osm_point(element: dict) -> tuple[float, float] | None:
+    lat = element.get("lat")
+    lng = element.get("lon")
+    if lat is None or lng is None:
+        center = element.get("center") or {}
+        lat = center.get("lat")
+        lng = center.get("lon")
+    try:
+        lat_f = float(lat)
+        lng_f = float(lng)
+    except (TypeError, ValueError):
+        return None
+    if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
+        return None
+    return lat_f, lng_f
+
+
+def _http_website(tags: dict) -> str:
+    for key in ("website", "contact:website", "url"):
+        value = str(tags.get(key) or "").strip()
+        if value.startswith("http://") or value.startswith("https://"):
+            return value
+    return ""
+
+
+def _osm_phone(tags: dict) -> str:
+    return str(tags.get("phone") or tags.get("contact:phone") or "").strip()
+
+
+def _osm_address(tags: dict) -> str:
+    parts = [
+        " ".join(part for part in (str(tags.get("addr:housenumber") or "").strip(), str(tags.get("addr:street") or "").strip()) if part),
+        str(tags.get("addr:city") or tags.get("addr:district") or "").strip(),
+    ]
+    return ", ".join(part for part in parts if part)
+
+
+def _asset_hubs(identity: dict) -> list[tuple[str, float, float]]:
+    hubs = list(_ASSET_HUBS.get(identity.get("norm") or "", ()))
+    if hubs:
+        return hubs[:3]
+    iso2 = identity.get("iso2") or ""
+    if not re.fullmatch(r"[A-Z]{2}", iso2):
+        return []
+    query = (
+        '[out:json][timeout:8];\n'
+        f'area["ISO3166-1"="{iso2}"]["admin_level"="2"]->.a;\n'
+        'node["capital"="yes"](area.a);\n'
+        "out tags;"
+    )
+    payload = _overpass(query)
+    found = []
+    for element in payload.get("elements") or []:
+        if not isinstance(element, dict):
+            continue
+        point = _osm_point(element)
+        tags = element.get("tags") or {}
+        name = str(tags.get("name:en") or tags.get("name") or "").strip()
+        if point and name:
+            found.append((name, point[0], point[1]))
+    return found[:2]
+
+
+def _around_query(filters: tuple[str, ...], hubs: list[tuple[str, float, float]], radius: int) -> str:
+    lines = []
+    for _name, lat, lng in hubs:
+        for item in filters:
+            lines.append(f"  nwr[{item}](around:{radius},{lat:.4f},{lng:.4f});")
+    return "[out:json][timeout:8];\n(\n" + "\n".join(lines) + "\n);\nout center tags;"
+
+
+def _mission_group(tags: dict, name: str) -> str:
+    country = str(tags.get("country") or "").upper()
+    blob = name.lower()
+    if country in {"GB", "UK"} or "british" in blob or "united kingdom" in blob:
+        return "uk"
+    if country in {"US", "USA"} or "united states" in blob or "american embassy" in blob:
+        return "us"
+    if "united nations" in blob or country == "UN":
+        return "un"
+    if country in _EU_ISO or "european union" in blob:
+        return "eu"
+    return "other"
+
+
+def _overpass_missions(hubs: list[tuple[str, float, float]]) -> list[dict]:
+    if not hubs:
+        return []
+    payload = _overpass(_around_query(('"amenity"="embassy"', '"diplomatic"="embassy"', '"diplomatic"="consulate"'), hubs, 30000))
+    found = []
+    seen = set()
+    for element in payload.get("elements") or []:
+        if not isinstance(element, dict):
+            continue
+        tags = element.get("tags") or {}
+        name = str(tags.get("name:en") or tags.get("name") or "").strip()
+        point = _osm_point(element)
+        if not name or not point:
+            continue
+        key = (name.lower(), round(point[0], 3), round(point[1], 3))
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append({
+            "name": name,
+            "kind": "consulate" if str(tags.get("diplomatic") or "") == "consulate" else "embassy",
+            "address": _osm_address(tags),
+            "phone": _osm_phone(tags),
+            "website": _http_website(tags),
+            "lat": point[0],
+            "lng": point[1],
+            "source": "OpenStreetMap",
+            "group": _mission_group(tags, name),
+            "consular": False,
+        })
+    order = {"uk": 0, "us": 1, "eu": 2, "un": 3, "other": 4}
+    found.sort(key=lambda item: (order.get(item["group"], 9), item["name"]))
+    preferred = [item for item in found if item["group"] != "other"]
+    others = [item for item in found if item["group"] == "other"]
+    chosen = preferred[:10]
+    if len(chosen) < 4:
+        chosen.extend(others[: max(0, 8 - len(chosen))])
+    return chosen
+
+
+def _hospital_score(tags: dict) -> int:
+    score = 0
+    if str(tags.get("emergency") or "").lower() == "yes":
+        score += 4
+    if _osm_phone(tags):
+        score += 2
+    if _http_website(tags):
+        score += 2
+    return score
+
+
+def _overpass_hospitals(hubs: list[tuple[str, float, float]]) -> list[dict]:
+    if not hubs:
+        return []
+    payload = _overpass(_around_query(('"amenity"="hospital"',), hubs, 25000))
+    found = []
+    seen = set()
+    for element in payload.get("elements") or []:
+        if not isinstance(element, dict):
+            continue
+        tags = element.get("tags") or {}
+        name = str(tags.get("name:en") or tags.get("name") or "").strip()
+        point = _osm_point(element)
+        if not name or not point:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append((
+            _hospital_score(tags),
+            {
+                "name": name,
+                "city": str(tags.get("addr:city") or tags.get("addr:district") or "").strip(),
+                "emergency": str(tags.get("emergency") or "").lower() == "yes",
+                "phone": _osm_phone(tags),
+                "website": _http_website(tags),
+                "lat": point[0],
+                "lng": point[1],
+                "source": "OpenStreetMap",
+            },
+        ))
+    found.sort(key=lambda item: (-item[0], item[1]["name"]))
+    return [item[1] for item in found[:5]]
+
+
+def _skip_private_strip(tags: dict) -> bool:
+    kind = str(tags.get("aerodrome") or "").lower()
+    if kind in {"private", "private_strip"}:
+        return True
+    icao = str(tags.get("icao") or tags.get("ref:icao") or "").strip()
+    iata = str(tags.get("iata") or tags.get("ref:iata") or "").strip()
+    if str(tags.get("access") or "").lower() == "private" and not icao and not iata:
+        return True
+    return False
+
+
+def _overpass_airports(hubs: list[tuple[str, float, float]]) -> list[dict]:
+    if not hubs:
+        return []
+    payload = _overpass(_around_query(('"aeroway"="aerodrome"', '"aeroway"="helipad"'), hubs, 70000))
+    found = []
+    seen = set()
+    for element in payload.get("elements") or []:
+        if not isinstance(element, dict):
+            continue
+        tags = element.get("tags") or {}
+        if _skip_private_strip(tags):
+            continue
+        name = str(tags.get("name:en") or tags.get("name") or "").strip()
+        point = _osm_point(element)
+        if not name or not point:
+            continue
+        aeroway = str(tags.get("aeroway") or "")
+        kind = "Helipad" if aeroway == "helipad" else "Airport"
+        icao = str(tags.get("icao") or tags.get("ref:icao") or "").strip()
+        iata = str(tags.get("iata") or tags.get("ref:iata") or "").strip()
+        key = (kind, name.lower(), round(point[0], 3), round(point[1], 3))
+        if key in seen:
+            continue
+        seen.add(key)
+        rank = 0 if icao or iata else 1
+        if kind == "Helipad":
+            rank += 2
+        if str(tags.get("aerodrome") or "").lower() == "international":
+            rank -= 1
+        found.append((rank, {
+            "name": name,
+            "icao": icao,
+            "iata": iata,
+            "type": kind,
+            "city": str(tags.get("addr:city") or "").strip(),
+            "phone": _osm_phone(tags),
+            "lat": point[0],
+            "lng": point[1],
+            "source": "OpenStreetMap",
+        }))
+    found.sort(key=lambda item: (item[0], item[1]["name"]))
+    return [item[1] for item in found[:8]]
+
+
+def _fcdo_slugs() -> dict[str, str]:
+    if isinstance(_fcdo_slug_cache.get("slugs"), dict) and time.time() - float(_fcdo_slug_cache.get("at") or 0) < ASSET_TTL_SECONDS:
+        return _fcdo_slug_cache["slugs"]
+    payload = _advisory_get_json(UK_ADVISORY_INDEX)
+    slugs: dict[str, str] = {}
+    children = ((payload.get("links") or {}).get("children") or []) if isinstance(payload, dict) else []
+    for child in children:
+        if not isinstance(child, dict):
+            continue
+        title = str(child.get("title") or "")
+        path = str(child.get("base_path") or child.get("api_path") or "")
+        slug = path.rstrip("/").split("/")[-1].strip().lower()
+        if title and slug and slug not in {"foreign-travel-advice", "api"}:
+            slugs[_advisory_norm(title)] = slug
+    _fcdo_slug_cache["at"] = time.time()
+    _fcdo_slug_cache["slugs"] = slugs
+    return slugs
+
+
+def _fcdo_slug_for(identity: dict) -> str:
+    slugs = _fcdo_slugs()
+    norm = identity.get("norm") or ""
+    if norm in slugs:
+        return slugs[norm]
+    if norm == "united arab emirates" and "united arab emirates" in slugs:
+        return slugs["united arab emirates"]
+    return ""
+
+
+def _parse_emergency_numbers(text: str) -> tuple[str, str]:
+    police = ""
+    ambulance = ""
+    match = re.search(r"emergency services[\s\S]{0,700}", text, re.I)
+    block = match.group(0) if match else text[:800]
+    combined = re.search(r"Telephone\s*:\s*([0-9]{2,4})\s*\(([^)]+)\)", block, re.I)
+    if combined:
+        number, kinds = combined.group(1), combined.group(2).lower()
+        if "police" in kinds:
+            police = number
+        if "ambulance" in kinds:
+            ambulance = number
+    for label, target in (("ambulance", "ambulance"), ("police", "police")):
+        found = re.search(rf"{label}\s*:\s*([0-9]{{2,4}})\b", block, re.I)
+        if not found:
+            continue
+        if target == "ambulance" and not ambulance:
+            ambulance = found.group(1)
+        if target == "police" and not police:
+            police = found.group(1)
+    return police, ambulance
+
+
+def _parse_uk_mission(page: dict) -> tuple[dict | None, str, str]:
+    details = page.get("details") or {}
+    parts = details.get("parts") or []
+    chunks = []
+    for part in parts:
+        if isinstance(part, dict):
+            chunks.append(str(part.get("body") or ""))
+    html_body = "\n".join(chunks)
+    text = BeautifulSoup(html_body, "html.parser").get_text("\n", strip=True)
+    police, ambulance = _parse_emergency_numbers(text)
+    mission_name = ""
+    for match in _BRITISH_MISSION_RE.finditer(text):
+        candidate = " ".join(match.group(0).split())
+        if re.search(r"\bin the UK\b|\bin London\b", candidate, re.I):
+            continue
+        mission_name = candidate
+        break
+    phone = ""
+    consular = False
+    london = re.search(r"call the FCDO in London on\s+(\+?\d[\d\s().\-]{8,}\d)", text, re.I)
+    marked = re.search(r"Telephone\s*:\s*(\+?\d[\d\s().\-]{6,}\d)\s*\((24\s*hours?|24/7)\)", text, re.I)
+    if marked:
+        phone = " ".join(marked.group(1).split())
+        consular = True
+    elif london:
+        phone = " ".join(london.group(1).split())
+        consular = True
+    if not mission_name and phone and re.search(r"FCDO in London", text, re.I):
+        mission_name = "FCDO in London"
+    if not mission_name:
+        return None, police, ambulance
+    website = str(page.get("web_url") or "").strip()
+    if website and not website.startswith("http"):
+        website = ""
+    return {
+        "name": mission_name or "British mission",
+        "kind": "embassy",
+        "address": "",
+        "phone": phone,
+        "website": website,
+        "lat": None,
+        "lng": None,
+        "source": "UK FCDO",
+        "group": "uk",
+        "consular": consular,
+    }, police, ambulance
+
+
+def _fetch_uk_mission(identity: dict) -> tuple[dict | None, str, str]:
+    slug = _fcdo_slug_for(identity)
+    if not slug:
+        return None, "", ""
+    page = _advisory_get_json(f"https://www.gov.uk/api/content/foreign-travel-advice/{slug}")
+    if not isinstance(page, dict):
+        return None, "", ""
+    country = ((page.get("details") or {}).get("country") or {}).get("name") or ""
+    if country and _advisory_norm(country) != identity.get("norm"):
+        return None, "", ""
+    return _parse_uk_mission(page)
+
+
+def _merge_uk_with_osm(uk: dict | None, missions: list[dict]) -> list[dict]:
+    if not uk:
+        return missions
+    kept = []
+    for item in missions:
+        blob = item["name"].lower()
+        if item.get("group") == "uk" or "british" in blob or "united kingdom" in blob:
+            if uk.get("lat") is None and item.get("lat") is not None:
+                uk["lat"] = item["lat"]
+                uk["lng"] = item["lng"]
+            if not uk.get("address") and item.get("address"):
+                uk["address"] = item["address"]
+            if not uk.get("phone") and item.get("phone"):
+                uk["phone"] = item["phone"]
+            continue
+        kept.append(item)
+    return [uk] + kept
+
+
+def _emergency_note(police: str, ambulance: str) -> str:
+    if police and ambulance:
+        return ""
+    missing = []
+    if not police:
+        missing.append("police")
+    if not ambulance:
+        missing.append("ambulance")
+    return "Local " + " and ".join(missing) + " number is not listed." if len(missing) == 1 else "Local police and ambulance numbers are not listed."
+
+
+def country_assets_payload(country: str) -> dict:
+    """Embassies, hospitals, and airports for one country. Failed upstreams keep the last cache."""
+    identity = _asset_identity(country)
+    blank = _blank_assets(identity["name"], identity.get("iso2") or "", identity.get("iso3") or "")
+    blank["medical_note"] = _medical_note_for(_cached_advisory_level(identity.get("iso3") or ""), identity.get("norm") or "")
+    if not identity.get("key") or identity["key"] == "unknown":
+        return blank
+    try:
+        with _asset_lock:
+            cached = _asset_cache_get(identity["key"])
+            if isinstance(cached, dict) and _asset_fresh(cached):
+                fresh = dict(cached)
+                fresh["cached"] = True
+                fresh["ok"] = True
+                return fresh
+            previous = cached if isinstance(cached, dict) else {}
+            hubs: list[tuple[str, float, float]] = []
+            try:
+                hubs = _asset_hubs(identity)
+            except Exception as exc:
+                print(f"Country asset hubs failed for {identity['key']}: {exc.__class__.__name__}.")
+                hubs = list(_ASSET_HUBS.get(identity.get("norm") or "", ()))
+            uk_mission = None
+            police = ""
+            ambulance = ""
+            uk_ok = False
+            try:
+                uk_mission, police, ambulance = _fetch_uk_mission(identity)
+                uk_ok = True
+            except Exception as exc:
+                print(f"UK mission lookup failed for {identity['key']}: {exc.__class__.__name__}.")
+            osm_missions: list[dict] = []
+            missions_ok = False
+            try:
+                osm_missions = _overpass_missions(hubs)
+                missions_ok = True
+            except Exception as exc:
+                print(f"Embassy lookup failed for {identity['key']}: {exc.__class__.__name__}.")
+            hospitals: list[dict] = []
+            hospitals_ok = False
+            try:
+                hospitals = _overpass_hospitals(hubs)
+                hospitals_ok = True
+            except Exception as exc:
+                print(f"Hospital lookup failed for {identity['key']}: {exc.__class__.__name__}.")
+            airports: list[dict] = []
+            airports_ok = False
+            try:
+                airports = _overpass_airports(hubs)
+                airports_ok = True
+            except Exception as exc:
+                print(f"Airport lookup failed for {identity['key']}: {exc.__class__.__name__}.")
+            if not uk_ok:
+                police = str(previous.get("police") or "")
+                ambulance = str(previous.get("ambulance") or "")
+                old_uk = next((item for item in previous.get("missions") or [] if item.get("source") == "UK FCDO"), None)
+                uk_mission = old_uk
+            if not missions_ok:
+                osm_missions = [item for item in previous.get("missions") or [] if item.get("source") != "UK FCDO"]
+            if not hospitals_ok:
+                hospitals = list(previous.get("hospitals") or [])
+            if not airports_ok:
+                airports = list(previous.get("airports") or [])
+            any_ok = uk_ok or missions_ok or hospitals_ok or airports_ok
+            if not any_ok:
+                if previous:
+                    stale = dict(previous)
+                    stale["ok"] = True
+                    stale["cached"] = True
+                    stale["contacts_available"] = True
+                    return stale
+                blank["contacts_available"] = False
+                return blank
+            payload = _blank_assets(identity["name"], identity.get("iso2") or "", identity.get("iso3") or "")
+            payload["contacts_available"] = True
+            payload["cached"] = False
+            payload["fetched_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            payload["missions"] = _merge_uk_with_osm(uk_mission, osm_missions)
+            payload["hospitals"] = hospitals
+            payload["airports"] = airports
+            payload["police"] = police
+            payload["ambulance"] = ambulance
+            payload["emergency_note"] = _emergency_note(police, ambulance)
+            payload["medical_note"] = _medical_note_for(_cached_advisory_level(identity.get("iso3") or ""), identity.get("norm") or "")
+            _asset_cache_put(identity["key"], payload)
+            return payload
+    except Exception as exc:
+        print(f"Country assets failed for {identity.get('key')}: {exc.__class__.__name__}.")
+        cached = _asset_cache_get(identity.get("key") or "")
+        if isinstance(cached, dict):
+            stale = dict(cached)
+            stale["ok"] = True
+            stale["cached"] = True
+            return stale
+        return blank
+
+
 def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
     """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
     route = path.split("?", 1)[0]
@@ -6829,6 +7477,9 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
         if verb == "GET" and route == "/api/travel-advisories":
             return 200, "application/json; charset=utf-8", _api_json(travel_advisories_payload())
+        if verb == "GET" and route.startswith("/api/country-assets/"):
+            country = unquote(route[len("/api/country-assets/"):]).strip("/")
+            return 200, "application/json; charset=utf-8", _api_json(country_assets_payload(country))
         if verb == "GET" and route == "/api/daily-chart":
             return 200, "application/json; charset=utf-8", _api_json(daily_chart_response(query))
         if verb == "GET" and route == "/api/daily-chart.png":
@@ -6851,6 +7502,9 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "image/png", dark_map_png()
         if route == "/api/travel-advisories":
             return 200, "application/json; charset=utf-8", _api_json(empty_travel_advisories())
+        if route.startswith("/api/country-assets/"):
+            country = unquote(route[len("/api/country-assets/"):]).strip("/")
+            return 200, "application/json; charset=utf-8", _api_json(_blank_assets(country or "Unknown"))
     return None
 
 
