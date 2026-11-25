@@ -382,23 +382,33 @@ PLACES = {
     "tine crossing": (22.7833, 15.0167, "Sudan"),
     "omdurman": (32.4777, 15.6445, "Sudan"),
     "port sudan": (37.2164, 19.6158, "Sudan"),
-    "el fasher": (25.3494, 13.6289, "Sudan"),
-    "el fashir": (25.3494, 13.6289, "Sudan"),
-    "al fashir": (25.3494, 13.6289, "Sudan"),
-    "nyala": (24.8825, 12.0489, "Sudan"),
-    "el geneina": (22.4472, 13.4528, "Sudan"),
-    "geneina": (22.4472, 13.4528, "Sudan"),
+    "el fasher": (25.3494, 13.6281, "Sudan"),
+    "el fashir": (25.3494, 13.6281, "Sudan"),
+    "al fashir": (25.3494, 13.6281, "Sudan"),
+    "nyala": (24.8833, 12.0500, "Sudan"),
+    "el geneina": (22.4500, 13.4500, "Sudan"),
+    "geneina": (22.4500, 13.4500, "Sudan"),
     "el obeid": (30.2167, 13.1833, "Sudan"),
     "elobeid": (30.2167, 13.1833, "Sudan"),
     "al obeid": (30.2167, 13.1833, "Sudan"),
-    "wad madani": (33.5211, 14.4012, "Sudan"),
-    "wad medani": (33.5211, 14.4012, "Sudan"),
-    "kassala": (36.3981, 15.4500, "Sudan"),
+    "al ubayyid": (30.2167, 13.1833, "Sudan"),
+    "wad madani": (33.5167, 14.4000, "Sudan"),
+    "wad medani": (33.5167, 14.4000, "Sudan"),
+    "kassala": (36.4000, 15.4500, "Sudan"),
     "gedaref": (35.3833, 14.0333, "Sudan"),
     "qadarif": (35.3833, 14.0333, "Sudan"),
     "al qadarif": (35.3833, 14.0333, "Sudan"),
     "atbara": (33.9833, 17.7000, "Sudan"),
     "kadugli": (29.7167, 11.0167, "Sudan"),
+    "bahri": (32.5333, 15.6333, "Sudan"),
+    "khartoum north": (32.5333, 15.6333, "Sudan"),
+    "khartoum bahri": (32.5333, 15.6333, "Sudan"),
+    "sennar": (33.6000, 13.5500, "Sudan"),
+    "kosti": (32.6667, 13.1667, "Sudan"),
+    "al maliha": (25.9667, 15.1333, "Sudan"),
+    "el malha": (25.9667, 15.1333, "Sudan"),
+    "el maliha": (25.9667, 15.1333, "Sudan"),
+    "mellit": (25.8167, 14.1167, "Sudan"),
     "sudan": (32.5599, 15.5007, "Sudan"),
 }
 VAGUE_PLACES = {
@@ -601,7 +611,7 @@ _ACTOR_CUES = (
     (re.compile(r"\b(irgc|sepah|revolutionary guard)\b", re.I), "IRGC"),
     (re.compile(r"\b(sdf|syrian democratic forces)\b", re.I), "SDF"),
     (re.compile(r"\brsf\b|rapid support forces", re.I), "RSF"),
-    (re.compile(r"\bsaf\b|sudanese armed forces", re.I), "SAF"),
+    (re.compile(r"\bsaf\b|sudanese armed forces|sudanese army", re.I), "SAF"),
     (re.compile(r"ansarallah|houthi", re.I), "Ansarallah"),
     (re.compile(r"\b(isis|daesh|islamic state)\b", re.I), "ISIS"),
     (re.compile(r"\b(militia|militias|pmf|hashd)\b", re.I), "Militias"),
@@ -611,7 +621,7 @@ _SYSTEM_CUES = (
     (re.compile(r"\b(uav|uas|drone|shahed|loitering)\b", re.I), "UAV / Drone"),
     (re.compile(r"\b(missile|rocket|ballistic)\b", re.I), "Missile"),
     (re.compile(r"\b(ied|mine|mines|mined)\b", re.I), "IED / Mine"),
-    (re.compile(r"\b(artillery|shelling|shells|mortar|howitzer)\b", re.I), "Artillery / Shelling"),
+    (re.compile(r"\b(artillery|shelling|shells|mortar|howitzer|airstrike|airstrikes|air strike|air strikes)\b", re.I), "Artillery / Shelling"),
     (re.compile(r"\b(small arms|gunfire|raid|firefight|clashes)\b", re.I), "Small Arms / Raid"),
     (re.compile(r"\b(naval|warship|maritime|vessel|ukmto)\b", re.I), "Maritime / Naval"),
     (re.compile(r"\b(protest|demonstration|pipeline|power plant|infrastructure|refinery)\b", re.I), "Infrastructure / Protest"),
@@ -620,13 +630,13 @@ _SYSTEM_CUES = (
 
 def coerce_actor(value: object, text: str = "") -> str:
     raw = one_sentence(value)
-    if raw in ACTORS:
+    if raw in ACTORS and raw != "Unattributed":
         return raw
     blob = str(text or "")
     for pattern, label in _ACTOR_CUES:
         if pattern.search(blob):
             return label
-    return "Unattributed"
+    return raw if raw in ACTORS else "Unattributed"
 
 
 def coerce_system(value: object, text: str = "") -> str:

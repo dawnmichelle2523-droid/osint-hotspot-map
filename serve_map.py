@@ -96,7 +96,11 @@ RSS_FEEDS = [
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
     ("Sudan Tribune", "https://sudantribune.com/feed/"),
+    ("Radio Dabanga", "https://www.dabangasudan.org/en/feed"),
+    ("Darfur24", "https://darfur24.com/en/feed/"),
+    ("Al Taghyeer", "https://www.altaghyeer.info/en/feed"),
     ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
+    ("ReliefWeb Sudan JSON", "https://api.reliefweb.int/v1/reports?appname=georiskintel&filter[field]=country.name&filter[value]=Sudan&limit=20"),
     ("Middle East Monitor", "https://www.middleeastmonitor.com/feed/"),
     ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
     ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
@@ -453,8 +457,12 @@ _RSS_DESK = {
     "https://www.arabnews.com/rss.xml": "Saudi Arabia",
     "https://english.alarabiya.net/tools/rss": "Saudi Arabia",
     "https://www.dabangasudan.org/en/all-news/feed": "Sudan & Chad",
+    "https://www.dabangasudan.org/en/feed": "Sudan & Chad",
     "https://sudantribune.com/feed/": "Sudan & Chad",
+    "https://darfur24.com/en/feed/": "Sudan & Chad",
+    "https://www.altaghyeer.info/en/feed": "Sudan & Chad",
     "https://reliefweb.int/updates/rss.xml?primary_country=220": "Sudan & Chad",
+    "https://api.reliefweb.int/v1/reports?appname=georiskintel&filter[field]=country.name&filter[value]=Sudan&limit=20": "Sudan & Chad",
     "https://khartoumerr.org/feed/": "Sudan & Chad",
     "https://khartoumerr.org/": "Sudan & Chad",
     "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
@@ -727,89 +735,98 @@ SUDAN_GEO_FALLBACKS = {
     "adre border crossing": (13.4667, 22.2000),
     "adre crossing": (13.4667, 22.2000),
     "tine crossing": (15.0167, 22.7833),
-    "khartoum north": (15.6150, 32.5480),
-    "khartoum bahri": (15.6150, 32.5480),
+    "khartoum north": (15.6333, 32.5333),
+    "khartoum bahri": (15.6333, 32.5333),
     "red sea state": (19.6158, 37.2164),
     "port sudan": (19.6158, 37.2164),
-    "north darfur": (13.6279, 25.3494),
-    "south darfur": (12.0489, 24.8807),
-    "west darfur": (13.4526, 22.4472),
+    "north darfur": (13.6281, 25.3494),
+    "south darfur": (12.0500, 24.8833),
+    "west darfur": (13.4500, 22.4500),
     "central darfur": (12.9096, 23.4741),
     "east darfur": (11.4619, 26.1258),
-    "north kordofan": (13.1842, 30.2167),
-    "south kordofan": (11.0111, 29.7183),
+    "north kordofan": (13.1833, 30.2167),
+    "south kordofan": (11.0167, 29.7167),
     "west kordofan": (11.7329, 28.3579),
-    "al ubayyid": (13.1842, 30.2167),
-    "el fasher": (13.6279, 25.3494),
-    "al fashir": (13.6279, 25.3494),
-    "el geneina": (13.4526, 22.4472),
-    "geneina": (13.4526, 22.4472),
-    "el obeid": (13.1842, 30.2167),
-    "al obeid": (13.1842, 30.2167),
-    "wad madani": (14.4012, 33.5199),
-    "wad medani": (14.4012, 33.5199),
-    "al jazirah": (14.4012, 33.5199),
-    "al jazeera state": (14.4012, 33.5199),
+    "al ubayyid": (13.1833, 30.2167),
+    "el fasher": (13.6281, 25.3494),
+    "al fashir": (13.6281, 25.3494),
+    "el geneina": (13.4500, 22.4500),
+    "geneina": (13.4500, 22.4500),
+    "el obeid": (13.1833, 30.2167),
+    "al obeid": (13.1833, 30.2167),
+    "wad madani": (14.4000, 33.5167),
+    "wad medani": (14.4000, 33.5167),
+    "al jazirah": (14.4000, 33.5167),
+    "al jazeera state": (14.4000, 33.5167),
     "al fulah": (11.7329, 28.3579),
     "ed daein": (11.4619, 26.1258),
     "river nile": (17.7022, 33.9864),
     "northern state": (19.1698, 30.4749),
-    "al qadarif": (14.0349, 35.3834),
+    "al qadarif": (14.0333, 35.3833),
     "rapid support forces": (15.5000, 30.2000),
     "zalingei": (12.9096, 23.4741),
     "omdurman": (15.6445, 32.4777),
     "khartoum": (15.5007, 32.5599),
-    "kadugli": (11.0111, 29.7183),
-    "kassala": (15.4510, 36.4000),
-    "gedaref": (14.0349, 35.3834),
+    "kadugli": (11.0167, 29.7167),
+    "kassala": (15.4500, 36.4000),
+    "gedaref": (14.0333, 35.3833),
     "dongola": (19.1698, 30.4749),
-    "kordofan": (13.1842, 30.2167),
-    "sennar": (13.5691, 33.5672),
-    "nyala": (12.0489, 24.8807),
+    "kordofan": (13.1833, 30.2167),
+    "sennar": (13.5500, 33.6000),
+    "kosti": (13.1667, 32.6667),
+    "al maliha": (15.1333, 25.9667),
+    "el malha": (15.1333, 25.9667),
+    "el maliha": (15.1333, 25.9667),
+    "mellit": (14.1167, 25.8167),
+    "nyala": (12.0500, 24.8833),
     "atbara": (17.7022, 33.9864),
     "sinja": (13.5691, 33.5672),
-    "bahri": (15.6150, 32.5480),
-    "darfur": (13.6279, 25.3494),
+    "bahri": (15.6333, 32.5333),
+    "darfur": (13.6281, 25.3494),
     "adre": (13.4667, 22.2000),
     "sudan": (15.5000, 30.2000),
     "rsf": (15.5000, 30.2000),
     "saf": (15.5000, 30.2000),
-    "الخرطوم بحري": (15.6150, 32.5480),
+    "الخرطوم بحري": (15.6333, 32.5333),
+    "بحري": (15.6333, 32.5333),
     "أم درمان": (15.6445, 32.4777),
     "ام درمان": (15.6445, 32.4777),
     "بورتسودان": (19.6158, 37.2164),
     "بورت سودان": (19.6158, 37.2164),
     "ولاية البحر الأحمر": (19.6158, 37.2164),
-    "شمال دارفور": (13.6279, 25.3494),
-    "جنوب دارفور": (12.0489, 24.8807),
-    "غرب دارفور": (13.4526, 22.4472),
+    "شمال دارفور": (13.6281, 25.3494),
+    "جنوب دارفور": (12.0500, 24.8833),
+    "غرب دارفور": (13.4500, 22.4500),
     "وسط دارفور": (12.9096, 23.4741),
     "شرق دارفور": (11.4619, 26.1258),
-    "شمال كردفان": (13.1842, 30.2167),
-    "جنوب كردفان": (11.0111, 29.7183),
+    "شمال كردفان": (13.1833, 30.2167),
+    "جنوب كردفان": (11.0167, 29.7167),
     "غرب كردفان": (11.7329, 28.3579),
-    "ولاية الجزيرة": (14.4012, 33.5199),
+    "ولاية الجزيرة": (14.4000, 33.5167),
     "نهر النيل": (17.7022, 33.9864),
     "الولاية الشمالية": (19.1698, 30.4749),
     "معبر أدري": (13.4667, 22.2000),
     "الدعم السريع": (15.5000, 30.2000),
     "الخرطوم": (15.5007, 32.5599),
-    "الفاشر": (13.6279, 25.3494),
+    "الفاشر": (13.6281, 25.3494),
     "زالنجي": (12.9096, 23.4741),
-    "الجنينة": (13.4526, 22.4472),
-    "الأبيض": (13.1842, 30.2167),
-    "الابيض": (13.1842, 30.2167),
-    "كادقلي": (11.0111, 29.7183),
+    "الجنينة": (13.4500, 22.4500),
+    "الأبيض": (13.1833, 30.2167),
+    "الابيض": (13.1833, 30.2167),
+    "كادقلي": (11.0167, 29.7167),
     "الفولة": (11.7329, 28.3579),
-    "ود مدني": (14.4012, 33.5199),
-    "القضارف": (14.0349, 35.3834),
-    "دارفور": (13.6279, 25.3494),
-    "كردفان": (13.1842, 30.2167),
+    "ود مدني": (14.4000, 33.5167),
+    "القضارف": (14.0333, 35.3833),
+    "دارفور": (13.6281, 25.3494),
+    "كردفان": (13.1833, 30.2167),
     "السودان": (15.5000, 30.2000),
-    "نيالا": (12.0489, 24.8807),
-    "كسلا": (15.4510, 36.4000),
+    "نيالا": (12.0500, 24.8833),
+    "كسلا": (15.4500, 36.4000),
     "سنجة": (13.5691, 33.5672),
-    "سنار": (13.5691, 33.5672),
+    "سنار": (13.5500, 33.6000),
+    "كوستي": (13.1667, 32.6667),
+    "المليحة": (15.1333, 25.9667),
+    "مليط": (14.1167, 25.8167),
     "عطبرة": (17.7022, 33.9864),
     "دنقلا": (19.1698, 30.4749),
     "الضعين": (11.4619, 26.1258),
@@ -1243,6 +1260,7 @@ _INSTITUTIONAL_HANDLES = {
 _INSTITUTIONAL_HOSTS = (
     "understandingwar.org", "criticalthreats.org", "acleddata.com",
     "bellingcat.com", "washingtoninstitute.org",
+    "reliefweb.int", "api.reliefweb.int",
 )
 _SPECIALIST_HANDLES = {
     "qalaatalmudiq", "aymennjawad", "charles_lister", "obretix", "calibreobscura",
@@ -1315,6 +1333,7 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         "aljazeera.com", "alarabiya.net", "aawsat.com", "timesofisrael.com", "rudaw.net",
         "kurdistan24.net", "shafaq.com", "nna-leb", "middleeastmonitor.com", "iranintl.com",
         "jpost.com", "ynetnews.com", "understandingwar.org", "lorientlejour.com",
+        "sudantribune.com", "dabangasudan.org", "darfur24.com", "altaghyeer.info",
     )):
         return "Wire / Outlet"
     if _named(tokens, compact, _WIRE_NAMES):
@@ -2103,15 +2122,96 @@ def browser_get(url: str):
     return requests.get(url, timeout=FEED_TIMEOUT, headers=feed_request_headers())
 
 
+def _reliefweb_text(value: object) -> str:
+    if isinstance(value, dict):
+        return plain_text(value.get("html") or value.get("value") or value.get("summary") or "")
+    return plain_text(value or "")
+
+
+def reliefweb_json_items(name: str, payload: object) -> list[dict]:
+    """ReliefWeb `data` rows. A row with an unexpected shape is skipped."""
+    rows = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return []
+    found = []
+    for row in rows[:20]:
+        try:
+            if not isinstance(row, dict):
+                continue
+            fields = row.get("fields") if isinstance(row.get("fields"), dict) else row
+            if not isinstance(fields, dict):
+                continue
+            title = _reliefweb_text(fields.get("title"))
+            body = fields.get("body")
+            if body in (None, ""):
+                body = fields.get("summary")
+            if body in (None, ""):
+                body = fields.get("body-html")
+            summary = _reliefweb_text(body) or title
+            link = fields.get("url") or fields.get("url_alias") or ""
+            if isinstance(link, dict):
+                link = link.get("url") or ""
+            link = plain_text(link)
+            if link.startswith("/"):
+                link = "https://reliefweb.int" + link
+            date = fields.get("date")
+            if isinstance(date, dict):
+                published = str(date.get("created") or date.get("original") or "")
+            else:
+                published = str(date or "")
+            if not title or not link.startswith("http"):
+                continue
+            found.append(
+                {
+                    "title": title[:240],
+                    "summary": (summary or title)[:500],
+                    "source_url": link,
+                    "source_name": source_label("rss", name),
+                    "source_kind": "rss",
+                    "published_at": published,
+                }
+            )
+        except Exception:
+            continue
+    return found
+
+
 def fetch_rss_feed(name: str, url: str) -> list[dict]:
+    reliefweb = "api.reliefweb.int" in url.lower()
     try:
-        response = paced_get(url)
+        if reliefweb:
+            headers = feed_request_headers()
+            headers["Accept"] = "application/json, " + FEED_ACCEPT
+            response = requests.get(url, timeout=FEED_TIMEOUT, headers=headers)
+        else:
+            response = paced_get(url)
         response.raise_for_status()
         content = response.content or b""
     except Exception as exc:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
         note_feed("rss", name, False, exc.__class__.__name__)
         return []
+    if reliefweb:
+        try:
+            payload = response.json()
+        except Exception as exc:
+            print(f"RSS {name} failed: {exc.__class__.__name__}.")
+            note_feed("rss", name, False, exc.__class__.__name__)
+            return []
+        rows = payload.get("data") if isinstance(payload, dict) else None
+        raw_count = len(rows) if isinstance(rows, list) else 0
+        print(f"RSS {name}: {raw_count} raw items.")
+        if not isinstance(rows, list):
+            note_feed("rss", name, False, "unexpected shape")
+            return []
+        try:
+            found = reliefweb_json_items(name, payload)
+        except Exception as exc:
+            print(f"RSS {name} failed: {exc.__class__.__name__}.")
+            note_feed("rss", name, False, exc.__class__.__name__)
+            return []
+        note_feed("rss", name, True, "")
+        return found
     if notice_page(url) and not looks_like_feed(content):
         return html_notice_items(name, url, content)
     try:
@@ -3077,6 +3177,31 @@ def _near_center(lat: float, lng: float, center: tuple[float, float], tolerance:
 
 _IRAQ_COUNTRY_KEYS = {"iraq", "العراق", "عێراق"}
 _SUDAN_COUNTRY_KEYS = {"sudan", "rsf", "saf", "السودان"}
+_SUDAN_NON_PLACE = _SUDAN_COUNTRY_KEYS | {"rapid support forces", "الدعم السريع"}
+
+
+def match_sudan_place(text: str) -> tuple[str, float, float] | None:
+    """Longest Sudan city or governorate. Country and actor names are not pins."""
+    raw = str(text or "")
+    padded = f" {geo_blob(raw)} "
+    tokens = set(padded.split())
+    for keyword in _SUDAN_FALLBACK_ORDER:
+        if keyword in _SUDAN_NON_PLACE:
+            continue
+        if _arabic_keyword(keyword):
+            if keyword in raw:
+                lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if " " in keyword:
+            if f" {keyword} " in padded:
+                lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+                return keyword, lat, lng
+            continue
+        if keyword in tokens:
+            lat, lng = SUDAN_GEO_FALLBACKS[keyword]
+            return keyword, lat, lng
+    return None
 _CHAD_KEYS = {
     "adre", "adre crossing", "adre border crossing", "tine", "tine crossing",
     "ndjamena", "n djamena", "chad", "تشاد", "أدري", "ادري",
@@ -3373,7 +3498,7 @@ def _desk_place_hit(country: str, text: str) -> tuple[str, float, float] | None:
     if country == "Iraq":
         return match_iraq_fallback(text)
     if country == "Sudan":
-        hit = match_sudan_fallback(text)
+        hit = match_sudan_place(text)
         if hit and hit[0] in _CHAD_KEYS:
             return None
         return hit
@@ -3458,12 +3583,20 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
             shifted = offset_fallback(iraq_hit[1], iraq_hit[2], event_id)
             if shifted:
                 return shifted[0], shifted[1], classify_precision(iraq_hit[0])
-    if not coords:
-        sudan_hit = match_sudan_fallback(raw_blob)
-        if sudan_hit:
-            shifted = offset_fallback(sudan_hit[1], sudan_hit[2], event_id)
-            if shifted:
-                return shifted[0], shifted[1], classify_precision(sudan_hit[0])
+    sudan_hit = match_sudan_place(raw_blob)
+    sudan_center = COUNTRY_CENTERS.get("Sudan")
+    near_sudan_centroid = bool(
+        coords and sudan_center and _near_center(coords[1], coords[0], sudan_center)
+    )
+    if sudan_hit and (not coords or near_sudan_centroid):
+        shifted = offset_fallback(sudan_hit[1], sudan_hit[2], event_id)
+        if shifted:
+            precision = classify_precision(sudan_hit[0])
+            if precision != GEO_PRECISION_COUNTRY:
+                precision = GEO_PRECISION_CITY
+            return shifted[0], shifted[1], precision
+    if not sudan_hit and near_sudan_centroid:
+        return coords[1], coords[0], GEO_PRECISION_COUNTRY
     if not coords and not sudan_mention(raw_blob) and not iraq_mention(raw_blob):
         saudi_hit = match_saudi_fallback(raw_blob)
         if saudi_hit:
@@ -3487,6 +3620,8 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         if placed.get("_grok_coords"):
             precision = classify_precision(placed.get("location_name") or "")
         return coords[1], coords[0], precision
+    if hit and hit[0] in _SUDAN_NON_PLACE:
+        hit = None
     if hit:
         shifted = offset_fallback(hit[1], hit[2], event_id)
         if shifted:
@@ -3546,13 +3681,15 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                     str(part or "")
                     for part in (row["location_name"], row["governorate"], row["title"], row["summary"], row["original_text"])
                 )
-                hit = match_sudan_fallback(raw)
+                hit = match_sudan_place(raw)
                 if hit is None and not sudan_mention(raw):
                     hit = match_iraq_fallback(raw)
                 if hit is None and not sudan_mention(raw) and not iraq_mention(raw):
                     hit = match_saudi_fallback(raw)
                 if hit is None:
                     hit = match_geo_fallback(geo_blob(raw))
+                    if hit and hit[0] in _SUDAN_NON_PLACE:
+                        hit = None
                 if not hit:
                     centroid = country_centroid_point(raw, row["id"])
                     if not centroid:
@@ -3640,7 +3777,7 @@ def backfill_sudan_rows() -> int:
                     continue
                 new_lat, new_lng = row["lat"], row["lng"]
                 if missing and mentioned:
-                    hit = match_sudan_fallback(blob)
+                    hit = match_sudan_place(blob)
                     shifted = offset_fallback(hit[1], hit[2], row["id"]) if hit else None
                     if shifted:
                         new_lat, new_lng = shifted
@@ -4181,6 +4318,62 @@ def item_source_tier(item: dict, source_url: str) -> str:
     return source_tier_for(item.get("source_kind") or "", item.get("source_name") or "", source_url)
 
 
+def tagged_actor(existing: object, text: str) -> str:
+    """Keep a classified actor. Fill SAF or RSF only when the actor is still blank."""
+    current = " ".join(str(existing or "").split())
+    if current and current != "Unattributed":
+        return current
+    return osint.coerce_actor("", text)
+
+
+def tagged_system(existing: object, text: str) -> str:
+    """Keep a classified system. Fill drone or artillery tags only when none is set."""
+    current = " ".join(str(existing or "").split())
+    if current:
+        return current
+    return osint.coerce_system("", text)
+
+
+def backfill_actor_system() -> int:
+    """Fill blank actors and systems from the text. Threat codes and specific actors stay."""
+    updated = 0
+    with _db_lock:
+        conn = db_connect()
+        try:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
+            if "actor" not in columns or "system_type" not in columns:
+                return 0
+            text_fields = [name for name in ("title", "summary", "original_text", "location_name") if name in columns]
+            rows = conn.execute(
+                "SELECT id, actor, system_type, "
+                + ", ".join(text_fields)
+                + " FROM items WHERE actor IS NULL OR actor = '' OR actor = 'Unattributed' "
+                "OR system_type IS NULL OR system_type = ''"
+            ).fetchall()
+            for row in rows:
+                blob = " ".join(str(row[name] or "") for name in text_fields)
+                old_actor = row["actor"] or ""
+                old_system = row["system_type"] or ""
+                actor = tagged_actor(old_actor, blob)
+                system = tagged_system(old_system, blob)
+                if actor == old_actor and system == old_system:
+                    continue
+                if not old_actor and actor == "Unattributed" and system == old_system:
+                    continue
+                conn.execute(
+                    "UPDATE items SET actor = ?, system_type = ? WHERE id = ?",
+                    (actor, system, row["id"]),
+                )
+                updated += 1
+            if updated:
+                conn.commit()
+        finally:
+            conn.close()
+    if updated:
+        print(f"Tagged actor or system on {updated} items.")
+    return updated
+
+
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
     if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
         return False
@@ -4288,8 +4481,8 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
                     placed.get("country") or "",
                     placed.get("sub_region") or "",
                     placed.get("threat_code"),
-                    placed.get("actor") or osint.coerce_actor("", item.get("title") or ""),
-                    placed.get("system_type") or "",
+                    tagged_actor(placed.get("actor"), blob),
+                    tagged_system(placed.get("system_type"), blob),
                     0,
                 ),
             )
@@ -4430,6 +4623,7 @@ def ingest_feeds() -> dict:
             backfill_levant_routes()
             backfill_syria_governorates()
             backfill_threat_codes()
+            backfill_actor_system()
             drop_excluded_items()
             telegram_items = collect_fetched(
                 [(lambda channel=channel: fetch_telegram_channel(channel)) for channel in telegram]
@@ -6676,6 +6870,7 @@ def start_background() -> None:
         backfill_levant_routes()
         backfill_syria_governorates()
         backfill_threat_codes()
+        backfill_actor_system()
         drop_excluded_items()
         _threads_started = True
     start_translation_pass()
