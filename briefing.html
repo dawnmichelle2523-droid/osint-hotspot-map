@@ -27,12 +27,15 @@
     #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
     #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
     #clock-strip { display: flex; align-items: center; }
-    #world-clocks { display: grid; grid-template-columns: repeat(5, 66px); gap: 8px; }
-    .world-clock { width: 66px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(13, 20, 36, 0.75); border: 1px solid #1E293B; border-radius: 8px; padding: 5px 4px; }
-    .world-clock.london { border-color: #C5A059; background: rgba(16, 42, 99, 0.45); }
-    .world-clock svg { display: block; width: 44px; height: 44px; }
-    .world-clock figcaption { margin: 0; color: #E2E8F0; font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-    .clock-readout { color: #94A3B8; font-size: 8.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #local-time {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
+      background: rgba(13, 20, 36, 0.75); border: 1px solid #C5A059; border-radius: 8px;
+      padding: 6px 10px; color: #E2E8F0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums;
+    }
+    .local-time-label { color: #D4AF37; font-family: "Segoe UI", system-ui, sans-serif; font-size: 10px; font-weight: 750; letter-spacing: 0.08em; }
+    #local-time-zone { color: #94A3B8; font-size: 11px; font-weight: 650; }
     #wall-mode { color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
     body.wall-mode #brief-main, body.wall-mode #app-footer { display: none !important; }
     #liveWireTickerBar { display: flex; align-items: stretch; height: 34px; overflow: hidden; background: #060A13; border-bottom: 1px solid #1E293B; }
@@ -55,7 +58,6 @@
     th { color: #D4AF37; font-weight: 700; }
     .empty { color: #94A3B8; margin: 0; }
     #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
-    @media (max-width: 800px) { #world-clocks { grid-template-columns: repeat(5, 54px); } .world-clock, .world-clock svg { width: 44px; } }
   </style>
 </head>
 <body>
@@ -71,378 +73,11 @@
     </nav>
     <div id="header-tools">
       <div id="clock-strip">
-        <div id="world-clocks">
-        <figure class="world-clock london" data-zone="Europe/London" title="--:--">
-          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
-            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#C5A059" stroke-width="3.5"/>
-            <g>
-            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
-            </g>
-            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
-            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#E11D48" stroke-width="1.2" stroke-linecap="round"/></g>
-            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
-          </svg>
-          <figcaption>LONDON</figcaption>
-          <span class="clock-readout">--:--</span>
-        </figure>
-        <figure class="world-clock" data-zone="Europe/Paris" title="--:--">
-          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
-            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
-            <g>
-            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
-            </g>
-            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
-            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
-            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
-          </svg>
-          <figcaption>PARIS</figcaption>
-          <span class="clock-readout">--:--</span>
-        </figure>
-        <figure class="world-clock" data-zone="America/New_York" title="--:--">
-          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
-            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
-            <g>
-            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
-            </g>
-            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
-            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
-            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
-          </svg>
-          <figcaption>NEW YORK</figcaption>
-          <span class="clock-readout">--:--</span>
-        </figure>
-        <figure class="world-clock" data-zone="Asia/Tokyo" title="--:--">
-          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
-            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
-            <g>
-            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
-            </g>
-            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
-            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
-            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
-          </svg>
-          <figcaption>TOKYO</figcaption>
-          <span class="clock-readout">--:--</span>
-        </figure>
-        <figure class="world-clock" data-zone="Australia/Sydney" title="--:--">
-          <svg viewBox="0 0 100 100" width="44" height="44" aria-hidden="true">
-            <circle cx="50" cy="50" r="44.2" fill="#060A13"/>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3.5"/>
-            <g>
-            <line x1="50.00" y1="14.00" x2="50.00" y2="9.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="54.02" cy="11.71" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="88.29" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <line x1="86.00" y1="50.00" x2="91.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="88.29" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <circle cx="87.66" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="86.62" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="85.17" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="83.34" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="81.15" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="78.61" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="75.76" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="72.63" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="69.25" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="65.66" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="61.90" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="58.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="54.02" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <line x1="50.00" y1="86.00" x2="50.00" y2="91.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="45.98" cy="88.29" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="87.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="86.62" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="85.17" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="83.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="81.15" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="78.61" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="75.76" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="72.63" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="69.25" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="65.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="61.90" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="58.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="11.71" cy="54.02" r="1.05" fill="#94A3B8"/>
-            <line x1="14.00" y1="50.00" x2="9.00" y2="50.00" stroke="#E2E8F0" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11.71" cy="45.98" r="1.05" fill="#94A3B8"/>
-            <circle cx="12.34" cy="42.00" r="1.05" fill="#94A3B8"/>
-            <circle cx="13.38" cy="38.10" r="1.05" fill="#94A3B8"/>
-            <circle cx="14.83" cy="34.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="16.66" cy="30.75" r="1.05" fill="#94A3B8"/>
-            <circle cx="18.85" cy="27.37" r="1.05" fill="#94A3B8"/>
-            <circle cx="21.39" cy="24.24" r="1.05" fill="#94A3B8"/>
-            <circle cx="24.24" cy="21.39" r="1.05" fill="#94A3B8"/>
-            <circle cx="27.37" cy="18.85" r="1.05" fill="#94A3B8"/>
-            <circle cx="30.75" cy="16.66" r="1.05" fill="#94A3B8"/>
-            <circle cx="34.34" cy="14.83" r="1.05" fill="#94A3B8"/>
-            <circle cx="38.10" cy="13.38" r="1.05" fill="#94A3B8"/>
-            <circle cx="42.00" cy="12.34" r="1.05" fill="#94A3B8"/>
-            <circle cx="45.98" cy="11.71" r="1.05" fill="#94A3B8"/>
-            </g>
-            <g class="hand-hour"><line x1="50" y1="54" x2="50" y2="26" stroke="#F8FAFC" stroke-width="3.4" stroke-linecap="round"/></g>
-            <g class="hand-minute"><line x1="50" y1="56" x2="50" y2="17" stroke="#CBD5E1" stroke-width="2.2" stroke-linecap="round"/></g>
-            <g class="hand-second"><line x1="50" y1="62" x2="50" y2="14" stroke="#D4AF37" stroke-width="1.2" stroke-linecap="round"/></g>
-            <circle cx="50" cy="50" r="3.2" fill="#D4AF37"/>
-          </svg>
-          <figcaption>SYDNEY</figcaption>
-          <span class="clock-readout">--:--</span>
-        </figure>
-      </div>
+        <div id="local-time">
+          <span class="local-time-label">LOCAL TIME</span>
+          <time id="local-time-clock">--:--:--</time>
+          <span id="local-time-zone"></span>
+        </div>
       </div>
       <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall View</button>
     </div>
@@ -477,41 +112,27 @@
   </main>
   <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
   <script>
-    function zonedParts(date, timeZone) {
-      const bag = {};
-      new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(date).forEach((part) => { bag[part.type] = part.value; });
-      if (bag.hour === "24") bag.hour = "00";
-      return bag;
+    const localTimeFormat = new Intl.DateTimeFormat("en-GB", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "short"
+    });
+    function paintLocalTime() {
+      const badge = document.getElementById("local-time");
+      if (!badge) return;
+      const parts = {};
+      localTimeFormat.formatToParts(new Date()).forEach((part) => { parts[part.type] = part.value; });
+      if (parts.hour === "24") parts.hour = "00";
+      const clock = document.getElementById("local-time-clock");
+      const zone = document.getElementById("local-time-zone");
+      if (clock) clock.textContent = [parts.hour, parts.minute, parts.second].join(":");
+      if (zone) zone.textContent = parts.timeZoneName || "";
     }
-    function localDay(now, timeZone) {
-      const parts = zonedParts(now, timeZone);
-      return parts.year + "-" + parts.month + "-" + parts.day;
-    }
-    function zoneTag(now, timeZone) {
-      const parts = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" }).formatToParts(now);
-      const raw = (parts.find((part) => part.type === "timeZoneName") || {}).value || "";
-      const named = { "GMT+1": "CET", "GMT+2": "CEST", "GMT+9": "JST", "GMT+10": "AEST", "GMT+11": "AEDT" };
-      return named[raw] || raw;
-    }
-    function paintWorldClocks(now) {
-      const fraction = now.getMilliseconds() / 1000;
-      const londonDay = localDay(now, "Europe/London");
-      document.querySelectorAll("#world-clocks .world-clock").forEach((node) => {
-        const zone = node.getAttribute("data-zone");
-        const parts = zonedParts(now, zone);
-        const hour = Number(parts.hour);
-        const minute = Number(parts.minute);
-        const second = Number(parts.second) + fraction;
-        node.querySelector(".hand-hour").setAttribute("transform", "rotate(" + ((hour % 12) * 30 + minute * 0.5) + " 50 50)");
-        node.querySelector(".hand-minute").setAttribute("transform", "rotate(" + (minute * 6 + second * 0.1) + " 50 50)");
-        node.querySelector(".hand-second").setAttribute("transform", "rotate(" + (second * 6) + " 50 50)");
-        const ahead = localDay(now, zone) > londonDay ? " +1D" : "";
-        const readout = node.querySelector(".clock-readout");
-        if (readout) readout.textContent = parts.hour + ":" + parts.minute + " " + zoneTag(now, zone) + ahead;
-      });
-    }
-    function tick() { paintWorldClocks(new Date()); requestAnimationFrame(tick); }
-    requestAnimationFrame(tick);
+    paintLocalTime();
+    setInterval(paintLocalTime, 1000);
+
     document.getElementById("wall-mode").addEventListener("click", () => {
       const on = document.body.classList.toggle("wall-mode");
       document.getElementById("wall-mode").setAttribute("aria-pressed", String(on));
