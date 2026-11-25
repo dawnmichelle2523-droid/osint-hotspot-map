@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoRiskIntel — Countries</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060A13; --text: #E2E8F0; --muted: #94A3B8; --gold: #D4AF37; --gold-border: #C5A059;
+      --card: #0f172a; --card-hover: #1e293b; --line: #334155;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+    #live-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px;
+      border-bottom: 1px solid transparent;
+      background-image: linear-gradient(#060A13, #060A13), linear-gradient(90deg, #102A63 0%, #D4AF37 45%, rgba(110, 88, 37, 0.05) 100%);
+      background-origin: padding-box, border-box; background-clip: padding-box, border-box;
+    }
+    .brand-lockup { display: flex; align-items: center; gap: 8px; }
+    #brandLogo { height: 36px; width: auto; display: block; }
+    .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; }
+    #page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+    #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+    #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+    #clock-strip { display: flex; align-items: center; }
+    #local-time {
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
+      background: rgba(13, 20, 36, 0.75); border: 1px solid #C5A059; border-radius: 8px;
+      padding: 6px 10px; color: #E2E8F0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums;
+    }
+    .local-time-label { color: #D4AF37; font-family: "Segoe UI", system-ui, sans-serif; font-size: 10px; font-weight: 750; letter-spacing: 0.08em; }
+    #local-time-zone { color: #94A3B8; font-size: 11px; font-weight: 650; }
+    #liveWireTickerBar { display: flex; align-items: stretch; height: 34px; overflow: hidden; background: #060A13; border-bottom: 1px solid #1E293B; }
+    #ticker-badge { display: flex; align-items: center; gap: 8px; background: #102A63; color: #D4AF37; border-right: 1px solid #C5A059; padding: 0 12px; font-weight: 700; font-size: 11px; letter-spacing: 1px; }
+    #ticker-badge .ticker-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #D4AF37; box-shadow: 0 0 8px #D4AF37; }
+    #ticker-viewport { flex: 1; overflow: hidden; }
+    #ticker-track { display: flex; width: max-content; height: 34px; animation: tickerScroll 45s linear infinite; }
+    #ticker-track.is-still { animation: none; }
+    .ticker-seq { display: flex; align-items: center; height: 34px; }
+    .ticker-item { color: #E2E8F0; padding: 0 18px; white-space: nowrap; }
+    .ticker-empty { color: #94A3B8; padding: 0 14px; }
+    @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    main { padding: 18px 16px 48px; }
+    h1 { margin: 0 0 4px; color: #D4AF37; font-size: 28px; }
+    .lede { margin: 0 0 14px; color: var(--muted); max-width: 70ch; }
+    #controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .pin-toggle { display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; font-weight: 650; }
+    #filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    #filters button, #country-search {
+      color: #94A3B8; background: #0f172a; border: 1px solid #334155; border-radius: 999px;
+      padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    #filters button[aria-pressed="true"] { color: #0f172a; background: #D4AF37; border-color: #D4AF37; }
+    #country-search { border-radius: 8px; min-width: min(260px, 100%); color: var(--text); cursor: text; }
+    #grid-status { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .country-card {
+      display: flex; flex-direction: column; gap: 10px;
+      background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--line);
+      border-radius: 12px; padding: 12px; cursor: pointer;
+    }
+    .country-card:hover { background: var(--card-hover); }
+    .country-card.critical { border-top-color: #dc2626; }
+    .country-card.high { border-top-color: #ea580c; }
+    .country-card.elevated { border-top-color: #eab308; }
+    .country-card.low { border-top-color: #0d9488; }
+    .card-top { display: flex; align-items: flex-start; gap: 8px; }
+    .star { flex: 0 0 auto; color: #D4AF37; background: transparent; border: 0; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+    .flag { font-size: 28px; line-height: 1; }
+    .identity { min-width: 0; flex: 1; }
+    .identity h2 { margin: 0; font-size: 16px; }
+    .iso { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+    .score-block { text-align: right; }
+    .score {
+      display: inline-block; min-width: 2.4em; text-align: center;
+      background: #020617; border: 1px solid #334155; border-radius: 999px;
+      padding: 2px 8px; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .trend { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .trend.up { color: #fdba74; }
+    .trend.down { color: #5eead4; }
+    .advisory-banner { display: flex; flex-direction: column; gap: 4px; }
+    .advisory-pill { display: inline-block; align-self: flex-start; border: 1px solid #334155; border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+    .advisory-updated { color: var(--muted); font-size: 11px; }
+    .pillars { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pillar { border: 1px solid #334155; border-radius: 999px; padding: 3px 8px; font-size: 11px; }
+    .pillar b { font-weight: 800; }
+    .pillar.high { color: #fecaca; border-color: #dc2626; }
+    .pillar.med { color: #fde68a; border-color: #eab308; }
+    .pillar.low { color: #99f6e4; border-color: #0d9488; }
+    .pulse { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
+    .pulse strong { display: block; }
+    .pulse span { color: var(--muted); }
+    .card-foot { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .card-foot button, .card-foot a, .drawer-actions button {
+      color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer;
+    }
+    #profile-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 40; }
+    #profile-overlay[hidden] { display: none; }
+    #profile {
+      position: fixed; top: 0; right: 0; z-index: 41; height: 100%; width: min(460px, 100%);
+      overflow: auto; background: #0f172a; color: var(--text); border-left: 1px solid #334155;
+      padding: 18px 16px 32px; transform: translateX(100%); visibility: hidden;
+    }
+    #profile.is-open { transform: translateX(0); visibility: visible; }
+    #profile-close { position: absolute; top: 10px; right: 10px; color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; cursor: pointer; }
+    #profile h2 { margin: 0 36px 6px 0; color: #D4AF37; font-size: 22px; }
+    #profile h3 { margin: 16px 0 6px; font-size: 14px; color: #D4AF37; }
+    #profile p, #profile li { color: var(--text); }
+    .meta { color: var(--muted); margin: 0 0 8px; }
+    .sev { display: inline-block; min-width: 4.2em; text-align: center; border-radius: 999px; padding: 1px 6px; font-size: 11px; font-weight: 800; margin-right: 6px; }
+    .sev.high { background: #dc2626; color: #fff; }
+    .sev.medium { background: #eab308; color: #1a1a1a; }
+    .sev.low { background: #0d9488; color: #fff; }
+    #profile-incidents { list-style: none; margin: 0; padding: 0; }
+    #profile-incidents li { margin: 0 0 8px; }
+    #profile-incidents a { color: #E2E8F0; }
+    .drawer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    #copy-note { color: var(--muted); min-height: 1.2em; }
+    #print-sheet { display: none; }
+    #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
+    @media print {
+      body { background: #fff; color: #111; }
+      #live-bar, #liveWireTickerBar, main, #profile, #profile-overlay, #app-footer { display: none !important; }
+      #print-sheet { display: block; max-width: 180mm; margin: 0 auto; font: 12px/1.4 "Segoe UI", system-ui, sans-serif; color: #111; }
+      #print-sheet h1 { color: #102A63; font-size: 20px; margin: 0 0 4px; }
+      #print-sheet h2 { color: #102A63; font-size: 14px; margin: 14px 0 4px; }
+      #print-sheet a { color: #102A63; }
+    }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <span class="risk-pill">REGIONAL RISK</span>
+    </div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">OSINT Map</a>
+      <a href="/briefing">Briefing</a>
+      <a href="/world-risk">World Risk</a>
+      <a href="/countries" aria-current="page">Countries</a>
+    </nav>
+    <div id="header-tools">
+      <div id="clock-strip">
+        <div id="local-time">
+          <span class="local-time-label">LOCAL TIME</span>
+          <time id="local-time-clock">--:--:--</time>
+          <span id="local-time-zone"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div id="liveWireTickerBar" role="region" aria-label="News Stream">
+    <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>NEWS STREAM</div>
+    <div id="ticker-viewport">
+      <div id="ticker-track" class="is-still">
+        <div class="ticker-seq" id="ticker-seq"><span class="ticker-empty">Waiting for live incidents</span></div>
+        <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+  <main>
+    <h1>Country Tiles</h1>
+    <p class="lede">Each card combines the official US and UK travel advisory with incidents already on the live feed.</p>
+    <div id="controls">
+      <label class="pin-toggle"><input type="checkbox" id="pin-priority"> Pin Priority Countries</label>
+      <div id="filters" role="group" aria-label="Country filters">
+        <button type="button" data-filter="all" aria-pressed="true">All Countries</button>
+        <button type="button" data-filter="pinned" aria-pressed="false">Pinned</button>
+        <button type="button" data-filter="critical" aria-pressed="false">Critical / Level 4</button>
+        <button type="button" data-filter="high" aria-pressed="false">High / Level 3</button>
+        <button type="button" data-filter="spikes" aria-pressed="false">Active OSINT Spikes</button>
+      </div>
+      <input id="country-search" type="search" placeholder="Search country or ISO code" aria-label="Search country or ISO code">
+    </div>
+    <p id="grid-status">Loading countries…</p>
+    <div id="grid"></div>
+  </main>
+  <div id="profile-overlay" hidden></div>
+  <aside id="profile" aria-hidden="true" aria-labelledby="profile-name">
+    <button type="button" id="profile-close" aria-label="Close">×</button>
+    <h2 id="profile-name">Country</h2>
+    <p class="meta" id="profile-meta"></p>
+    <h3>Executive summary</h3>
+    <p id="profile-summary"></p>
+    <h3>Official advice</h3>
+    <p id="profile-advice"></p>
+    <ul id="profile-warnings"></ul>
+    <h3>Duty of care</h3>
+    <ul id="profile-care"></ul>
+    <h3>Live incidents</h3>
+    <ul id="profile-incidents"></ul>
+    <div class="drawer-actions">
+      <button type="button" id="copy-brief">Copy Travel Risk Brief</button>
+      <button type="button" id="export-pdf">Export Country PDF</button>
+    </div>
+    <p id="copy-note"></p>
+  </aside>
+  <article id="print-sheet" aria-hidden="true"></article>
+  <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <script>
+    const PIN_KEY = "georiskintel.countryPins";
+    const TOGGLE_KEY = "georiskintel.pinPriority";
+    const DAY = 24 * 60 * 60 * 1000;
+    const PILLARS = [
+      ["conflict", "Armed Conflict"],
+      ["unrest", "Civil Unrest"],
+      ["infra", "Infrastructure / Transit"],
+      ["terror", "Kidnap / Terrorism"]
+    ];
+    const CARE = {
+      4: [
+        "Arrange secure transfers in advance. Avoid unscheduled road movement.",
+        "Carry a comms backup and set a check-in time with someone outside the country.",
+        "Expect checkpoints. Keep identification ready and follow the driver's lead.",
+        "Confirm medical evacuation cover and the nearest usable clinic before you go."
+      ],
+      3: [
+        "Use secure or vetted transfers, and prefer daylight movement.",
+        "Keep a comms backup and share the day's itinerary.",
+        "Allow time for checkpoints and follow local instructions.",
+        "Confirm medical evacuation cover before travel."
+      ],
+      2: [
+        "Use reputable transport and tell a contact your route.",
+        "Keep a second way to reach your contact if the phone network drops.",
+        "Allow extra time at checkpoints.",
+        "Check that insurance includes medical treatment in-country."
+      ],
+      1: [
+        "Keep normal situational awareness in crowds and transit hubs.",
+        "Save a local contact and a backup number.",
+        "Follow posted rules at checkpoints and airports.",
+        "Carry travel insurance with medical cover."
+      ],
+      0: [
+        "Official advice is missing, so treat the picture as incomplete.",
+        "Use reputable transport and agree a check-in plan.",
+        "Keep a comms backup.",
+        "Confirm medical insurance before travel."
+      ]
+    };
+    let cards = [];
+    let filter = "all";
+    let openKey = "";
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function norm(value) {
+      return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+    }
+    function aliasKey(value) {
+      const name = norm(value);
+      if (name === "united arab emirates" || name === "u a e" || name === "uae") return "uae";
+      if (name === "united states" || name === "united states of america" || name === "usa") return "united states";
+      if (name === "united kingdom" || name === "great britain" || name === "uk") return "united kingdom";
+      if (name === "maritime" || name === "red sea maritime" || name === "red sea") return "maritime";
+      return name;
+    }
+    function readPins() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(PIN_KEY) || "[]");
+        return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+      } catch (err) {
+        return new Set();
+      }
+    }
+    function writePins(pins) {
+      localStorage.setItem(PIN_KEY, JSON.stringify(Array.from(pins)));
+    }
+    function flagEmoji(iso2) {
+      const code = String(iso2 || "").toUpperCase();
+      if (!/^[A-Z]{2}$/.test(code)) return "🌐";
+      return String.fromCodePoint(...code.split("").map((ch) => 0x1F1E6 + ch.charCodeAt(0) - 65));
+    }
+    function safeUrl(url) {
+      return /^https?:\/\//i.test(String(url || "")) ? String(url) : "";
+    }
+    function severityWeight(severity) {
+      const name = String(severity || "").toLowerCase();
+      if (name === "high") return 8;
+      if (name === "low") return 1;
+      return 4;
+    }
+    // Composite 0–100: advisory base (L4 85, L3 65, L2 40, L1 15, unrated 0)
+    // plus incident weight (High +8, Medium +4, Low +1), capped at 100.
+    function compositeScore(level, incidents) {
+      const base = { 4: 85, 3: 65, 2: 40, 1: 15 }[Number(level)] || 0;
+      const weight = (incidents || []).reduce((sum, item) => sum + severityWeight(item.severity), 0);
+      return Math.min(100, base + weight);
+    }
+    // Trend compares incident weight in the last 24h with the previous 24h.
+    // No prior window (nothing older than 24h) stays an em dash.
+    function incidentTrend(incidents, now) {
+      let recent = 0;
+      let prior = 0;
+      let hasPrior = false;
+      (incidents || []).forEach((item) => {
+        const ts = Date.parse(item.timestamp || "");
+        if (!Number.isFinite(ts)) return;
+        const age = now - ts;
+        if (age < 0) return;
+        if (age < DAY) recent += severityWeight(item.severity);
+        else {
+          hasPrior = true;
+          if (age < 2 * DAY) prior += severityWeight(item.severity);
+        }
+      });
+      if (!hasPrior) return { text: "—", title: "No prior 24h window", kind: "" };
+      const delta = recent - prior;
+      if (delta > 0) return { text: "▲ +" + delta, title: "Incident weight up over 24h", kind: "up" };
+      if (delta < 0) return { text: "▼ " + delta, title: "Incident weight down over 24h", kind: "down" };
+      return { text: "—", title: "Unchanged over 24h", kind: "" };
+    }
+    function pillarHits(incident) {
+      const code = Number(incident.threat_code);
+      const text = [incident.title, incident.summary, incident.category, incident.location_name].join(" ").toLowerCase();
+      const hits = new Set();
+      if ([1, 2, 3, 4, 5, 6].includes(code) || /armed conflict|airstrike|air strike|shelling|artillery|clashes|missile|drone/.test(text)) hits.add("conflict");
+      if (code === 9 || /civil unrest|protest|riot|demonstration/.test(text)) hits.add("unrest");
+      if ([8, 11].includes(code) || /infrastructure|transit|airport|border crossing|blackout|\bpower\b|port closure|flight/.test(text)) hits.add("infra");
+      if (code === 7 || /kidnap|abduction|hostage|terror/.test(text)) hits.add("terror");
+      return hits;
+    }
+    function pillarLevels(row, incidents) {
+      const warnings = (row.warnings || []).map((item) => String(item).toLowerCase());
+      const buckets = {
+        conflict: { advisory: warnings.includes("armed conflict"), high: 0, medium: 0, low: 0 },
+        unrest: { advisory: warnings.includes("civil unrest"), high: 0, medium: 0, low: 0 },
+        infra: { advisory: false, high: 0, medium: 0, low: 0 },
+        terror: { advisory: warnings.includes("terrorism") || warnings.includes("kidnapping"), high: 0, medium: 0, low: 0 }
+      };
+      incidents.forEach((incident) => {
+        const rank = String(incident.severity || "medium").toLowerCase();
+        const slot = rank === "high" || rank === "low" ? rank : "medium";
+        pillarHits(incident).forEach((key) => { buckets[key][slot] += 1; });
+      });
+      const out = {};
+      Object.keys(buckets).forEach((key) => {
+        const bucket = buckets[key];
+        if (bucket.high) out[key] = "High";
+        else if (bucket.advisory || bucket.medium || bucket.low) out[key] = "Med";
+        else out[key] = "Low";
+      });
+      return out;
+    }
+    function regionalNotes(row) {
+      const extra = row.regions || row.parts || row.subWarnings || row.sub_warnings || [];
+      if (!Array.isArray(extra)) return [];
+      return extra.map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return "";
+        const title = item.name || item.title || item.region || "";
+        const body = item.summary || item.advice || item.text || item.body || "";
+        return [title, body].filter(Boolean).join(": ");
+      }).filter(Boolean);
+    }
+    function newestIncident(incidents) {
+      return incidents.slice().sort((a, b) => (Date.parse(b.timestamp || "") || 0) - (Date.parse(a.timestamp || "") || 0))[0] || null;
+    }
+    function tierClass(level) {
+      return { 4: "critical", 3: "high", 2: "elevated", 1: "low" }[Number(level)] || "unrated";
+    }
+    function formatUpdated(value) {
+      const ts = Date.parse(value || "");
+      if (!Number.isFinite(ts)) return value ? String(value) : "";
+      return new Date(ts).toLocaleString();
+    }
+    function buildCards(advisories, features, now) {
+      const byKey = new Map();
+      (advisories || []).forEach((row) => {
+        const name = String(row.name || "").trim();
+        if (!name || aliasKey(name) === "gulf states") return;
+        const key = String(row.iso3 || aliasKey(row.mapCountry || name));
+        byKey.set(key, {
+          key: key,
+          name: name,
+          mapCountry: row.mapCountry || name,
+          iso2: row.iso2 || "",
+          iso3: row.iso3 || "",
+          level: Number(row.level) || 0,
+          label: row.label || "Unrated / No Data",
+          summary: row.summary || "",
+          url: safeUrl(row.url),
+          updated: row.updated || "",
+          warnings: Array.isArray(row.warnings) ? row.warnings : [],
+          regions: regionalNotes(row),
+          source: row.source || "",
+          incidents: []
+        });
+      });
+      const index = new Map();
+      byKey.forEach((card) => {
+        [card.name, card.mapCountry, card.iso3, card.iso2].forEach((token) => {
+          const key = aliasKey(token);
+          if (key) index.set(key, card);
+        });
+      });
+      (features || []).forEach((feature) => {
+        const props = feature.properties || feature;
+        const country = String(props.country || props.region || "").trim();
+        const key = aliasKey(country);
+        if (!key || key === "gulf states" || key === "other" || key === "other international") return;
+        let card = index.get(key);
+        if (!card) {
+          card = {
+            key: key,
+            name: country,
+            mapCountry: country,
+            iso2: "",
+            iso3: "",
+            level: 0,
+            label: "Unrated / No Data",
+            summary: "",
+            url: "",
+            updated: "",
+            warnings: [],
+            regions: [],
+            source: "",
+            incidents: []
+          };
+          if (key === "maritime") card.name = "Maritime";
+          byKey.set(card.key, card);
+          index.set(key, card);
+        }
+        card.incidents.push({
+          title: props.title || "Incident",
+          summary: props.summary || "",
+          severity: props.severity || "Medium",
+          timestamp: props.timestamp || "",
+          source: safeUrl(props.source_url || props.source),
+          category: props.category || "",
+          threat_code: props.threat_code,
+          location_name: props.location_name || ""
+        });
+      });
+      return Array.from(byKey.values()).map((card) => {
+        card.score = compositeScore(card.level, card.incidents);
+        card.trend = incidentTrend(card.incidents, now);
+        card.pillars = pillarLevels(card, card.incidents);
+        return card;
+      });
+    }
+    function visibleCards() {
+      const pins = readPins();
+      const query = norm(document.getElementById("country-search").value);
+      const pinFirst = document.getElementById("pin-priority").checked;
+      return cards.filter((card) => {
+        if (filter === "pinned" && !pins.has(card.key)) return false;
+        if (filter === "critical" && card.level !== 4) return false;
+        if (filter === "high" && card.level !== 3) return false;
+        if (filter === "spikes" && !card.incidents.length) return false;
+        if (!query) return true;
+        return [card.name, card.mapCountry, card.iso2, card.iso3].some((token) => norm(token).includes(query));
+      }).sort((a, b) => {
+        if (pinFirst) {
+          const delta = Number(pins.has(b.key)) - Number(pins.has(a.key));
+          if (delta) return delta;
+        }
+        if (b.score !== a.score) return b.score - a.score;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    function cardHtml(card, pins) {
+      const pinned = pins.has(card.key);
+      const latest = newestIncident(card.incidents);
+      const pulse = card.incidents.length
+        ? "<strong>" + card.incidents.length + " Active Incident" + (card.incidents.length === 1 ? "" : "s") + "</strong><span>" + esc(latest.title) + "</span>"
+        : "<strong>Baseline monitoring — no active OSINT spikes</strong>";
+      const pills = PILLARS.map(([key, label]) => {
+        const rank = card.pillars[key] || "Low";
+        return "<span class=\"pillar " + rank.toLowerCase() + "\">" + esc(label) + " <b>" + esc(rank) + "</b></span>";
+      }).join("");
+      const iso = card.iso3 || card.iso2 || "—";
+      const flag = card.key === "maritime" ? "⚓" : flagEmoji(card.iso2);
+      return "<article class=\"country-card " + tierClass(card.level) + "\" data-key=\"" + esc(card.key) + "\">" +
+        "<div class=\"card-top\"><button type=\"button\" class=\"star\" aria-pressed=\"" + pinned + "\" aria-label=\"" + (pinned ? "Unpin " : "Pin ") + esc(card.name) + "\">" + (pinned ? "★" : "☆") + "</button>" +
+        "<span class=\"flag\" aria-hidden=\"true\">" + flag + "</span><div class=\"identity\"><h2>" + esc(card.name) + "</h2><span class=\"iso\">" + esc(iso) + "</span></div>" +
+        "<div class=\"score-block\"><span class=\"score\">" + card.score + "</span><span class=\"trend " + card.trend.kind + "\" title=\"" + esc(card.trend.title) + "\">" + esc(card.trend.text) + "</span></div></div>" +
+        "<div class=\"advisory-banner\"><span class=\"advisory-pill\">" + esc(card.label) + "</span><span class=\"advisory-updated\">" + esc([card.source, formatUpdated(card.updated) ? "Updated " + formatUpdated(card.updated) : "Updated unavailable"].filter(Boolean).join(" · ")) + "</span></div>" +
+        "<div class=\"pillars\">" + pills + "</div><div class=\"pulse\">" + pulse + "</div>" +
+        "<div class=\"card-foot\"><button type=\"button\" class=\"profile-btn\">Threat Profile & Protocols</button>" +
+        "<a href=\"/?country=" + encodeURIComponent(card.mapCountry || card.name) + "\">OSINT Map ↗</a></div></article>";
+    }
+    function render() {
+      const pins = readPins();
+      const shown = visibleCards();
+      document.getElementById("grid").innerHTML = shown.map((card) => cardHtml(card, pins)).join("") || "<p class=\"lede\">No countries match these filters.</p>";
+      document.getElementById("grid-status").textContent = shown.length + " of " + cards.length + " countries";
+    }
+    function careFor(level) {
+      return CARE[Number(level)] || CARE[0];
+    }
+    function briefText(card) {
+      const lines = [
+        "Travel Risk Brief — " + card.name,
+        "ISO: " + (card.iso3 || card.iso2 || "—"),
+        "Composite: " + card.score + " (" + card.trend.text + ")",
+        "Advisory: " + card.label,
+        "Source: " + (card.source || "Unavailable"),
+        "Updated: " + (formatUpdated(card.updated) || "unavailable"),
+        "",
+        card.summary || "No official summary is available.",
+        ""
+      ];
+      if (card.warnings.length) lines.push("Warning categories: " + card.warnings.join(", "));
+      if (card.regions.length) lines.push("Regional notes:", ...card.regions.map((item) => "- " + item));
+      lines.push("", "Pillars:");
+      PILLARS.forEach(([key, label]) => lines.push("- " + label + ": " + (card.pillars[key] || "Low")));
+      lines.push("", "Duty of care:");
+      careFor(card.level).forEach((item) => lines.push("- " + item));
+      lines.push("", card.incidents.length ? "Live incidents:" : "No live incidents.");
+      card.incidents.forEach((item) => lines.push("- [" + item.severity + "] " + item.title + (item.source ? " " + item.source : "")));
+      return lines.join("\n");
+    }
+    function fillPrint(card) {
+      const incidents = card.incidents.length
+        ? "<ul>" + card.incidents.map((item) => "<li><strong>" + esc(item.severity) + "</strong> " + esc(item.title) + (item.source ? " — " + esc(item.source) : "") + "</li>").join("") + "</ul>"
+        : "<p>No live incidents.</p>";
+      document.getElementById("print-sheet").innerHTML =
+        "<h1>" + esc(card.name) + " travel risk brief</h1><p>Composite " + card.score + " · " + esc(card.trend.text) + " · " + esc(card.label) + "</p>" +
+        "<h2>Official advice</h2><p>" + esc(card.summary || "No official summary is available.") + "</p>" +
+        (card.regions.length ? "<h2>Regional notes</h2><ul>" + card.regions.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "") +
+        "<h2>Duty of care</h2><ul>" + careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" +
+        "<h2>Live incidents</h2>" + incidents;
+    }
+    function openProfile(key) {
+      const card = cards.find((item) => item.key === key);
+      if (!card) return;
+      openKey = key;
+      document.getElementById("profile-name").textContent = card.name;
+      document.getElementById("profile-meta").textContent = (card.iso3 || card.iso2 || "No ISO") + " · Score " + card.score + " · " + card.trend.text;
+      document.getElementById("profile-summary").textContent = card.summary || "No official summary is available for this country.";
+      document.getElementById("profile-advice").textContent = [card.label, card.source, card.updated ? "Updated " + formatUpdated(card.updated) : ""].filter(Boolean).join(" · ");
+      const notes = card.warnings.map((item) => "Warning category: " + item).concat(card.regions);
+      document.getElementById("profile-warnings").innerHTML = notes.length
+        ? notes.map((item) => "<li>" + esc(item) + "</li>").join("")
+        : "<li>No regional sub-warnings on the advisory payload.</li>";
+      document.getElementById("profile-care").innerHTML = careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("");
+      document.getElementById("profile-incidents").innerHTML = card.incidents.length
+        ? card.incidents.map((item) => {
+          const rank = String(item.severity || "medium").toLowerCase();
+          const title = item.source ? "<a href=\"" + esc(item.source) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + esc(item.title) + "</a>" : esc(item.title);
+          return "<li><span class=\"sev " + esc(rank) + "\">" + esc(item.severity || "Medium") + "</span>" + title + "</li>";
+        }).join("")
+        : "<li>No live incidents for this country.</li>";
+      document.getElementById("copy-note").textContent = "";
+      fillPrint(card);
+      document.getElementById("profile").classList.add("is-open");
+      document.getElementById("profile").setAttribute("aria-hidden", "false");
+      document.getElementById("profile-overlay").hidden = false;
+      document.body.classList.add("profile-open");
+      document.getElementById("profile-close").focus();
+    }
+    function closeProfile() {
+      openKey = "";
+      document.getElementById("profile").classList.remove("is-open");
+      document.getElementById("profile").setAttribute("aria-hidden", "true");
+      document.getElementById("profile-overlay").hidden = true;
+      document.body.classList.remove("profile-open");
+    }
+    function paintTicker(features) {
+      const seq = document.getElementById("ticker-seq");
+      const clone = document.getElementById("ticker-seq-clone");
+      const track = document.getElementById("ticker-track");
+      const titles = (features || []).map((feature) => (feature.properties || feature).title).filter(Boolean).slice(0, 12);
+      if (!titles.length) {
+        track.classList.add("is-still");
+        seq.innerHTML = '<span class="ticker-empty">Waiting for live incidents</span>';
+        clone.innerHTML = "";
+        return;
+      }
+      const html = titles.map((title) => '<span class="ticker-item">' + esc(title) + "</span>").join("");
+      seq.innerHTML = html;
+      clone.innerHTML = html;
+      track.classList.remove("is-still");
+    }
+    document.getElementById("grid").addEventListener("click", (event) => {
+      const star = event.target.closest(".star");
+      const cardNode = event.target.closest(".country-card");
+      if (!cardNode) return;
+      if (star) {
+        event.stopPropagation();
+        event.preventDefault();
+        const pins = readPins();
+        if (pins.has(cardNode.dataset.key)) pins.delete(cardNode.dataset.key);
+        else pins.add(cardNode.dataset.key);
+        writePins(pins);
+        render();
+        return;
+      }
+      if (event.target.closest("a")) return;
+      openProfile(cardNode.dataset.key);
+    });
+    document.getElementById("filters").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      filter = button.dataset.filter || "all";
+      document.querySelectorAll("#filters button").forEach((node) => node.setAttribute("aria-pressed", String(node === button)));
+      render();
+    });
+    document.getElementById("country-search").addEventListener("input", render);
+    document.getElementById("pin-priority").addEventListener("change", () => {
+      localStorage.setItem(TOGGLE_KEY, document.getElementById("pin-priority").checked ? "1" : "0");
+      render();
+    });
+    document.getElementById("profile-close").addEventListener("click", closeProfile);
+    document.getElementById("profile-overlay").addEventListener("click", closeProfile);
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeProfile(); });
+    document.getElementById("copy-brief").addEventListener("click", async () => {
+      const card = cards.find((item) => item.key === openKey);
+      if (!card) return;
+      const text = briefText(card);
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("copy-note").textContent = "Travel risk brief copied.";
+      } catch (err) {
+        document.getElementById("copy-note").textContent = "Clipboard was blocked. Select the print view and copy from there.";
+      }
+    });
+    document.getElementById("export-pdf").addEventListener("click", () => {
+      const card = cards.find((item) => item.key === openKey);
+      if (!card) return;
+      fillPrint(card);
+      window.print();
+    });
+    document.getElementById("pin-priority").checked = localStorage.getItem(TOGGLE_KEY) === "1";
+
+    const localTimeFormat = new Intl.DateTimeFormat("en-GB", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "short"
+    });
+    function paintLocalTime() {
+      const badge = document.getElementById("local-time");
+      if (!badge) return;
+      const parts = {};
+      localTimeFormat.formatToParts(new Date()).forEach((part) => { parts[part.type] = part.value; });
+      if (parts.hour === "24") parts.hour = "00";
+      const clock = document.getElementById("local-time-clock");
+      const zone = document.getElementById("local-time-zone");
+      if (clock) clock.textContent = [parts.hour, parts.minute, parts.second].join(":");
+      if (zone) zone.textContent = parts.timeZoneName || "";
+    }
+    paintLocalTime();
+    setInterval(paintLocalTime, 1000);
+
+    async function load() {
+      const [adviceResult, dataResult] = await Promise.allSettled([
+        fetch("/api/travel-advisories", { cache: "no-store" }).then((response) => response.json()),
+        fetch("/api/data", { cache: "no-store" }).then((response) => response.json())
+      ]);
+      const advisories = adviceResult.status === "fulfilled" && adviceResult.value ? adviceResult.value.countries || [] : [];
+      const features = dataResult.status === "fulfilled" && dataResult.value && Array.isArray(dataResult.value.features) ? dataResult.value.features : [];
+      cards = buildCards(advisories, features, Date.now());
+      paintTicker(features);
+      render();
+      if (!cards.length) document.getElementById("grid-status").textContent = "No country records yet. The grid fills when advisories or live incidents arrive.";
+    }
+    load();
+  </script>
+</body>
+</html>

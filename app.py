@@ -123,6 +123,11 @@ def world_risk_page() -> Response:
     return send_from_directory(serve_map.ROOT, "world-risk.html")
 
 
+@app.get("/countries")
+def countries_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "countries.html")
+
+
 @app.get("/api/travel-advisories")
 def api_travel_advisories() -> Response:
     return _json(serve_map.travel_advisories_payload())
