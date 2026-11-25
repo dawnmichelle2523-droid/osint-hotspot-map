@@ -113,6 +113,11 @@ def index() -> Response:
     return send_from_directory(serve_map.ROOT, "index.html")
 
 
+@app.get("/briefing")
+def briefing_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "briefing.html")
+
+
 @app.get("/<path:filename>")
 def static_file(filename: str) -> Response:
     name = filename.rsplit("/", 1)[-1]
