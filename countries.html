@@ -57,6 +57,13 @@
       padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
     }
     #filters button[aria-pressed="true"] { color: #0f172a; background: #D4AF37; border-color: #D4AF37; }
+    .sector-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+    .sector-bar button {
+      color: #94A3B8; background: #0f172a; border: 1px solid #334155; border-radius: 999px;
+      padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .sector-bar button[aria-pressed="true"] { color: #0f172a; background: #D4AF37; border-color: #D4AF37; }
+    #profile .sector-bar { margin-top: 8px; }
     #country-search { border-radius: 8px; min-width: min(260px, 100%); color: var(--text); cursor: text; }
     #grid-status { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
     #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
@@ -94,6 +101,16 @@
     .pillar.high { color: #fecaca; border-color: #dc2626; }
     .pillar.med { color: #fde68a; border-color: #eab308; }
     .pillar.low { color: #99f6e4; border-color: #0d9488; }
+    .pillar.primary { background: rgba(212, 175, 55, 0.18); border-color: #D4AF37; color: #F8FAFC; }
+    .sector-badge, .sector-req {
+      display: inline-block; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 0.03em;
+    }
+    .sector-badge { display: block; width: fit-content; margin-top: 4px; color: #D4AF37; border: 1px solid #C5A059; padding: 1px 6px; }
+    .sector-req { display: block; width: fit-content; margin-top: 6px; color: #fecaca; background: #450a0a; border: 1px solid #dc2626; padding: 2px 8px; }
+    #sector-protocols { margin-top: 8px; background: #020617; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; }
+    #sector-protocols[hidden] { display: none; }
+    #sector-protocols h3 { margin-top: 0; }
+    #sector-protocols h4 { margin: 10px 0 4px; font-size: 13px; color: #E2E8F0; }
     .pulse { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
     .pulse strong { display: block; }
     .pulse span { color: var(--muted); }
@@ -170,6 +187,12 @@
   <main>
     <h1>Country Tiles</h1>
     <p class="lede">Each card combines the official US and UK travel advisory with incidents already on the live feed.</p>
+    <div id="sector-bar" class="sector-bar" role="group" aria-label="Operational sector">
+      <button type="button" data-sector="all" aria-pressed="true">All / General</button>
+      <button type="button" data-sector="media" aria-pressed="false">Media & Broadcast</button>
+      <button type="button" data-sector="ngo" aria-pressed="false">NGOs & Humanitarian</button>
+      <button type="button" data-sector="vip" aria-pressed="false">Close Protection / VIP</button>
+    </div>
     <div id="controls">
       <label class="pin-toggle"><input type="checkbox" id="pin-priority"> Pin Priority Countries</label>
       <div id="filters" role="group" aria-label="Country filters">
@@ -189,6 +212,22 @@
     <button type="button" id="profile-close" aria-label="Close">×</button>
     <h2 id="profile-name">Country</h2>
     <p class="meta" id="profile-meta"></p>
+    <div id="profile-sector" class="sector-bar" role="group" aria-label="Operational sector">
+      <button type="button" data-sector="all" aria-pressed="true">All / General</button>
+      <button type="button" data-sector="media" aria-pressed="false">Media & Broadcast</button>
+      <button type="button" data-sector="ngo" aria-pressed="false">NGOs & Humanitarian</button>
+      <button type="button" data-sector="vip" aria-pressed="false">Close Protection / VIP</button>
+    </div>
+    <section id="sector-protocols" hidden>
+      <h3>Operational Sector Protocols</h3>
+      <p class="meta" id="protocol-sector"></p>
+      <h4>Pre-Deployment Requirements</h4>
+      <ul id="protocol-pre"></ul>
+      <h4>Movement & Transport Rules</h4>
+      <ul id="protocol-move"></ul>
+      <h4>Comms & Medical Contingency</h4>
+      <ul id="protocol-comms"></ul>
+    </section>
     <h3>Executive summary</h3>
     <p id="profile-summary"></p>
     <h3>Official advice</h3>
@@ -209,6 +248,40 @@
   <script>
     const PIN_KEY = "georiskintel.countryPins";
     const TOGGLE_KEY = "georiskintel.pinPriority";
+    const SECTOR_KEY = "georisk-sector";
+    const SECTORS = {
+      all: { id: "all", label: "All / General" },
+      media: {
+        id: "media",
+        label: "Media & Broadcast",
+        requirement: "PPE / HEFAT Required",
+        drivers: [
+          ["checkpoint", "Checkpoint Detention"],
+          ["unrest", "Civil Unrest"],
+          ["airstrike", "Airstrike/IDF"]
+        ]
+      },
+      ngo: {
+        id: "ngo",
+        label: "NGOs & Humanitarian",
+        requirement: "OCHA Deconfliction / Comms Check",
+        drivers: [
+          ["kidnap", "Kidnap"],
+          ["uxo", "UXO/Mines"],
+          ["access", "Access/Blockade"]
+        ]
+      },
+      vip: {
+        id: "vip",
+        label: "Close Protection / VIP",
+        requirement: "Armoured / Advance Recon Required",
+        drivers: [
+          ["ransom", "Kidnap/Ransom"],
+          ["svbied", "S/VBIED"],
+          ["airport", "Airport/Route"]
+        ]
+      }
+    };
     const DAY = 24 * 60 * 60 * 1000;
     const PILLARS = [
       ["conflict", "Armed Conflict"],
@@ -353,6 +426,122 @@
       });
       return out;
     }
+    function readSector() {
+      const stored = localStorage.getItem(SECTOR_KEY) || "all";
+      return SECTORS[stored] ? stored : "all";
+    }
+    function incidentBlob(incident) {
+      return [incident.title, incident.summary, incident.category, incident.location_name].join(" ").toLowerCase();
+    }
+    function driverMatches(incident, driverId) {
+      const code = Number(incident.threat_code);
+      const text = incidentBlob(incident);
+      if (driverId === "checkpoint") return code === 11 || /checkpoint|detention|\barrest/.test(text);
+      if (driverId === "unrest") return code === 9 || /civil unrest|protest|riot|demonstration/.test(text);
+      if (driverId === "airstrike") return code === 2 || /airstrike|air strike|indirect fire|\bidf\b|shelling|artillery/.test(text);
+      if (driverId === "kidnap" || driverId === "ransom") return code === 7 || /kidnap|abduction|hostage|ransom/.test(text);
+      if (driverId === "uxo") return code === 6 || /\buxo\b|unexploded|landmine|\bmines?\b/.test(text);
+      if (driverId === "access") return /blockade|access denied|road closure|border clos|humanitarian access|\bsiege\b/.test(text);
+      if (driverId === "svbied") return code === 3 || /s\/vbied|svbied|\bvbied\b|suicide bomb|car bomb|vehicle-borne|vehicle borne/.test(text);
+      if (driverId === "airport") return /airport|airfield|\bflight\b|\bconvoy\b|\broute\b|highway/.test(text);
+      return false;
+    }
+    function driverLevel(card, driverId) {
+      const warnings = (card.warnings || []).map((item) => String(item).toLowerCase());
+      let advisory = false;
+      if (driverId === "unrest" && warnings.includes("civil unrest")) advisory = true;
+      if ((driverId === "kidnap" || driverId === "ransom") && (warnings.includes("kidnapping") || warnings.includes("terrorism"))) advisory = true;
+      if (driverId === "airstrike" && warnings.includes("armed conflict")) advisory = true;
+      if (driverId === "svbied" && warnings.includes("terrorism")) advisory = true;
+      let high = 0;
+      let medium = 0;
+      let low = 0;
+      (card.incidents || []).forEach((incident) => {
+        if (!driverMatches(incident, driverId)) return;
+        const rank = String(incident.severity || "medium").toLowerCase();
+        if (rank === "high") high += 1;
+        else if (rank === "low") low += 1;
+        else medium += 1;
+      });
+      if (high) return "High";
+      if (advisory || medium || low) return "Med";
+      return "Low";
+    }
+    function sectorView(card, sectorId) {
+      const sector = SECTORS[sectorId || readSector()] || SECTORS.all;
+      if (sector.id === "all") return null;
+      const ranks = sector.drivers.map(([id, label]) => ({ id: id, label: label, rank: driverLevel(card, id) }));
+      const weight = { High: 3, Med: 2, Low: 1 };
+      let primary = null;
+      ranks.forEach((driver) => {
+        if (driver.rank === "Low") return;
+        if (!primary || weight[driver.rank] > weight[primary.rank]) primary = driver;
+      });
+      return {
+        sector: sector,
+        ranks: ranks,
+        primary: primary,
+        requirement: Number(card.level) >= 3 ? sector.requirement : ""
+      };
+    }
+    function protocolsFor(sectorId, level) {
+      const tier = Number(level) || 0;
+      const critical = tier >= 4;
+      const high = tier >= 3;
+      const elevated = tier >= 2;
+      if (sectorId === "media") {
+        return {
+          pre: high
+            ? ["PPE and HEFAT are required before deployment.", "Carry press accreditation and file a named emergency contact.", "Agree who calls the desk if a checkpoint holds the team."]
+            : elevated
+            ? ["HEFAT is recommended before travel.", "Carry accreditation and a local media contact."]
+            : ["Carry press credentials and agree a check-in time."],
+          move: critical
+            ? ["No night movement.", "Use a low-profile vehicle rather than a marked press convoy.", "Use PACE routing: a primary route, an alternate, and a turn-back if the road is closed."]
+            : high
+            ? ["No night movement.", "Use PACE routing: keep a primary route and an alternate.", "Do not approach an informal checkpoint after dark."]
+            : ["Use reputable transport and share the route with a colleague."],
+          comms: high
+            ? ["Carry a satellite messenger such as inReach, or a Starlink terminal, when mobile networks fail.", "Confirm medical evacuation cover before departure.", "Put the nearest trauma capability in your own medical plan. This page does not name a hospital."]
+            : ["Keep a phone and a backup contact.", "Confirm insurance includes medical treatment."]
+        };
+      }
+      if (sectorId === "ngo") {
+        return {
+          pre: high
+            ? ["Complete hostile-environment training and confirm kidnap-and-ransom insurance.", "Finish OCHA deconfliction, or the recognised humanitarian notification channel, before movement.", "Carry organisational accreditation."]
+            : elevated
+            ? ["Confirm kidnap-and-ransom cover.", "Tell the humanitarian coordination channel about the movement."]
+            : ["Get organisational travel approval and confirm medical insurance."],
+          move: critical
+            ? ["No night movement.", "Use low-profile, unmarked transport.", "Use PACE routing: a primary route and an alternate. Stop if access is blocked or a road is closed."]
+            : high
+            ? ["No night movement on routes that are not pre-cleared.", "Use PACE routing with an alternate.", "Stop and report if a checkpoint or blockade denies access."]
+            : ["Use reputable transport and share the itinerary."],
+          comms: high
+            ? ["Make a communications check before departure and on arrival.", "Carry a satellite messenger or Starlink when cellular coverage is poor.", "Confirm medevac cover. Name the trauma facility in the organisation's own plan, not from this page."]
+            : ["Keep a backup way to reach the duty officer.", "Confirm medical insurance."]
+        };
+      }
+      if (sectorId === "vip") {
+        return {
+          pre: high
+            ? ["Armoured movement and an advance route review are required before the principal travels.", "Review the airport, accommodation, and primary route in advance.", "Confirm kidnap-and-ransom insurance and the team's accreditation with the host."]
+            : elevated
+            ? ["Review the airport and hotel route before arrival.", "Confirm kidnap-and-ransom cover."]
+            : ["Review the itinerary and save a local contact."],
+          move: critical
+            ? ["Move the principal in an armoured vehicle.", "No night movement.", "Use PACE routing: a primary route and an alternate that has already been looked at."]
+            : high
+            ? ["Use an armoured vehicle for the principal where the route assessment says it is warranted. Otherwise stay low-profile.", "No night movement.", "Use PACE routing: a primary route and an alternate."]
+            : ["Use a low-profile reputable vehicle and share the route."],
+          comms: high
+            ? ["Give the detail a satellite messenger. Use Starlink at the residence if local networks fail.", "Confirm medical evacuation cover.", "Record the nearest trauma capability in the principal's own medical plan. This page does not name a hospital."]
+            : ["Keep a phone and a backup number with the detail.", "Confirm medical cover."]
+        };
+      }
+      return null;
+    }
     function regionalNotes(row) {
       const extra = row.regions || row.parts || row.subWarnings || row.sub_warnings || [];
       if (!Array.isArray(extra)) return [];
@@ -476,15 +665,24 @@
       const pulse = card.incidents.length
         ? "<strong>" + card.incidents.length + " Active Incident" + (card.incidents.length === 1 ? "" : "s") + "</strong><span>" + esc(latest.title) + "</span>"
         : "<strong>Baseline monitoring — no active OSINT spikes</strong>";
-      const pills = PILLARS.map(([key, label]) => {
-        const rank = card.pillars[key] || "Low";
-        return "<span class=\"pillar " + rank.toLowerCase() + "\">" + esc(label) + " <b>" + esc(rank) + "</b></span>";
-      }).join("");
+      const view = sectorView(card);
+      const pills = view
+        ? view.ranks.map((driver) => {
+          const primary = view.primary && view.primary.id === driver.id;
+          return "<span class=\"pillar " + driver.rank.toLowerCase() + (primary ? " primary" : "") + "\">" + esc(driver.label) + " <b>" + esc(driver.rank) + (primary ? " · Primary" : "") + "</b></span>";
+        }).join("")
+        : PILLARS.map(([key, label]) => {
+          const rank = card.pillars[key] || "Low";
+          return "<span class=\"pillar " + rank.toLowerCase() + "\">" + esc(label) + " <b>" + esc(rank) + "</b></span>";
+        }).join("");
+      const sectorMark = view
+        ? "<span class=\"sector-badge\">" + esc(view.sector.label) + "</span>" + (view.requirement ? "<span class=\"sector-req\">" + esc(view.requirement) + "</span>" : "")
+        : "";
       const iso = card.iso3 || card.iso2 || "—";
       const flag = card.key === "maritime" ? "⚓" : flagEmoji(card.iso2);
       return "<article class=\"country-card " + tierClass(card.level) + "\" data-key=\"" + esc(card.key) + "\">" +
         "<div class=\"card-top\"><button type=\"button\" class=\"star\" aria-pressed=\"" + pinned + "\" aria-label=\"" + (pinned ? "Unpin " : "Pin ") + esc(card.name) + "\">" + (pinned ? "★" : "☆") + "</button>" +
-        "<span class=\"flag\" aria-hidden=\"true\">" + flag + "</span><div class=\"identity\"><h2>" + esc(card.name) + "</h2><span class=\"iso\">" + esc(iso) + "</span></div>" +
+        "<span class=\"flag\" aria-hidden=\"true\">" + flag + "</span><div class=\"identity\"><h2>" + esc(card.name) + "</h2><span class=\"iso\">" + esc(iso) + "</span>" + sectorMark + "</div>" +
         "<div class=\"score-block\"><span class=\"score\">" + card.score + "</span><span class=\"trend " + card.trend.kind + "\" title=\"" + esc(card.trend.title) + "\">" + esc(card.trend.text) + "</span></div></div>" +
         "<div class=\"advisory-banner\"><span class=\"advisory-pill\">" + esc(card.label) + "</span><span class=\"advisory-updated\">" + esc([card.source, formatUpdated(card.updated) ? "Updated " + formatUpdated(card.updated) : "Updated unavailable"].filter(Boolean).join(" · ")) + "</span></div>" +
         "<div class=\"pillars\">" + pills + "</div><div class=\"pulse\">" + pulse + "</div>" +
@@ -514,10 +712,25 @@
       ];
       if (card.warnings.length) lines.push("Warning categories: " + card.warnings.join(", "));
       if (card.regions.length) lines.push("Regional notes:", ...card.regions.map((item) => "- " + item));
-      lines.push("", "Pillars:");
-      PILLARS.forEach(([key, label]) => lines.push("- " + label + ": " + (card.pillars[key] || "Low")));
-      lines.push("", "Duty of care:");
-      careFor(card.level).forEach((item) => lines.push("- " + item));
+      const view = sectorView(card);
+      if (!view) {
+        lines.push("", "Pillars:");
+        PILLARS.forEach(([key, label]) => lines.push("- " + label + ": " + (card.pillars[key] || "Low")));
+        lines.push("", "Duty of care:");
+        careFor(card.level).forEach((item) => lines.push("- " + item));
+      } else {
+        const protocols = protocolsFor(view.sector.id, card.level);
+        lines.push("", "Sector: " + view.sector.label);
+        lines.push("Drivers:");
+        view.ranks.forEach((driver) => lines.push("- " + driver.label + ": " + driver.rank + (view.primary && view.primary.id === driver.id ? " (primary)" : "")));
+        if (view.requirement) lines.push(view.requirement);
+        lines.push("", "Operational Sector Protocols", "Pre-Deployment Requirements:");
+        protocols.pre.forEach((item) => lines.push("- " + item));
+        lines.push("Movement & Transport Rules:");
+        protocols.move.forEach((item) => lines.push("- " + item));
+        lines.push("Comms & Medical Contingency:");
+        protocols.comms.forEach((item) => lines.push("- " + item));
+      }
       lines.push("", card.incidents.length ? "Live incidents:" : "No live incidents.");
       card.incidents.forEach((item) => lines.push("- [" + item.severity + "] " + item.title + (item.source ? " " + item.source : "")));
       return lines.join("\n");
@@ -526,17 +739,27 @@
       const incidents = card.incidents.length
         ? "<ul>" + card.incidents.map((item) => "<li><strong>" + esc(item.severity) + "</strong> " + esc(item.title) + (item.source ? " — " + esc(item.source) : "") + "</li>").join("") + "</ul>"
         : "<p>No live incidents.</p>";
+      const view = sectorView(card);
+      const protocols = view ? protocolsFor(view.sector.id, card.level) : null;
+      const protocolHtml = protocols
+        ? "<h2>Sector: " + esc(view.sector.label) + "</h2>" +
+          (view.requirement ? "<p>" + esc(view.requirement) + "</p>" : "") +
+          "<h2>Pre-Deployment Requirements</h2><ul>" + protocols.pre.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" +
+          "<h2>Movement & Transport Rules</h2><ul>" + protocols.move.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" +
+          "<h2>Comms & Medical Contingency</h2><ul>" + protocols.comms.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>"
+        : "<h2>Duty of care</h2><ul>" + careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>";
       document.getElementById("print-sheet").innerHTML =
         "<h1>" + esc(card.name) + " travel risk brief</h1><p>Composite " + card.score + " · " + esc(card.trend.text) + " · " + esc(card.label) + "</p>" +
         "<h2>Official advice</h2><p>" + esc(card.summary || "No official summary is available.") + "</p>" +
         (card.regions.length ? "<h2>Regional notes</h2><ul>" + card.regions.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "") +
-        "<h2>Duty of care</h2><ul>" + careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" +
+        protocolHtml +
         "<h2>Live incidents</h2>" + incidents;
     }
-    function openProfile(key) {
+    function openProfile(key, focusClose) {
       const card = cards.find((item) => item.key === key);
       if (!card) return;
       openKey = key;
+      const takeFocus = focusClose !== false;
       document.getElementById("profile-name").textContent = card.name;
       document.getElementById("profile-meta").textContent = (card.iso3 || card.iso2 || "No ISO") + " · Score " + card.score + " · " + card.trend.text;
       document.getElementById("profile-summary").textContent = card.summary || "No official summary is available for this country.";
@@ -546,6 +769,18 @@
         ? notes.map((item) => "<li>" + esc(item) + "</li>").join("")
         : "<li>No regional sub-warnings on the advisory payload.</li>";
       document.getElementById("profile-care").innerHTML = careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("");
+      const view = sectorView(card);
+      const protocolBox = document.getElementById("sector-protocols");
+      if (!view) {
+        protocolBox.hidden = true;
+      } else {
+        const protocols = protocolsFor(view.sector.id, card.level);
+        protocolBox.hidden = false;
+        document.getElementById("protocol-sector").textContent = view.sector.label + (view.requirement ? " · " + view.requirement : "");
+        document.getElementById("protocol-pre").innerHTML = protocols.pre.map((item) => "<li>" + esc(item) + "</li>").join("");
+        document.getElementById("protocol-move").innerHTML = protocols.move.map((item) => "<li>" + esc(item) + "</li>").join("");
+        document.getElementById("protocol-comms").innerHTML = protocols.comms.map((item) => "<li>" + esc(item) + "</li>").join("");
+      }
       document.getElementById("profile-incidents").innerHTML = card.incidents.length
         ? card.incidents.map((item) => {
           const rank = String(item.severity || "medium").toLowerCase();
@@ -559,7 +794,7 @@
       document.getElementById("profile").setAttribute("aria-hidden", "false");
       document.getElementById("profile-overlay").hidden = false;
       document.body.classList.add("profile-open");
-      document.getElementById("profile-close").focus();
+      if (takeFocus) document.getElementById("profile-close").focus();
     }
     function closeProfile() {
       openKey = "";
@@ -601,6 +836,26 @@
       if (event.target.closest("a")) return;
       openProfile(cardNode.dataset.key);
     });
+    function syncSectorBars() {
+      const sector = readSector();
+      document.querySelectorAll(".sector-bar button").forEach((node) => {
+        node.setAttribute("aria-pressed", String(node.dataset.sector === sector));
+      });
+    }
+    function setSector(id) {
+      const next = SECTORS[id] ? id : "all";
+      localStorage.setItem(SECTOR_KEY, next);
+      syncSectorBars();
+      render();
+      if (openKey) openProfile(openKey, false);
+    }
+    document.querySelectorAll(".sector-bar").forEach((bar) => {
+      bar.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        setSector(button.dataset.sector);
+      });
+    });
     document.getElementById("filters").addEventListener("click", (event) => {
       const button = event.target.closest("button");
       if (!button) return;
@@ -634,6 +889,7 @@
       window.print();
     });
     document.getElementById("pin-priority").checked = localStorage.getItem(TOGGLE_KEY) === "1";
+    syncSectorBars();
 
     const localTimeFormat = new Intl.DateTimeFormat("en-GB", {
       hour12: false,
