@@ -57,7 +57,9 @@ MAX_NEW_PER_CYCLE = 6
 LIVE_WINDOW = timedelta(hours=72)
 SIMILAR_TITLE_LIMIT = 40
 SIMILAR_TITLE_RATIO = 0.65
-FETCH_TIMEOUT = 6
+FETCH_TIMEOUT = 10
+FEED_TIMEOUT = 10
+FEED_ACCEPT = "application/rss+xml, application/xml, text/xml, */*;q=0.8"
 FIRMS_TIMEOUT = 10
 FIRMS_CACHE_SECONDS = 15 * 60
 FIRMS_URL = (
@@ -578,7 +580,7 @@ X_FEED_URLS = [
     "https://nitter.poast.org/{handle}/rss",
     "https://nitter.privacydev.net/{handle}/rss",
 ]
-X_MIRROR_TIMEOUT = 5
+X_MIRROR_TIMEOUT = 10
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -1494,7 +1496,7 @@ def governorate_counts(events: list[dict]) -> dict[str, int]:
 def within_live_window(feature: dict, now: datetime | None = None) -> bool:
     moment = osint.parse_timestamp((feature.get("properties") or {}).get("timestamp"))
     if moment is None:
-        return False
+        return True
     cutoff = (now or datetime.now(timezone.utc)) - LIVE_WINDOW
     return moment >= cutoff
 
@@ -1903,6 +1905,15 @@ def rotate_slice(items: list, index: int, size: int) -> list:
     return [items[(start + offset) % len(items)] for offset in range(count)]
 
 
+def feed_request_headers() -> dict[str, str]:
+    """Browser headers for every outbound feed and OSINT HTTP request."""
+    return {
+        "User-Agent": BROWSER_USER_AGENT,
+        "Accept": FEED_ACCEPT,
+        "Accept-Language": "en",
+    }
+
+
 def paced_get(url: str):
     global _pace_pending
     if _pacing:
@@ -1910,7 +1921,7 @@ def paced_get(url: str):
             if _pace_pending:
                 time.sleep(random.uniform(1.0, 2.5))
             _pace_pending = True
-    return requests.get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
+    return requests.get(url, timeout=FEED_TIMEOUT, headers=feed_request_headers())
 
 
 def feed_features() -> list[dict]:
@@ -1919,15 +1930,14 @@ def feed_features() -> list[dict]:
         conn = db_connect()
         try:
             rows = conn.execute(
-                "SELECT * FROM items WHERE lat IS NOT NULL AND lng IS NOT NULL ORDER BY published_at DESC"
+                "SELECT * FROM items ORDER BY published_at DESC"
             ).fetchall()
         finally:
             conn.close()
     for row in rows:
         lng = row["lng"]
         lat = row["lat"]
-        if not osint.valid_coord(lng, lat):
-            continue
+        point = osint.valid_coord(lng, lat)
         if is_excluded_source(row["source_name"], row["source_url"], row["source_kind"]):
             continue
         title, summary = visible_english(row["title"], row["summary"])
@@ -1961,13 +1971,13 @@ def feed_features() -> list[dict]:
         }
         if row["governorate"]:
             props["governorate"] = row["governorate"]
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [lng, lat]},
-                "properties": props,
-            }
-        )
+        feature = {
+            "type": "Feature",
+            "properties": props,
+        }
+        if point:
+            feature["geometry"] = {"type": "Point", "coordinates": [point[0], point[1]]}
+        features.append(feature)
     return features
 
 
@@ -1975,8 +1985,6 @@ def combined_features() -> list[dict]:
     features = []
     seen: set[str] = set()
     for feature in load_features() + feed_features():
-        if not is_point(feature):
-            continue
         source = str((feature.get("properties") or {}).get("source") or "")
         if source and source in seen:
             continue
@@ -2043,6 +2051,7 @@ def html_notice_items(name: str, url: str, content: bytes) -> list[dict]:
         print(f"RSS {name} failed: no notices.")
         note_feed("rss", name, False, "no notices")
         return []
+    print(f"RSS {name}: {len(found)} raw items.")
     note_feed("rss", name, True, "")
     return found
 
@@ -2089,14 +2098,7 @@ def aljazeera_conflict_item(text: str) -> bool:
 
 
 def browser_get(url: str):
-    return requests.get(
-        url,
-        timeout=FETCH_TIMEOUT,
-        headers={
-            "User-Agent": BROWSER_USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/rss+xml,*/*",
-        },
-    )
+    return requests.get(url, timeout=FEED_TIMEOUT, headers=feed_request_headers())
 
 
 def fetch_rss_feed(name: str, url: str) -> list[dict]:
@@ -2116,6 +2118,8 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
         print(f"RSS {name} failed: {exc.__class__.__name__}.")
         note_feed("rss", name, False, exc.__class__.__name__)
         return []
+    raw_count = len(parsed.entries or [])
+    print(f"RSS {name}: {raw_count} raw items.")
     note_feed("rss", name, True, "")
     found = []
     for entry in (parsed.entries or [])[:20]:
@@ -2216,8 +2220,8 @@ def fetch_khartoum_err() -> list[dict]:
     try:
         response = requests.get(
             KHARTOUM_ERR_FEED,
-            timeout=6,
-            headers={"User-Agent": BROWSER_USER_AGENT},
+            timeout=FEED_TIMEOUT,
+            headers=feed_request_headers(),
         )
         response.raise_for_status()
         parsed = parse_feed(response.content or b"")
@@ -2225,20 +2229,23 @@ def fetch_khartoum_err() -> list[dict]:
             raise ValueError("invalid rss")
         if not parsed.entries:
             raise ValueError("no entries")
+        items = _khartoum_err_items(parsed.entries)
+        print(f"RSS Khartoum Err: {len(parsed.entries or [])} raw items.")
         note_feed("rss", "Khartoum Err", True, "")
-        return _khartoum_err_items(parsed.entries)
+        return items
     except Exception as exc:
         print(f"Khartoum Err RSS parse failed: {exc.__class__.__name__}.")
     try:
         response = requests.get(
             KHARTOUM_ERR_HOME,
-            timeout=6,
-            headers={"User-Agent": BROWSER_USER_AGENT},
+            timeout=FEED_TIMEOUT,
+            headers=feed_request_headers(),
         )
         response.raise_for_status()
         found = _khartoum_err_html(response.text)
         if not found:
             raise ValueError("no entries")
+        print(f"RSS Khartoum Err: {len(found)} raw items.")
         note_feed("rss", "Khartoum Err", True, "")
         return found
     except Exception as exc:
@@ -2364,6 +2371,7 @@ def poll_aljazeera_liveblog() -> list[dict]:
             amp = browser_get(aljazeera_amp_url(page_url))
             amp.raise_for_status()
             updates = parse_aljazeera_liveblog(amp.text, page_url)
+        print(f"Al Jazeera Live: {len(updates)} raw items.")
     except Exception as exc:
         print(f"Al Jazeera liveblog failed: {exc.__class__.__name__}.")
         note_feed("liveblog", "Al Jazeera Live", False, exc.__class__.__name__)
@@ -2385,9 +2393,16 @@ def poll_aljazeera_liveblog() -> list[dict]:
 def fetch_rss_candidates() -> list[dict]:
     found = []
     with ThreadPoolExecutor(max_workers=len(RSS_FEEDS) or 1) as pool:
-        futures = [pool.submit(fetch_rss_feed, name, url) for name, url in RSS_FEEDS]
-        for future in futures:
-            found.extend(future.result())
+        futures = {
+            pool.submit(fetch_rss_feed, name, url): name
+            for name, url in RSS_FEEDS
+        }
+        for future, name in futures.items():
+            try:
+                found.extend(future.result() or [])
+            except Exception as exc:
+                print(f"RSS {name} failed: {exc.__class__.__name__}.")
+                note_feed("rss", name, False, exc.__class__.__name__)
     return found
 
 
@@ -2424,6 +2439,7 @@ def fetch_telegram_channel(channel: str) -> list[dict]:
                 "published_at": when,
             }
         )
+    print(f"Telegram {channel}: {len(found)} raw items.")
     note_feed("telegram", channel, True, "")
     return found
 
@@ -2528,7 +2544,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
             response = requests.get(
                 url,
                 timeout=X_MIRROR_TIMEOUT,
-                headers={"User-Agent": BROWSER_USER_AGENT},
+                headers=feed_request_headers(),
             )
         except Exception as exc:
             last_error = exc.__class__.__name__
@@ -2552,6 +2568,7 @@ def fetch_x_handle(handle: str) -> list[dict]:
             last_error = "no entries"
             print(f"X {handle} via {host} failed: no entries.")
             continue
+        print(f"X {handle}: {len(parsed.entries)} raw items.")
         found = []
         for entry in parsed.entries[:20]:
             title = plain_text(getattr(entry, "title", ""))
@@ -2582,18 +2599,26 @@ def fetch_x_handle(handle: str) -> list[dict]:
 def fetch_x_candidates() -> list[dict]:
     found = []
     with ThreadPoolExecutor(max_workers=min(4, len(X_HANDLES) or 1)) as pool:
-        futures = [pool.submit(fetch_x_handle, handle) for handle in X_HANDLES]
-        for future in futures:
-            found.extend(future.result())
+        futures = {pool.submit(fetch_x_handle, handle): handle for handle in X_HANDLES}
+        for future, handle in futures.items():
+            try:
+                found.extend(future.result() or [])
+            except Exception as exc:
+                print(f"X {handle} failed: {exc.__class__.__name__}.")
+                note_feed("x", handle, False, exc.__class__.__name__)
     return found
 
 
 def fetch_telegram_candidates() -> list[dict]:
     found = []
     with ThreadPoolExecutor(max_workers=len(TELEGRAM_CHANNELS) or 1) as pool:
-        futures = [pool.submit(fetch_telegram_channel, channel) for channel in TELEGRAM_CHANNELS]
-        for future in futures:
-            found.extend(future.result())
+        futures = {pool.submit(fetch_telegram_channel, channel): channel for channel in TELEGRAM_CHANNELS}
+        for future, channel in futures.items():
+            try:
+                found.extend(future.result() or [])
+            except Exception as exc:
+                print(f"Telegram {channel} failed: {exc.__class__.__name__}.")
+                note_feed("telegram", channel, False, exc.__class__.__name__)
     return found
 
 
@@ -3464,7 +3489,38 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
         shifted = offset_fallback(hit[1], hit[2], event_id)
         if shifted:
             return shifted[0], shifted[1], classify_precision(hit[0])
+    centroid = country_centroid_point(raw_blob, event_id)
+    if centroid:
+        lat, lng, country = centroid
+        if not placed.get("country") or str(placed.get("country")) in {"Other", "Other / International"}:
+            placed["country"] = country
+            placed["region"] = country
+        return lat, lng, GEO_PRECISION_COUNTRY
     return None, None, ""
+
+
+def country_centroid_point(text: str, event_id: object) -> tuple[float, float, str] | None:
+    """Country or sea center from a place keyword. Gulf States is not a stored country."""
+    named = incident_country(text)
+    if not named and "maritime" in geo_blob(text):
+        named = "Red Sea / Maritime"
+    if not named:
+        return None
+    country = canonical_country(named)
+    if not country or country == "Other":
+        return None
+    if named in COUNTRY_CENTERS:
+        center = COUNTRY_CENTERS[named]
+    elif country in COUNTRY_CENTERS:
+        center = COUNTRY_CENTERS[country]
+    elif country == "Maritime":
+        center = COUNTRY_CENTERS["Red Sea / Maritime"]
+    else:
+        return None
+    shifted = offset_fallback(center[0], center[1], event_id)
+    if not shifted:
+        return None
+    return shifted[0], shifted[1], country
 
 
 def backfill_coordinates(now: datetime | None = None) -> int:
@@ -3496,6 +3552,18 @@ def backfill_coordinates(now: datetime | None = None) -> int:
                 if hit is None:
                     hit = match_geo_fallback(geo_blob(raw))
                 if not hit:
+                    centroid = country_centroid_point(raw, row["id"])
+                    if not centroid:
+                        continue
+                    conn.execute(
+                        "UPDATE items SET lat = ?, lng = ?, geo_precision = ?, "
+                        "country = CASE WHEN country IS NULL OR country = '' OR country = 'Other' THEN ? ELSE country END, "
+                        "region = CASE WHEN region IS NULL OR region = '' OR region = 'Other' "
+                        "OR region = 'Other / International' THEN ? ELSE region END "
+                        "WHERE id = ?",
+                        (centroid[0], centroid[1], GEO_PRECISION_COUNTRY, centroid[2], centroid[2], row["id"]),
+                    )
+                    updated += 1
                     continue
                 shifted = offset_fallback(hit[1], hit[2], row["id"])
                 if not shifted:
@@ -4664,6 +4732,8 @@ def london_cycle(now: datetime | None = None, view: str = "completed") -> tuple[
     today_seven = moment.replace(hour=7, minute=0, second=0, microsecond=0)
     if str(view or "completed").strip().lower() == "active":
         start = today_seven if moment >= today_seven else today_seven - timedelta(days=1)
+        if start > moment:
+            start = today_seven - timedelta(days=1)
         return start, moment
     end = today_seven if moment >= today_seven else today_seven - timedelta(days=1)
     return end - timedelta(days=1), end
@@ -5561,7 +5631,7 @@ def thermal_payload() -> dict:
         response = requests.get(
             FIRMS_URL.format(key=key),
             timeout=FIRMS_TIMEOUT,
-            headers={"User-Agent": USER_AGENT},
+            headers=feed_request_headers(),
         )
         response.raise_for_status()
         points = parse_firms_csv(response.text)
@@ -5634,7 +5704,15 @@ def feed_health_payload() -> dict:
                     "error": row.get("error") or "error",
                 }
             )
-    return {"online": online, "total": len(catalog), "failing": failing}
+    failing_sources = [{"name": item["label"], "error": item["error"]} for item in failing]
+    return {
+        "online": online,
+        "total": len(catalog),
+        "onlineCount": online,
+        "totalCount": len(catalog),
+        "failing": failing,
+        "failingSources": failing_sources,
+    }
 
 
 def feed_catalog() -> list[tuple[str, str]]:
@@ -5675,6 +5753,12 @@ def feed_status_payload() -> dict:
         "online": len(active),
         "offline_count": len(offline),
         "total": len(feeds),
+        "onlineCount": len(active),
+        "totalCount": len(feeds),
+        "failingSources": [
+            {"name": item["source_name"], "error": item["last_error"] or "error"}
+            for item in offline
+        ],
     }
 
 
@@ -5741,6 +5825,7 @@ def data_payload() -> dict:
         finally:
             conn.close()
     mapped_count, total_count = coordinate_counts(now)
+    print(f"Data API incidents: {len(features)}.")
     return {
         "events": events,
         "features": features,

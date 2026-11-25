@@ -2369,8 +2369,9 @@
         window.setTimeout(open, 700);
         return;
       }
-      if (visible.length > 1) {
-        const bounds = L.latLngBounds(visible.map((feature) => [
+      const pins = visible.filter(isPoint);
+      if (pins.length > 1) {
+        const bounds = L.latLngBounds(pins.map((feature) => [
           feature.geometry.coordinates[1],
           feature.geometry.coordinates[0]
         ]));
@@ -2417,20 +2418,25 @@
         }
       });
       const visible = features.filter((feature) => passes(feature, currentOpts(region)));
+      const allIncidents = features;
+      const filteredIncidents = visible;
       visible.forEach((feature) => {
+        if (!isPoint(feature)) return;
         const marker = markerFor(feature);
         markers.set((feature.properties || {}).source, marker);
         clusterLayer.addLayer(marker);
       });
       map.addLayer(clusterLayer);
       if (thermalOn && !map.hasLayer(thermalLayer)) thermalLayer.addTo(map);
-      syncControls(visible.length);
-      updateSearchCount(visible.length);
-      renderHeadlines(visible);
-      renderSyriaIndex(visible);
+      syncControls(filteredIncidents.length);
+      updateSearchCount(filteredIncidents.length);
+      renderHeadlines(filteredIncidents);
+      renderSyriaIndex(filteredIncidents);
       paintSummaryRegionSelect();
       if (loadedOnce) {
-        setStatus(features.length && !visible.length ? "No incidents match these filters." : "");
+        if (!allIncidents.length) setStatus("No live incidents ingested yet — check feed sources or server logs.");
+        else if (!filteredIncidents.length) setStatus("No incidents match these filters.");
+        else setStatus("");
       }
       if (focusMode === "search") focusMatches(visible);
       else if (focusMode === "clear") returnToRegion();
@@ -2494,8 +2500,11 @@
         return (Number.isNaN(bm) ? 0 : bm) - (Number.isNaN(am) ? 0 : am);
       });
       if (!sorted.length) {
-        headlineExport = "Newest Updates\n\nNo updates match these filters.";
-        list.innerHTML = '<p class="headline-empty">No updates match these filters.</p>';
+        const emptyCopy = features.length
+          ? "No incidents match these filters."
+          : "No live incidents ingested yet — check feed sources or server logs.";
+        headlineExport = "Newest Updates\n\n" + emptyCopy;
+        list.innerHTML = '<p class="headline-empty">' + emptyCopy + "</p>";
         return;
       }
       headlineExport = "Newest Updates\n\n" + sorted.map((feature) => {
@@ -2726,9 +2735,23 @@
       const button = document.getElementById("feed-health");
       const feeds = payload && Array.isArray(payload.feeds) ? payload.feeds : [];
       const active = payload && Array.isArray(payload.active) ? payload.active : feeds.filter((item) => item.status === "active");
-      const onlineCount = payload && Number.isFinite(Number(payload.online)) ? Number(payload.online) : active.length;
-      const offline = payload && Array.isArray(payload.offline) ? payload.offline : feeds.filter((item) => item.status === "offline");
-      const total = payload && Number.isFinite(Number(payload.total)) ? Number(payload.total) : feeds.length;
+      const onlineCount = payload && Number.isFinite(Number(payload.onlineCount ?? payload.online))
+        ? Number(payload.onlineCount ?? payload.online)
+        : active.length;
+      const failingSources = payload && Array.isArray(payload.failingSources) ? payload.failingSources : [];
+      const offline = payload && Array.isArray(payload.offline) && payload.offline.length
+        ? payload.offline
+        : (failingSources.length
+          ? failingSources.map((item) => ({
+            source_name: item.name || "Feed",
+            type: "",
+            status: "offline",
+            last_error: item.error || "error"
+          }))
+          : feeds.filter((item) => item.status === "offline"));
+      const total = payload && Number.isFinite(Number(payload.totalCount ?? payload.total))
+        ? Number(payload.totalCount ?? payload.total)
+        : feeds.length;
       button.textContent = "● " + onlineCount + "/" + total + " Feeds Online";
       button.classList.toggle("has-fail", offline.length > 0);
       const activeList = document.getElementById("feed-active");
@@ -2758,13 +2781,24 @@
         status: "offline",
         last_error: item.error || "error"
       }));
-      const online = Number.isFinite(Number(health.online)) ? Number(health.online) : 0;
+      const online = Number.isFinite(Number(health.onlineCount ?? health.online))
+        ? Number(health.onlineCount ?? health.online)
+        : 0;
+      const total = Number.isFinite(Number(health.totalCount ?? health.total))
+        ? Number(health.totalCount ?? health.total)
+        : online + offline.length;
+      const failingSources = Array.isArray(health.failingSources)
+        ? health.failingSources
+        : offline.map((item) => ({ name: item.source_name, error: item.last_error }));
       renderFeedStatus({
         feeds: active.concat(offline),
         active: active,
         offline: offline,
         online: online,
-        total: Number.isFinite(Number(health.total)) ? Number(health.total) : online + offline.length
+        total: total,
+        onlineCount: online,
+        totalCount: total,
+        failingSources: failingSources
       });
     }
 
@@ -2885,13 +2919,12 @@
         const data = await response.json();
         showLastUpdated(data.last_polled_at);
         if (!(await refreshFeedStatus())) renderFeedHealth(data.feed_health);
-        const incoming = Array.isArray(data.features) ? data.features.filter(isPoint) : [];
+        const incoming = Array.isArray(data.features) ? data.features : [];
         features = incoming;
         regionTrends = (data && data.region_trends) || {};
         governorateCounts = (data && data.counts_by_governorate) || {};
         briefingWindow = (data && data.briefing_window) || "";
         loadedOnce = true;
-        setStatus(incoming.length ? "" : "No incidents in the last 72 hours.");
         render();
         renderTicker();
         if (!hashApplied) {
@@ -2914,10 +2947,9 @@
         if (!data || data.type !== "FeatureCollection" || !Array.isArray(data.features)) {
           throw new Error("invalid");
         }
-        features = data.features.filter(isPoint);
+        features = data.features;
         generatedAt = readGeneratedAt(data);
         loadedOnce = true;
-        setStatus(features.length ? "" : "No incidents in hotspots.json.");
         render();
         renderTicker();
         if (!hashApplied) {
@@ -3736,7 +3768,11 @@
       const parts = londonParts(now);
       let end = londonWallToUtc(+parts.year, +parts.month, +parts.day, 7, 0);
       if (now < end) end = new Date(end.getTime() - 24 * 60 * 60 * 1000);
-      if (windowName === "current") return { start: end, end: now };
+      if (windowName === "current") {
+        let start = end;
+        if (start > now) start = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+        return { start: start, end: now };
+      }
       return { start: new Date(end.getTime() - 24 * 60 * 60 * 1000), end: end };
     }
 
