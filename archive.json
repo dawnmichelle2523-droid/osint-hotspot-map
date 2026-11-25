@@ -500,6 +500,31 @@
         "category": "Maritime Advisory",
         "warning_number": null
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5,
+          26.5
+        ]
+      },
+      "properties": {
+        "severity": "medium",
+        "title": "Southern transit route in the Strait of Hormuz widened amid SUBSTANTIAL threat level, with mine risk and naval presence; mariners advised to follow designated waypoints.",
+        "summary": "Southern transit route in the Strait of Hormuz widened amid SUBSTANTIAL threat level, with mine risk and naval presence; mariners advised to follow designated waypoints.",
+        "timestamp": "2026-11-18T00:00:00Z",
+        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01126-southern-route-widened.pdf",
+        "account": "UK_MTO",
+        "handle": "UK_MTO",
+        "source_handle": "UK_MTO",
+        "batch": "mandatory_and_maritime",
+        "verification_tier": "Official / Primary",
+        "region": "Maritime",
+        "category": "Maritime Advisory",
+        "warning_number": null
+      }
     }
   ]
 }

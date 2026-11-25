@@ -1,20 +1,19 @@
 {
   "type": "FeatureCollection",
-  "generated_at": "2026-11-25T00:57:01Z",
   "features": [
     {
       "type": "Feature",
       "geometry": {
         "type": "Point",
         "coordinates": [
-          13.0,
-          43.5
+          43.0,
+          13.0
         ]
       },
       "properties": {
         "severity": "medium",
-        "title": "SUBSTANTIAL threat level persists in the Southern Red Sea and Bab el-Mandeb due to Houthi coastal control and potential for attacks on shipping, with no confirmed attacks since August 2026.",
-        "summary": "SUBSTANTIAL threat level persists in the Southern Red Sea and Bab el-Mandeb due to Houthi coastal control and potential for attacks on shipping, with no confirmed attacks since August 2026.",
+        "title": "SUBSTANTIAL threat persists in the Southern Red Sea, Bab el-Mandeb and Gulf of Aden due to Houthi coastal control and selective blockade on Saudi-linked shipping; no attacks on commercial vessels since 24 August 2026.",
+        "summary": "SUBSTANTIAL threat persists in the Southern Red Sea, Bab el-Mandeb and Gulf of Aden due to Houthi coastal control and selective blockade on Saudi-linked shipping; no attacks on commercial vessels since 24 August 2026.",
         "timestamp": "2026-11-22T00:00:00Z",
         "source": "https://www.ukmto.org/-/media/ukmto/products/jmic_advisory_update_116_22-nov.pdf",
         "account": "UK_MTO",
