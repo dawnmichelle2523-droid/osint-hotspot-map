@@ -1,8 +1,8 @@
 {
   "window_label": "24 Nov 2026, 07:00 → 25 Nov 2026, 07:00 Europe/London",
-  "generated_at": "2026-11-25T08:59:02Z",
+  "generated_at": "2026-11-25T10:54:09Z",
   "source_count": 3,
-  "overall": "Minimal activity occurred across the theater in the 07:00–07:00 window. The sole recorded event was an official maritime security warning. No other incidents were noted in any listed region.",
+  "overall": "A single low-severity incident occurred in the Maritime region. An Official source issued a maritime security warning. No other activity was recorded across the theater.",
   "regions": {
     "Syria": "No significant incidents recorded in this 07:00–07:00 window.",
     "Lebanon": "No significant incidents recorded in this 07:00–07:00 window.",
@@ -20,6 +20,6 @@
     "Qatar": "No significant incidents recorded in this 07:00–07:00 window.",
     "UAE": "No significant incidents recorded in this 07:00–07:00 window.",
     "Oman": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Maritime": "UK_MTO issued Maritime Security Warning 218-26. The Official source recorded the alert with no corroboration beyond the single report."
+    "Maritime": "UK_MTO, an Official source, issued Maritime Security Warning 218-26."
   }
 }
