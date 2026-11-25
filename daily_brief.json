@@ -1,15 +1,25 @@
 {
   "window_label": "23 Nov 2026, 07:00 → 24 Nov 2026, 07:00 Europe/London",
-  "generated_at": "2026-11-24T22:52:38Z",
+  "generated_at": "2026-11-25T00:58:34Z",
   "source_count": 0,
-  "overall": "No significant incidents were recorded in the 07:00–07:00 window. Zero sources contributed data to the cycle. The theater showed no activity across regions.",
+  "overall": "No significant incidents were recorded across the theater in the 07:00–07:00 window. All regions remained quiet with no reported activity. The period passed without escalations or events from any sources.",
   "regions": {
-    "Gulf": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Saudi & Yemen": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Levant": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Iran & Iraq": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Maritime": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Sudan & Horn": "No significant incidents recorded in this 07:00–07:00 window.",
-    "Other / International": "No significant incidents recorded in this 07:00–07:00 window."
+    "Syria": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Lebanon": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Israel": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Palestine": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Jordan": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Iraq": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Iran": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Saudi Arabia": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Yemen": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Sudan": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Chad": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Bahrain": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Kuwait": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Qatar": "No significant incidents recorded in this 07:00–07:00 window.",
+    "UAE": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Oman": "No significant incidents recorded in this 07:00–07:00 window.",
+    "Maritime": "No significant incidents recorded in this 07:00–07:00 window."
   }
 }

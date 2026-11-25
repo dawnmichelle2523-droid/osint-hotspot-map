@@ -1,32 +1,7 @@
 {
   "type": "FeatureCollection",
-  "generated_at": "2026-11-24T22:51:02Z",
+  "generated_at": "2026-11-25T00:57:01Z",
   "features": [
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          26.5,
-          56.5
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat of deliberate hostile activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "summary": "US naval blockade of all Iranian ports and coastlines remains in effect with SEVERE threat of deliberate hostile activity in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf?rev=ca07d9284c0d484db848d59387f671d0",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
-        "warning_number": null
-      }
-    },
     {
       "type": "Feature",
       "geometry": {
@@ -124,31 +99,6 @@
         "verification_tier": "Official / Primary",
         "region": "Levant",
         "category": "Travel / Embassy Advisory",
-        "warning_number": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          52.0,
-          25.0
-        ]
-      },
-      "properties": {
-        "severity": "high",
-        "title": "JMIC Advisory 017-26 (18 Nov 2026) confirms ongoing US naval blockade enforcement of Iranian ports and coastlines in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea, with SEVERE regional threat level and instructions for neutral vessels.",
-        "summary": "JMIC Advisory 017-26 (18 Nov 2026) confirms ongoing US naval blockade enforcement of Iranian ports and coastlines in the Gulf, Strait of Hormuz, Gulf of Oman, and North Arabian Sea, with SEVERE regional threat level and instructions for neutral vessels.",
-        "timestamp": "2026-11-18T00:00:00Z",
-        "source": "https://www.ukmto.org/-/media/ukmto/products/jmic-advisory-note-01726-blockade-update.pdf",
-        "account": "UK_MTO",
-        "handle": "UK_MTO",
-        "source_handle": "UK_MTO",
-        "batch": "mandatory_and_maritime",
-        "verification_tier": "Official / Primary",
-        "region": "Maritime",
-        "category": "Maritime Advisory",
         "warning_number": null
       }
     },
