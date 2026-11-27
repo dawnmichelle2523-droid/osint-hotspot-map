@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slack Alerts — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/platform.css">
+  <style>
+    .layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr); gap: 14px; align-items: start; }
+    .checks { display: flex; flex-wrap: wrap; gap: 6px; max-height: 180px; overflow: auto; padding: 2px; }
+    .checks label { flex-direction: row; align-items: center; gap: 6px; width: auto; background: #060A13; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; color: var(--text); font-weight: 650; }
+    .checks input { width: auto; accent-color: var(--gold); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .span-2 { grid-column: 1 / -1; }
+    .slack-card { display: flex; background: #1a1d21; border-radius: 8px; overflow: hidden; color: #f8fafc; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04); }
+    .slack-bar { width: 6px; flex: none; background: #dc2626; }
+    .slack-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .slack-body h3 { margin: 0; font-size: 15px; letter-spacing: 0.01em; }
+    .slack-body p { margin: 0; color: #e2e8f0; font-size: 14px; }
+    .slack-body .meta { color: #94a3b8; font-size: 12px; }
+    .slack-btn { align-self: flex-start; background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 6px; padding: 6px 10px; text-decoration: none; font-weight: 800; font-size: 13px; }
+    .channel { border-top: 1px solid var(--line); padding: 12px 0; }
+    .channel:first-child { border-top: 0; padding-top: 0; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .status-ok { color: #5eead4; }
+    .status-bad { color: #fda4af; }
+    .json-block { white-space: pre-wrap; max-height: 220px; overflow: auto; background: #060A13; border-radius: 8px; padding: 8px; }
+    @media (max-width: 860px) {
+      .layout, .form-grid { grid-template-columns: 1fr; }
+      .span-2 { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">Map</a>
+      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/slack-alerts" aria-current="page">Slack Alerts</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </header>
+  <div class="section-banner">
+    <p class="kicker">Live Slack alerts</p>
+    <h1>Ops-room Block Kit cards</h1>
+    <p>Matching incidents post to a Slack webhook with no Grok or xAI tokens. HIGH and Tsunami alerts send immediately. MED and LOW can wait for a digest. The same incident is never posted twice to the same channel.</p>
+  </div>
+  <main>
+    <p id="status" class="note" role="status"></p>
+    <div class="layout">
+      <section class="panel">
+        <h2 id="form-title">Add a webhook</h2>
+        <form id="channel-form">
+          <input type="hidden" id="channel-id">
+          <div class="form-grid">
+            <label class="span-2">Channel label
+              <input id="label" name="label" required maxlength="80" placeholder="#security-ops" autocomplete="off">
+            </label>
+            <label class="span-2">Slack webhook URL
+              <input id="webhook" name="webhook_url" type="url" inputmode="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" spellcheck="false">
+            </label>
+            <p class="note span-2" id="webhook-hint">The full URL stays on the server. The list below shows only a masked copy.</p>
+            <label>Minimum severity
+              <select id="severity">
+                <option value="ALL">ALL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MED">MED and above</option>
+                <option value="LOW">LOW and above</option>
+              </select>
+            </label>
+            <label>Hourly cap
+              <input id="rate" type="number" min="1" max="500" value="20">
+            </label>
+            <label class="span-2">Digest window (minutes, 0 = instant)
+              <input id="digest" type="number" min="0" max="1440" value="0">
+            </label>
+            <p class="note span-2">A digest holds MED and LOW. HIGH and Tsunami still push immediately.</p>
+            <div class="span-2">
+              <p class="note">Regions</p>
+              <div class="checks" id="regions"></div>
+            </div>
+            <div class="span-2">
+              <p class="note">Countries</p>
+              <div class="checks" id="countries"></div>
+            </div>
+            <div class="span-2">
+              <p class="note">Categories</p>
+              <div class="checks" id="categories"></div>
+            </div>
+            <label class="span-2" style="flex-direction:row;align-items:center;gap:8px">
+              <input id="enabled" type="checkbox" checked style="width:auto"> Enabled
+            </label>
+          </div>
+          <p class="row-actions">
+            <button type="submit" id="save">Save webhook</button>
+            <button type="button" class="ghost" id="clear-form">Clear</button>
+          </p>
+        </form>
+      </section>
+      <section class="panel">
+        <h2>Block Kit preview</h2>
+        <label>Preview tone
+          <select id="preview-tone">
+            <option value="HIGH">HIGH</option>
+            <option value="MED">MED</option>
+            <option value="LOW">LOW</option>
+            <option value="TSUNAMI">Tsunami</option>
+          </select>
+        </label>
+        <div id="preview" style="margin-top:12px"></div>
+        <details style="margin-top:10px">
+          <summary>Block Kit JSON</summary>
+          <pre id="preview-json" class="json-block note"></pre>
+        </details>
+      </section>
+    </div>
+    <section class="panel">
+      <h2>Configured channels</h2>
+      <div id="channels"><p class="note">Loading channels…</p></div>
+    </section>
+    <section class="panel">
+      <h2>Recent deliveries</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr><th>Time (UTC)</th><th>Channel</th><th>Event</th><th>Status</th><th>HTTP</th></tr></thead>
+          <tbody id="deliveries"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <footer>GeoRiskIntel · Slack alerts stay on the server · no model tokens</footer>
+  <script>
+    const REGIONS = ["ALL", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "Europe", "Africa", "Global", "Gulf States"];
+    const COUNTRIES = ["ALL", "Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Maritime", "Gulf States", "United States", "Canada", "Brazil", "Japan", "Australia", "Afghanistan", "Ukraine", "Russia", "United Kingdom", "Egypt", "Turkey"];
+    const CATEGORIES = [
+      ["ALL", "All categories"],
+      ["ACT", "ACT · kinetic"],
+      ["SFA", "SFA · small arms"],
+      ["VC", "VC · casualty"],
+      ["CU", "CU · civil unrest"],
+      ["HS", "HS · hazard"],
+      ["OD", "OD · other"],
+      ["TSUNAMI", "Tsunami"]
+    ];
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function checks(host, name, items) {
+      const root = document.getElementById(host);
+      root.innerHTML = items.map((item) => {
+        const value = Array.isArray(item) ? item[0] : item;
+        const label = Array.isArray(item) ? item[1] : item;
+        const checked = value === "ALL" ? " checked" : "";
+        return '<label><input type="checkbox" name="' + esc(name) + '" value="' + esc(value) + '"' + checked + '> ' + esc(label) + "</label>";
+      }).join("");
+      root.addEventListener("change", (event) => {
+        const box = event.target;
+        if (!box || box.name !== name) return;
+        const all = root.querySelector('input[value="ALL"]');
+        if (box.value === "ALL" && box.checked) {
+          root.querySelectorAll("input").forEach((input) => { if (input !== box) input.checked = false; });
+        } else if (box.checked && all) {
+          all.checked = false;
+        }
+        schedulePreview();
+      });
+    }
+    checks("regions", "regions", REGIONS);
+    checks("countries", "countries", COUNTRIES);
+    checks("categories", "categories", CATEGORIES);
+    function selected(name) {
+      return [...document.querySelectorAll('#channel-form input[name="' + name + '"]:checked')].map((input) => input.value);
+    }
+    function setChecks(name, values, emptyMeansAll) {
+      const wanted = new Set((values && values.length ? values : (emptyMeansAll ? ["ALL"] : [])).map(String));
+      document.querySelectorAll('#channel-form input[name="' + name + '"]').forEach((input) => {
+        input.checked = wanted.has(input.value);
+      });
+    }
+    function formPayload() {
+      let regions = selected("regions");
+      let countries = selected("countries");
+      let categories = selected("categories");
+      if (!regions.length || regions.includes("ALL")) regions = ["ALL"];
+      if (countries.includes("ALL")) countries = [];
+      if (!categories.length || categories.includes("ALL")) categories = ["ALL"];
+      const id = document.getElementById("channel-id").value;
+      const body = {
+        label: document.getElementById("label").value,
+        regions: regions,
+        countries: countries,
+        categories: categories,
+        min_severity: document.getElementById("severity").value,
+        rate_limit_per_hour: Number(document.getElementById("rate").value || 20),
+        digest_minutes: Number(document.getElementById("digest").value || 0),
+        enabled: document.getElementById("enabled").checked
+      };
+      const webhook = document.getElementById("webhook").value.trim();
+      if (webhook) body.webhook_url = webhook;
+      if (id) body.id = Number(id);
+      return body;
+    }
+    function say(text, bad) {
+      const node = document.getElementById("status");
+      node.textContent = text || "";
+      node.className = bad ? "note status-bad" : "note status-ok";
+    }
+    function mrkdwn(text) {
+      return esc(text).replace(/\*([^*]+)\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
+    }
+    function renderPreview(payload) {
+      const attachment = (payload && payload.attachments && payload.attachments[0]) || {};
+      const blocks = attachment.blocks || [];
+      const header = (blocks.find((block) => block.type === "header") || {}).text || {};
+      const section = (blocks.find((block) => block.type === "section") || {}).text || {};
+      const context = (((blocks.find((block) => block.type === "context") || {}).elements || [])[0] || {}).text || "";
+      const button = (((blocks.find((block) => block.type === "actions") || {}).elements || [])[0] || {});
+      document.getElementById("preview").innerHTML =
+        '<div class="slack-card"><div class="slack-bar" style="background:' + esc(attachment.color || "#3b82f6") + '"></div><div class="slack-body">' +
+        "<h3>" + esc(header.text || "GeoRiskIntel") + "</h3>" +
+        "<p>" + mrkdwn(section.text || "") + "</p>" +
+        '<p class="meta">' + mrkdwn(context) + "</p>" +
+        '<a class="slack-btn" href="' + esc(button.url || "/") + '" target="_blank" rel="noopener">' + esc((button.text && button.text.text) || "View on Live Map") + "</a>" +
+        "</div></div>";
+      document.getElementById("preview-json").textContent = JSON.stringify(payload, null, 2);
+    }
+    let previewTimer = 0;
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(loadPreview, 180);
+    }
+    async function loadPreview() {
+      const tone = document.getElementById("preview-tone").value;
+      const countries = selected("countries").filter((value) => value !== "ALL");
+      const categories = selected("categories").filter((value) => value !== "ALL");
+      const body = {
+        country: countries[0] || "Syria",
+        city: (countries[0] || "Syria") === "Syria" ? "Aleppo" : "",
+        category: tone === "TSUNAMI" ? "TSUNAMI" : (categories[0] || "ACT"),
+        severity: tone === "TSUNAMI" ? "HIGH" : tone
+      };
+      try {
+        const response = await fetch("/api/slack/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (data.payload) renderPreview(data.payload);
+      } catch (err) {
+        document.getElementById("preview").textContent = "Preview is unavailable.";
+      }
+    }
+    function resetForm() {
+      HTMLFormElement.prototype.reset.call(document.getElementById("channel-form"));
+      document.getElementById("channel-id").value = "";
+      document.getElementById("form-title").textContent = "Add a webhook";
+      document.getElementById("save").textContent = "Save webhook";
+      document.getElementById("webhook").required = true;
+      document.getElementById("webhook-hint").textContent = "The full URL stays on the server. The list below shows only a masked copy.";
+      setChecks("regions", ["ALL"], true);
+      setChecks("countries", ["ALL"], true);
+      setChecks("categories", ["ALL"], true);
+      document.getElementById("enabled").checked = true;
+      document.getElementById("rate").value = "20";
+      document.getElementById("digest").value = "0";
+      schedulePreview();
+    }
+    function editChannel(channel) {
+      document.getElementById("channel-id").value = channel.id;
+      document.getElementById("label").value = channel.label || "";
+      document.getElementById("webhook").value = "";
+      document.getElementById("webhook").required = false;
+      document.getElementById("webhook-hint").textContent = "Saved webhook " + (channel.webhook_url_masked || "") + ". Leave the field blank to keep it.";
+      document.getElementById("severity").value = channel.min_severity || "ALL";
+      document.getElementById("rate").value = channel.rate_limit_per_hour || 20;
+      document.getElementById("digest").value = channel.digest_minutes || 0;
+      document.getElementById("enabled").checked = !!channel.enabled;
+      setChecks("regions", channel.regions, true);
+      setChecks("countries", channel.countries, true);
+      setChecks("categories", channel.categories, true);
+      document.getElementById("form-title").textContent = "Edit " + (channel.label || "channel");
+      document.getElementById("save").textContent = "Update webhook";
+      document.getElementById("channel-form").scrollIntoView({ behavior: "smooth", block: "start" });
+      schedulePreview();
+    }
+    function renderChannels(channels) {
+      const root = document.getElementById("channels");
+      if (!channels.length) {
+        root.innerHTML = '<p class="note">No webhooks yet.</p>';
+        return;
+      }
+      root.innerHTML = channels.map((channel) => {
+        const filters = [
+          (channel.regions || []).join(", ") || "ALL",
+          (channel.countries || []).length ? channel.countries.join(", ") : "All countries",
+          (channel.categories || []).join(", ") || "ALL",
+          channel.min_severity || "ALL",
+          (channel.digest_minutes ? "digest " + channel.digest_minutes + "m" : "instant"),
+          channel.rate_limit_per_hour + "/hour"
+        ].join(" · ");
+        return '<article class="channel" data-id="' + esc(channel.id) + '">' +
+          "<h3>" + esc(channel.label) + (channel.enabled ? "" : " · paused") + "</h3>" +
+          '<p class="note">' + esc(channel.webhook_url_masked || "") + "</p>" +
+          '<p class="note">' + esc(filters) + "</p>" +
+          '<p class="note">Last send ' + esc(channel.last_sent_at || "never") + "</p>" +
+          '<p class="row-actions">' +
+          '<button type="button" data-action="test">Send Test Alert</button>' +
+          '<button type="button" data-action="edit">Edit</button>' +
+          '<button type="button" class="ghost" data-action="toggle">' + (channel.enabled ? "Pause" : "Enable") + "</button>" +
+          '<button type="button" class="ghost" data-action="delete">Delete</button>' +
+          "</p>" +
+          '<p class="note" data-result></p></article>';
+      }).join("");
+      root.querySelectorAll(".channel").forEach((article) => {
+        const channel = channels.find((item) => String(item.id) === article.getAttribute("data-id"));
+        article.addEventListener("click", (event) => {
+          const action = event.target && event.target.getAttribute("data-action");
+          if (!action) return;
+          if (action === "edit") editChannel(channel);
+          if (action === "delete") removeChannel(channel);
+          if (action === "toggle") toggleChannel(channel);
+          if (action === "test") testChannel(channel);
+        });
+      });
+      applyTestNotes();
+    }
+    const testNotes = {};
+    function applyTestNotes() {
+      document.querySelectorAll(".channel").forEach((article) => {
+        const note = testNotes[article.getAttribute("data-id")];
+        const node = article.querySelector("[data-result]");
+        if (!note || !node) return;
+        node.textContent = note.text;
+        node.className = note.ok ? "note status-ok" : "note status-bad";
+      });
+    }
+    function renderDeliveries(rows) {
+      const body = document.getElementById("deliveries");
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="5">No deliveries yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map((row) => {
+        const tone = row.status === "sent" ? "status-ok" : "status-bad";
+        return "<tr><td>" + esc(row.sent_at) + "</td><td>" + esc(row.label || ("#" + row.channel_id)) + "</td><td>" + esc(row.event_key) + "</td><td class=\"" + tone + "\">" + esc(row.status) + "</td><td>" + esc(row.http_status) + "</td></tr>";
+      }).join("");
+    }
+    async function load() {
+      const [channelsResponse, deliveriesResponse] = await Promise.all([
+        fetch("/api/slack/channels", { cache: "no-store" }),
+        fetch("/api/slack/deliveries", { cache: "no-store" })
+      ]);
+      const channels = await channelsResponse.json();
+      const deliveries = await deliveriesResponse.json();
+      if (!channelsResponse.ok) {
+        say(channels.error || "Channels could not be loaded.", true);
+        return;
+      }
+      renderChannels(channels.channels || []);
+      renderDeliveries((deliveries && deliveries.deliveries) || []);
+    }
+    async function removeChannel(channel) {
+      if (!window.confirm("Remove " + channel.label + "?")) return;
+      const response = await fetch("/api/slack/channels/" + channel.id, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) {
+        say(data.error || "The channel was not removed.", true);
+        return;
+      }
+      if (document.getElementById("channel-id").value === String(channel.id)) resetForm();
+      delete testNotes[String(channel.id)];
+      say("Removed " + channel.label + ".");
+      load();
+    }
+    async function toggleChannel(channel) {
+      const response = await fetch("/api/slack/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: channel.id, enabled: !channel.enabled })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        say(data.error || "The channel was not updated.", true);
+        return;
+      }
+      say((data.channel && data.channel.label) + (data.channel && data.channel.enabled ? " enabled." : " paused."));
+      load();
+    }
+    async function testChannel(channel) {
+      say("Sending test alert…");
+      const response = await fetch("/api/slack/channels/" + channel.id + "/test", { method: "POST" });
+      const data = await response.json();
+      const text = data.ok
+        ? "Test accepted · HTTP " + data.status + " · " + (data.slack || "ok")
+        : "Test failed · HTTP " + (data.status || 0) + " · " + (data.error || data.slack || "");
+      testNotes[String(channel.id)] = { text: text, ok: !!data.ok };
+      say(text, !data.ok);
+      await load();
+    }
+    document.getElementById("channel-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const creating = !document.getElementById("channel-id").value;
+      if (creating && !document.getElementById("webhook").value.trim()) {
+        say("A Slack webhook URL is required.", true);
+        return;
+      }
+      say("Saving…");
+      const response = await fetch("/api/slack/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formPayload())
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        say(data.error || "The channel was not saved.", true);
+        return;
+      }
+      say("Saved " + (data.channel && data.channel.label) + ".");
+      resetForm();
+      load();
+    });
+    document.getElementById("clear-form").addEventListener("click", resetForm);
+    document.getElementById("preview-tone").addEventListener("change", schedulePreview);
+    ["label", "severity", "rate", "digest"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", schedulePreview);
+    });
+    resetForm();
+    load().catch(() => say("Slack alerts could not be loaded.", true));
+  </script>
+</body>
+</html>

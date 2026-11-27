@@ -31,12 +31,16 @@
     Canada: "Americas"
   };
   const SECTOR_NOTE = {
-    security: "Security assessment: assign each upgraded control to the security manager before issue.",
-    medical: "Medical assessment: pair any new hazard with the medevac trigger and hospital viability.",
-    school: "BS 8848 trip: brief the safeguarding lead and confirm the supervision ratio still holds.",
-    cp: "Close protection advance: re-check the route and the hospital-not-viable control.",
+    media: "Media assessment: brief the team on profile, fixers, and the movement protocol before issue.",
+    government: "Public-sector assessment: confirm the duty-of-care owner and the official movement protocol.",
+    tmc: "TMC assessment: update the traveller advice and the supplier controls before the booking is released.",
+    insurance: "Insurance assessment: record the upgraded controls against the policy conditions before sign-off.",
+    ngo: "Humanitarian assessment: reconfirm acceptance, medevac, and the movement protocol with the security focal point.",
+    psc: "Ops-room assessment: assign each upgraded control to the on-duty operator before issue.",
+    schools: "BS 8848 trip: brief the safeguarding lead and confirm the supervision ratio still holds.",
     private: "Private travel: keep the profile low and confirm the emergency contact plan on this device.",
-    pdr: "Pre-deployment report: update the security rating and the movement corridor before the brief."
+    csuite: "Executive assessment: update the movement corridor and the close-protection controls before the brief.",
+    medical: "Medical assessment: pair any new hazard with the medevac trigger and hospital viability."
   };
   const SIGN_OFF = ["Approved", "Approved with Conditions", "Hold"];
 
@@ -281,7 +285,9 @@
   }
 
   function sectorLine() {
-    return SECTOR_NOTE[templateId()] || "";
+    const sector = $("sector");
+    const id = sector && sector.value ? sector.value : templateId();
+    return SECTOR_NOTE[id] || "";
   }
 
   function renderAiLabel() {
@@ -700,6 +706,46 @@
     arm();
   }
 
+  function clearStoredCorridor() {
+    ["georisk.ra.v2", "georisk.ra.v1"].forEach((key) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || "null");
+        if (!saved || typeof saved !== "object") return;
+        saved.corridorSummary = "";
+        saved.corridorMeta = "";
+        localStorage.setItem(key, JSON.stringify(saved));
+      } catch (err) {}
+    });
+  }
+
+  function clearLocalBrowserData() {
+    const confirmed = window.confirm("Clear GeoRiskIntel baselines, the reviewer name and qualification, and the pasted corridor brief from this browser?");
+    if (!confirmed) return;
+    ["georisk.ra.baselines.v1", "georisk.ra.baseline-active.v1", "georisk.corridor.v1"].forEach((key) => {
+      try { localStorage.removeItem(key); } catch (err) {}
+    });
+    clearStoredCorridor();
+    state.items = [];
+    state.activeId = "";
+    state.aiSession = false;
+    ["ra-reviewer-name", "ra-reviewer-role", "ra-snapshot-name"].forEach((id) => {
+      const field = $(id);
+      if (field) field.value = "";
+    });
+    const pasted = $("corridor-pasted");
+    const pastedBody = $("corridor-pasted-body");
+    const pastedMeta = $("corridor-pasted-meta");
+    const offer = $("corridor-import");
+    if (pastedBody) pastedBody.textContent = "";
+    if (pastedMeta) pastedMeta.textContent = "";
+    if (pasted) pasted.hidden = true;
+    if (offer) offer.hidden = true;
+    writeStore();
+    render();
+    const note = $("ra-snapshot-note");
+    if (note) note.textContent = "Baselines, reviewer details, and the pasted corridor brief were cleared from this browser.";
+  }
+
   function onAutoDraft() {
     state.aiSession = true;
     const item = active();
@@ -714,6 +760,7 @@
     const save = $("ra-save-snapshot");
     const open = $("ra-open-snapshot");
     const remove = $("ra-delete-snapshot");
+    const clearBrowser = $("ra-clear-browser");
     const check = $("ra-check-changed");
     const sign = $("ra-signoff");
     const list = $("ra-snapshot-list");
@@ -723,6 +770,7 @@
     if (remove) remove.addEventListener("click", () => {
       if (active() && window.confirm("Delete this saved assessment from this browser?")) deleteSnapshot();
     });
+    if (clearBrowser) clearBrowser.addEventListener("click", clearLocalBrowserData);
     if (check) check.addEventListener("click", () => { checkChanged(); });
     if (sign) sign.addEventListener("click", recordSignOff);
     if (list) list.addEventListener("change", () => {
