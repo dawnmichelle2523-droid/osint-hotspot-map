@@ -291,10 +291,15 @@ def collect_live_features() -> list[dict]:
 
 def _existing_archive() -> Path | None:
     candidates = []
-    data_dir = (os.environ.get("DATA_DIR") or "").strip()
-    if data_dir:
-        folder = Path(data_dir)
-        candidates.append(folder if folder.suffix == ".db" else folder / "incidents.db")
+    for key in ("GEORISKINTEL_DATA_DIR", "DATA_DIR"):
+        data_dir = (os.environ.get(key) or "").strip()
+        if data_dir:
+            folder = Path(data_dir)
+            candidates.append(folder if folder.suffix == ".db" else folder / "incidents.db")
+    try:
+        candidates.append(analytics_store.resolve_data_dir() / "incidents.db")
+    except OSError:
+        pass
     candidates.append(Path("/data/incidents.db"))
     candidates.append(ROOT / "data" / "incidents.db")
     for path in candidates:

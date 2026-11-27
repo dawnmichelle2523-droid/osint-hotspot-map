@@ -659,8 +659,9 @@ def preview_incident(overrides: dict | None = None) -> dict:
 
 
 def connect() -> sqlite3.Connection:
-    path = db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    from analytics_store import prefer_writable_file
+
+    path = prefer_writable_file(db_path())
     conn = sqlite3.connect(path, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=3000")

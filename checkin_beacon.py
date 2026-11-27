@@ -188,14 +188,15 @@ def valid_token(token: str) -> bool:
 
 
 def database_path(mount: Path | None = None) -> Path:
-    """CHECKIN_DB_PATH, else /data/checkins.db when that folder is writable, else ./checkins.db."""
+    """CHECKIN_DB_PATH, else /data/checkins.db when that folder is writable, else a writable checkins.db."""
+    from analytics_store import prefer_writable_file
+
     override = (os.environ.get("CHECKIN_DB_PATH") or "").strip()
     if override:
         path = Path(override).expanduser()
         if path.suffix.lower() != ".db":
             path = path / "checkins.db"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
+        return prefer_writable_file(path)
     data = Path("/data") if mount is None else Path(mount)
     try:
         writable = data.is_dir() and os.access(data, os.W_OK)
@@ -203,7 +204,7 @@ def database_path(mount: Path | None = None) -> Path:
         writable = False
     if writable:
         return data / "checkins.db"
-    return Path("checkins.db")
+    return prefer_writable_file(Path("checkins.db"))
 
 
 def mask_webhook(url: str) -> str:
@@ -467,8 +468,9 @@ def public_event(row: sqlite3.Row) -> dict:
 
 class CheckinStore:
     def __init__(self, path: Path) -> None:
-        self.path = Path(path).expanduser().resolve()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        from analytics_store import prefer_writable_file
+
+        self.path = prefer_writable_file(Path(path).expanduser()).resolve()
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(str(self.path), timeout=10, check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row

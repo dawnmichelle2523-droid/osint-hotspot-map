@@ -1,8 +1,11 @@
 """Persistent historical incidents, analytics, and report-delivery subscriptions.
 
-The database lives under DATA_DIR (an explicit path, a writable /data volume,
-or the directory of an absolute DB_PATH, otherwise ./data). Rows are kept
-permanently. Nothing in this module deletes incidents because of age.
+The database lives under GEORISKINTEL_DATA_DIR or DATA_DIR when that folder is
+writable, otherwise a writable /data volume, the directory of an absolute
+DB_PATH, or ./data. On Vercel, and whenever that local folder cannot be
+created, the database lives in a temporary directory. Seed files bundled in
+./data are copied there so they can still be read. Rows are kept permanently.
+Nothing in this module deletes incidents because of age.
 
 Classification is regex-only. Incoming feed items never call xAI, even when
 ENABLE_XAI_INGEST or XAI_API_KEY is set. The key stays reserved for on-demand
@@ -16,11 +19,14 @@ import json
 import os
 import re
 import sqlite3
+import tempfile
 import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+EPHEMERAL_DATA_DIRNAME = "georiskintel-data"
+_DATA_DIR_ENV_KEYS = ("GEORISKINTEL_DATA_DIR", "DATA_DIR")
 CATEGORIES = ("ACT", "SFA", "VC", "CU", "HS", "OD")
 CATEGORY_NAMES = {
     "ACT": "Armed Conflict & Terrorism",
@@ -412,35 +418,129 @@ def _absolute_db_dir(db_path: str) -> Path | None:
     return None
 
 
+def _ensure_dir(path: Path) -> bool:
+    """Create path when the filesystem allows it. EROFS and EACCES return False."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    return _can_write(path)
+
+
+def ephemeral_data_dir() -> Path:
+    """Writable scratch directory used when the application bundle cannot be written."""
+    path = Path(tempfile.gettempdir()) / EPHEMERAL_DATA_DIRNAME
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def data_dir_is_ephemeral(path: Path) -> bool:
+    expected = Path(tempfile.gettempdir()) / EPHEMERAL_DATA_DIRNAME
+    try:
+        return path.resolve() == expected.resolve()
+    except OSError:
+        return path.name == EPHEMERAL_DATA_DIRNAME
+
+
+def _copy_file_if_absent(source: Path, dest: Path) -> None:
+    """Read a bundled file into dest. A missing or unreadable source is ignored."""
+    try:
+        if source.name.startswith(".georisk-write-") or not source.is_file() or dest.exists():
+            return
+        dest.write_bytes(source.read_bytes())
+    except OSError:
+        return
+
+
+def _copy_readonly_seeds(source: Path, dest: Path) -> None:
+    """Copy bundled data files so later lookups do not need to write the bundle."""
+    try:
+        if not source.is_dir() or source.resolve() == dest.resolve():
+            return
+        entries = list(source.iterdir())
+    except OSError:
+        return
+    for entry in entries:
+        _copy_file_if_absent(entry, dest / entry.name)
+
+
+def _ephemeral_with_seeds(local_path: Path) -> Path:
+    dest = ephemeral_data_dir()
+    _copy_readonly_seeds(local_path, dest)
+    return dest
+
+
+def _relocate_file(candidate: Path) -> Path:
+    dest = ephemeral_data_dir() / candidate.name
+    _copy_file_if_absent(candidate, dest)
+    return dest
+
+
+def prefer_writable_file(path: Path) -> Path:
+    """Keep path when its folder can be written. Otherwise use the temp data directory."""
+    candidate = Path(path)
+    folder = candidate.parent if str(candidate.parent) not in {"", "."} else Path(".")
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return _relocate_file(candidate)
+    if _can_write(folder):
+        return candidate
+    return _relocate_file(candidate)
+
+
+def _configured_data_dir(envmap: dict) -> Path | None:
+    """First explicit data directory that can actually be written."""
+    for key in _DATA_DIR_ENV_KEYS:
+        chosen = str(envmap.get(key) or "").strip()
+        if not chosen:
+            continue
+        path = Path(chosen).expanduser()
+        if path.suffix == ".db":
+            path = path.parent
+        if _ensure_dir(path):
+            return path
+    return None
+
+
+def _on_vercel(envmap: dict) -> bool:
+    return bool(str(envmap.get("VERCEL") or "").strip())
+
+
 def resolve_data_dir(
     environ: dict | None = None,
     mount: Path | None = None,
     local: Path | None = None,
 ) -> Path:
-    """DATA_DIR, else a writable /data, else an absolute DB_PATH directory, else ./data."""
+    """Writable data directory.
+
+    GEORISKINTEL_DATA_DIR or DATA_DIR wins when that folder can be created.
+    Otherwise a writable /data volume, then the directory of an absolute
+    DB_PATH, then ./data. On Vercel, or when ./data cannot be created
+    (read-only bundle, EROFS, or EACCES), use a temporary directory and copy
+    any read-only seed files out of ./data.
+    """
     envmap = os.environ if environ is None else environ
     mount_path = Path("/data") if mount is None else Path(mount)
     local_path = ROOT / "data" if local is None else Path(local)
-    chosen = str(envmap.get("DATA_DIR") or "").strip()
-    if chosen:
-        path = Path(chosen).expanduser()
-        if path.suffix == ".db":
-            path.parent.mkdir(parents=True, exist_ok=True)
-            return path.parent
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+    chosen = _configured_data_dir(envmap)
+    if chosen is not None:
+        return chosen
+    if _on_vercel(envmap):
+        return _ephemeral_with_seeds(local_path)
     if mount_path.is_dir() and _can_write(mount_path):
         return mount_path
     folder = _absolute_db_dir(str(envmap.get("DB_PATH") or "").strip())
     if folder is not None:
         return folder
-    local_path.mkdir(parents=True, exist_ok=True)
-    return local_path
+    if _ensure_dir(local_path):
+        return local_path
+    return _ephemeral_with_seeds(local_path)
 
 
 def uses_durable_volume(path: Path) -> bool:
-    """True when the operator set DATA_DIR or the resolved folder is the /data volume."""
-    if str(os.environ.get("DATA_DIR") or "").strip():
+    """True when the operator set a data directory or the resolved folder is /data."""
+    if any(str(os.environ.get(key) or "").strip() for key in _DATA_DIR_ENV_KEYS):
         return True
     try:
         return path.resolve() == Path("/data").resolve()
@@ -713,8 +813,7 @@ class Store:
     """SQLite historical archive. Callers share one connection behind a lock."""
 
     def __init__(self, path: Path | str):
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path = prefer_writable_file(Path(path))
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(self.path, timeout=15, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row

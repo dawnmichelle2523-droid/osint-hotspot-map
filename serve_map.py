@@ -1560,8 +1560,11 @@ def write_cache(summary: dict) -> None:
         "regional_notes": summary["regional_notes"],
     }
     temporary = CACHE.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temporary.replace(CACHE)
+    try:
+        temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        temporary.replace(CACHE)
+    except OSError as exc:
+        print(f"summary_cache.json was not written ({exc.__class__.__name__}).")
 
 
 def ensure_feed_db(conn: sqlite3.Connection) -> None:
@@ -1665,11 +1668,29 @@ def init_db(conn: sqlite3.Connection) -> None:
     purge_spam_rows_once(conn)
 
 
-def db_connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(FEEDS_DB, timeout=15)
+def _open_feeds_db(path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(path, timeout=15)
     conn.row_factory = sqlite3.Row
     ensure_feed_db(conn)
     return conn
+
+
+def db_connect() -> sqlite3.Connection:
+    """Open the live feed database, moving it off a read-only bundle when required."""
+    global FEEDS_DB
+    try:
+        return _open_feeds_db(FEEDS_DB)
+    except (OSError, sqlite3.OperationalError):
+        from analytics_store import prefer_writable_file
+
+        relocated = prefer_writable_file(Path(FEEDS_DB))
+        try:
+            same = relocated.resolve() == Path(FEEDS_DB).resolve()
+        except OSError:
+            same = relocated == Path(FEEDS_DB)
+        if not same:
+            FEEDS_DB = relocated
+        return _open_feeds_db(FEEDS_DB)
 
 
 def normalize_title(title: str) -> str:
@@ -5498,8 +5519,11 @@ def _save_geo_record(record: dict, write_brief: bool) -> None:
             "regions": {name: record["regions"][name] for name in REGIONS},
         }
         temporary = BRIEF_PATH.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        temporary.replace(BRIEF_PATH)
+        try:
+            temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            temporary.replace(BRIEF_PATH)
+        except OSError as exc:
+            print(f"daily_brief.json was not written ({exc.__class__.__name__}).")
     if not record.get("window_end"):
         return
     with _db_lock:

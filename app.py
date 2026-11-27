@@ -12,13 +12,13 @@ from flask import Flask, Response, abort, request, send_from_directory
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 def _pin_live_database() -> None:
-    """Keep the live feed database on durable storage before serve_map reads DB_PATH."""
+    """Keep the live feed database off the read-only bundle before serve_map reads DB_PATH."""
     if (os.environ.get("DB_PATH") or "").strip():
         return
-    from analytics_store import resolve_data_dir, uses_durable_volume
+    from analytics_store import data_dir_is_ephemeral, resolve_data_dir, uses_durable_volume
 
     data_dir = resolve_data_dir()
-    if uses_durable_volume(data_dir):
+    if uses_durable_volume(data_dir) or data_dir_is_ephemeral(data_dir):
         os.environ["DB_PATH"] = str(Path(data_dir) / "osint_events.db")
 
 
