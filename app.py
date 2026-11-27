@@ -28,6 +28,8 @@ import serve_map
 app = Flask(__name__)
 from disruption_layer import disruption_bp
 app.register_blueprint(disruption_bp)
+from route_risk import route_bp
+app.register_blueprint(route_bp)
 preview_lock.install(app)
 ppv.install(app)
 
