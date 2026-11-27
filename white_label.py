@@ -663,6 +663,7 @@ def render_widget(facts: dict, brand: dict, home: str) -> str:
     .track span {{ padding-right: 48px; white-space: nowrap; }}
     @keyframes ticker {{ from {{ transform: translateX(0); }} to {{ transform: translateX(-50%); }} }}
     @media (prefers-reduced-motion: reduce) {{ .track {{ animation: none; }} }}
+    a:focus-visible {{ outline: 3px solid #F8FAFC; outline-offset: 2px; }}
     a.powered {{
       display: flex !important; visibility: visible !important; opacity: 1 !important;
       align-items: center; justify-content: center; flex: 0 0 auto;

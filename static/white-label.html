@@ -26,29 +26,64 @@
     .rule { border: 1px solid var(--gold-border); border-radius: 10px; padding: 8px 10px; color: var(--gold); font-size: 12px; font-weight: 700; }
     @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">WHITE-LABEL</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/white-label" aria-current="page">White-Label</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/pricing">Pricing</a>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label" aria-current="page">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
-    <p class="kicker">Client portal embeds</p>
+    <p class="kicker">Your brand</p>
     <h1>White-Label Studio</h1>
-    <p>TMCs, insurers, private security companies, and universities can place a live country-risk badge, ticker, or mini-map on their own intranet. Their logo and accent travel with the embed. The Powered by GeoRiskIntel badge stays on every widget.</p>
+    <p class="lede">Put a live country-risk badge on your intranet, in your colours. Every badge still says Powered by GeoRiskIntel.</p>
   </div>
+  <section class="how-it-works" data-how="white-label">
+    <div class="how-card">
+      <div class="how-head">
+        <h2>How it works</h2>
+        <button type="button" class="how-dismiss" data-how-dismiss>Hide</button>
+      </div>
+      <ol>
+        <li><strong>Start from the sample.</strong> Atlas Secure Travel is filled in so you can see a finished badge.</li>
+        <li><strong>Pick a layout.</strong> A country badge, a scrolling ticker, or a small map.</li>
+        <li><strong>Copy it onto your site.</strong> Paste the snippet. The GeoRiskIntel credit stays.</li>
+      </ol>
+    </div>
+  </section>
   <main>
     <div class="studio">
       <form id="studio-form" class="panel" action="/embed/widget" method="get" target="preview">
         <h2>Brand</h2>
         <label><span>Organization name</span><input id="org" name="org" type="text" maxlength="80" value="Atlas Secure Travel" autocomplete="organization"></label>
-        <label><span>Custom logo URL (https only)</span><input id="logo" name="logo" type="url" inputmode="url" placeholder="https://cdn.example.com/logo.png" autocomplete="off" spellcheck="false"></label>
+        <label><span>Logo address (https)</span><input id="logo" name="logo" type="url" inputmode="url" placeholder="https://cdn.example.com/logo.png" autocomplete="off" spellcheck="false"></label>
         <label><span>Or preview a local image / SVG badge</span><input id="logo-file" type="file" accept="image/*,.svg"></label>
         <p id="logo-note" class="note">No https logo yet. The widget draws an SVG monogram from the organization name. A local file previews here and is not uploaded.</p>
         <label><span>Primary brand accent</span>
@@ -111,7 +146,7 @@
           </div>
         </fieldset>
         <p><button type="submit">Update preview</button></p>
-        <p class="rule">Powered by GeoRiskIntel is rendered on every embed. It cannot be removed with a query parameter, theme, or brand colour.</p>
+        <p class="rule">Powered by GeoRiskIntel stays on every embed. A colour, theme, or setting cannot remove it.</p>
       </form>
       <section class="preview-card" aria-label="Live widget preview">
         <div class="preview-head">
@@ -122,11 +157,11 @@
           </div>
         </div>
         <iframe id="preview" name="preview" title="Branded country risk widget preview" src="/embed/widget?mode=badge&amp;country=Yemen&amp;region=Middle%20East&amp;org=Atlas%20Secure%20Travel&amp;accent=%231B4F8A&amp;theme=dark" style="height:260px" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
-        <h2>Embed snippets</h2>
-        <label><span>iframe</span><textarea id="iframe-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
-        <p class="copy-row"><button type="button" id="copy-iframe">Copy iframe</button></p>
-        <label><span>script</span><textarea id="script-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
-        <p class="copy-row"><button type="button" id="copy-script">Copy script</button><span id="copy-status" class="note" role="status"></span></p>
+        <h2>Copy onto your site</h2>
+        <label><span>Embed on a page</span><textarea id="iframe-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-iframe">Copy page embed</button></p>
+        <label><span>Embed with a short script</span><textarea id="script-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-script">Copy script embed</button><span id="copy-status" class="note" role="status"></span></p>
       </section>
     </div>
   </main>
@@ -299,11 +334,11 @@
         previewOrg.textContent = org || "Client widget";
         paintLogo(org, logo, accent);
         if (localPreview) {
-          logoNote.textContent = "Local image is a studio preview only. Embeds accept https logo URLs; otherwise the widget uses an SVG monogram.";
+          logoNote.textContent = "A file from this computer is only a preview. Paste an https address to include a logo.";
         } else if (logo) {
-          logoNote.textContent = "This https logo is included in the embed snippet.";
+          logoNote.textContent = "This logo address is included when you copy the embed.";
         } else {
-          logoNote.textContent = "No https logo yet. The widget draws an SVG monogram from the organization name. A local file previews here and is not uploaded.";
+          logoNote.textContent = "No logo address yet. The badge uses the organisation's initials.";
         }
       }
 
@@ -317,10 +352,12 @@
         var text = node ? node.value : "";
         function done(message) {
           copyStatus.textContent = message;
+          copyStatus.className = message === "Copied!" ? "note status-ok" : "note";
+          if (message === "Copied!" && window.griToast) window.griToast("Copied!");
         }
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard.writeText(text).then(function () {
-            done("Copied.");
+            done("Copied!");
           }).catch(function () {
             if (node) {
               node.focus();
@@ -340,6 +377,7 @@
       form.addEventListener("submit", function (event) {
         event.preventDefault();
         render();
+        if (window.griToast) window.griToast("Preview updated");
       });
       [orgInput, logoInput, themeInput, countryInput, regionInput].forEach(function (node) {
         node.addEventListener("input", schedule);
@@ -381,5 +419,6 @@
       render();
     }());
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

@@ -50,38 +50,70 @@
       .gauge-hole { background: #fff; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body class="route-page">
-  <header id="live-bar" class="no-print">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell no-print">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/risk-assessments">Risk assessments</a>
       <a href="/route-risk" aria-current="page">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
     <p class="kicker">Route risk</p>
-    <h1>One-click route and corridor risk</h1>
-    <p>Enter an origin, destination, and any waypoints. The corridor is scored against live OSINT inside the buffer, with curated trauma guidance and official crossing notes. No Grok credits are used, and no traveller details are sent.</p>
+    <h1>Check a journey before you travel</h1>
+    <p class="lede">See incidents near the roads between two places. No traveller names are sent.</p>
   </div>
+  <section class="how-it-works" data-how="route-risk">
+    <div class="how-card">
+      <div class="how-head">
+        <h2>How it works</h2>
+        <button type="button" class="how-dismiss" data-how-dismiss>Hide</button>
+      </div>
+      <ol>
+        <li><strong>Start with a sample.</strong> A ready-made trip loads first. Or click the map for a start and an end.</li>
+        <li><strong>Set the band.</strong> Choose how far from the road to look for incidents.</li>
+        <li><strong>Score the trip.</strong> Read the level, the nearby incidents, and a short brief you can print.</li>
+      </ol>
+    </div>
+  </section>
   <main>
     <div class="workspace">
       <section class="panel" aria-label="Corridor map">
         <div id="corridor-map" role="application" aria-label="Corridor map. Click to add a stop."></div>
         <p id="map-fallback" class="note" hidden>The map library did not load. Type coordinates or load a preset to score the corridor.</p>
-        <p class="note no-print">Click the map to drop the origin, then waypoints, then the destination. The shaded band is the corridor buffer.</p>
+        <p class="note no-print">Click the map for the start, any stops, then the destination. The shaded band is the area being checked.</p>
       </section>
       <div>
         <section class="panel no-print">
           <h2>Stops</h2>
           <label>Preset
-            <select id="preset"><option value="">Loading presets…</option></select>
+            <select id="preset"><option value="">Loading sample trips…</option></select>
           </label>
           <p class="inline">
             <button type="button" id="load-preset">Load preset</button>
@@ -96,7 +128,7 @@
           </div>
           <p><button type="button" id="add-stop">Add stop</button></p>
           <div class="slider-row">
-            <label for="buffer">Corridor buffer</label>
+            <label for="buffer">How far from the road to check</label>
             <output id="buffer-out" for="buffer">25 km</output>
           </div>
           <input id="buffer" type="range" min="5" max="100" value="25" step="1" aria-describedby="buffer-out">
@@ -112,7 +144,7 @@
             </select>
           </label>
           <p>
-            <button type="button" id="analyze">Score corridor</button>
+            <button type="button" id="analyze">Score this trip</button>
           </p>
           <p id="status" class="note" role="status"></p>
           <p id="error" class="alert" role="alert" hidden></p>
@@ -177,13 +209,27 @@
       if (stops.length > 1 && index === stops.length - 1) return "Destination";
       return "Waypoint";
     }
+    function plainNote(text) {
+      const raw = text || "";
+      if (/traceback|exception|sqlite|osrm/i.test(raw)) {
+        return "The trip could not be scored. Check the stops and try again.";
+      }
+      return raw
+        .replace(/OSRM did not answer within 4 seconds\./i, "Road directions did not answer within 4 seconds.")
+        .replace(/The corridor is the great-circle line between stops\./gi, "The band is a straight line between stops.")
+        .replace(/Driving route from the public OSRM service\./i, "This follows the driving roads.");
+    }
     function setStatus(text) {
-      document.getElementById("status").textContent = text || "";
+      const node = document.getElementById("status");
+      const message = plainNote(text);
+      node.textContent = message;
+      node.className = message ? "note status-ok" : "note";
     }
     function setError(text) {
       const node = document.getElementById("error");
-      node.hidden = !text;
-      node.textContent = text || "";
+      const message = plainNote(text);
+      node.hidden = !message;
+      node.textContent = message;
     }
     function renderStops() {
       const list = document.getElementById("stops");
@@ -307,8 +353,11 @@
       if (inflight) inflight.abort();
       const controller = new AbortController();
       inflight = controller;
-      setStatus("Scoring corridor…");
-      document.getElementById("analyze").disabled = true;
+      setStatus("Scoring the trip…");
+      const analyzeButton = document.getElementById("analyze");
+      analyzeButton.disabled = true;
+      analyzeButton.classList.add("is-busy");
+      analyzeButton.setAttribute("aria-busy", "true");
       try {
         const response = await fetch("/api/route-risk/analyze", {
           method: "POST",
@@ -325,7 +374,7 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) {
           setStatus("");
-          setError(payload.error || "Corridor analysis failed.");
+          setError(payload.error || "The trip could not be scored. Check the stops and try again.");
           return;
         }
         paintResult(payload);
@@ -333,11 +382,13 @@
       } catch (err) {
         if (err && err.name === "AbortError") return;
         setStatus("");
-        setError("Corridor analysis could not be reached.");
+        setError("The trip could not be scored. Check the connection and try again.");
       } finally {
         if (inflight === controller) {
           inflight = null;
-          document.getElementById("analyze").disabled = false;
+          analyzeButton.disabled = false;
+          analyzeButton.classList.remove("is-busy");
+          analyzeButton.removeAttribute("aria-busy");
         }
       }
     }
@@ -380,7 +431,7 @@
       renderStops();
       drawStops();
       setError("");
-      setStatus(preset.name + " is loaded. Score the corridor when the stops look right.");
+      setStatus(preset.name + " is loaded. Score the trip when the stops look right.");
     }
     async function loadPresets() {
       try {
@@ -391,7 +442,7 @@
         select.innerHTML = presets.map((preset) => "<option value=\"" + escapeHtml(preset.id) + "\">" + escapeHtml(preset.name) + "</option>").join("");
         if (presets.length) applyPreset(presets[0]);
       } catch (err) {
-        document.getElementById("preset").innerHTML = "<option value=\"\">Presets unavailable</option>";
+        document.getElementById("preset").innerHTML = "<option value=\"\">Sample trips are unavailable</option>";
         setError("Presets could not be loaded. Type coordinates or click the map.");
       }
     }
@@ -485,5 +536,6 @@
     loadPresets();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

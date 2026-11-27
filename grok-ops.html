@@ -14,49 +14,67 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="/static/pwa-register.js" defer></script>
   <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops" aria-current="page">Grok Ops</a>
-      <a href="/white-label" title="Client-branded embed studio">White-Label</a>
-      <a href="/slack-alerts">Slack Alerts</a>
-      <a href="/sentinel-zones">Sentinel Zones</a>
+      <a href="/risk-assessments">Risk assessments</a>
       <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops" aria-current="page">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
     <button type="button" id="open-drawer">Quick view</button>
   </header>
   <div class="section-banner">
-    <p class="kicker">Grok Ops</p>
-    <h1>API health, usage, theatres, and triage</h1>
-    <p>The API key stays on the server. This page never receives it. Personal and medical text is stripped before any model call.</p>
+    <p class="kicker">Ops desk</p>
+    <h1>See whether the assistant is ready</h1>
+    <p class="lede">Check the service, the regions being watched, and turn a public note into an incident card.</p>
+    <p>Personal and medical details are removed before anything is sent. This page does not ask the assistant until you press a button.</p>
   </div>
   <main>
+    <p id="ops-banner" class="note status-bad" role="alert" hidden>The ops desk could not be refreshed. The rest of the page still works.</p>
     <section class="cards" id="status-cards">
-      <article class="card"><h2>API</h2><p class="price" id="health">…</p><p class="note" id="health-note"></p><button type="button" id="check">Check API</button></article>
-      <article class="card"><h2>Tokens this process</h2><p class="price" id="tokens">0</p><p class="note" id="rate"></p></article>
-      <article class="card"><h2>Model</h2><p class="price" id="model">grok-3-mini</p><p class="note" id="latency"></p></article>
+      <article class="card"><h2>Service</h2><p class="price" id="health">…</p><p class="note" id="health-note"></p><button type="button" id="check">Check service</button></article>
+      <article class="card"><h2>Usage this session</h2><p class="price" id="tokens">0</p><p class="note" id="rate"></p></article>
+      <article class="card"><h2>Assistant</h2><p class="price" id="model">grok-3-mini</p><p class="note" id="latency"></p></article>
     </section>
     <section class="panel">
-      <h2>Active monitored theatres</h2>
+      <h2>Regions being watched</h2>
       <div id="theatres" class="grid"></div>
     </section>
     <section class="panel">
-      <h2>Triage to incident JSON</h2>
-      <label>Public OSINT note <textarea id="triage-text" placeholder="Paste a public report. Do not include names, medical details, or contact data."></textarea></label>
-      <p><button type="button" id="triage">Triage</button></p>
+      <h2>Turn a public note into an incident</h2>
+      <label>Public report <textarea id="triage-text" placeholder="Paste a public report. Do not include names, medical details, or contact data."></textarea></label>
+      <p><button type="button" id="triage">Create incident card</button></p>
       <pre id="triage-out" class="note" style="white-space:pre-wrap"></pre>
     </section>
     <section class="panel">
-      <h2>Test a 7-day Single-Region Pass</h2>
-      <p class="note">Preview sign-in is required. The link locks the live map to one region or country and adds a viewer watermark. Set PPV_SECRET on the server first.</p>
+      <h2>Test a 7-day single-region pass</h2>
+      <p class="note">Sign in first. The link limits the live map to one region or country and shows a viewer watermark.</p>
       <label>Scope
         <select id="ppv-type">
           <option value="region">Region</option>
@@ -71,7 +89,7 @@
     <section class="panel strip">
       <div>
         <h2>Live Slack alerts</h2>
-        <p class="note">Push matching incidents to an ops-room webhook. Block Kit cards use no Grok tokens. HIGH and Tsunami alerts send immediately.</p>
+        <p class="note">Send matching incidents to Slack. Urgent alerts go out immediately, and this does not use the assistant.</p>
       </div>
       <a class="button" href="/slack-alerts">Open Slack alerts</a>
     </section>
@@ -82,25 +100,41 @@
   </main>
   <aside id="drawer" hidden style="position:fixed;inset:0 0 0 auto;width:min(380px,100%);background:#0D1424;border-left:1px solid #C5A059;padding:16px;overflow:auto;z-index:30">
     <button type="button" id="close-drawer">Close</button>
-    <h2>Grok quick view</h2>
+    <h2>Quick view</h2>
     <div id="drawer-body" class="note"></div>
   </aside>
-  <footer>GeoRiskIntel · server-side Grok only</footer>
+  <footer>GeoRiskIntel · the assistant stays on the server</footer>
   <script>
     function esc(value) { return String(value ?? "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch])); }
+    function showBanner(message) {
+      const banner = document.getElementById("ops-banner");
+      if (!banner) return;
+      banner.hidden = !message;
+      banner.textContent = message || "";
+    }
     async function load() {
-      const response = await fetch("/api/grok/status", { cache: "no-store" });
-      const data = await response.json();
-      document.getElementById("health").textContent = data.configured ? "Configured" : "Key not set";
-      document.getElementById("health-note").textContent = data.pii_policy || "";
-      document.getElementById("tokens").textContent = (data.tokens && data.tokens.total) || 0;
-      const limit = data.rate_limit || {};
-      document.getElementById("rate").textContent = limit["x-ratelimit-remaining-requests"] ? "Requests remaining " + limit["x-ratelimit-remaining-requests"] : "Rate-limit headers appear after a call.";
-      document.getElementById("model").textContent = data.model || "grok-3-mini";
-      document.getElementById("latency").textContent = data.last_latency_ms ? "Last call " + data.last_latency_ms + " ms" : "No call yet";
-      document.getElementById("theatres").innerHTML = (data.theatres || []).map((item) => "<p>" + esc(item.name) + " · " + item.incidents + "</p>").join("");
-      document.getElementById("log").innerHTML = (data.triage_log || []).map((item) => "<tr><td>" + esc(item.at) + "</td><td>" + esc(item.title) + "</td><td>" + esc(item.country) + "</td><td>" + esc(item.severity) + "</td><td>" + esc(item.source) + "</td></tr>").join("") || "<tr><td colspan=\"5\">No triage yet.</td></tr>";
-      document.getElementById("drawer-body").innerHTML = "<p>" + (data.configured ? "Grok is configured on the server." : "XAI_API_KEY is not set. Local drafts still work.") + "</p><p>Tokens " + ((data.tokens && data.tokens.total) || 0) + "</p>";
+      try {
+        const response = await fetch("/api/grok/status", { cache: "no-store" });
+        if (!response.ok) throw new Error("status");
+        const data = await response.json();
+        document.getElementById("health").textContent = data.configured ? "Ready" : "Switched off";
+        document.getElementById("health-note").textContent = data.configured
+          ? "The assistant is ready. Personal and medical details are removed before any request."
+          : "The assistant is switched off. Nothing is sent until it is configured.";
+        document.getElementById("tokens").textContent = (data.tokens && data.tokens.total) || 0;
+        const limit = data.rate_limit || {};
+        document.getElementById("rate").textContent = limit["x-ratelimit-remaining-requests"]
+          ? "Requests remaining " + limit["x-ratelimit-remaining-requests"]
+          : "Usage appears after someone runs a check.";
+        document.getElementById("model").textContent = data.model || "grok-3-mini";
+        document.getElementById("latency").textContent = data.last_latency_ms ? "Last check " + data.last_latency_ms + " ms" : "No check yet";
+        document.getElementById("theatres").innerHTML = (data.theatres || []).map((item) => "<p>" + esc(item.name) + " · " + item.incidents + " incidents</p>").join("") || "<p class=\"note\">No regions are listed yet.</p>";
+        document.getElementById("log").innerHTML = (data.triage_log || []).map((item) => "<tr><td>" + esc(item.at) + "</td><td>" + esc(item.title) + "</td><td>" + esc(item.country) + "</td><td>" + esc(item.severity) + "</td><td>" + esc(item.source) + "</td></tr>").join("") || "<tr><td colspan=\"5\">No incident cards yet.</td></tr>";
+        document.getElementById("drawer-body").innerHTML = "<p>" + (data.configured ? "The assistant is ready on the server." : "The assistant is switched off. Local drafts still work.") + "</p><p>Usage this session: " + ((data.tokens && data.tokens.total) || 0) + "</p>";
+        showBanner("");
+      } catch (err) {
+        showBanner("The ops desk could not be refreshed. The rest of the page still works.");
+      }
     }
     document.getElementById("ppv-issue").addEventListener("click", async () => {
       const result = document.getElementById("ppv-result");
@@ -117,22 +151,58 @@
       });
       const data = await response.json();
       if (!data.ok) {
-        result.textContent = data.message || "The pass was not issued.";
+        result.textContent = "The pass was not issued. Sign in and try again.";
         return;
       }
       result.innerHTML = "Open this link to test the lock: <a href=\"" + esc(data.url) + "\">" + esc(data.url) + "</a>";
     });
     document.getElementById("check").addEventListener("click", async () => {
-      document.getElementById("health-note").textContent = "Checking…";
-      const response = await fetch("/api/grok/health", { method: "POST" });
-      const data = await response.json();
-      document.getElementById("health-note").textContent = data.message || "";
+      const note = document.getElementById("health-note");
+      const button = document.getElementById("check");
+      note.textContent = "Checking…";
+      button.classList.add("is-busy");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/grok/health", { method: "POST" });
+        const data = await response.json();
+        const message = data.message || "";
+        note.textContent = /XAI_API_KEY/i.test(message)
+          ? "The assistant is switched off until the workspace is configured. No request was sent."
+          : (message || "Check finished.");
+      } catch (err) {
+        note.textContent = "The check could not be completed.";
+      } finally {
+        button.classList.remove("is-busy");
+        button.disabled = false;
+      }
       load();
     });
     document.getElementById("triage").addEventListener("click", async () => {
-      const response = await fetch("/api/grok/triage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: document.getElementById("triage-text").value }) });
-      const data = await response.json();
-      document.getElementById("triage-out").textContent = JSON.stringify(data.incident || data, null, 2);
+      const out = document.getElementById("triage-out");
+      const button = document.getElementById("triage");
+      out.textContent = "Creating the incident card…";
+      button.classList.add("is-busy");
+      button.disabled = true;
+      try {
+        const response = await fetch("/api/grok/triage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: document.getElementById("triage-text").value }) });
+        const data = await response.json();
+        const card = data.incident || null;
+        if (!response.ok || !card) {
+          out.textContent = "That note could not be turned into an incident. Try a shorter public report, with no names or contact details.";
+          return;
+        }
+        const lines = [
+          card.title || "Incident",
+          [card.country, card.severity].filter(Boolean).join(" · "),
+          card.summary || card.text || ""
+        ].filter(Boolean);
+        out.textContent = lines.join("\n");
+      } catch (err) {
+        out.textContent = "That note could not be turned into an incident. Try again in a moment.";
+      } finally {
+        button.classList.remove("is-busy");
+        button.disabled = false;
+      }
       load();
     });
     document.getElementById("open-drawer").addEventListener("click", () => { document.getElementById("drawer").hidden = false; load(); });
@@ -140,5 +210,6 @@
     load();
     setInterval(load, 30000);
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

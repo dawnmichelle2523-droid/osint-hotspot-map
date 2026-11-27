@@ -45,32 +45,63 @@
       #sentinel-map { height: 420px; min-height: 320px; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/slack-alerts">Slack Alerts</a>
-      <a href="/sentinel-zones" aria-current="page">Sentinel Zones</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones" aria-current="page">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
-    <p class="kicker">Sentinel Zones</p>
-    <h1>Live geofenced trip and asset watch</h1>
-    <p>Drop a radius around a hotel, bureau, clinic, or school trip. New incidents inside that circle are logged with distance and compass bearing. No Grok credits and no traveler details are required.</p>
+    <p class="kicker">Sentinel zones</p>
+    <h1>Watch a place for new incidents</h1>
+    <p class="lede">Draw a circle around a hotel, office, clinic, or school trip. Incidents inside it show up here.</p>
   </div>
+  <section class="how-it-works" data-how="sentinel-zones">
+    <div class="how-card">
+      <div class="how-head">
+        <h2>How it works</h2>
+        <button type="button" class="how-dismiss" data-how-dismiss>Hide</button>
+      </div>
+      <ol>
+        <li><strong>Pick a sample city</strong> such as Beirut or Paris, or click the map.</li>
+        <li><strong>Set the circle.</strong> Choose how large an area to watch and which kinds of incident matter.</li>
+        <li><strong>Save the watch.</strong> New incidents inside it are listed with distance and direction.</li>
+      </ol>
+    </div>
+  </section>
   <main>
     <div class="workspace">
-      <section class="panel" aria-label="Geofence map">
+        <section class="panel" aria-label="Watch map">
         <div id="sentinel-map"></div>
-        <p class="note">Click the map, type coordinates, or choose a preset city. The gold circle is the geofence you are editing. Saved watches stay on the map.</p>
+        <p class="note">Click the map, type a place, or choose a sample city. The gold circle is the area you are editing. Saved watches stay on the map.</p>
       </section>
       <div>
         <section class="panel">
@@ -110,9 +141,9 @@
               </label>
               <label>Minimum severity
                 <select id="min-severity">
-                  <option value="LOW">LOW and above</option>
-                  <option value="MED">MED and above</option>
-                  <option value="HIGH">HIGH only</option>
+                  <option value="LOW">All incidents</option>
+                  <option value="MED">Medium and high</option>
+                  <option value="HIGH">High only</option>
                 </select>
               </label>
               <label>Latitude
@@ -127,16 +158,16 @@
               <div class="span-2">
                 <p class="note">Categories</p>
                 <div class="checks" id="categories">
-                  <label><input type="checkbox" value="ALL" checked> ALL</label>
-                  <label><input type="checkbox" value="ACT"> ACT</label>
-                  <label><input type="checkbox" value="SFA"> SFA</label>
-                  <label><input type="checkbox" value="VC"> VC</label>
-                  <label><input type="checkbox" value="CU"> CU</label>
-                  <label><input type="checkbox" value="HS"> HS</label>
-                  <label><input type="checkbox" value="OD"> OD</label>
+                  <label><input type="checkbox" value="ALL" checked> All types</label>
+                  <label title="Armed conflict and terrorism"><input type="checkbox" value="ACT"> Conflict</label>
+                  <label title="Security force activity"><input type="checkbox" value="SFA"> Security forces</label>
+                  <label title="Violent crime"><input type="checkbox" value="VC"> Violent crime</label>
+                  <label title="Civil unrest"><input type="checkbox" value="CU"> Civil unrest</label>
+                  <label title="Hazards and safety"><input type="checkbox" value="HS"> Hazards</label>
+                  <label title="Operational disruption"><input type="checkbox" value="OD"> Disruption</label>
                 </div>
               </div>
-              <label class="span-2">Slack webhook <span class="note">(optional)</span>
+              <label class="span-2">Slack alert address <span class="note">(optional)</span>
                 <input id="webhook" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
               </label>
               <label class="span-2">Alert email <span class="note">(optional, stored only)</span>
@@ -145,7 +176,7 @@
             </div>
             <p class="row-actions">
               <button type="submit" id="save-zone">Save zone</button>
-              <button type="button" class="ghost" id="clear-webhook" hidden>Remove webhook</button>
+              <button type="button" class="ghost" id="clear-webhook" hidden>Remove Slack address</button>
               <button type="button" class="ghost" id="reset-form">Clear</button>
             </p>
             <p id="form-status" class="note" role="status"></p>
@@ -153,15 +184,15 @@
         </section>
         <section class="panel">
           <h2>Watched places</h2>
-          <div id="zone-list" class="scroll-list"><p class="note">No Sentinel Zones yet.</p></div>
+          <div id="zone-list" class="scroll-list"><p class="note loading-line">Loading watches…</p></div>
         </section>
         <section class="panel">
           <h2>Scan results</h2>
           <div id="scan-list" class="scroll-list"><p class="note">Scan a zone to measure the current live incidents.</p></div>
         </section>
         <section class="panel">
-          <h2>Recorded breaches</h2>
-          <div id="hit-list" class="scroll-list"><p class="note">New ingest matches are listed here with distance and bearing.</p></div>
+          <h2>Incidents inside a watch</h2>
+          <div id="hit-list" class="scroll-list"><p class="note">New matches are listed here with distance and direction.</p></div>
         </section>
       </div>
     </div>
@@ -308,7 +339,7 @@
         document.getElementById("alert-email").value = zone.alert_email || "";
         document.getElementById("webhook").value = "";
         document.getElementById("webhook").placeholder = zone.slack_webhook_set
-          ? "Saved (" + zone.slack_webhook_url + ") — paste a new URL to replace"
+          ? "Saved (" + zone.slack_webhook_url + ") — paste a new address to replace"
           : "https://hooks.slack.com/services/…";
         document.getElementById("clear-webhook").hidden = !zone.slack_webhook_set;
         var radius = Number(zone.radius_km);
@@ -352,18 +383,23 @@
         var host = document.getElementById("zone-list");
         drawSaved(zones);
         if (!zones || !zones.length) {
-          host.innerHTML = '<p class="note">No Sentinel Zones yet.</p>';
+          host.innerHTML = '<p class="note">No watches yet. Pick a sample city above to start.</p>';
           return;
         }
+        var labels = { ACT: "Conflict", SFA: "Security forces", VC: "Violent crime", CU: "Civil unrest", HS: "Hazards", OD: "Disruption" };
+        var severityLabel = { LOW: "All incidents", MED: "Medium and high", HIGH: "High only" };
         host.innerHTML = zones.map(function (zone) {
           var state = zone.active ? '<span class="pill on">LIVE</span>' : '<span class="pill off">PAUSED</span>';
-          var cats = zone.categories === "ALL" ? "ALL" : (zone.categories || []).join(", ");
+          var cats = zone.categories === "ALL" || !zone.categories
+            ? "All types"
+            : (zone.categories || []).map(function (code) { return labels[code] || code; }).join(", ");
+          var severity = severityLabel[zone.min_severity] || zone.min_severity;
           return '<article class="zone-card" data-id="' + Number(zone.id) + '">' +
             "<strong>" + esc(zone.name) + "</strong> " + state +
             '<p class="note">' + esc(zone.sector || "Unspecified") + " · " + esc(zone.radius_km) + " km · " +
-            esc(zone.min_severity) + " · " + esc(cats) + "</p>" +
+            esc(severity) + " · " + esc(cats) + "</p>" +
             '<p class="note">' + esc(Number(zone.lat).toFixed(4)) + ", " + esc(Number(zone.lng).toFixed(4)) +
-            (zone.slack_webhook_set ? " · webhook " + esc(zone.slack_webhook_url) : "") + "</p>" +
+            (zone.slack_webhook_set ? " · Slack " + esc(zone.slack_webhook_url) : "") + "</p>" +
             '<p class="row-actions">' +
             '<button type="button" data-action="edit">Edit</button>' +
             '<button type="button" data-action="pause">' + (zone.active ? "Pause" : "Resume") + "</button>" +
@@ -376,7 +412,7 @@
       function renderHits(hits) {
         var host = document.getElementById("hit-list");
         if (!hits || !hits.length) {
-          host.innerHTML = '<p class="note">New ingest matches are listed here with distance and bearing.</p>';
+          host.innerHTML = '<p class="note">New matches are listed here with distance and direction.</p>';
           return;
         }
         host.innerHTML = hits.map(function (hit) {
@@ -389,13 +425,13 @@
       function renderScan(matches) {
         var host = document.getElementById("scan-list");
         if (!matches || !matches.length) {
-          host.innerHTML = '<p class="note">No current incidents inside this geofence.</p>';
+          host.innerHTML = '<p class="note">No current incidents inside this circle.</p>';
           return;
         }
         host.innerHTML = matches.map(function (hit) {
           return '<article class="hit-card"><p class="phrase">' + esc(hit.phrase || "") + "</p>" +
             "<p>" + esc(hit.title || "Incident") + ' <span class="pill ' + esc(hit.severity) + '">' + esc(hit.severity) + "</span></p>" +
-            '<p class="note">' + esc(hit.distance_km) + " km · bearing " + esc(hit.bearing_deg) + "° " + esc(hit.cardinal) + "</p></article>";
+            '<p class="note">' + esc(hit.distance_km) + " km " + esc(hit.cardinal) + "</p></article>";
         }).join("");
       }
 
@@ -417,7 +453,7 @@
           renderZones((results[0].body && results[0].body.zones) || []);
           renderHits((results[1].body && results[1].body.hits) || []);
         }).catch(function () {
-          status("Sentinel Zones could not be loaded.", false);
+          status("Watches could not be loaded. Refresh the page to try again.", false);
         });
       }
 
@@ -493,7 +529,7 @@
       document.getElementById("clear-webhook").addEventListener("click", function () {
         clearWebhook = true;
         document.getElementById("webhook").value = "";
-        document.getElementById("webhook").placeholder = "Webhook will be removed when you update";
+        document.getElementById("webhook").placeholder = "The Slack address will be removed when you update";
       });
       document.getElementById("reset-form").addEventListener("click", function () {
         resetForm();
@@ -501,6 +537,12 @@
       });
       document.getElementById("zone-form").addEventListener("submit", function (event) {
         event.preventDefault();
+        var saveButton = document.getElementById("save-zone");
+        if (saveButton) {
+          saveButton.disabled = true;
+          saveButton.classList.add("is-busy");
+          saveButton.setAttribute("aria-busy", "true");
+        }
         var body = {
           name: document.getElementById("zone-name").value.trim(),
           sector: document.getElementById("sector").value.trim(),
@@ -537,7 +579,13 @@
             map.setView([savedLat, savedLng], zoom);
           });
         }).catch(function () {
-          status("The zone was not saved.", false);
+          status("The zone was not saved. Check the place and try again.", false);
+        }).then(function () {
+          if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.classList.remove("is-busy");
+            saveButton.removeAttribute("aria-busy");
+          }
         });
       });
       document.getElementById("zone-list").addEventListener("click", function (event) {
@@ -588,5 +636,6 @@
       window.setInterval(refresh, 30000);
     })();
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

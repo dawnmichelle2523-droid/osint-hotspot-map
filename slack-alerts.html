@@ -32,40 +32,60 @@
       .span-2 { grid-column: auto; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/slack-alerts" aria-current="page">Slack Alerts</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts" aria-current="page">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
-    <p class="kicker">Live Slack alerts</p>
-    <h1>Ops-room Block Kit cards</h1>
-    <p>Matching incidents post to a Slack webhook with no Grok or xAI tokens. HIGH and Tsunami alerts send immediately. MED and LOW can wait for a digest. The same incident is never posted twice to the same channel.</p>
+    <p class="kicker">Slack alerts</p>
+    <h1>Send incidents to your Slack channel</h1>
+    <p class="lede">Urgent alerts go out immediately. The same incident is not sent twice.</p>
   </div>
   <main>
     <p id="status" class="note" role="status"></p>
     <div class="layout">
       <section class="panel">
-        <h2 id="form-title">Add a webhook</h2>
+        <h2 id="form-title">Add a Slack channel</h2>
         <form id="channel-form">
           <input type="hidden" id="channel-id">
           <div class="form-grid">
             <label class="span-2">Channel label
               <input id="label" name="label" required maxlength="80" placeholder="#security-ops" autocomplete="off">
             </label>
-            <label class="span-2">Slack webhook URL
+            <label class="span-2">Slack alert address
               <input id="webhook" name="webhook_url" type="url" inputmode="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" spellcheck="false">
             </label>
-            <p class="note span-2" id="webhook-hint">The full URL stays on the server. The list below shows only a masked copy.</p>
+            <p class="note span-2" id="webhook-hint">Paste the address Slack gives you. It stays on the server. The list below shows only a shortened copy.</p>
             <label>Minimum severity
               <select id="severity">
                 <option value="ALL">ALL</option>
@@ -98,13 +118,13 @@
             </label>
           </div>
           <p class="row-actions">
-            <button type="submit" id="save">Save webhook</button>
+            <button type="submit" id="save">Save channel</button>
             <button type="button" class="ghost" id="clear-form">Clear</button>
           </p>
         </form>
       </section>
       <section class="panel">
-        <h2>Block Kit preview</h2>
+        <h2>What the Slack message looks like</h2>
         <label>Preview tone
           <select id="preview-tone">
             <option value="HIGH">HIGH</option>
@@ -115,26 +135,26 @@
         </label>
         <div id="preview" style="margin-top:12px"></div>
         <details style="margin-top:10px">
-          <summary>Block Kit JSON</summary>
+          <summary>Technical preview</summary>
           <pre id="preview-json" class="json-block note"></pre>
         </details>
       </section>
     </div>
     <section class="panel">
       <h2>Configured channels</h2>
-      <div id="channels"><p class="note">Loading channels…</p></div>
+      <div id="channels"><p class="note loading-line">Loading channels…</p></div>
     </section>
     <section class="panel">
       <h2>Recent deliveries</h2>
       <div style="overflow:auto">
         <table>
-          <thead><tr><th>Time (UTC)</th><th>Channel</th><th>Event</th><th>Status</th><th>HTTP</th></tr></thead>
+          <thead><tr><th>Time (UTC)</th><th>Channel</th><th>Event</th><th>Status</th><th>Result</th></tr></thead>
           <tbody id="deliveries"></tbody>
         </table>
       </div>
     </section>
   </main>
-  <footer>GeoRiskIntel · Slack alerts stay on the server · no model tokens</footer>
+  <footer>GeoRiskIntel · Slack alerts stay on the server</footer>
   <script>
     const REGIONS = ["ALL", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "Europe", "Africa", "Global", "Gulf States"];
     const COUNTRIES = ["ALL", "Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Maritime", "Gulf States", "United States", "Canada", "Brazil", "Japan", "Australia", "Afghanistan", "Ukraine", "Russia", "United Kingdom", "Egypt", "Turkey"];
@@ -208,8 +228,10 @@
     }
     function say(text, bad) {
       const node = document.getElementById("status");
-      node.textContent = text || "";
-      node.className = bad ? "note status-bad" : "note status-ok";
+      let message = text || "";
+      if (/traceback|exception|sqlite/i.test(message)) message = "That did not work. Try again in a moment.";
+      node.textContent = message;
+      node.className = message ? (bad ? "note status-bad" : "note status-ok") : "note";
     }
     function mrkdwn(text) {
       return esc(text).replace(/\*([^*]+)\*/g, "<strong>$1</strong>").replace(/\n/g, "<br>");
@@ -260,10 +282,10 @@
     function resetForm() {
       HTMLFormElement.prototype.reset.call(document.getElementById("channel-form"));
       document.getElementById("channel-id").value = "";
-      document.getElementById("form-title").textContent = "Add a webhook";
-      document.getElementById("save").textContent = "Save webhook";
+      document.getElementById("form-title").textContent = "Add a Slack channel";
+      document.getElementById("save").textContent = "Save channel";
       document.getElementById("webhook").required = true;
-      document.getElementById("webhook-hint").textContent = "The full URL stays on the server. The list below shows only a masked copy.";
+      document.getElementById("webhook-hint").textContent = "Paste the address Slack gives you. It stays on the server. The list below shows only a shortened copy.";
       setChecks("regions", ["ALL"], true);
       setChecks("countries", ["ALL"], true);
       setChecks("categories", ["ALL"], true);
@@ -277,7 +299,7 @@
       document.getElementById("label").value = channel.label || "";
       document.getElementById("webhook").value = "";
       document.getElementById("webhook").required = false;
-      document.getElementById("webhook-hint").textContent = "Saved webhook " + (channel.webhook_url_masked || "") + ". Leave the field blank to keep it.";
+      document.getElementById("webhook-hint").textContent = "Saved address " + (channel.webhook_url_masked || "") + ". Leave the field blank to keep it.";
       document.getElementById("severity").value = channel.min_severity || "ALL";
       document.getElementById("rate").value = channel.rate_limit_per_hour || 20;
       document.getElementById("digest").value = channel.digest_minutes || 0;
@@ -286,14 +308,14 @@
       setChecks("countries", channel.countries, true);
       setChecks("categories", channel.categories, true);
       document.getElementById("form-title").textContent = "Edit " + (channel.label || "channel");
-      document.getElementById("save").textContent = "Update webhook";
+      document.getElementById("save").textContent = "Update channel";
       document.getElementById("channel-form").scrollIntoView({ behavior: "smooth", block: "start" });
       schedulePreview();
     }
     function renderChannels(channels) {
       const root = document.getElementById("channels");
       if (!channels.length) {
-        root.innerHTML = '<p class="note">No webhooks yet.</p>';
+        root.innerHTML = '<p class="note">No Slack channels yet. Add one with the form above.</p>';
         return;
       }
       root.innerHTML = channels.map((channel) => {
@@ -398,8 +420,8 @@
       const response = await fetch("/api/slack/channels/" + channel.id + "/test", { method: "POST" });
       const data = await response.json();
       const text = data.ok
-        ? "Test accepted · HTTP " + data.status + " · " + (data.slack || "ok")
-        : "Test failed · HTTP " + (data.status || 0) + " · " + (data.error || data.slack || "");
+        ? "Test sent."
+        : "The test could not be sent. Check the Slack address and try again.";
       testNotes[String(channel.id)] = { text: text, ok: !!data.ok };
       say(text, !data.ok);
       await load();
@@ -408,7 +430,7 @@
       event.preventDefault();
       const creating = !document.getElementById("channel-id").value;
       if (creating && !document.getElementById("webhook").value.trim()) {
-        say("A Slack webhook URL is required.", true);
+        say("A Slack alert address is required.", true);
         return;
       }
       say("Saving…");
@@ -434,5 +456,6 @@
     resetForm();
     load().catch(() => say("Slack alerts could not be loaded.", true));
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

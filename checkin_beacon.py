@@ -960,30 +960,71 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     .empty { color: var(--muted); margin: 0; }
     [hidden] { display: none !important; }
     @media (max-width: 640px) { .link-row, .actions { align-items: stretch; } button, .btn { min-height: 44px; } }
+    .how-it-works { padding: 0; margin: 12px 0; }
+    .hint { color: var(--muted); font-weight: 650; }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header>
-    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
-    <nav aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+      <span class="nav-toggle-label">Menu</span>
+    </button>
+    <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/check-in" aria-current="page">Check-In</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in" aria-current="page">Check-in</a>
+      <a href="/pricing">Pricing</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
   </header>
   <main>
-    <p class="kicker">OPS ROOM</p>
-    <h1>2-Tap Mobile Check-In</h1>
-    <p class="note">Issue a mobile link. Field staff tap once to confirm safe, or use the second tap only for panic. Overdue windows alert this board and Slack.</p>
+    <p class="kicker">CHECK-IN</p>
+    <h1>Check in from the field</h1>
+    <p class="lede">Give each adult a private link. One tap means safe. A second tap is only for an emergency.</p>
     <p class="compliance" id="compliance-schools" role="note">__SCHOOLS_NOTICE__</p>
     <p class="zero-pii" role="note">__ZERO_PII__</p>
     <p class="gdpr" id="gdpr-notice" role="note">__GDPR_NOTICE__</p>
     __BANNERS__
+    <section class="how-it-works" data-how="check-in">
+      <div class="how-card">
+        <div class="how-head">
+          <h2>How it works</h2>
+          <button type="button" class="how-dismiss" data-how-dismiss>Hide</button>
+        </div>
+        <ol>
+          <li><strong>Create a callsign.</strong> Use a code such as CREW-BEIRUT-1, never a person's name.</li>
+          <li><strong>Copy the private link</strong> and send it only to that adult.</li>
+          <li><strong>They tap once when safe.</strong> A second tap is only for an emergency.</li>
+        </ol>
+      </div>
+    </section>
     <section class="panel">
       <h2>Create callsign</h2>
       <form id="create-form" method="post" action="/api/checkins" autocomplete="off">
         <div class="grid">
-          <label>Opaque callsign
+          <label>Callsign
             <input id="callsign" name="callsign" maxlength="48" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="CREW-BEIRUT-1" value="__CALLSIGN_VALUE__">
+            <span class="hint">A code only, such as CREW-BEIRUT-1. Not a name, email, or phone number.</span>
           </label>
           <label>Sector
             <select id="sector" name="sector" required>
@@ -1007,8 +1048,9 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
               <option value="1440">Every 24 hours</option>
             </select>
           </label>
-          <label>Slack webhook (optional)
+          <label>Slack alert address (optional)
             <input id="webhook" name="slack_webhook_url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://hooks.slack.com/services/…">
+            <span class="hint">Paste the address Slack gives you. It is stored on the server and is not shown again.</span>
           </label>
         </div>
         <p class="compliance" id="schools-sector-notice" role="note" hidden>__SCHOOLS_NOTICE__</p>
@@ -1031,11 +1073,11 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
         <button type="button" class="ghost" id="sweep">Check for overdue now</button>
       </div>
       <p id="sweep-status" class="note" role="status"></p>
-      <div id="board" class="cards"><p class="empty">Loading callsigns…</p></div>
+      <div id="board" class="cards"><p class="empty loading-line">Loading callsigns…</p></div>
     </section>
     <section class="panel">
       <h2>Recent check-ins</h2>
-      <div id="log" class="log"><p class="empty">Loading the log…</p></div>
+      <div id="log" class="log"><p class="empty loading-line">Loading recent check-ins…</p></div>
     </section>
   </main>
   <script>
@@ -1064,7 +1106,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
       function setStatus(node, text, isError) {
         if (!node) return;
         node.textContent = text || "";
-        node.className = isError ? "error" : "note";
+        node.className = !text ? "note" : (isError ? "error" : "note status-ok");
       }
       function toggleSchools() {
         var schools = sector && sector.value === "schools";
@@ -1147,7 +1189,9 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
           field.focus();
           field.select();
           copyText(url).then(function (ok) {
-            copy.textContent = ok ? "Copied" : "Copy link";
+            copy.textContent = ok ? "Copied!" : "Copy link";
+            if (ok && window.griToast) window.griToast("Copied!");
+            if (ok) window.setTimeout(function () { copy.textContent = "Copy link"; }, 1600);
           });
         });
         row.appendChild(field);
@@ -1182,7 +1226,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
         board.textContent = "";
         var beacons = data && data.beacons ? data.beacons : [];
         if (!beacons.length) {
-          board.appendChild(el("p", "empty", "No callsigns yet. Create one above. The mobile link is the only credential."));
+          board.appendChild(el("p", "empty", "No callsigns yet. Create one above, then copy the private link."));
           return;
         }
         beacons.forEach(function (beacon) { board.appendChild(card(beacon)); });
@@ -1255,7 +1299,11 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
             schools_ack: !!(schoolsAck && schoolsAck.checked)
           };
           var submit = document.getElementById("create-submit");
-          if (submit) submit.disabled = true;
+          if (submit) {
+            submit.disabled = true;
+            submit.classList.add("is-busy");
+            submit.setAttribute("aria-busy", "true");
+          }
           fetch("/api/checkins", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -1269,13 +1317,17 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
               document.getElementById("webhook").value = "";
               document.getElementById("callsign").value = "";
               if (schoolsAck) schoolsAck.checked = false;
-              setStatus(formStatus, "Link created. Copy it from the board. The webhook is stored and is not shown again.", false);
+              setStatus(formStatus, "Link created. Copy it from the board. The Slack address is stored and is not shown again.", false);
               return refresh();
             });
           }).catch(function () {
             setStatus(formStatus, "Could not create that callsign.", true);
           }).then(function () {
-            if (submit) submit.disabled = false;
+            if (submit) {
+              submit.disabled = false;
+              submit.classList.remove("is-busy");
+              submit.removeAttribute("aria-busy");
+            }
           });
         });
       }
@@ -1318,6 +1370,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
       window.setInterval(tick, 1000);
     }());
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>
 """
@@ -1328,7 +1381,7 @@ def ops_page(error: str = "", created: bool = False, callsign: str = "") -> str:
     if error:
         banners.append(f'<p class="error" role="alert">{escape(error)}</p>')
     if created:
-        banners.append('<p class="success" role="status">Callsign created. Copy the mobile link from the board. It is the only credential.</p>')
+        banners.append('<p class="success" role="status">Callsign created. Copy the private link from the board.</p>')
     page = _OPS_TEMPLATE
     page = page.replace("__SCHOOLS_NOTICE__", escape(SCHOOLS_NOTICE))
     page = page.replace("__ZERO_PII__", escape(ZERO_PII_NOTICE))

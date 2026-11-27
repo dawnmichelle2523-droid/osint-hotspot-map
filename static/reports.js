@@ -16,9 +16,18 @@
   }
 
   async function readJson(response) {
-    const payload = await response.json();
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch (err) {
+      throw new Error("That did not work. Try again in a moment.");
+    }
     if (!response.ok || payload.ok === false) {
-      throw new Error(payload.error || "Request failed");
+      var reason = payload.error || "";
+      if (!reason || /traceback|exception|sqlite|sql|stack/i.test(reason)) {
+        reason = "That did not work. Try again in a moment.";
+      }
+      throw new Error(reason);
     }
     return payload;
   }
@@ -53,7 +62,11 @@
   }
 
   async function generate() {
-    text(generateStatus, "Generating…");
+    const button = document.getElementById("generate");
+    button.classList.add("is-busy");
+    button.setAttribute("aria-busy", "true");
+    button.disabled = true;
+    text(generateStatus, "Preparing the report…");
     const response = await fetch("/api/reports/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,11 +76,20 @@
     reportId = body.id;
     reportHtml = body.html || "";
     preview.srcdoc = reportHtml;
-    text(generateStatus, body.scope + " · " + body.cadence_title + " · Risk " + body.risk_index_label + " · " + body.narrative_source);
+    text(generateStatus, body.scope + " " + (body.cadence_title || "report") + " is ready.");
+    generateStatus.className = "note status status-ok";
   }
 
   document.getElementById("generate").addEventListener("click", function () {
-    generate().catch(function (error) { text(generateStatus, error.message); });
+    generate().catch(function (error) {
+      generateStatus.className = "note status status-bad";
+      text(generateStatus, error.message || "The report could not be prepared.");
+    }).then(function () {
+      const button = document.getElementById("generate");
+      button.classList.remove("is-busy");
+      button.removeAttribute("aria-busy");
+      button.disabled = false;
+    });
   });
 
   document.getElementById("print").addEventListener("click", function () {

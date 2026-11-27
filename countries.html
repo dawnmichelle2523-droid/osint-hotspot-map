@@ -166,22 +166,39 @@
       #print-sheet a { color: #102A63; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup">
-      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
-      <span class="risk-pill">REGIONAL RISK</span>
-    </div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries" aria-current="page">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
     <div id="header-tools">
       <div id="clock-strip">
         <div id="local-time">
@@ -202,8 +219,8 @@
     </div>
   </div>
   <main>
-    <h1>Country Tiles</h1>
-    <p class="lede">Each card combines the official US and UK travel advisory with incidents already on the live feed.</p>
+    <h1>Country tiles</h1>
+    <p class="lede">Each card shows official US and UK travel advice next to incidents already on the live map.</p>
     <div id="sector-bar" class="sector-bar" role="group" aria-label="Operational sector">
       <button type="button" data-sector="all" aria-pressed="true">All / General</button>
       <button type="button" data-sector="media" aria-pressed="false">Media & Broadcast</button>
@@ -1220,5 +1237,6 @@
     }
     load();
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

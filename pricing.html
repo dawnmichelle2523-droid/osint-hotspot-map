@@ -88,24 +88,43 @@
       .plan.anchor { grid-column: auto; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body class="pricing-page">
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing" aria-current="page">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports">Reports</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
     <p class="kicker">Pricing</p>
     <h1>Plans for travellers, desks, and 24/7 ops rooms</h1>
-    <p>Self-serve prices in GBP or USD. Annual billing is 10× the monthly price, so two months are free. Every figure on this page follows the toggles.</p>
+    <p class="lede">Self-serve prices in GBP or USD. Annual billing is 10× the monthly price, so two months are free. Every figure on this page follows the toggles.</p>
   </div>
   <main id="pricing-root" data-currency="gbp" data-billing="monthly">
     <div class="panel price-controls">
@@ -464,5 +483,6 @@
       paint();
     }());
   </script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>

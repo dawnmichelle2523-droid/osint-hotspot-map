@@ -15,24 +15,44 @@
     .checks { display: flex; align-items: center; gap: 8px; }
     .checks input { width: auto; }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">
+  <header id="live-bar" class="gri-shell">
+    <a class="brand-lockup" href="/" aria-label="GeoRiskIntel home">
+    <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+  </a>
+  <button type="button" class="nav-toggle" aria-controls="page-nav" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"></span>
+    <span class="nav-toggle-label">Menu</span>
+  </button>
+  <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
-      <a href="/reports" aria-current="page">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
-    </nav>
+    <details class="nav-more">
+      <summary>Tools</summary>
+      <div class="nav-menu" role="group" aria-label="More tools">
+          <a href="/reports" aria-current="page">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Ops desk</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Countries</a>
+          <a href="/briefing">Briefings</a>
+          <a href="/enterprise">Enterprise</a>
+      </div>
+    </details>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </nav>
   </header>
   <div class="section-banner">
-    <p class="kicker">Reports &amp; Analytics</p>
-    <h1>Daily, weekly, and monthly intelligence reports</h1>
-    <p>Generate a GeoRiskIntel security assessment for any country or full region. Print to PDF, download HTML, or email it. Delivery settings sit behind the same preview lock as the rest of the admin panel.</p>
+    <p class="kicker">Reports</p>
+    <h1>Daily, weekly, and monthly security reports</h1>
+    <p class="lede">Create a report for a country or a region, then print it, download it, or email it.</p>
   </div>
   <main>
     <section class="panel">
@@ -76,7 +96,7 @@
         </label>
         <button type="button" id="send-now">Send Report Now</button>
       </div>
-      <p class="note">Leave recipients empty to use REPORT_RECIPIENTS. Delivery uses SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.</p>
+      <p class="note">Leave recipients empty to use the addresses already saved for this workspace.</p>
       <p class="note status" id="send-status" role="status"></p>
     </section>
     <section class="panel">
@@ -113,7 +133,7 @@
             </tr>
           </thead>
           <tbody id="schedule-rows">
-            <tr><td colspan="7">No subscriptions yet.</td></tr>
+            <tr><td colspan="7">No subscriptions yet. Add a client above to email reports on a schedule.</td></tr>
           </tbody>
         </table>
       </div>
@@ -125,5 +145,6 @@
   </main>
   <footer>GeoRiskIntel · For clients only, not for copy or distribution.</footer>
   <script src="/static/reports.js"></script>
+  <script src="/static/site-nav.js" defer></script>
 </body>
 </html>
