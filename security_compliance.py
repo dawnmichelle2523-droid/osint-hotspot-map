@@ -65,7 +65,6 @@ _PAGE_CSS = """
   border-radius: 8px; text-decoration: none;
 }
 .skip:focus { top: 8px; }
-#page-nav a, a.nav-cta { min-height: 32px; display: inline-flex; align-items: center; }
 .on-page { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
 .on-page a { color: #F6E7B4; }
 main a { color: #F6E7B4; text-underline-offset: 3px; }
@@ -388,13 +387,21 @@ def install(app: Flask) -> None:
             path = "/"
             https = False
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = REFERRER_POLICY
         response.headers["Permissions-Policy"] = PERMISSIONS_POLICY
-        response.headers["Content-Security-Policy"] = content_security_policy(path)
         if is_embed_path(path):
+            # /embed/widget publishes its own policy: script-src 'none',
+            # img-src https: for a client logo, frame-ancestors *, and
+            # Referrer-Policy no-referrer. Leave that policy in place.
             if "X-Frame-Options" in response.headers:
                 del response.headers["X-Frame-Options"]
+            existing = response.headers.get("Content-Security-Policy") or ""
+            if "frame-ancestors *" not in existing:
+                response.headers["Content-Security-Policy"] = content_security_policy(path)
+            if not (response.headers.get("Referrer-Policy") or "").strip():
+                response.headers["Referrer-Policy"] = REFERRER_POLICY
         else:
+            response.headers["Referrer-Policy"] = REFERRER_POLICY
+            response.headers["Content-Security-Policy"] = content_security_policy(path)
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
         if https:
             response.headers["Strict-Transport-Security"] = HSTS_VALUE
@@ -719,24 +726,35 @@ def _contact_link(value: str) -> str:
     return f'<a href="{href}">{label}</a>'
 
 
+def _nav_link(href: str, label: str, current: str) -> str:
+    current_attr = ' aria-current="page"' if href == current else ""
+    return f'<a href="{href}"{current_attr}>{html.escape(label)}</a>'
+
+
 def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, current: str) -> str:
-    links = []
-    for href, label, emphasis in (
-        ("/", "Map", False),
-        ("/reports", "Reports", False),
-        ("/risk-assessments", "Risk Assessments", True),
-        ("/grok-ops", "Grok Ops", False),
-        ("/pricing", "Pricing", False),
-        ("/enterprise", "Enterprise", False),
-        ("/trust", "Trust", False),
-        ("/privacy", "Privacy", False),
-        ("/accessibility", "Accessibility", False),
-    ):
-        classes = "nav-emphasis" if emphasis else ""
-        current_attr = ' aria-current="page"' if href == current else ""
-        class_attr = f' class="{classes}"' if classes else ""
-        links.append(f'<a href="{href}"{class_attr}{current_attr}>{html.escape(label)}</a>')
-    nav = "".join(links)
+    primary = (
+        ("/", "Live map"),
+        ("/risk-assessments", "Risk Assessments"),
+        ("/route-risk", "Route risk"),
+        ("/check-in", "Check-in"),
+        ("/pricing", "Pricing"),
+    )
+    tools = (
+        ("/reports", "Reports"),
+        ("/sentinel-zones", "Sentinel zones"),
+        ("/slack-alerts", "Slack alerts"),
+        ("/white-label", "White-label"),
+        ("/grok-ops", "Grok Ops"),
+        ("/briefing", "Daily briefing"),
+        ("/world-risk", "World risk"),
+        ("/countries", "Country guides"),
+        ("/enterprise", "Enterprise"),
+        ("/trust", "Trust"),
+        ("/privacy", "Privacy"),
+        ("/accessibility", "Accessibility"),
+    )
+    nav = "".join(_nav_link(href, label, current) for href, label in primary)
+    menu = "".join(_nav_link(href, label, current) for href, label in tools)
     security = _contact_link(security_contact())
     privacy = _contact_link(privacy_contact())
     accessibility = _contact_link(accessibility_contact())
@@ -749,19 +767,36 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
   <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
   <style>{_PAGE_CSS}</style>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
-    <nav id="page-nav" aria-label="Sections">{nav}</nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  <header id="live-bar" class="site-shell">
+    <div class="nav-backdrop"></div>
+    <div class="nav-row">
+      <a class="brand-lockup" href="/">
+        <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      </a>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav id="page-nav" aria-label="Sections">
+        {nav}
+        <details class="nav-more">
+          <summary>Tools</summary>
+          <div class="nav-menu">{menu}</div>
+        </details>
+        <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+      </nav>
+      <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+    </div>
   </header>
   <div class="section-banner">
     <p class="kicker">{html.escape(kicker)}</p>
     <h1>{html.escape(heading)}</h1>
-    <p>{lede}</p>
+    <p class="page-lead">{lede}</p>
   </div>
   <main id="main" tabindex="-1">
     {body}
@@ -960,7 +995,7 @@ def _privacy_document() -> str:
       <h2>Pseudonymised data and storage limitation</h2>
       <p>Where an operational check-in is recorded, it is pseudonymous under <strong>Article 4(5)</strong>. The record is an opaque callsign and a location rounded to one decimal degree (about 11 km). It is not a name, a passport number, a medical note, or a reviewer sign-off. A request that includes any of those fields is refused and nothing is stored.</p>
       <p>Storage is limited under <strong>Article 5(1)(e)</strong>. Check-in records auto-purge after <strong>{RETENTION_DAYS} days</strong>. Opening this notice, recording a new tap, or running erasure deletes anything older than that.</p>
-      <p><strong>Article 17</strong> erasure is immediate. An administrator with the preview session, or a deployment erasure token, can delete one callsign or the whole check-in store. The request is <code>POST /api/privacy/erase</code>. It returns a count, not the records.</p>
+      <p>Field staff use <a href="/check-in">check-in</a>. The ops room issues an opaque callsign. The phone stores a coarse location only when the adult staff member turns location on. <strong>Article 17</strong> erasure is immediate: an administrator can delete one callsign or the whole check-in store, including <code>POST /api/privacy/erase</code>. The response is a count, not the records.</p>
     </section>
     <section class="panel" id="cookies">
       <h2>Cookies</h2>

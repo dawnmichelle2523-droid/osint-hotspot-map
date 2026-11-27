@@ -7,159 +7,486 @@
   <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/static/platform.css">
+  <style>
+    body.pricing-page .section-banner,
+    body.pricing-page main { max-width: 1440px; }
+    .price-controls {
+      display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-end; justify-content: space-between;
+    }
+    .price-controls .toggles { margin: 0; }
+    .price-controls .kicker { margin-bottom: 6px; }
+    #price-status { margin: 10px 0 0; color: var(--gold); font-weight: 700; }
+    .ladder-note { margin: 4px 0 18px; }
+    .price-ladder {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+    .plan { min-width: 0; position: relative; }
+    .plan h2 { margin: 0; font-size: 17px; line-height: 1.25; }
+    .plan .price { font-size: clamp(26px, 2vw, 32px); line-height: 1.05; color: #F8FAFC; margin: 0; }
+    .plan .price.secondary { font-size: 24px; }
+    .per { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .best-for { margin: 0; font-size: 13px; color: var(--muted); }
+    .best-for strong, .plan .label {
+      display: block; margin: 0 0 2px; color: var(--gold);
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .plan ul { margin: 0; padding: 0; list-style: none; }
+    .plan li, .pass li, .addon li {
+      position: relative; padding-left: 14px; margin: 0 0 6px; font-size: 13px;
+    }
+    .plan li::before, .pass li::before, .addon li::before {
+      content: ""; position: absolute; left: 0; top: 0.55em;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--gold);
+    }
+    .plan.anchor {
+      border-color: var(--gold-border);
+      box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.5), 0 16px 36px rgba(0, 0, 0, 0.28);
+      background: linear-gradient(180deg, rgba(16, 42, 99, 0.92), #0D1424 110px);
+    }
+    .plan .cta, .pass .cta, .addon .cta { margin-top: auto; text-align: center; text-decoration: none; }
+    .plan.anchor .cta { background: var(--gold); color: #060A13; border-color: var(--gold); }
+    .or {
+      display: flex; align-items: center; gap: 8px; margin: 2px 0;
+      color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+    }
+    .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .aside { margin: 0; }
+    .section-head { margin: 28px 0 10px; }
+    .section-head h2 { margin: 0 0 4px; font-size: 22px; }
+    .section-head p { margin: 0; }
+    .pass-grid, .sector-grid { display: grid; gap: 12px; }
+    .pass-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .addon-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 0.9fr); gap: 12px; }
+    .sector-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .pass, .addon, .sector {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+    }
+    .pass h3, .addon h3, .sector h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+    .sector { background: #060A13; }
+    .sector h3 { color: var(--gold); font-size: 14px; }
+    .sector p, .pass p, .addon p { margin: 0; }
+    .pass .price, .addon .price { font-size: 26px; line-height: 1.1; margin: 0; color: #F8FAFC; }
+    .rate-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .rate-row h4 { margin: 0 0 2px; font-size: 13px; }
+    .rate-row .price { font-size: 20px; }
+    .compliance { border-color: var(--gold-border); }
+    .button.ghost { background: transparent; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+    .cta-row .button { text-decoration: none; }
+    @media (max-width: 1180px) {
+      .price-ladder, .sector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .plan.anchor { grid-column: 1 / -1; }
+      .pass-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .addon-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .price-ladder, .pass-grid, .sector-grid { grid-template-columns: 1fr; }
+      .plan.anchor { grid-column: auto; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
-<body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+<body class="pricing-page">
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing" aria-current="page">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner">
     <p class="kicker">Pricing</p>
-    <h1>Plans for desks, newsrooms, and single travellers</h1>
-    <p>Annual billing saves two months. Prices are shown in GBP or USD.</p>
+    <h1>Plans for travellers, desks, and 24/7 ops rooms</h1>
+    <p class="page-lead">Self-serve prices in GBP or USD. Annual billing is 10× the monthly price, so two months are free. Every figure on this page follows the toggles.</p>
   </div>
-  <main>
-    <div class="toggles" role="group" aria-label="Billing period">
-      <button type="button" id="monthly" aria-pressed="true">Monthly</button>
-      <button type="button" id="annual" aria-pressed="false">Annual (Save 2 months)</button>
-    </div>
-    <div class="toggles" role="group" aria-label="Currency">
-      <button type="button" id="gbp" aria-pressed="true">GBP (£)</button>
-      <button type="button" id="usd" aria-pressed="false">USD ($)</button>
-    </div>
-    <div class="cards">
-      <article class="card">
-        <h2>Individual / Pro</h2>
-        <p class="price" id="pro-price">£19<span style="font-size:16px">/mo</span></p>
-        <p class="note" id="pro-pass">Full global map. A 7-day single-area pass is listed under pay-as-you-go.</p>
-        <ul>
-          <li>Live OSINT map and advisories</li>
-          <li>ISO risk assessment templates</li>
-          <li>Grok co-pilot on visible incidents</li>
-        </ul>
-      </article>
-      <article class="card popular">
-        <span class="badge">Most Popular</span>
-        <h2>Teams &amp; Desks</h2>
-        <p class="price" id="team-price">£69<span style="font-size:16px">/user/mo</span></p>
-        <p class="note">Minimum 5 seats</p>
-        <ul>
-          <li>Shared theatres and feed status</li>
-          <li>Team risk-assessment workspace</li>
-          <li>Briefing and advisory cross-check</li>
-        </ul>
-      </article>
-      <article class="card">
-        <h2>Enterprise &amp; Government</h2>
-        <p class="price">Custom</p>
-        <p class="note">2–4 week pilot, then an annual invoice</p>
-        <a class="button" href="/enterprise">Talk to us</a>
-      </article>
-    </div>
-    <section class="panel strip">
+  <main id="pricing-root" data-currency="gbp" data-billing="monthly">
+    <div class="panel price-controls">
       <div>
-        <h2>Pay-as-you-go</h2>
-        <p class="note" id="payg">Single-Region or Single-Country Pay-per-View Pass: 7-day live OSINT map access for one area, with a dynamic viewer watermark and a region lock. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29.</p>
+        <p class="kicker">Billing</p>
+        <div class="toggles" id="billing-toggle" data-toggle="billing" role="group" aria-label="Billing period">
+          <button type="button" id="monthly" data-billing="monthly" aria-pressed="true">Monthly</button>
+          <button type="button" id="annual" data-billing="annual" aria-pressed="false">Annual (Save 2 months — 10× monthly)</button>
+        </div>
       </div>
-    </section>
-    <section class="panel strip">
       <div>
-        <h2>Custom-built &amp; white-label platforms</h2>
-        <p class="note">Enterprise Monitor, white-label assessments, and a client operations room.</p>
+        <p class="kicker">Currency</p>
+        <div class="toggles" id="currency-toggle" data-toggle="currency" role="group" aria-label="Currency">
+          <button type="button" id="gbp" data-currency="gbp" aria-pressed="true">GBP (£)</button>
+          <button type="button" id="usd" data-currency="usd" aria-pressed="false">USD ($)</button>
+        </div>
       </div>
-      <a class="button" href="/enterprise">Enterprise</a>
-    </section>
-    <section class="panel" id="report-addon">
-      <h2>Automated Intelligence Reports (Optional Add-On)</h2>
-      <p class="note">ThreatMapr-style Daily, Weekly, and Monthly PDF and email reports. Available per country or per full region, generated on schedule and emailed automatically to the client's distribution list. Prices follow the GBP / USD toggle and the monthly / annual toggle above.</p>
-      <div class="cards">
-        <article class="card">
-          <h2>Daily</h2>
-          <p class="price" id="report-daily-price">£149<span style="font-size:16px">/scope/mo</span></p>
-          <p class="note">One country or one region</p>
+    </div>
+    <p id="price-status" aria-live="polite">Showing GBP (£), billed monthly.</p>
+    <p class="note ladder-note">The Individual plan is published at $249 a year in USD. Enterprise is an annual invoice after a scoped pilot. Passes and assessment packs are one-off prices and follow the currency toggle.</p>
+
+    <section id="plans" aria-labelledby="plans-heading">
+      <div class="section-head">
+        <p class="kicker">Value ladder</p>
+        <h2 id="plans-heading">Core subscriptions</h2>
+        <p class="note">Five plans, from a solo traveller to a government desk. Ops Room is the recommended plan.</p>
+      </div>
+      <div class="price-ladder">
+        <article class="card plan" id="plan-individual" data-tier="individual">
+          <h2>Individual</h2>
+          <p class="best-for"><strong>Best for</strong> Freelancers, journalists, solo advisors, frequent travellers.</p>
+          <p class="price" data-price="individual" data-gbp-monthly="£19" data-gbp-annual="£190" data-usd-monthly="$25" data-usd-annual="$249" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£19</span><span class="per" data-suffix>/mo</span></p>
+          <p class="note aside" data-price="individual-aside" data-gbp-monthly="or £190 a year" data-gbp-annual="Two months free" data-usd-monthly="or $249 a year" data-usd-annual="Two months free" data-suffix-monthly="" data-suffix-annual=""><span data-amount>or £190 a year</span><span data-suffix></span></p>
           <ul>
-            <li>24-hour security assessment</li>
-            <li>Print-to-PDF and HTML email</li>
-            <li>Automatic delivery to the distribution list</li>
+            <li>Full global live OSINT and natural-disaster map (9+ theatres, tsunami alerts, English-translated)</li>
+            <li>ISO 31000/31030 risk-assessment templates</li>
+            <li>Grok co-pilot on visible incidents</li>
           </ul>
-          <a class="button" href="/enterprise">Request / Add to Plan</a>
+          <a class="button cta" href="/enterprise#enquiry">Subscribe</a>
         </article>
-        <article class="card">
-          <h2>Weekly</h2>
-          <p class="price" id="report-weekly-price">£79<span style="font-size:16px">/scope/mo</span></p>
-          <p class="note">One country or one region</p>
+
+        <article class="card plan" id="plan-professional" data-tier="professional">
+          <h2>Professional</h2>
+          <p class="best-for"><strong>Best for</strong> Independent security and travel-risk consultants doing commercial client work.</p>
+          <p class="price" data-price="professional" data-gbp-monthly="£39" data-gbp-annual="£390" data-usd-monthly="$49" data-usd-annual="$490" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£39</span><span class="per" data-suffix>/mo</span></p>
+          <p class="note aside" data-price="professional-aside" data-gbp-monthly="or £390 a year" data-gbp-annual="Two months free" data-usd-monthly="or $490 a year" data-usd-annual="Two months free" data-suffix-monthly="" data-suffix-annual=""><span data-amount>or £390 a year</span><span data-suffix></span></p>
           <ul>
-            <li>Seven-day security assessment</li>
-            <li>Baseline, risk index, and category table</li>
-            <li>Automatic delivery to the distribution list</li>
+            <li>Everything in Individual</li>
+            <li>Commercial client-delivery licence</li>
+            <li>Higher assessment export allowance</li>
+            <li>Light client branding</li>
+            <li>Persistent 7-day and historical country incident feeds</li>
           </ul>
-          <a class="button" href="/enterprise">Request / Add to Plan</a>
+          <a class="button cta" href="/enterprise#enquiry">Subscribe</a>
         </article>
-        <article class="card">
-          <h2>Monthly</h2>
-          <p class="price" id="report-monthly-price">£39<span style="font-size:16px">/scope/mo</span></p>
-          <p class="note">One country or one region</p>
+
+        <article class="card plan" id="plan-teams" data-tier="teams">
+          <h2>Teams &amp; Desks</h2>
+          <p class="best-for"><strong>Best for</strong> News desks, small PSCs, NGO security teams, travel agencies.</p>
+          <p class="label">Per user</p>
+          <p class="price secondary" data-price="teams-user" data-gbp-monthly="£49" data-gbp-annual="£490" data-usd-monthly="$65" data-usd-annual="$650" data-suffix-monthly="/user/mo" data-suffix-annual="/user/yr"><span data-amount>£49</span><span class="per" data-suffix>/user/mo</span></p>
+          <p class="note" data-price="teams-minimum" data-gbp-monthly="Minimum 3 seats · £147/mo" data-gbp-annual="Minimum 3 seats · £1,470/yr" data-usd-monthly="Minimum 3 seats · $195/mo" data-usd-annual="Minimum 3 seats · $1,950/yr" data-suffix-monthly="" data-suffix-annual=""><span data-amount>Minimum 3 seats · £147/mo</span><span data-suffix></span></p>
+          <p class="or">or</p>
+          <p class="label">Flat Desk · up to 5 seats</p>
+          <p class="price secondary" data-price="teams-desk" data-gbp-monthly="£199" data-gbp-annual="£1,990" data-usd-monthly="$259" data-usd-annual="$2,590" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£199</span><span class="per" data-suffix>/mo</span></p>
           <ul>
-            <li>Thirty-day security assessment</li>
-            <li>Trend against the 3-month average</li>
-            <li>Automatic delivery to the distribution list</li>
+            <li>Shared theatre views</li>
+            <li>Team risk-assessment workspace</li>
+            <li>Briefing cross-check</li>
+            <li>30% verified NGO and independent press discount</li>
           </ul>
-          <a class="button" href="/enterprise">Request / Add to Plan</a>
+          <a class="button cta" href="/enterprise#enquiry">Subscribe</a>
+        </article>
+
+        <article class="card plan popular anchor" id="plan-ops-room" data-tier="ops-room" data-role="recommended-anchor">
+          <span class="badge">Recommended · Most Popular</span>
+          <h2>Ops Room</h2>
+          <p class="best-for"><strong>Best for</strong> 24/7 control rooms, media bureaux, medical desks, family offices, close-protection teams.</p>
+          <p class="price" data-price="ops-room" data-gbp-monthly="£599" data-gbp-annual="£5,990" data-usd-monthly="$785" data-usd-annual="$7,850" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£599</span><span class="per" data-suffix>/mo</span></p>
+          <p class="note aside" data-price="ops-room-aside" data-gbp-monthly="or £5,990 a year" data-gbp-annual="Two months free" data-usd-monthly="or $7,850 a year" data-usd-annual="Two months free" data-suffix-monthly="" data-suffix-annual=""><span data-amount>or £5,990 a year</span><span data-suffix></span></p>
+          <ul>
+            <li>Up to 15 seats</li>
+            <li>Wall-screen live ops map</li>
+            <li>1 Live Slack Ops-Room channel included</li>
+            <li>Daily and weekly automated PDF email reports for 1 region included</li>
+            <li>Persistent historical analytics and a rolling Risk Index</li>
+          </ul>
+          <a class="button cta" href="/enterprise#enquiry">Subscribe</a>
+        </article>
+
+        <article class="card plan" id="plan-enterprise" data-tier="enterprise">
+          <h2>Enterprise &amp; Government</h2>
+          <p class="best-for"><strong>Best for</strong> Public sector, insurers and underwriters, TMCs, assistance partners, global corporates.</p>
+          <p class="price" data-price="enterprise" data-gbp-monthly="From £15,000" data-gbp-annual="From £15,000" data-usd-monthly="From $19,500" data-usd-annual="From $19,500" data-suffix-monthly="/yr" data-suffix-annual="/yr"><span data-amount>From £15,000</span><span class="per" data-suffix>/yr</span></p>
+          <p class="note">2–4 week scoped pilot, then an annual invoice.</p>
+          <ul>
+            <li>Multi-region automated reports</li>
+            <li>Volume Slack channels</li>
+            <li>White-label option</li>
+            <li>Auditable ISO 31000/31030 underwriting and compliance evidence packs</li>
+            <li>Dedicated onboarding and an SSO roadmap</li>
+          </ul>
+          <a class="button cta" href="/enterprise">Talk to us</a>
         </article>
       </div>
     </section>
-    <section class="panel faq">
+
+    <section id="passes" aria-labelledby="passes-heading">
+      <div class="section-head">
+        <p class="kicker">Pay-as-you-go</p>
+        <h2 id="passes-heading">Passes and one-off assessment packs</h2>
+        <p class="note">Map passes are watermarked and locked to one country or one theatre. Assessment packs are charged once. Pupil, clinical, and trauma fields stay in the browser.</p>
+      </div>
+      <div class="pass-grid">
+        <article class="pass" id="pass-7-country" data-tier="ppv">
+          <h3>7-Day Single-Country PPV Pass</h3>
+          <p class="price" data-price="pass-7-country" data-gbp-monthly="£7.99" data-gbp-annual="£7.99" data-usd-monthly="$9.99" data-usd-annual="$9.99" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£7.99</span><span data-suffix></span></p>
+          <p class="note">Watermarked. Locked to 1 country.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pass-7-region" data-tier="ppv">
+          <h3>7-Day Single-Region PPV Pass</h3>
+          <p class="price" data-price="pass-7-region" data-gbp-monthly="£14.99" data-gbp-annual="£14.99" data-usd-monthly="$19" data-usd-annual="$19" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£14.99</span><span data-suffix></span></p>
+          <p class="note">Watermarked. Locked to 1 theatre.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pass-30-country" data-tier="ppv">
+          <h3>30-Day Single-Country PPV Pass</h3>
+          <p class="price" data-price="pass-30-country" data-gbp-monthly="£19" data-gbp-annual="£19" data-usd-monthly="$25" data-usd-annual="$25" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£19</span><span data-suffix></span></p>
+          <p class="note">Locked to 1 country.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pass-30-region" data-tier="ppv">
+          <h3>30-Day Single-Region PPV Pass</h3>
+          <p class="price" data-price="pass-30-region" data-gbp-monthly="£39" data-gbp-annual="£39" data-usd-monthly="$49" data-usd-annual="$49" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£39</span><span data-suffix></span></p>
+          <p class="note">Locked to 1 theatre.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pack-iso" data-tier="pack">
+          <h3>Single ISO Risk Assessment PDF</h3>
+          <p class="price" data-price="iso-pdf" data-gbp-monthly="£29" data-gbp-annual="£29" data-usd-monthly="$39" data-usd-annual="$39" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£29</span><span data-suffix></span></p>
+          <p class="note">One ISO 31000/31030 assessment PDF.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pack-medical" data-tier="pack">
+          <h3>Medical Risk Assessment</h3>
+          <p class="price" data-price="medical" data-gbp-monthly="£49–£79" data-gbp-annual="£49–£79" data-usd-monthly="$65–$99" data-usd-annual="$65–$99" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£49–£79</span><span data-suffix></span></p>
+          <p class="note">Zero-PII. Clinical and trauma fields stay on the device, with WHO/CDC outbreak context.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pack-school" data-tier="pack">
+          <h3>School &amp; University Trip Pack</h3>
+          <p class="price" data-price="school-trip" data-gbp-monthly="£99–£199" data-gbp-annual="£99–£199" data-usd-monthly="$129–$259" data-usd-annual="$129–$259" data-suffix-monthly=" per trip" data-suffix-annual=" per trip"><span data-amount>£99–£199</span><span class="per" data-suffix> per trip</span></p>
+          <p class="note">BS 8848 / ISO 31030. Pupil data stays in the browser.</p>
+          <p class="note" data-price="education-desk" data-gbp-monthly="Education Desk £499–£990/yr" data-gbp-annual="Education Desk £499–£990/yr" data-usd-monthly="Education Desk $650–$1,300/yr" data-usd-annual="Education Desk $650–$1,300/yr" data-suffix-monthly="" data-suffix-annual=""><span data-amount>Education Desk £499–£990/yr</span><span data-suffix></span></p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+        <article class="pass" id="pack-srm" data-tier="pack">
+          <h3>Human-Signed SRM Assessment</h3>
+          <p class="price" data-price="srm" data-gbp-monthly="£400–£1,500" data-gbp-annual="£400–£1,500" data-usd-monthly="$525–$1,950" data-usd-annual="$525–$1,950" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£400–£1,500</span><span data-suffix></span></p>
+          <p class="note">Reviewed and signed by a qualified Security Risk Management practitioner.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="add-ons" aria-labelledby="addons-heading">
+      <div class="section-head">
+        <p class="kicker">Plug into any plan</p>
+        <h2 id="addons-heading">Optional add-ons</h2>
+        <p class="note">Ops Room already includes one Slack channel and daily plus weekly PDF reports for one region. Further channels, countries, and a white-label platform are optional.</p>
+      </div>
+      <div class="addon-grid">
+        <article class="addon" id="addon-slack">
+          <h3>Live Slack Ops-Room Alerts</h3>
+          <p class="price" data-price="slack" data-gbp-monthly="£29" data-gbp-annual="£290" data-usd-monthly="$39" data-usd-annual="$390" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£29</span><span class="per" data-suffix>/mo</span></p>
+          <p class="note aside" data-price="slack-aside" data-gbp-monthly="or £290 a year per channel" data-gbp-annual="Two months free per channel" data-usd-monthly="or $390 a year per channel" data-usd-annual="Two months free per channel" data-suffix-monthly="" data-suffix-annual=""><span data-amount>or £290 a year per channel</span><span data-suffix></span></p>
+          <p class="note">Per channel. 1 channel is included in Ops Room.</p>
+          <a class="button cta" href="/enterprise#enquiry">Request / Add to Plan</a>
+        </article>
+
+        <article class="addon" id="addon-reports">
+          <h3>Automated Intelligence Email Reports</h3>
+          <p class="note">ThreatMapr-style PDF, per country or per full theatre, emailed to the client distribution list. Annual prices are 10× monthly.</p>
+          <div class="rate-row">
+            <div>
+              <h4>Monthly · per country</h4>
+              <p class="price" data-price="report-monthly" data-gbp-monthly="£19" data-gbp-annual="£190" data-usd-monthly="$25" data-usd-annual="$250" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£19</span><span class="per" data-suffix>/mo</span></p>
+            </div>
+            <div>
+              <h4>Weekly · per country</h4>
+              <p class="price" data-price="report-weekly" data-gbp-monthly="£39" data-gbp-annual="£390" data-usd-monthly="$49" data-usd-annual="$490" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£39</span><span class="per" data-suffix>/mo</span></p>
+            </div>
+          </div>
+          <div class="rate-row">
+            <div>
+              <h4>Daily · per country</h4>
+              <p class="price" data-price="report-daily" data-gbp-monthly="£79" data-gbp-annual="£790" data-usd-monthly="$99" data-usd-annual="$990" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£79</span><span class="per" data-suffix>/mo</span></p>
+            </div>
+            <div>
+              <h4>Regional bundle</h4>
+              <p class="price" data-price="report-region" data-gbp-monthly="£149" data-gbp-annual="£1,490" data-usd-monthly="$195" data-usd-annual="$1,950" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£149</span><span class="per" data-suffix>/mo</span></p>
+              <p class="note">Daily, weekly, and monthly for 1 full theatre.</p>
+            </div>
+          </div>
+          <div class="cta-row">
+            <a class="button" href="/enterprise#enquiry">Request / Add to Plan</a>
+            <a class="button ghost" href="/reports">Open the report desk</a>
+          </div>
+        </article>
+
+        <article class="addon" id="addon-white-label">
+          <h3>White-Label Platform</h3>
+          <p class="label">Build · one-off</p>
+          <p class="price secondary" data-price="white-label-build" data-gbp-monthly="£10,000–£35,000" data-gbp-annual="£10,000–£35,000" data-usd-monthly="$13,000–$46,000" data-usd-annual="$13,000–$46,000" data-suffix-monthly="" data-suffix-annual=""><span data-amount>£10,000–£35,000</span><span data-suffix></span></p>
+          <p class="label">Platform fee</p>
+          <p class="price secondary" data-price="white-label-fee" data-gbp-monthly="£1,500–£5,000" data-gbp-annual="£15,000–£50,000" data-usd-monthly="$1,950–$6,550" data-usd-annual="$19,500–$65,500" data-suffix-monthly="/mo" data-suffix-annual="/yr"><span data-amount>£1,500–£5,000</span><span class="per" data-suffix>/mo</span></p>
+          <p class="note">The annual platform fee is 10× the monthly retainer. Enterprise Monitor, white-label assessments, and a client operations room.</p>
+          <a class="button cta" href="/enterprise">Enterprise</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="sectors" aria-labelledby="sectors-heading">
+      <div class="section-head">
+        <p class="kicker">Sectors</p>
+        <h2 id="sectors-heading">Built for every risk team</h2>
+        <p class="note">The same map, assessments, and ops room, scoped to the decision each desk has to make.</p>
+      </div>
+      <div class="sector-grid">
+        <article class="sector" data-sector="governments">
+          <h3>Governments</h3>
+          <p>Departmental situational awareness and auditable evidence for public-sector desks.</p>
+        </article>
+        <article class="sector" data-sector="media">
+          <h3>Media &amp; Journalism</h3>
+          <p>Freelance journalists on Individual, and newsroom desks on Teams.</p>
+        </article>
+        <article class="sector" data-sector="travel">
+          <h3>Travel Risk &amp; TMCs</h3>
+          <p>Country and theatre passes, trip packs, and a shared booker desk.</p>
+        </article>
+        <article class="sector" data-sector="insurance">
+          <h3>Insurance &amp; Compliance</h3>
+          <p>ISO 31000/31030 packs for underwriting and travel-compliance files.</p>
+        </article>
+        <article class="sector" data-sector="ngo">
+          <h3>NGOs &amp; Humanitarian</h3>
+          <p>30% off the Teams plan for verified NGOs and independent press.</p>
+        </article>
+        <article class="sector" data-sector="security">
+          <h3>Private Security &amp; Ops Rooms</h3>
+          <p>Wall-screen ops map, Slack alerts, and a rolling Risk Index.</p>
+        </article>
+        <article class="sector" data-sector="education">
+          <h3>Schools &amp; Universities</h3>
+          <p>BS 8848 / ISO 31030 trip packs. Pupil data stays in the browser.</p>
+        </article>
+        <article class="sector" data-sector="individuals">
+          <h3>Private Individuals &amp; Expats</h3>
+          <p>A personal global map and short country passes for frequent travel.</p>
+        </article>
+        <article class="sector" data-sector="family-office">
+          <h3>C-Suite &amp; Family Offices</h3>
+          <p>Ops Room monitoring and human-signed assessments for principals.</p>
+        </article>
+        <article class="sector" data-sector="medical">
+          <h3>Medical Risk &amp; Assistance</h3>
+          <p>Zero-PII medical risk assessments with WHO/CDC outbreak context.</p>
+        </article>
+      </div>
+      <section class="panel compliance">
+        <h2>Medical and security evacuation cover</h2>
+        <p>GeoRiskIntel provides intelligence and ISO 31030 documentation and complements, rather than replaces, medical and security evacuation cover.</p>
+      </section>
+    </section>
+
+    <section class="panel faq" id="faq">
       <h2>FAQ</h2>
-      <details open><summary>What is included in Individual / Pro?</summary><p>The live map, travel-advisory cross-check, six ISO-aligned assessment templates, and Grok drafts that use threat and place context only.</p></details>
-      <details><summary>How does annual billing save two months?</summary><p>The annual price is ten times the monthly price. Two months are not billed.</p></details>
-      <details><summary>Can schools use the BS 8848 template?</summary><p>Yes. The school and university template covers ratios, safeguarding, medical cover, and emergency contacts. Pupil details stay in the browser.</p></details>
-      <details><summary>How does the Enterprise pilot work?</summary><p>A scoped 2–4 week pilot leads to an annual invoice. Personal medical data is not sent to Grok.</p></details>
-      <details><summary>How do Automated Intelligence Reports work?</summary><p>The add-on is priced per country or per full region. Daily, weekly, and monthly assessments are emailed to the addresses on that client's distribution list. Annual billing follows the same two-month saving as the platform plans.</p></details>
+      <details open>
+        <summary>How do the currency and billing toggles work?</summary>
+        <p>GBP (£) and USD ($) switch every published price. Monthly and annual switch every subscription. Annual billing is 10× the monthly price, so two months are not billed. The Individual plan in USD is $249 a year. One-off passes and assessment packs keep the same figure in either billing period and change only with currency.</p>
+      </details>
+      <details>
+        <summary>What is the difference between Individual and Professional?</summary>
+        <p>Individual is the full global map, ISO 31000/31030 templates, and the Grok co-pilot for a person using the product themselves. Professional adds a commercial client-delivery licence, a higher export allowance, light client branding, and persistent 7-day and historical country feeds.</p>
+      </details>
+      <details>
+        <summary>How do Teams seats and the Desk rate work?</summary>
+        <p>Teams is priced per user with a minimum of three seats, or as a flat Desk for up to five seats. Verified NGOs and independent press receive 30% off the Teams plan.</p>
+      </details>
+      <details>
+        <summary>What does Ops Room include that the add-ons also sell?</summary>
+        <p>Ops Room includes up to 15 seats, the wall-screen map, one Live Slack Ops-Room channel, and daily plus weekly automated PDF email reports for one region. Extra channels and extra countries are add-ons.</p>
+      </details>
+      <details>
+        <summary>Are the pay-as-you-go passes a global subscription?</summary>
+        <p>No. A pass is watermarked live-map access locked to one country or one theatre, for 7 or 30 days. The rest of the globe stays off that pass. Upgrade to Individual for the full map.</p>
+      </details>
+      <details>
+        <summary>Can schools use the BS 8848 template?</summary>
+        <p>Yes. The School and University Trip Pack follows BS 8848 and ISO 31030. Pupil details stay in the browser. An optional Education Desk is available as an annual range.</p>
+      </details>
+      <details>
+        <summary>Does a medical assessment replace evacuation cover?</summary>
+        <p>No. GeoRiskIntel provides intelligence and ISO 31030 documentation and complements, rather than replaces, medical and security evacuation cover. Clinical and trauma fields are zero-PII and stay on the device, alongside WHO/CDC outbreak context. Personal medical data is not sent to Grok.</p>
+      </details>
+      <details>
+        <summary>How does the Enterprise pilot work?</summary>
+        <p>Enterprise and Government starts from £15,000 a year, or $19,500 a year. A scoped 2–4 week pilot leads to an annual invoice, with multi-region reports, volume Slack channels, a white-label option, and an SSO roadmap.</p>
+      </details>
     </section>
   </main>
   <footer>GeoRiskIntel</footer>
   <script>
-    const prices = {
-      gbp: { proM: 19, proY: 190, pass: "Full global map. A 7-day single-area pass is £6.99.", teamM: 69, teamY: 690, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from £6.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week.", dailyM: 149, dailyY: 1490, weeklyM: 79, weeklyY: 790, monthlyM: 39, monthlyY: 390 },
-      usd: { proM: 25, proY: 250, pass: "Full global map. A 7-day single-area pass is $9.99.", teamM: 89, teamY: 890, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from $9.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week.", dailyM: 189, dailyY: 1890, weeklyM: 99, weeklyY: 990, monthlyM: 49, monthlyY: 490 }
-    };
-    let period = "monthly";
-    let currency = "gbp";
-    function paint() {
-      const row = prices[currency];
-      const symbol = currency === "gbp" ? "£" : "$";
-      const pro = period === "monthly" ? row.proM : row.proY;
-      const team = period === "monthly" ? row.teamM : row.teamY;
-      const suffix = period === "monthly" ? "/mo" : "/yr";
-      document.getElementById("pro-price").innerHTML = symbol + pro + "<span style=\"font-size:16px\">" + suffix + "</span>";
-      document.getElementById("team-price").innerHTML = symbol + team + "<span style=\"font-size:16px\">/user" + suffix + "</span>";
-      document.getElementById("pro-pass").textContent = "7-day pass " + row.pass;
-      document.getElementById("payg").textContent = row.payg;
-      const reportSuffix = period === "monthly" ? "/scope/mo" : "/scope/yr";
-      const daily = period === "monthly" ? row.dailyM : row.dailyY;
-      const weekly = period === "monthly" ? row.weeklyM : row.weeklyY;
-      const monthlyReport = period === "monthly" ? row.monthlyM : row.monthlyY;
-      document.getElementById("report-daily-price").innerHTML = symbol + daily.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
-      document.getElementById("report-weekly-price").innerHTML = symbol + weekly.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
-      document.getElementById("report-monthly-price").innerHTML = symbol + monthlyReport.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
-      document.getElementById("monthly").setAttribute("aria-pressed", String(period === "monthly"));
-      document.getElementById("annual").setAttribute("aria-pressed", String(period === "annual"));
-      document.getElementById("gbp").setAttribute("aria-pressed", String(currency === "gbp"));
-      document.getElementById("usd").setAttribute("aria-pressed", String(currency === "usd"));
-    }
-    document.getElementById("monthly").addEventListener("click", () => { period = "monthly"; paint(); });
-    document.getElementById("annual").addEventListener("click", () => { period = "annual"; paint(); });
-    document.getElementById("gbp").addEventListener("click", () => { currency = "gbp"; paint(); });
-    document.getElementById("usd").addEventListener("click", () => { currency = "usd"; paint(); });
-    paint();
+    (function () {
+      var root = document.getElementById("pricing-root");
+      var status = document.getElementById("price-status");
+      var currency = "gbp";
+      var billing = "monthly";
+
+      function paint() {
+        document.querySelectorAll("[data-price]").forEach(function (node) {
+          var amount = node.getAttribute("data-" + currency + "-" + billing);
+          var suffix = node.getAttribute("data-suffix-" + billing);
+          var amountNode = node.querySelector("[data-amount]");
+          var suffixNode = node.querySelector("[data-suffix]");
+          if (amountNode && amount !== null) amountNode.textContent = amount;
+          if (suffixNode && suffix !== null) suffixNode.textContent = suffix;
+        });
+        document.querySelectorAll("[data-currency]").forEach(function (button) {
+          button.setAttribute("aria-pressed", String(button.getAttribute("data-currency") === currency));
+        });
+        document.querySelectorAll("[data-billing]").forEach(function (button) {
+          button.setAttribute("aria-pressed", String(button.getAttribute("data-billing") === billing));
+        });
+        root.setAttribute("data-currency", currency);
+        root.setAttribute("data-billing", billing);
+        var money = currency === "gbp" ? "GBP (£)" : "USD ($)";
+        var cycle = billing === "monthly" ? "billed monthly" : "billed annually (10× monthly, two months free)";
+        status.textContent = "Showing " + money + ", " + cycle + ".";
+      }
+
+      document.querySelectorAll("[data-currency]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          currency = button.getAttribute("data-currency");
+          paint();
+        });
+      });
+      document.querySelectorAll("[data-billing]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          billing = button.getAttribute("data-billing");
+          paint();
+        });
+      });
+      paint();
+    }());
   </script>
 </body>
 </html>

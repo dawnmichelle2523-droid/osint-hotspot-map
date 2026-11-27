@@ -12,3 +12,10 @@ data_snapshot_cache.json
 country_assets_cache.json
 country_calendar_cache.json
 data/
+checkins.db
+checkins.db-wal
+checkins.db-shm
+sentinel_zones.db
+slack_alerts.db
+slack_alerts.db-wal
+slack_alerts.db-shm

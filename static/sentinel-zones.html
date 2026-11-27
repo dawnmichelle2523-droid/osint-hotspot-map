@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sentinel Zones — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GeoRiskIntel">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <script src="/static/pwa-register.js" defer></script>
+  <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.8fr); gap: 14px; align-items: start; }
+    #sentinel-map { height: min(68vh, 640px); min-height: 420px; border-radius: 12px; border: 1px solid var(--line); background: #060A13; }
+    .sentinel-pin span { display: block; width: 16px; height: 16px; margin: 1px; border-radius: 50%; background: #D4AF37; border: 2px solid #060A13; box-shadow: 0 0 0 2px #D4AF37; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .span-2 { grid-column: 1 / -1; }
+    .checks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .checks label { flex-direction: row; align-items: center; gap: 6px; width: auto; background: #060A13; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; color: var(--text); font-weight: 650; }
+    .checks input { width: auto; accent-color: var(--gold); }
+    .radius-readout { color: var(--gold); font-weight: 800; }
+    input[type="range"] { accent-color: #D4AF37; padding: 0; }
+    .zone-card, .hit-card { border-top: 1px solid var(--line); padding: 10px 0; }
+    .zone-card:first-child, .hit-card:first-child { border-top: 0; padding-top: 0; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; }
+    .pill.on { color: #042f2e; background: #5eead4; }
+    .pill.off { color: #e2e8f0; background: #334155; }
+    .pill.HIGH { color: #fff; background: #E11D48; }
+    .pill.MED { color: #111; background: #D97706; }
+    .pill.LOW { color: #042f2e; background: #5eead4; }
+    .phrase { color: var(--gold); font-weight: 800; }
+    .status-ok { color: #5eead4; }
+    .status-bad { color: #fda4af; }
+    .scroll-list { max-height: 320px; overflow: auto; }
+    @media (max-width: 960px) {
+      .workspace, .form-grid { grid-template-columns: 1fr; }
+      .span-2 { grid-column: auto; }
+      #sentinel-map { height: 420px; min-height: 320px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
+</head>
+<body>
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/pricing">Pricing</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones" aria-current="page">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+    </nav>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
+  <div class="section-banner">
+    <p class="kicker">Sentinel Zones</p>
+    <h1>Live geofenced trip and asset watch</h1>
+    <p class="page-lead">Draw a circle around a hotel, office, clinic, or school trip and see when a new incident lands inside it.</p>
+    <p>Each match shows how far away it is and which direction. No traveller names are required, and this page does not call the assistant.</p>
+  </div>
+  <main>
+    <section class="how-it-works" data-how="sentinel-zones">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Start from an example.</strong> Pick Beirut, Amman, Paris, or click the map.</li>
+        <li><strong>2. Name the watch.</strong> Set how wide the circle is and which severity should count.</li>
+        <li><strong>3. Save it.</strong> New incidents inside the circle show on this board. Slack is optional.</li>
+      </ol>
+    </section>
+    <div class="workspace">
+      <section class="panel" aria-label="Geofence map">
+        <div id="sentinel-map"></div>
+        <p class="note">Click the map, type coordinates, or choose a preset city. The gold circle is the geofence you are editing. Saved watches stay on the map.</p>
+      </section>
+      <div>
+        <section class="panel">
+          <h2 id="form-title">New Sentinel Zone</h2>
+          <form id="zone-form">
+            <div class="form-grid">
+              <label class="span-2">Example place
+                <select id="preset">
+                  <option value="">Choose a city</option>
+                  <option value="33.8938,35.5018,Beirut Bureau,Media">Beirut</option>
+                  <option value="31.9539,35.9106,Amman Hotel,Hospitality">Amman</option>
+                  <option value="48.8566,2.3522,School Trip - Paris,Education">Paris</option>
+                  <option value="51.5074,-0.1278,London Bureau,Media">London</option>
+                  <option value="-1.2921,36.8219,Nairobi Clinic,Medical">Nairobi</option>
+                  <option value="50.4501,30.5234,Kyiv Desk,Media">Kyiv</option>
+                  <option value="41.0082,28.9784,Istanbul Hotel,Hospitality">Istanbul</option>
+                  <option value="30.0444,31.2357,Cairo Bureau,Media">Cairo</option>
+                  <option value="25.2048,55.2708,Dubai Office,Corporate">Dubai</option>
+                  <option value="40.7128,-74.0060,New York Desk,Media">New York</option>
+                </select>
+              </label>
+              <label class="span-2">Zone name
+                <input id="zone-name" type="text" maxlength="120" placeholder="Beirut Bureau" required>
+              </label>
+              <label>Sector
+                <select id="sector">
+                  <option value="">Unspecified</option>
+                  <option>Media</option>
+                  <option>Hospitality</option>
+                  <option>Education</option>
+                  <option>Medical</option>
+                  <option>NGO</option>
+                  <option>Government</option>
+                  <option>Energy</option>
+                  <option>Corporate</option>
+                </select>
+              </label>
+              <label>Minimum severity
+                <select id="min-severity">
+                  <option value="LOW">LOW and above</option>
+                  <option value="MED">MED and above</option>
+                  <option value="HIGH">HIGH only</option>
+                </select>
+              </label>
+              <label>Latitude
+                <input id="lat" type="number" step="0.00001" min="-90" max="90" placeholder="33.8938" required>
+              </label>
+              <label>Longitude
+                <input id="lng" type="number" step="0.00001" min="-180" max="180" placeholder="35.5018" required>
+              </label>
+              <label class="span-2">Radius <span id="radius-readout" class="radius-readout">25 km</span>
+                <input id="radius" type="range" min="1" max="250" value="25">
+              </label>
+              <div class="span-2">
+                <p class="note">Categories</p>
+                <div class="checks" id="categories">
+                  <label><input type="checkbox" value="ALL" checked> ALL</label>
+                  <label><input type="checkbox" value="ACT"> ACT</label>
+                  <label><input type="checkbox" value="SFA"> SFA</label>
+                  <label><input type="checkbox" value="VC"> VC</label>
+                  <label><input type="checkbox" value="CU"> CU</label>
+                  <label><input type="checkbox" value="HS"> HS</label>
+                  <label><input type="checkbox" value="OD"> OD</label>
+                </div>
+              </div>
+              <label class="span-2">Slack channel address <span class="note">(optional)</span>
+                <input id="webhook" type="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
+              </label>
+              <label class="span-2">Alert email <span class="note">(optional, stored only)</span>
+                <input id="alert-email" type="email" maxlength="200" placeholder="desk@example.com" autocomplete="off">
+              </label>
+            </div>
+            <p class="row-actions">
+              <button type="submit" id="save-zone">Save zone</button>
+              <button type="button" class="ghost" id="clear-webhook" hidden>Remove Slack alerts</button>
+              <button type="button" class="ghost" id="reset-form">Clear</button>
+            </p>
+            <p id="form-status" class="note" role="status"></p>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>Watched places</h2>
+          <div id="zone-list" class="scroll-list"><p class="note">No watches yet. Pick an example place, or click the map, then save the circle.</p></div>
+        </section>
+        <section class="panel">
+          <h2>Scan results</h2>
+          <div id="scan-list" class="scroll-list"><p class="note">Scan a zone to measure the current live incidents.</p></div>
+        </section>
+        <section class="panel">
+          <h2>Recorded breaches</h2>
+          <div id="hit-list" class="scroll-list"><p class="note">New ingest matches are listed here with distance and bearing.</p></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer>GeoRiskIntel · Sentinel Zones · radius watch · no personal data</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function () {
+      var PREVIEW = { lat: null, lng: null };
+      var editingId = null;
+      var clearWebhook = false;
+      var map = null;
+      var marker = null;
+      var draft = null;
+      var savedLayer = null;
+      var pinIcon = null;
+
+      function esc(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+        });
+      }
+
+      function status(message, ok) {
+        var node = document.getElementById("form-status");
+        node.textContent = message || "";
+        node.className = ok ? "note status-ok" : "note status-bad";
+        if (!message) node.className = "note";
+      }
+
+      function radiusValue() {
+        var slider = document.getElementById("radius");
+        var value = Number(slider.value);
+        if (!isFinite(value)) value = 25;
+        return Math.min(250, Math.max(1, value));
+      }
+
+      function updateRadiusLabel() {
+        document.getElementById("radius-readout").textContent = radiusValue() + " km";
+      }
+
+      function selectedCategories() {
+        var boxes = document.querySelectorAll("#categories input");
+        var all = document.querySelector('#categories input[value="ALL"]');
+        if (all && all.checked) return "ALL";
+        var chosen = [];
+        boxes.forEach(function (box) {
+          if (box.checked && box.value !== "ALL") chosen.push(box.value);
+        });
+        return chosen.length ? chosen : "ALL";
+      }
+
+      function setCategories(value) {
+        var boxes = document.querySelectorAll("#categories input");
+        var all = !value || value === "ALL" || (Array.isArray(value) && value.indexOf("ALL") !== -1);
+        boxes.forEach(function (box) {
+          box.checked = all ? box.value === "ALL" : value.indexOf(box.value) !== -1;
+        });
+      }
+
+      function drawDraft() {
+        if (!map || PREVIEW.lat == null || PREVIEW.lng == null) return;
+        var latlng = [PREVIEW.lat, PREVIEW.lng];
+        if (!draft) {
+          draft = L.circle(latlng, {
+            radius: radiusValue() * 1000,
+            color: "#D4AF37",
+            weight: 1.5,
+            fillColor: "#D4AF37",
+            fillOpacity: 0.18
+          }).addTo(map);
+        } else {
+          draft.setLatLng(latlng);
+          draft.setRadius(radiusValue() * 1000);
+        }
+        if (!marker) {
+          marker = L.marker(latlng, { draggable: true, icon: pinIcon }).addTo(map);
+          marker.on("drag", syncFromMarker);
+          marker.on("dragend", syncFromMarker);
+        } else {
+          marker.setLatLng(latlng);
+        }
+      }
+
+      function syncFromMarker() {
+        if (!marker) return;
+        var ll = marker.getLatLng();
+        PREVIEW.lat = ll.lat;
+        PREVIEW.lng = ll.lng;
+        document.getElementById("lat").value = ll.lat.toFixed(5);
+        document.getElementById("lng").value = ll.lng.toFixed(5);
+        drawDraft();
+      }
+
+      function setPoint(lat, lng, fly) {
+        if (!isFinite(lat) || !isFinite(lng)) return;
+        PREVIEW.lat = lat;
+        PREVIEW.lng = lng;
+        document.getElementById("lat").value = Number(lat).toFixed(5);
+        document.getElementById("lng").value = Number(lng).toFixed(5);
+        drawDraft();
+        if (map && fly) map.flyTo([lat, lng], Math.max(map.getZoom(), 8));
+      }
+
+      function readPointFromInputs() {
+        var lat = Number(document.getElementById("lat").value);
+        var lng = Number(document.getElementById("lng").value);
+        if (!isFinite(lat) || !isFinite(lng)) return;
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+        PREVIEW.lat = lat;
+        PREVIEW.lng = lng;
+        drawDraft();
+      }
+
+      function clearDraft() {
+        PREVIEW.lat = null;
+        PREVIEW.lng = null;
+        if (map && marker) map.removeLayer(marker);
+        if (map && draft) map.removeLayer(draft);
+        marker = null;
+        draft = null;
+      }
+
+      function resetForm() {
+        editingId = null;
+        clearWebhook = false;
+        clearDraft();
+        document.getElementById("zone-form").reset();
+        document.getElementById("radius").value = "25";
+        updateRadiusLabel();
+        setCategories("ALL");
+        document.getElementById("form-title").textContent = "New Sentinel Zone";
+        document.getElementById("save-zone").textContent = "Save zone";
+        document.getElementById("clear-webhook").hidden = true;
+        document.getElementById("webhook").placeholder = "https://hooks.slack.com/services/…";
+      }
+
+      function loadZone(zone) {
+        editingId = zone.id;
+        clearWebhook = false;
+        document.getElementById("zone-name").value = zone.name || "";
+        document.getElementById("sector").value = zone.sector || "";
+        document.getElementById("min-severity").value = zone.min_severity || "LOW";
+        document.getElementById("alert-email").value = zone.alert_email || "";
+        document.getElementById("webhook").value = "";
+        document.getElementById("webhook").placeholder = zone.slack_webhook_set
+          ? "Saved (" + zone.slack_webhook_url + ") — paste a new address to replace"
+          : "https://hooks.slack.com/services/…";
+        document.getElementById("clear-webhook").hidden = !zone.slack_webhook_set;
+        var radius = Number(zone.radius_km);
+        if (!isFinite(radius)) radius = 25;
+        document.getElementById("radius").value = String(Math.min(250, Math.max(1, Math.round(radius))));
+        updateRadiusLabel();
+        setCategories(zone.categories);
+        document.getElementById("form-title").textContent = "Edit " + (zone.name || "zone");
+        document.getElementById("save-zone").textContent = "Update zone";
+        setPoint(Number(zone.lat), Number(zone.lng), true);
+        status("", true);
+      }
+
+      function drawSaved(zones) {
+        if (!map || !savedLayer) return;
+        savedLayer.clearLayers();
+        (zones || []).forEach(function (zone) {
+          var lat = Number(zone.lat);
+          var lng = Number(zone.lng);
+          var radius = Number(zone.radius_km);
+          if (!isFinite(lat) || !isFinite(lng) || !isFinite(radius)) return;
+          var color = zone.active ? "#5eead4" : "#64748b";
+          L.circle([lat, lng], {
+            radius: radius * 1000,
+            color: color,
+            weight: 1.25,
+            fillColor: color,
+            fillOpacity: 0.08
+          }).addTo(savedLayer).bindPopup(esc(zone.name));
+          L.circleMarker([lat, lng], {
+            radius: 6,
+            color: color,
+            weight: 2,
+            fillColor: "#060A13",
+            fillOpacity: 1
+          }).addTo(savedLayer);
+        });
+      }
+
+      function renderZones(zones) {
+        var host = document.getElementById("zone-list");
+        drawSaved(zones);
+        if (!zones || !zones.length) {
+          host.innerHTML = '<p class="note">No watches yet. Pick an example place, or click the map, then save the circle.</p>';
+          return;
+        }
+        host.innerHTML = zones.map(function (zone) {
+          var state = zone.active ? '<span class="pill on">LIVE</span>' : '<span class="pill off">PAUSED</span>';
+          var cats = zone.categories === "ALL" ? "ALL" : (zone.categories || []).join(", ");
+          return '<article class="zone-card" data-id="' + Number(zone.id) + '">' +
+            "<strong>" + esc(zone.name) + "</strong> " + state +
+            '<p class="note">' + esc(zone.sector || "Unspecified") + " · " + esc(zone.radius_km) + " km · " +
+            esc(zone.min_severity) + " · " + esc(cats) + "</p>" +
+            '<p class="note">' + esc(Number(zone.lat).toFixed(4)) + ", " + esc(Number(zone.lng).toFixed(4)) +
+            (zone.slack_webhook_set ? " · Slack " + esc(zone.slack_webhook_url) : "") + "</p>" +
+            '<p class="row-actions">' +
+            '<button type="button" data-action="edit">Edit</button>' +
+            '<button type="button" data-action="pause">' + (zone.active ? "Pause" : "Resume") + "</button>" +
+            '<button type="button" data-action="scan">Scan now</button>' +
+            '<button type="button" class="ghost" data-action="delete">Delete</button>' +
+            "</p></article>";
+        }).join("");
+      }
+
+      function renderHits(hits) {
+        var host = document.getElementById("hit-list");
+        if (!hits || !hits.length) {
+          host.innerHTML = '<p class="note">New ingest matches are listed here with distance and bearing.</p>';
+          return;
+        }
+        host.innerHTML = hits.map(function (hit) {
+          return '<article class="hit-card"><p class="phrase">' + esc(hit.phrase || "") + "</p>" +
+            "<p>" + esc(hit.title || "Incident") + ' <span class="pill ' + esc(hit.severity) + '">' + esc(hit.severity) + "</span></p>" +
+            '<p class="note">' + esc(hit.zone_name || "") + " · " + esc(hit.category || "") + " · " + esc(hit.created_at || "") + "</p></article>";
+        }).join("");
+      }
+
+      function renderScan(matches) {
+        var host = document.getElementById("scan-list");
+        if (!matches || !matches.length) {
+          host.innerHTML = '<p class="note">No current incidents inside this geofence.</p>';
+          return;
+        }
+        host.innerHTML = matches.map(function (hit) {
+          return '<article class="hit-card"><p class="phrase">' + esc(hit.phrase || "") + "</p>" +
+            "<p>" + esc(hit.title || "Incident") + ' <span class="pill ' + esc(hit.severity) + '">' + esc(hit.severity) + "</span></p>" +
+            '<p class="note">' + esc(hit.distance_km) + " km · bearing " + esc(hit.bearing_deg) + "° " + esc(hit.cardinal) + "</p></article>";
+        }).join("");
+      }
+
+      function request(url, options) {
+        return fetch(url, options || { cache: "no-store" }).then(function (response) {
+          return response.json().then(function (body) {
+            return { response: response, body: body || {} };
+          }).catch(function () {
+            return { response: response, body: {} };
+          });
+        });
+      }
+
+      function refresh() {
+        return Promise.all([
+          request("/api/sentinel-zones"),
+          request("/api/sentinel-zones/hits")
+        ]).then(function (results) {
+          renderZones((results[0].body && results[0].body.zones) || []);
+          renderHits((results[1].body && results[1].body.hits) || []);
+        }).catch(function () {
+          status("Sentinel Zones could not be loaded.", false);
+        });
+      }
+
+      function findCardZone(button, zones) {
+        var card = button.closest(".zone-card");
+        if (!card) return null;
+        var id = Number(card.getAttribute("data-id"));
+        for (var i = 0; i < zones.length; i += 1) {
+          if (Number(zones[i].id) === id) return zones[i];
+        }
+        return { id: id };
+      }
+
+      function initMap() {
+        if (typeof L === "undefined") {
+          status("The map library did not load. Type coordinates or use a preset city.", false);
+          return;
+        }
+        pinIcon = L.divIcon({
+          className: "sentinel-pin",
+          html: "<span></span>",
+          iconSize: [18, 18],
+          iconAnchor: [9, 9]
+        });
+        map = L.map("sentinel-map", { worldCopyJump: true, zoomControl: true }).setView([28, 20], 3);
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+          attribution: "Tiles &copy; Esri",
+          maxZoom: 16
+        }).addTo(map);
+        savedLayer = L.layerGroup().addTo(map);
+        map.on("click", function (event) {
+          setPoint(event.latlng.lat, event.latlng.lng, false);
+        });
+        window.addEventListener("resize", function () {
+          map.invalidateSize();
+        });
+      }
+
+      document.getElementById("radius").addEventListener("input", function () {
+        updateRadiusLabel();
+        drawDraft();
+      });
+      document.getElementById("lat").addEventListener("input", readPointFromInputs);
+      document.getElementById("lng").addEventListener("input", readPointFromInputs);
+      document.getElementById("preset").addEventListener("change", function (event) {
+        var parts = String(event.target.value || "").split(",");
+        if (parts.length < 2) return;
+        var lat = Number(parts[0]);
+        var lng = Number(parts[1]);
+        var name = parts.slice(2, -1).join(",").trim();
+        var sector = parts[parts.length - 1] || "";
+        if (!document.getElementById("zone-name").value.trim() && name) {
+          document.getElementById("zone-name").value = name;
+        }
+        if (!document.getElementById("sector").value && sector) {
+          document.getElementById("sector").value = sector;
+        }
+        setPoint(lat, lng, true);
+      });
+      document.querySelectorAll("#categories input").forEach(function (box) {
+        box.addEventListener("change", function () {
+          var all = document.querySelector('#categories input[value="ALL"]');
+          if (box.value === "ALL" && box.checked) {
+            document.querySelectorAll("#categories input").forEach(function (other) {
+              if (other !== box) other.checked = false;
+            });
+          } else if (box.value !== "ALL" && box.checked && all) {
+            all.checked = false;
+          }
+          if (!document.querySelector("#categories input:checked") && all) all.checked = true;
+        });
+      });
+      document.getElementById("clear-webhook").addEventListener("click", function () {
+        clearWebhook = true;
+        document.getElementById("webhook").value = "";
+        document.getElementById("webhook").placeholder = "Slack alerts will be removed when you update";
+      });
+      document.getElementById("reset-form").addEventListener("click", function () {
+        resetForm();
+        status("", true);
+      });
+      document.getElementById("zone-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        var body = {
+          name: document.getElementById("zone-name").value.trim(),
+          sector: document.getElementById("sector").value.trim(),
+          lat: Number(document.getElementById("lat").value),
+          lng: Number(document.getElementById("lng").value),
+          radius_km: radiusValue(),
+          min_severity: document.getElementById("min-severity").value,
+          categories: selectedCategories(),
+          alert_email: document.getElementById("alert-email").value.trim(),
+          active: true
+        };
+        var hook = document.getElementById("webhook").value.trim();
+        if (hook) body.slack_webhook_url = hook;
+        else if (clearWebhook) body.slack_webhook_url = "";
+        var url = editingId ? "/api/sentinel-zones/" + editingId : "/api/sentinel-zones";
+        var method = editingId ? "PUT" : "POST";
+        var saveButton = document.getElementById("save-zone");
+        if (saveButton) saveButton.classList.add("is-busy");
+        request(url, {
+          method: method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        }).then(function (result) {
+          if (!result.response.ok || !result.body.ok) {
+            status((result.body && result.body.message) || "The zone was not saved.", false);
+            return;
+          }
+          status(editingId ? "Zone updated." : "Zone saved.", true);
+          var savedLat = body.lat;
+          var savedLng = body.lng;
+          var savedRadius = body.radius_km;
+          resetForm();
+          return refresh().then(function () {
+            if (!map || !isFinite(savedLat) || !isFinite(savedLng)) return;
+            var zoom = savedRadius > 120 ? 5 : savedRadius > 40 ? 7 : 9;
+            map.setView([savedLat, savedLng], zoom);
+          });
+        }).catch(function () {
+          status("The zone was not saved. Please try again.", false);
+        }).then(function () {
+          if (saveButton) saveButton.classList.remove("is-busy");
+        });
+      });
+      document.getElementById("zone-list").addEventListener("click", function (event) {
+        var button = event.target.closest("button");
+        if (!button) return;
+        var action = button.getAttribute("data-action");
+        request("/api/sentinel-zones").then(function (result) {
+          var zones = (result.body && result.body.zones) || [];
+          var zone = findCardZone(button, zones);
+          if (!zone || !zone.id) return;
+          if (action === "edit") {
+            loadZone(zone);
+            return;
+          }
+          if (action === "pause") {
+            return request("/api/sentinel-zones/" + zone.id, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ active: !zone.active })
+            }).then(function () { return refresh(); });
+          }
+          if (action === "scan") {
+            return request("/api/sentinel-zones/" + zone.id + "/check", { method: "POST" }).then(function (scan) {
+              renderScan((scan.body && scan.body.matches) || []);
+              status(scan.body && scan.body.ok ? "Scan finished." : "Scan failed.", !!(scan.body && scan.body.ok));
+              return refresh();
+            });
+          }
+          if (action === "delete") {
+            if (button.getAttribute("data-confirm") !== "yes") {
+              button.textContent = "Confirm delete";
+              button.setAttribute("data-confirm", "yes");
+              return;
+            }
+            return request("/api/sentinel-zones/" + zone.id, { method: "DELETE" }).then(function () {
+              if (editingId === zone.id) resetForm();
+              return refresh();
+            });
+          }
+        }).catch(function () {
+          status("That zone action did not complete.", false);
+        });
+      });
+
+      updateRadiusLabel();
+      initMap();
+      refresh();
+      window.setInterval(refresh, 30000);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Route &amp; Corridor Risk — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body.route-page { min-height: 100vh; }
+    .section-banner { padding-bottom: 0; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 420px); gap: 14px; align-items: start; }
+    #corridor-map { height: min(72vh, 760px); min-height: 420px; border-radius: 12px; border: 1px solid var(--line); background: #060A13; }
+    .stop-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .stop-list li { display: grid; grid-template-columns: 72px 1fr auto; gap: 6px; align-items: center; }
+    .role { color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: 0.04em; }
+    .inline { display: flex; gap: 8px; align-items: end; }
+    .inline label { flex: 1; }
+    .slider-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .slider-row output { color: var(--gold); font-weight: 800; }
+    input[type="range"] { accent-color: #D4AF37; padding: 0; }
+    .gauge-row { display: flex; gap: 14px; align-items: center; }
+    .gauge { width: 148px; height: 148px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--gauge, #1E293B) calc(var(--score, 0) * 1%), #1E293B 0); flex: none; }
+    .gauge-hole { width: 108px; height: 108px; border-radius: 50%; background: #0D1424; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .gauge-hole strong { font-size: 32px; line-height: 1; }
+    .gauge-hole span { color: var(--gold); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
+    .tier-LOW { --gauge: #0f766e; }
+    .tier-MODERATE { --gauge: #D97706; }
+    .tier-ELEVATED { --gauge: #ea580c; }
+    .tier-HIGH { --gauge: #E11D48; }
+    .tier-CRITICAL { --gauge: #9f1239; }
+    .hit { padding: 8px 0; border-top: 1px solid var(--line); }
+    .hit h3 { margin: 4px 0; font-size: 14px; }
+    .brief { white-space: pre-wrap; max-height: 280px; overflow: auto; }
+    .alert { color: #E11D48; font-weight: 700; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      #corridor-map { height: 52vh; min-height: 280px; }
+      .stop-list li { grid-template-columns: 64px 1fr auto; }
+    }
+    @media print {
+      #corridor-map, .no-print, header, footer { display: none !important; }
+      .workspace { display: block; }
+      .brief { max-height: none; overflow: visible; color: #111; }
+      .gauge { background: none; }
+      .gauge-hole { background: #fff; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
+</head>
+<body class="route-page">
+  <header id="live-bar" class="site-shell no-print">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk" aria-current="page">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/pricing">Pricing</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+    </nav>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
+  <div class="section-banner">
+    <p class="kicker">Route risk</p>
+    <h1>One-click route and corridor risk</h1>
+    <p class="page-lead">Enter a start and a finish, and see how risky the road between them looks right now.</p>
+    <p>Add stops if the journey is not direct. You get nearby incidents, trauma guidance, and official crossing notes. No traveller names are sent, and this page does not call the assistant.</p>
+  </div>
+  <main>
+    <section class="how-it-works no-print" data-how="route-risk">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Pick an example.</strong> Choose a saved route, or click the map for a start and a finish.</li>
+        <li><strong>2. Set the width.</strong> The shaded band is how far either side of the road is checked.</li>
+        <li><strong>3. Score the road.</strong> Copy the result into a risk assessment when you are ready.</li>
+      </ol>
+    </section>
+    <div class="workspace">
+      <section class="panel" aria-label="Corridor map">
+        <div id="corridor-map" role="application" aria-label="Corridor map. Click to add a stop."></div>
+        <p id="map-fallback" class="note" hidden>The map library did not load. Type coordinates or load a preset to score the corridor.</p>
+        <p class="note no-print">Click the map to drop the origin, then waypoints, then the destination. The shaded band is the corridor buffer.</p>
+      </section>
+      <div>
+        <section class="panel no-print">
+          <h2>Stops</h2>
+          <label>Preset
+            <select id="preset"><option value="">Loading presets…</option></select>
+          </label>
+          <p class="inline">
+            <button type="button" id="load-preset">Load preset</button>
+            <button type="button" class="ghost" id="clear-stops">Clear</button>
+          </p>
+          <ol id="stops" class="stop-list"></ol>
+          <h3>Type a coordinate</h3>
+          <div class="grid">
+            <label>Name <input id="stop-name" autocomplete="off" placeholder="Place name only"></label>
+            <label>Latitude <input id="stop-lat" inputmode="decimal" autocomplete="off" placeholder="33.82"></label>
+            <label>Longitude <input id="stop-lng" inputmode="decimal" autocomplete="off" placeholder="35.49"></label>
+          </div>
+          <p><button type="button" id="add-stop">Add stop</button></p>
+          <div class="slider-row">
+            <label for="buffer">Corridor buffer</label>
+            <output id="buffer-out" for="buffer">25 km</output>
+          </div>
+          <input id="buffer" type="range" min="5" max="100" value="25" step="1" aria-describedby="buffer-out">
+          <label>Sector
+            <select id="sector">
+              <option value="">General</option>
+              <option value="media">Media &amp; journalism</option>
+              <option value="ngo">NGO &amp; humanitarian</option>
+              <option value="psc">PSC &amp; ops room</option>
+              <option value="schools">School &amp; university trip</option>
+              <option value="medical">Medical assistance</option>
+              <option value="private">Private travel</option>
+            </select>
+          </label>
+          <p>
+            <button type="button" id="analyze">Score corridor</button>
+          </p>
+          <p id="status" class="note" role="status"></p>
+          <p id="error" class="alert" role="alert" hidden></p>
+        </section>
+        <section class="panel" id="score-panel">
+          <h2>Corridor Risk Gauge</h2>
+          <div class="gauge-row">
+            <div class="gauge" id="gauge" style="--score: 0" role="img" aria-label="Corridor risk score not yet calculated">
+              <div class="gauge-hole">
+                <strong id="gauge-score">—</strong>
+                <span id="gauge-tier">NO SCORE</span>
+              </div>
+            </div>
+            <div>
+              <p id="score-meta" class="note">Load a route and score the corridor.</p>
+              <p class="no-print">
+                <button type="button" id="copy-assessment" disabled>Copy into Risk Assessment</button>
+                <button type="button" class="ghost" id="print-brief" disabled>Print brief</button>
+              </p>
+              <p id="copy-note" class="note"></p>
+            </div>
+          </div>
+        </section>
+        <section class="panel" id="incident-panel">
+          <h2>Incidents inside the corridor</h2>
+          <div id="incident-list" class="note">None yet.</div>
+        </section>
+        <section class="panel" id="guidance-panel">
+          <h2>Medical and crossings</h2>
+          <div id="guidance" class="note">Trauma centres and official crossings appear after the corridor is scored.</div>
+        </section>
+        <section class="panel" id="brief-panel">
+          <h2>Corridor Risk Brief</h2>
+          <pre id="brief" class="note brief">The printable brief appears here.</pre>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer id="app-footer" class="no-print">GeoRiskIntel · Corridor scoring stays on this server and does not call Grok.</footer>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const STORAGE_KEY = "georisk.corridor.v1";
+    const TIER_COLOR = { LOW: "#0f766e", MODERATE: "#D97706", ELEVATED: "#ea580c", HIGH: "#E11D48", CRITICAL: "#9f1239" };
+    const stops = [];
+    let presets = [];
+    let activeCountry = "";
+    let lastResult = null;
+    let map = null;
+    let draftLayer = null;
+    let resultLayer = null;
+    let bufferTimer = null;
+    let inflight = null;
+
+    function escapeHtml(value) {
+      return String(value == null ? "" : value).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+    }
+    function roundCoord(value) {
+      return Math.round(Number(value) * 100000) / 100000;
+    }
+    function roleName(index) {
+      if (index === 0) return "Origin";
+      if (stops.length > 1 && index === stops.length - 1) return "Destination";
+      return "Waypoint";
+    }
+    function setStatus(text) {
+      document.getElementById("status").textContent = text || "";
+    }
+    function setError(text) {
+      const node = document.getElementById("error");
+      node.hidden = !text;
+      node.textContent = text || "";
+    }
+    function renderStops() {
+      const list = document.getElementById("stops");
+      if (!stops.length) {
+        list.innerHTML = "<li class=\"note\">No stops yet. Click the map, type coordinates, or load a preset.</li>";
+        return;
+      }
+      list.innerHTML = stops.map((stop, index) => {
+        return "<li><span class=\"role\">" + roleName(index) + "</span>" +
+          "<input data-stop=\"" + index + "\" value=\"" + escapeHtml(stop.name) + "\" aria-label=\"" + roleName(index) + " name\" autocomplete=\"off\">" +
+          "<button type=\"button\" class=\"ghost\" data-remove=\"" + index + "\">Remove</button></li>";
+      }).join("");
+    }
+    function markerColor(index) {
+      if (index === 0) return "#0f766e";
+      if (stops.length > 1 && index === stops.length - 1) return "#E11D48";
+      return "#D4AF37";
+    }
+    function drawStops() {
+      if (!draftLayer) return;
+      draftLayer.clearLayers();
+      stops.forEach((stop, index) => {
+        const marker = L.circleMarker([stop.lat, stop.lng], {
+          radius: index === 0 || index === stops.length - 1 ? 8 : 6,
+          color: "#060A13",
+          weight: 2,
+          fillColor: markerColor(index),
+          fillOpacity: 0.95
+        });
+        marker.bindTooltip(roleName(index) + ": " + stop.name, { permanent: false });
+        marker.on("click", (event) => L.DomEvent.stopPropagation(event));
+        marker.addTo(draftLayer);
+      });
+      if (!lastResult && stops.length) {
+        const bounds = L.latLngBounds(stops.map((stop) => [stop.lat, stop.lng]));
+        map.fitBounds(bounds.pad(0.4));
+      }
+    }
+    function clearScore() {
+      lastResult = null;
+      if (resultLayer) resultLayer.clearLayers();
+      document.getElementById("copy-assessment").disabled = true;
+      document.getElementById("print-brief").disabled = true;
+      document.getElementById("gauge").style.setProperty("--score", "0");
+      document.getElementById("gauge").className = "gauge";
+      document.getElementById("gauge-score").textContent = "—";
+      document.getElementById("gauge-tier").textContent = "NO SCORE";
+      document.getElementById("gauge").setAttribute("aria-label", "Corridor risk score not yet calculated");
+      document.getElementById("score-meta").textContent = "Load a route and score the corridor.";
+      document.getElementById("incident-list").textContent = "None yet.";
+      document.getElementById("guidance").textContent = "Trauma centres and official crossings appear after the corridor is scored.";
+      document.getElementById("brief").textContent = "The printable brief appears here.";
+      document.getElementById("copy-note").textContent = "";
+    }
+    function paintResult(result) {
+      lastResult = result;
+      const gauge = document.getElementById("gauge");
+      gauge.style.setProperty("--score", String(result.score));
+      gauge.className = "gauge tier-" + result.tier;
+      document.getElementById("gauge-score").textContent = String(result.score);
+      document.getElementById("gauge-tier").textContent = result.tier;
+      gauge.setAttribute("aria-label", "Corridor risk score " + result.score + " out of 100, " + result.tier);
+      const origin = stops[0] ? stops[0].name : "Origin";
+      const destination = stops.length ? stops[stops.length - 1].name : "Destination";
+      document.getElementById("score-meta").textContent =
+        origin + " → " + destination + " · " + result.distance_km + " km · " + result.buffer_km + " km buffer · " + result.incident_count + " incident" + (result.incident_count === 1 ? "" : "s");
+      document.getElementById("copy-assessment").disabled = false;
+      document.getElementById("print-brief").disabled = false;
+      const incidents = result.incidents || [];
+      document.getElementById("incident-list").innerHTML = incidents.length ? incidents.map((item) => {
+        return "<article class=\"hit\"><p><span class=\"band " + escapeHtml(severityBand(item.severity)) + "\">" + escapeHtml(item.severity) + "</span> " +
+          escapeHtml(item.distance_km) + " km off route · " + escapeHtml(item.confidence) + "</p><h3>" + escapeHtml(item.title) + "</h3><p class=\"note\">" +
+          escapeHtml(item.timestamp || "") + (item.category ? " · " + escapeHtml(item.category) : "") + "</p></article>";
+      }).join("") : "<p>No live OSINT incidents in the last 14 days fall inside this buffer.</p>";
+      const medical = (result.medical || []).map((item) => "<p><strong>" + escapeHtml(item.name) + "</strong> · " + escapeHtml(item.distance_km) + " km" + (item.inside_buffer ? " · inside buffer" : "") + "<br><span class=\"note\">" + escapeHtml(item.note) + "</span></p>").join("");
+      const borders = (result.borders || []).map((item) => "<p><strong>" + escapeHtml(item.name) + "</strong> · " + escapeHtml(item.distance_km) + " km" + (item.inside_buffer ? " · inside buffer" : "") + "<br><span class=\"note\">" + escapeHtml(item.note) + "</span></p>").join("");
+      const emergency = (result.emergency || []).map((item) => "<p><strong>" + escapeHtml(item.place) + "</strong><br><span class=\"note\">" + escapeHtml(item.guidance) + "</span></p>").join("");
+      document.getElementById("guidance").innerHTML = "<h3>Trauma and emergency</h3>" + (medical || "<p>No curated trauma centre in range.</p>") + emergency + "<h3>Crossings and chokepoints</h3>" + (borders || "<p>No curated official crossing within 80 km.</p>");
+      document.getElementById("brief").textContent = result.summary || "";
+      drawCorridor(result);
+    }
+    function severityBand(value) {
+      const name = String(value || "medium").toLowerCase();
+      if (name === "critical") return "Extreme";
+      if (name === "high") return "High";
+      if (name === "low" || name === "info") return "Low";
+      return "Medium";
+    }
+    function drawCorridor(result) {
+      if (!resultLayer) return;
+      resultLayer.clearLayers();
+      const color = TIER_COLOR[result.tier] || "#D4AF37";
+      if (result.corridor && result.corridor.length > 2) {
+        L.polygon(result.corridor, { color: color, weight: 1, fillColor: color, fillOpacity: 0.35 }).addTo(resultLayer);
+      }
+      if (result.route && result.route.length > 1) {
+        L.polyline(result.route, { color: "#F4E4B2", weight: 4, opacity: 0.95 }).addTo(resultLayer);
+      }
+      (result.incidents || []).forEach((item) => {
+        const marker = L.circleMarker([item.lat, item.lng], {
+          radius: 6,
+          color: "#060A13",
+          weight: 1,
+          fillColor: TIER_COLOR[item.severity === "critical" ? "CRITICAL" : item.severity === "high" ? "HIGH" : item.severity === "low" ? "LOW" : "MODERATE"],
+          fillOpacity: 0.95
+        });
+        marker.bindPopup("<strong>" + escapeHtml(item.title) + "</strong><br>" + escapeHtml(item.distance_km) + " km off route · " + escapeHtml(item.confidence));
+        marker.addTo(resultLayer);
+      });
+      const boundsSource = (result.corridor && result.corridor.length > 2)
+        ? result.corridor
+        : (result.route && result.route.length ? result.route : stops.map((stop) => [stop.lat, stop.lng]));
+      if (boundsSource.length) map.fitBounds(L.latLngBounds(boundsSource).pad(0.2));
+    }
+    async function analyze() {
+      setError("");
+      if (stops.length < 2) {
+        setError("Add an origin and a destination.");
+        return;
+      }
+      if (inflight) inflight.abort();
+      const controller = new AbortController();
+      inflight = controller;
+      setStatus("Scoring the road…");
+      const analyzeButton = document.getElementById("analyze");
+      analyzeButton.disabled = true;
+      analyzeButton.classList.add("is-busy");
+      try {
+        const response = await fetch("/api/route-risk/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          signal: controller.signal,
+          body: JSON.stringify({
+            waypoints: stops.map((stop) => ({ name: stop.name, lat: stop.lat, lng: stop.lng })),
+            buffer_km: Number(document.getElementById("buffer").value),
+            sector: document.getElementById("sector").value,
+            country: activeCountry
+          })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          setStatus("");
+          const detail = payload.error || "";
+          setError(/traceback|sqlite|exception|osrm/i.test(detail) ? "The route could not be scored. Check the stops and try again." : (detail || "The route could not be scored. Check the stops and try again."));
+          return;
+        }
+        paintResult(payload);
+        setStatus(payload.routing_note || "");
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+        setStatus("");
+        setError("The route could not be scored. Check the connection and try again.");
+      } finally {
+        if (inflight === controller) {
+          inflight = null;
+          analyzeButton.disabled = false;
+          analyzeButton.classList.remove("is-busy");
+        }
+      }
+    }
+    function copyIntoAssessment() {
+      if (!lastResult) return;
+      const origin = stops[0] ? stops[0].name : "";
+      const destination = stops.length ? stops[stops.length - 1].name : "";
+      const payload = {
+        summary: lastResult.summary,
+        score: lastResult.score,
+        tier: lastResult.tier,
+        buffer_km: lastResult.buffer_km,
+        distance_km: lastResult.distance_km,
+        origin: origin,
+        destination: destination,
+        sector: document.getElementById("sector").value,
+        country: lastResult.country || activeCountry || "",
+        saved_at: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (err) {
+        setError("This browser blocked local storage, so the brief could not be saved for the assessment.");
+        return;
+      }
+      document.getElementById("copy-note").innerHTML = "Saved on this browser. <a href=\"/risk-assessments\">Open Risk Assessments</a> and choose Paste into assessment. The brief is included in the PDF.";
+      if (window.georiskToast) window.georiskToast("Saved for the assessment");
+    }
+    function applyPreset(preset) {
+      stops.splice(0, stops.length);
+      (preset.waypoints || []).forEach((stop) => {
+        stops.push({ name: stop.name || "Stop", lat: Number(stop.lat), lng: Number(stop.lng) });
+      });
+      activeCountry = preset.country || "";
+      if (preset.sector) document.getElementById("sector").value = preset.sector;
+      if (preset.buffer_km) {
+        document.getElementById("buffer").value = String(preset.buffer_km);
+        document.getElementById("buffer-out").textContent = preset.buffer_km + " km";
+      }
+      clearScore();
+      renderStops();
+      drawStops();
+      setError("");
+      setStatus(preset.name + " is loaded. Score the corridor when the stops look right.");
+    }
+    async function loadPresets() {
+      try {
+        const response = await fetch("/api/route-risk/presets", { cache: "no-store" });
+        const payload = await response.json();
+        presets = payload.presets || [];
+        const select = document.getElementById("preset");
+        select.innerHTML = presets.map((preset) => "<option value=\"" + escapeHtml(preset.id) + "\">" + escapeHtml(preset.name) + "</option>").join("");
+        if (presets.length) applyPreset(presets[0]);
+      } catch (err) {
+        document.getElementById("preset").innerHTML = "<option value=\"\">Presets unavailable</option>";
+        setError("Presets could not be loaded. Type coordinates or click the map.");
+      }
+    }
+    function addTypedStop() {
+      const lat = Number(document.getElementById("stop-lat").value);
+      const lng = Number(document.getElementById("stop-lng").value);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        setError("Enter a latitude between -90 and 90 and a longitude between -180 and 180.");
+        return;
+      }
+      const name = document.getElementById("stop-name").value.trim() || ("Stop " + (stops.length + 1));
+      stops.push({ name: name, lat: roundCoord(lat), lng: roundCoord(lng) });
+      document.getElementById("stop-name").value = "";
+      document.getElementById("stop-lat").value = "";
+      document.getElementById("stop-lng").value = "";
+      clearScore();
+      renderStops();
+      drawStops();
+      setError("");
+    }
+    function initMap() {
+      if (!window.L) {
+        document.getElementById("map-fallback").hidden = false;
+        return;
+      }
+      map = L.map("corridor-map", { worldCopyJump: true }).setView([30, 35], 3);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+        attribution: "Tiles &copy; Esri",
+        maxZoom: 16
+      }).addTo(map);
+      resultLayer = L.layerGroup().addTo(map);
+      draftLayer = L.layerGroup().addTo(map);
+      map.on("click", (event) => {
+        const index = stops.length + 1;
+        stops.push({
+          name: index === 1 ? "Origin" : "Stop " + index,
+          lat: roundCoord(event.latlng.lat),
+          lng: roundCoord(event.latlng.lng)
+        });
+        clearScore();
+        renderStops();
+        drawStops();
+        setError("");
+      });
+    }
+
+    document.getElementById("stops").addEventListener("input", (event) => {
+      const index = Number(event.target.dataset.stop);
+      if (!stops[index]) return;
+      stops[index].name = event.target.value;
+      clearScore();
+      drawStops();
+    });
+    document.getElementById("stops").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove]");
+      if (!button) return;
+      stops.splice(Number(button.dataset.remove), 1);
+      clearScore();
+      renderStops();
+      drawStops();
+    });
+    document.getElementById("add-stop").addEventListener("click", addTypedStop);
+    document.getElementById("stop-lng").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") addTypedStop();
+    });
+    document.getElementById("load-preset").addEventListener("click", () => {
+      const id = document.getElementById("preset").value;
+      const preset = presets.find((item) => item.id === id);
+      if (preset) applyPreset(preset);
+    });
+    document.getElementById("clear-stops").addEventListener("click", () => {
+      stops.splice(0, stops.length);
+      activeCountry = "";
+      clearScore();
+      renderStops();
+      drawStops();
+      setStatus("");
+    });
+    document.getElementById("buffer").addEventListener("input", () => {
+      const value = document.getElementById("buffer").value;
+      document.getElementById("buffer-out").textContent = value + " km";
+      if (!lastResult) return;
+      clearTimeout(bufferTimer);
+      bufferTimer = setTimeout(analyze, 350);
+    });
+    document.getElementById("analyze").addEventListener("click", analyze);
+    document.getElementById("copy-assessment").addEventListener("click", copyIntoAssessment);
+    document.getElementById("print-brief").addEventListener("click", () => window.print());
+    initMap();
+    renderStops();
+    loadPresets();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  </script>
+</body>
+</html>
