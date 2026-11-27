@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import html
 import os
+import re
 from urllib.parse import quote
 
 from flask import Flask, Response, redirect, request
@@ -23,6 +24,11 @@ COOKIE_MAX_AGE = 14 * 24 * 60 * 60
 # /sso-setup is the Okta integration sheet. It lists public redirect URIs
 # and never the client secret, including before the first successful login.
 EXEMPT = {"/robots.txt", "/healthz", "/login", "/sso-setup"}
+# Field check-in only. Tokens are url-safe and at least 32 characters.
+# The ops dashboard (/check-in) and every other /api/checkins route stay locked.
+_PUBLIC_CHECKIN = re.compile(
+    r"^/(?:c/[A-Za-z0-9_-]{32,128}|api/checkin/tap/[A-Za-z0-9_-]{32,128})/?$"
+)
 ROBOTS_OFF = "User-agent: *\nDisallow: /\n"
 ROBOTS_ON = "User-agent: *\nAllow: /\n"
 ROBOTS_META = '<meta name="robots" content="noindex, nofollow">'
@@ -67,6 +73,11 @@ def lock_enabled() -> bool:
     if preview_password():
         return True
     return _okta_configured()
+
+
+def is_public_checkin_path(path: str) -> bool:
+    """True for a mobile check-in link or its tap. Nothing else is public."""
+    return bool(_PUBLIC_CHECKIN.match(path or ""))
 
 
 def _signing_key() -> str:
@@ -351,8 +362,8 @@ def install(app: Flask) -> None:
     @app.before_request
     def _preview_gate():
         path = request.path or "/"
-        # The OIDC callback, tile launch, and logout must not be swallowed by the gate.
-        if path in EXEMPT or path.startswith("/auth/okta/"):
+        # OIDC launch, callback, and logout stay open, as do mobile check-in links.
+        if path in EXEMPT or path.startswith("/auth/okta/") or is_public_checkin_path(path):
             return None
         if not lock_enabled():
             return None

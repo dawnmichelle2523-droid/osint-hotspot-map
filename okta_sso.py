@@ -705,9 +705,14 @@ _SETUP_PAGE = """<!DOCTYPE html>
     #live-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #C5A059; background: #060A13; }
     .brand-lockup { display: flex; align-items: center; gap: 8px; color: #D4AF37; font-weight: 800; letter-spacing: .04em; }
     .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: .08em; font-weight: 700; }
-    #page-nav { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; }
+    #page-nav { display: flex; gap: 6px; max-width: 100%; flex-wrap: wrap; align-items: center; }
     #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
     #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    details.nav-more { position: relative; }
+    details.nav-more summary { list-style: none; cursor: pointer; color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+    details.nav-more summary::-webkit-details-marker { display: none; }
+    .nav-menu { position: absolute; z-index: 20; min-width: 210px; margin-top: 6px; background: #0D1424; border: 1px solid #C5A059; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .nav-menu a { display: block; }
     a.nav-cta { margin-left: auto; color: #060A13; background: #D4AF37; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
     .section-banner { padding: 18px 16px 8px; max-width: 1180px; margin: 0 auto; }
     .kicker { margin: 0 0 4px; color: #D4AF37; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
@@ -748,12 +753,26 @@ _SETUP_PAGE = """<!DOCTYPE html>
   <header id="live-bar">
     <div class="brand-lockup"><span>GeoRiskIntel</span><span class="risk-pill">REGIONAL RISK</span></div>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
+      <a href="/">Live map</a>
       <a href="/risk-assessments">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/sso-setup" aria-current="page">Okta SSO</a>
-      <a href="/enterprise">Enterprise</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/pricing">Pricing</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/sso-setup" aria-current="page">Okta SSO</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
     </nav>
     <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
   </header>

@@ -15,26 +15,62 @@
     .checks { display: flex; align-items: center; gap: 8px; }
     .checks input { width: auto; }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports" aria-current="page">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports" aria-current="page">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/sso-setup">Okta SSO</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner">
     <p class="kicker">Reports &amp; Analytics</p>
     <h1>Daily, weekly, and monthly intelligence reports</h1>
-    <p>Generate a GeoRiskIntel security assessment for any country or full region. Print to PDF, download HTML, or email it. Delivery settings sit behind the same preview lock as the rest of the admin panel.</p>
+    <p class="page-lead">Create a daily, weekly, or monthly security brief for a country or region, then print or email it.</p>
   </div>
   <main>
+    <section class="how-it-works" data-how="reports">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Choose a place.</strong> Syria is filled in as an example. Pick any country or region.</li>
+        <li><strong>2. Choose the period.</strong> Daily, weekly, monthly, or a custom number of days.</li>
+        <li><strong>3. Generate the brief.</strong> Print it, download it, or email it to the duty desk.</li>
+      </ol>
+    </section>
     <section class="panel">
       <div class="toolbar">
         <label>Country or region
@@ -76,7 +112,7 @@
         </label>
         <button type="button" id="send-now">Send Report Now</button>
       </div>
-      <p class="note">Leave recipients empty to use REPORT_RECIPIENTS. Delivery uses SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.</p>
+      <p class="note">Leave the address blank to use the mail list already set up for this workspace.</p>
       <p class="note status" id="send-status" role="status"></p>
     </section>
     <section class="panel">

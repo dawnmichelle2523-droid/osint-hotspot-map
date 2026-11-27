@@ -80,22 +80,45 @@
     .spike-badge { background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 6px; font-size: 10px; font-weight: 700; white-space: nowrap; }
     #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup">
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
       <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
-      <span class="risk-pill">REGIONAL RISK</span>
-    </div>
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/sso-setup">Okta SSO</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk" aria-current="page">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+  <div class="tool-row">
     <div id="header-tools">
       <div id="clock-strip">
         <div id="local-time">
@@ -107,7 +130,9 @@
       <button type="button" id="spike-toggle" aria-pressed="false">+ Live Incident Spike</button>
       <button type="button" id="wall-mode" aria-pressed="false">⛶ Wall View</button>
     </div>
+  </div>
   </header>
+  <p class="map-lead page-lead">Official travel advice for every country, with live incidents on top.</p>
   <div id="liveWireTickerBar" role="region" aria-label="News Stream">
     <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>NEWS STREAM</div>
     <div id="ticker-viewport">

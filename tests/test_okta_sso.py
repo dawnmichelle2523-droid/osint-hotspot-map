@@ -408,12 +408,17 @@ class OktaEnabledTests(_EnvCase):
         self.assertIn("/v1/authorize", start.headers["Location"])
         self.assertNotIn("/login", start.headers["Location"])
 
-    def test_grok_ops_links_to_the_setup_sheet(self) -> None:
-        text = (ROOT / "grok-ops.html").read_text(encoding="utf-8")
-        self.assertIn('href="/sso-setup"', text)
+    def test_tools_menu_links_to_the_setup_sheet(self) -> None:
+        ops = (ROOT / "grok-ops.html").read_text(encoding="utf-8")
         pricing = (ROOT / "pricing.html").read_text(encoding="utf-8")
-        self.assertNotIn("/sso-setup", pricing)
+        live = (ROOT / "index.html").read_text(encoding="utf-8")
+        for text in (ops, pricing, live):
+            self.assertIn(">Tools</summary>", text)
+            self.assertIn('href="/sso-setup">Okta SSO</a>', text)
+            self.assertIn('href="/check-in"', text)
+            self.assertIn('href="/white-label"', text)
         self.assertNotIn("/auth/okta/", pricing)
+        self.assertIn('data-gbp-monthly="£29"', pricing)
 
     def _callback(self, **overrides):
         start = self.client.get("/auth/okta/login", query_string={"next": overrides.get("next_path", "/")})

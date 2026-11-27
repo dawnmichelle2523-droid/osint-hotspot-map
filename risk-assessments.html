@@ -5,32 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Risk Assessments — GeoRiskIntel</title>
   <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#102A63">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GeoRiskIntel">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <script src="/static/pwa-register.js" defer></script>
   <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup">
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
       <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
-      <span class="risk-pill">REGIONAL RISK</span>
-    </div>
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis" aria-current="page">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments" aria-current="page">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/sso-setup">Okta SSO</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner" id="risk-subhead">
     <p class="kicker">Risk Assessments</p>
     <h1>ISO-aligned Risk Assessment &amp; Pre-Deployment Report builder</h1>
-    <p>Choose a sector. Templates, assignment types, hazards, controls, and transport, accommodation and comms protocols follow that sector. You can still type a custom entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Local-only personal and medical details stay in this browser and are never sent to Grok.</p>
+    <p class="page-lead">Build a pre-travel risk report for a team, school trip, or client, then export it as a PDF.</p>
+    <p>Templates, hazards, and controls follow the sector you pick. You can still type your own entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal and medical details stay in this browser and are never sent to the assistant.</p>
   </div>
   <main>
+    <section class="how-it-works" data-how="risk-assessments">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Choose a sector.</strong> Media, a school trip, and a close-protection job each start from a different template.</li>
+        <li><strong>2. Name the trip.</strong> Example: leave Media &amp; Journalism selected and title it “Beirut bureau — November”.</li>
+        <li><strong>3. Export the PDF.</strong> Save a baseline first if you want a later “what changed” check.</li>
+      </ol>
+    </section>
     <section class="panel no-print" id="sector-panel">
       <div class="sector-picker">
         <label>Sector
@@ -62,8 +102,21 @@
         <button type="button" id="download">Download / Export PDF</button>
         <button type="button" id="autodraft">Auto-Draft mitigations</button>
         <button type="button" class="ghost" id="reset">Clear local draft</button>
+        <button type="button" id="ra-check-changed">Check What Changed</button>
       </div>
+      <div class="toolbar" id="ra-snapshot-tools">
+        <label>Assessment name <input id="ra-snapshot-name" placeholder="Syria media — 25 Nov" autocomplete="off"></label>
+        <label>Saved assessments
+          <select id="ra-snapshot-list"><option value="">No saved assessments yet</option></select>
+        </label>
+        <button type="button" id="ra-save-snapshot">Save baseline snapshot</button>
+        <button type="button" class="ghost" id="ra-open-snapshot">Re-open</button>
+        <button type="button" class="ghost" id="ra-delete-snapshot">Delete</button>
+        <button type="button" class="ghost" id="ra-clear-browser">Clear Local Browser Data</button>
+      </div>
+      <p class="note" id="ra-snapshot-note">Snapshots stay in this browser. Check What Changed sends only the country, region, baseline time, incident ids, and original risk level.</p>
       <p class="note" id="privacy">Fields marked local-only never leave this browser. Auto-Draft sends the sector, compliance standard, operation type, destination, transport, accommodation and comms protocols, and hazard scores only.</p>
+      <p class="note" id="ra-hygiene-note">Personal and reviewer details stay strictly in this browser and are never sent to GeoRiskIntel servers.</p>
       <div id="enterprise-fields" class="grid" hidden>
         <label>Client organisation <input id="org-name" data-local="1" autocomplete="off" placeholder="Shown on the PDF only"></label>
         <label>Logo upload <input id="org-logo" type="file" accept="image/*"></label>
@@ -76,6 +129,40 @@
         <h2 id="doc-title" style="margin:0">Security &amp; Travel Risk Assessment</h2>
         <p class="note" id="standards"></p>
       </header>
+      <section class="panel" id="ra-change-record" aria-label="What changed since the last risk assessment">
+        <h2>What changed since the last assessment</h2>
+        <p class="note" id="ra-baseline-meta">No baseline snapshot is open. Save one before departure, then check what changed.</p>
+        <p id="ra-diff-banner" class="diff-banner" role="status" aria-live="polite" hidden></p>
+        <div id="ra-diff-upgrades"></div>
+        <div id="ra-diff-list"></div>
+      </section>
+      <section class="panel" id="ra-audit-panel" aria-label="Human reviewer sign-off and audit trail">
+        <h2>Human review sign-off</h2>
+        <p id="ra-ai-label" class="note">No Grok auto-draft used. Qualified human sign-off is still required before issue.</p>
+        <p class="note">ISO 31030 · BS 8848 · EU AI Act human-in-the-loop. Reviewer name and qualification stay on this device and are printed only in this export.</p>
+        <div class="grid no-print">
+          <label>Reviewer name <input id="ra-reviewer-name" autocomplete="name"></label>
+          <label>Qualification / role <input id="ra-reviewer-role" placeholder="Qualified Security Risk Manager" autocomplete="organization-title"></label>
+          <label>Sign-off status
+            <select id="ra-signoff-status">
+              <option>Approved</option>
+              <option>Approved with Conditions</option>
+              <option>Hold</option>
+            </select>
+          </label>
+        </div>
+        <p class="no-print"><button type="button" id="ra-signoff">Record human sign-off</button></p>
+        <p class="note no-print" id="ra-signoff-note"></p>
+        <table id="ra-audit-log">
+          <caption class="note">Timestamped audit trail (UTC / GMT)</caption>
+          <thead>
+            <tr><th>Event</th><th>Reviewer</th><th>Qualification / role</th><th>Status</th><th>UTC timestamp</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5">No audit events yet. Save a baseline snapshot to open the trail.</td></tr>
+          </tbody>
+        </table>
+      </section>
       <section class="panel">
         <h2>Context</h2>
         <div class="grid">
@@ -114,6 +201,19 @@
         <h3>Travel advisory cross-check</h3>
         <div id="advisory-cross" class="grid"></div>
         <div id="incident-list"></div>
+      </section>
+      <section class="panel no-print" id="corridor-import" hidden>
+        <h2>Corridor risk ready to paste</h2>
+        <p class="note" id="corridor-import-note"></p>
+        <p>
+          <button type="button" id="paste-corridor">Paste into assessment</button>
+          <button type="button" class="ghost" id="dismiss-corridor">Dismiss</button>
+        </p>
+      </section>
+      <section class="panel" id="corridor-pasted" hidden>
+        <h2>Corridor Risk Summary</h2>
+        <p class="note" id="corridor-pasted-meta"></p>
+        <pre id="corridor-pasted-body" class="note" style="white-space:pre-wrap"></pre>
       </section>
       <section class="panel" id="extra"></section>
       <section class="panel" id="pii">
@@ -528,7 +628,9 @@
         enterprise: document.getElementById("enterprise").checked,
         org: fieldValue("org-name"),
         context: readContext(),
-        rows: rows
+        rows: rows,
+        corridorSummary: corridorText(),
+        corridorMeta: corridorMetaText()
       };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) {}
     }
@@ -586,8 +688,77 @@
         rows = state.rows.map(normaliseRow);
         paint();
       }
+      if (state.corridorSummary) {
+        document.getElementById("corridor-pasted").hidden = false;
+        document.getElementById("corridor-pasted-body").textContent = state.corridorSummary;
+        document.getElementById("corridor-pasted-meta").textContent = state.corridorMeta || "";
+      }
       paintProtocolLine();
       toggleEnterprise();
+    }
+    function corridorText() {
+      const node = document.getElementById("corridor-pasted-body");
+      return node ? node.textContent : "";
+    }
+    function corridorMetaText() {
+      const node = document.getElementById("corridor-pasted-meta");
+      return node ? node.textContent : "";
+    }
+    function readCorridorImport() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("georisk.corridor.v1") || "null");
+        return saved && typeof saved === "object" ? saved : null;
+      } catch (err) {
+        return null;
+      }
+    }
+    function showCorridorOffer() {
+      const box = document.getElementById("corridor-import");
+      const saved = readCorridorImport();
+      if (!box) return;
+      if (!saved || !saved.summary || saved.dismissed || corridorText().trim() === String(saved.summary)) {
+        box.hidden = true;
+        return;
+      }
+      box.hidden = false;
+      const origin = saved.origin || "Origin";
+      const destination = saved.destination || "Destination";
+      const score = saved.score == null ? "—" : saved.score;
+      document.getElementById("corridor-import-note").textContent =
+        origin + " → " + destination + " · " + score + " / 100 " + (saved.tier || "") + ". Paste adds the brief to this assessment and to the PDF.";
+    }
+    function pasteCorridor() {
+      const saved = readCorridorImport();
+      if (!saved || !saved.summary) return;
+      const cityWasEmpty = !fieldValue("city").trim();
+      if (cityWasEmpty && saved.country) ensureCountry(saved.country);
+      if (cityWasEmpty && saved.origin && saved.destination) setField("city", saved.origin + " → " + saved.destination);
+      document.getElementById("corridor-pasted").hidden = false;
+      document.getElementById("corridor-pasted-body").textContent = saved.summary;
+      const meta = "Score " + (saved.score == null ? "—" : saved.score) + " / 100 · " + (saved.tier || "") + " · " + (saved.buffer_km || "") + " km buffer";
+      document.getElementById("corridor-pasted-meta").textContent = saved.origin && saved.destination ? meta + " · " + saved.origin + " → " + saved.destination : meta;
+      readRowsFromDom();
+      const pairs = { LOW: [2, 2], MODERATE: [3, 3], ELEVATED: [4, 3], HIGH: [4, 4], CRITICAL: [5, 5] };
+      const pair = pairs[saved.tier] || [3, 3];
+      const control = "Corridor score " + (saved.score == null ? "" : saved.score) + "/100 (" + (saved.tier || "") + "). " + String(saved.summary).slice(0, 900);
+      const index = rows.findIndex((row) => /^movement corridor/i.test(row.threat || ""));
+      if (index >= 0) {
+        rows[index].threat = "Movement corridor";
+        rows[index].likelihood = pair[0];
+        rows[index].impact = pair[1];
+        rows[index].control = control;
+        rows[index].controlId = "";
+      } else {
+        const row = blankRow("Movement corridor");
+        row.likelihood = pair[0];
+        row.impact = pair[1];
+        row.control = control;
+        row.controlId = "";
+        rows.push(row);
+      }
+      paint();
+      save();
+      document.getElementById("corridor-import").hidden = true;
     }
     function toggleEnterprise() {
       const on = document.getElementById("enterprise").checked;
@@ -814,6 +985,16 @@
     });
 
     restore();
+    document.getElementById("paste-corridor").addEventListener("click", pasteCorridor);
+    document.getElementById("dismiss-corridor").addEventListener("click", () => {
+      const saved = readCorridorImport();
+      if (saved) {
+        saved.dismissed = true;
+        try { localStorage.setItem("georisk.corridor.v1", JSON.stringify(saved)); } catch (err) {}
+      }
+      document.getElementById("corridor-import").hidden = true;
+    });
+    showCorridorOffer();
     const prefill = new URLSearchParams(window.location.search);
     if (prefill.get("country")) ensureCountry(prefill.get("country"));
     if (prefill.get("area") || prefill.get("city")) setField("city", prefill.get("area") || prefill.get("city"));
@@ -822,7 +1003,7 @@
     document.getElementById("doc-ref").value = document.getElementById("doc-ref").value || ("GR-PDR-" + new Date().toISOString().slice(0, 10));
     save();
     loadCountryIncidents();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
+  <script src="/static/ra-diff-audit.js"></script>
 </body>
 </html>

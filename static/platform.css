@@ -69,6 +69,13 @@ footer, #app-footer { padding: 8px 12px; background: var(--panel); border-top: 1
 table.matrix { min-width: 960px; }
 table.matrix textarea { min-height: 56px; }
 table.matrix .ghost { padding: 4px 8px; white-space: nowrap; }
+.diff-banner { margin: 10px 0; padding: 10px 12px; border-radius: 10px; font-weight: 800; }
+.diff-banner.alert { color: #fecdd3; border: 1px solid #E11D48; background: #3f0d18; }
+.diff-banner.calm { color: #ccfbf1; border: 1px solid #0f766e; background: #042f2e; }
+.ai-flag { color: #fecdd3; font-weight: 800; }
+.diff-item { padding: 8px 0; border-top: 1px solid var(--line); }
+.diff-item h3 { margin: 4px 0; font-size: 15px; }
+#ra-audit-log caption { text-align: left; margin-bottom: 6px; }
 @media (max-width: 860px) {
   .cards { grid-template-columns: 1fr; }
 }
@@ -81,4 +88,5 @@ table.matrix .ghost { padding: 4px 8px; white-space: nowrap; }
   a { color: #102A63; }
   #report input, #report select, #report textarea { border-color: #ccc; background: #fff; color: #111; }
   .band { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .diff-banner.alert, .diff-banner.calm, .ai-flag { color: #111 !important; background: #fff !important; border-color: #111 !important; }
 }
