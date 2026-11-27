@@ -235,8 +235,21 @@ def install(app: Flask) -> None:
         if "text/html" not in content_type:
             return response
         try:
-            html = response.get_data(as_text=True)
-        except (UnicodeDecodeError, AttributeError):
+            # send_file / send_from_directory mark the body as direct
+            # passthrough. get_data() then raises RuntimeError unless the
+            # flag is cleared first. Close the original file wrapper after
+            # the body is buffered so the descriptor is not left open.
+            # Any failure must not become a 500.
+            if getattr(response, "direct_passthrough", False):
+                response.direct_passthrough = False
+            body = getattr(response, "response", None)
+            try:
+                html = response.get_data(as_text=True)
+            finally:
+                close = getattr(body, "close", None)
+                if close is not None:
+                    close()
+        except Exception:
             return response
         if "name=\"robots\"" in html:
             return response
