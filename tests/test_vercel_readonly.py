@@ -133,6 +133,8 @@ class ReadOnlyDataDirTests(unittest.TestCase):
             "OKTA_CLIENT_ID",
             "OKTA_CLIENT_SECRET",
             "ANTHROPIC_API_KEY",
+            "GeoRiskIntel",
+            "GEORISKINTEL",
             "XAI_API_KEY",
             "ENABLE_XAI_INGEST",
         ):

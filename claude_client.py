@@ -2,8 +2,9 @@
 
 This module never starts a thread, never polls, and never calls xAI.
 Anthropic is contacted only when a caller invokes a draft function and
-ANTHROPIC_API_KEY is set. A missing key, a rate limit, or any other API
-error returns the local template instead.
+a server key is set. The key is ANTHROPIC_API_KEY, or the exact name
+GeoRiskIntel when that variable is unset or blank. A missing key, a
+rate limit, or any other API error returns the local template instead.
 
 The API key is read from the environment and is never placed in a response,
 a prompt, or a log line.
@@ -118,14 +119,28 @@ def _load_env() -> None:
         return
 
 
+def get_anthropic_api_key() -> str:
+    """Return the server Anthropic key, or "" when none is set.
+
+    ANTHROPIC_API_KEY is preferred. A missing or blank value falls back to
+    the exact environment name GeoRiskIntel. The lookup is case-sensitive:
+    GEORISKINTEL is a different name and is not read. Callers must not put
+    the return value in a response or a log line.
+    """
+    _load_env()
+    primary = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if primary:
+        return primary
+    return os.environ.get("GeoRiskIntel", "").strip()
+
+
 def read_api_key() -> str:
     """Return the server key. Callers must not put this value in a response or log."""
-    _load_env()
-    return (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    return get_anthropic_api_key()
 
 
 def configured() -> bool:
-    return bool(read_api_key())
+    return bool(get_anthropic_api_key())
 
 
 def _model_name(raw: object, default: str) -> str:
