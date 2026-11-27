@@ -85,6 +85,13 @@ _PLACES = [
     (("muscat", "مسقط"), 23.588, 58.3829, "Oman", "Muscat"),
     (("strait of hormuz", "hormuz"), 26.5667, 56.2667, "Maritime", "Strait of Hormuz"),
     (("bab el-mandeb", "bab al mandab"), 12.5833, 43.3333, "Maritime", "Bab el-Mandeb"),
+    (("north dakota",), 47.55, -101.0, "United States", "North Dakota"),
+    (("south dakota",), 43.97, -99.9, "United States", "South Dakota"),
+    (("california",), 36.78, -119.42, "United States", "California"),
+    (("texas",), 31.97, -99.9, "United States", "Texas"),
+    (("florida",), 27.66, -81.52, "United States", "Florida"),
+    (("alaska",), 64.2, -149.49, "United States", "Alaska"),
+    (("hawaii",), 19.9, -155.58, "United States", "Hawaii"),
     (("new york",), 40.7128, -74.006, "United States", "New York"),
     (("los angeles",), 34.0522, -118.2437, "United States", "Los Angeles"),
     (("chicago",), 41.8781, -87.6298, "United States", "Chicago"),
@@ -339,16 +346,16 @@ def geolocate(title: object = "", summary: object = "", country: object = "", la
     """Prefer feed coordinates, then a named place, then a country centroid."""
     text = f"{title or ''} {summary or ''} {country or ''}"
     feed_point = _pair(lat, lng)
-    place = _match_place(text)
-    named_country = _match_country(text) or _clean_country(country)
+    declared = _clean_country(country)
+    place = _match_place(text, declared)
+    named_country = declared or _match_country(text)
     if feed_point:
-        area = place[4] if place else (named_country or "")
-        resolved = place[3] if place else (named_country or _clean_country(country))
+        same_country = place and (not declared or place[3] == declared)
         return {
             "lat": feed_point[0],
             "lng": feed_point[1],
-            "country": resolved,
-            "area": area,
+            "country": (place[3] if same_country else "") or declared or (place[3] if place else "") or named_country,
+            "area": (place[4] if same_country else "") or declared or "",
             "geo_precision": "Exact",
         }
     if place:
@@ -450,10 +457,12 @@ def annotate_feature(feature: dict) -> dict | None:
     return {"type": "Feature", "geometry": geometry, "properties": props}
 
 
-def _match_place(text: str):
+def _match_place(text: str, prefer_country: str = ""):
     lowered = f" {text.lower()} "
     best = None
     best_len = 0
+    preferred = None
+    preferred_len = 0
     for aliases, lat, lng, country, area in _PLACES:
         for alias in aliases:
             if len(alias) < 4:
@@ -462,10 +471,15 @@ def _match_place(text: str):
                 found = alias in text
             else:
                 found = re.search(r"(?<![a-z0-9])" + re.escape(alias) + r"(?![a-z0-9])", lowered) is not None
-            if found and len(alias) > best_len:
+            if not found:
+                continue
+            if len(alias) > best_len:
                 best = (aliases, lat, lng, country, area)
                 best_len = len(alias)
-    return best
+            if prefer_country and country == prefer_country and len(alias) > preferred_len:
+                preferred = (aliases, lat, lng, country, area)
+                preferred_len = len(alias)
+    return preferred or best
 
 
 def _match_country(text: str) -> str:

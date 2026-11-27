@@ -1342,6 +1342,11 @@
       }
       const raw = event.originalEvent && event.originalEvent.target;
       if (raw && raw.closest && raw.closest(".leaflet-marker-icon, .marker-cluster, .leaflet-popup, .leaflet-interactive")) return;
+      const theatre = theatreAt(event.latlng.lat, event.latlng.lng);
+      if (theatre) {
+        focusTheatre(theatre);
+        return;
+      }
       if (coordTip) map.closeTooltip(coordTip);
       const lat = event.latlng.lat.toFixed(5);
       const lng = event.latlng.lng.toFixed(5);
@@ -2234,6 +2239,61 @@
       }
     }
 
+    function pointInBox(lat, lng, south, west, north, east) {
+      return lat >= south && lat <= north && lng >= west && lng <= east;
+    }
+
+    function theatreAt(lat, lng) {
+      if (pointInBox(lat, lng, 51, -170, 72, -129)) return "United States";
+      if (pointInBox(lat, lng, 18, -161, 23, -154)) return "United States";
+      if (pointInBox(lat, lng, 24, -125, 49.5, -66)) return "United States";
+      if (pointInBox(lat, lng, 41.6, -141, 83, -52)) return "Canada";
+      if (pointInBox(lat, lng, 29, 60, 39, 75)) return "Afghanistan";
+      if (pointInBox(lat, lng, 12, 32, 42, 63)) return "Middle East";
+      if (pointInBox(lat, lng, 44, 22, 53, 41)) return "Russia & Ukraine";
+      if (pointInBox(lat, lng, -56, -82, 13, -34)) return "South America";
+      if (pointInBox(lat, lng, -45, 112, -10, 154)) return "Australia";
+      if (pointInBox(lat, lng, -10, 95, 54, 180)) return "APAC";
+      if (pointInBox(lat, lng, 36, -25, 72, 40)) return "Europe";
+      if (pointInBox(lat, lng, -35, -20, 37, 52)) return "Africa";
+      return "";
+    }
+
+    function pinsFor(regionId, severityId, windowId) {
+      const opts = currentOpts(regionId);
+      opts.severity = severityId;
+      opts.timeWindow = windowId;
+      return features.filter((feature) => passes(feature, opts) && isPoint(feature));
+    }
+
+    function focusTheatre(name) {
+      if (!name) return;
+      region = name;
+      let pins = pinsFor(name, severity, timeWindow);
+      if (!pins.length) {
+        const any = pinsFor(name, "all", "all");
+        if (any.length) {
+          severity = "all";
+          timeWindow = "all";
+          pins = any;
+          setStatus(any.length + " alerts in " + name + ". None were in the High & Medium / 48 hour view, so all events are shown.");
+        } else {
+          setStatus("No geolocated alerts in " + name + " yet.");
+        }
+      } else {
+        setStatus(pins.length + " alerts in " + name + ".");
+      }
+      const slimRegion = document.getElementById("slim-region");
+      if (slimRegion && [...slimRegion.options].some((option) => option.value === name)) slimRegion.value = name;
+      render("none");
+      if (pins.length) {
+        const bounds = L.latLngBounds(pins.map((feature) => [feature.geometry.coordinates[1], feature.geometry.coordinates[0]]));
+        map.fitBounds(bounds.pad(0.4), { padding: [36, 36], maxZoom: 6 });
+      } else if (THEATRE_VIEWS[name]) {
+        map.flyTo(THEATRE_VIEWS[name].center, THEATRE_VIEWS[name].zoom, { duration: 0.6 });
+      }
+    }
+
     function flyToRegion(regionId) {
       if (!regionId || regionId === "all") {
         map.flyTo(HOME.center, HOME.zoom, { duration: 0.75 });
@@ -2840,10 +2900,15 @@
       window.setTimeout(() => map.invalidateSize(), 60);
     });
     document.getElementById("slim-region").addEventListener("change", (event) => {
-      region = event.target.value || "all";
-      const view = THEATRE_VIEWS[region];
-      if (view) map.flyTo(view.center, view.zoom, { duration: 0.6 });
-      render(searchQuery ? "search" : "region");
+      const name = event.target.value || "all";
+      if (!name || name === "all") {
+        region = "all";
+        render("none");
+        map.flyTo(HOME.center, HOME.zoom, { duration: 0.6 });
+        setStatus("");
+        return;
+      }
+      focusTheatre(name);
     });
     document.getElementById("slim-severity").addEventListener("change", (event) => {
       severity = event.target.value || "signal";
@@ -3322,6 +3387,18 @@
     document.getElementById("quick-jump").addEventListener("click", (event) => {
       const button = event.target.closest("[data-jump]");
       if (!button) return;
+      const jumpName = {
+        global: "Global", middleeast: "Middle East", unitedstates: "United States", canada: "Canada",
+        southamerica: "South America", apac: "APAC", australia: "Australia", afghanistan: "Afghanistan",
+        russiaukraine: "Russia & Ukraine"
+      }[button.dataset.jump];
+      if (jumpName) {
+        focusTheatre(jumpName);
+        document.querySelectorAll("#quick-jump button[data-jump]").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        return;
+      }
       const jump = JUMPS[button.dataset.jump];
       if (!jump) return;
       focusSerial += 1;
