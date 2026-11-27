@@ -493,16 +493,18 @@ def _expose_public_paths() -> None:
 
 
 def pseudonymous_db_path() -> Path:
+    from analytics_store import prefer_writable_file
+
     configured = _single_line(os.environ.get("PSEUDONYMOUS_DB") or "")
     if configured:
-        return Path(configured)
+        return prefer_writable_file(Path(configured))
     try:
         override = current_app.config.get("PSEUDONYMOUS_DB")
     except RuntimeError:
         override = ""
     if override:
-        return Path(str(override))
-    return Path(__file__).resolve().parent / "data" / "pseudonymous_ops.sqlite"
+        return prefer_writable_file(Path(str(override)))
+    return prefer_writable_file(Path(__file__).resolve().parent / "data" / "pseudonymous_ops.sqlite")
 
 
 def round_coordinate(value: object) -> float:
@@ -601,7 +603,9 @@ def erase_authorised() -> bool:
 
 
 def _open_taps(path: Path) -> sqlite3.Connection:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    from analytics_store import prefer_writable_file
+
+    path = prefer_writable_file(path)
     conn = sqlite3.connect(path)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS taps ("

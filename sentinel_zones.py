@@ -361,8 +361,9 @@ def _as_bool(value: object, default: bool = True) -> bool:
 
 
 def _connect() -> sqlite3.Connection:
-    path = db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    from analytics_store import prefer_writable_file
+
+    path = prefer_writable_file(db_path())
     conn = sqlite3.connect(str(path), timeout=15, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
