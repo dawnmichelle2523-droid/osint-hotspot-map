@@ -625,17 +625,41 @@ def stream_risk_draft(payload: dict):
             f"- {scrub_text(hazard.get('threat') or 'Hazard', 80)} "
             f"(likelihood {hazard.get('likelihood')}, impact {hazard.get('impact')})"
         )
+    recent = clean.get("recent_incidents") if isinstance(clean.get("recent_incidents"), list) else []
+    incident_lines = []
+    for item in recent[:12]:
+        if not isinstance(item, dict):
+            continue
+        incident_lines.append(
+            "- "
+            + " | ".join(
+                part
+                for part in (
+                    scrub_text(item.get("timestamp") or "", 40),
+                    scrub_text(item.get("severity") or "", 16),
+                    scrub_text(item.get("area") or item.get("location_name") or "", 60),
+                    scrub_text(item.get("title") or "", 180),
+                    scrub_text(item.get("source_name") or "", 60),
+                )
+                if part
+            )
+        )
     user = (
         f"Template: {template}\nDestination: {city + ', ' if city else ''}{country or 'unspecified'}\n"
-        "Write one short mitigation paragraph per hazard. Destination threat context only.\n"
+        "Write one short mitigation paragraph per hazard. Cite the public 7-day incidents when they support a hazard. "
+        "Destination threat context only.\n"
         + ("\n".join(lines) or "- General travel security")
+        + "\nPublic incidents, last 7 days:\n"
+        + ("\n".join(incident_lines) or "None logged.")
     )
     system = (
         "You draft mitigations for an ISO 31000 / ISO 31030 style travel risk assessment. "
         "Discuss places, routes, healthcare access, and security conditions. "
+        "Use only the public incidents supplied. If none are listed, say no verified incidents were logged in the last 7 days. "
         "Never request or repeat traveller names, medical history, or contact details. Plain text."
     )
-    fallback = "Local mitigation draft (Grok is not configured, so nothing was sent):\n" + "\n".join(
+    cited = "; ".join(line[2:80] for line in incident_lines[:4]) or "no verified incidents logged in the last 7 days"
+    fallback = "Local mitigation draft (Grok is not configured, so nothing was sent). Recent public incidents: " + cited + "\n" + "\n".join(
         f"{line} — Confirm the official advisory, assign an owner, and re-score residual risk after the control is in place."
         for line in (lines or ["- General travel security"])
     )

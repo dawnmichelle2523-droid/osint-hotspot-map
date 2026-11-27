@@ -70,6 +70,14 @@
           <label>Movement window <input id="window" data-local="1" placeholder="Dates stay on this device"></label>
         </div>
       </section>
+      <section class="panel" id="live-incidents" aria-label="Recent incidents last 7 days">
+        <h2>Live OSINT Incident Summary — Last 7 Days</h2>
+        <p class="note" id="incident-note">Select a country to load the live 7-day feed.</p>
+        <p id="incident-counts"></p>
+        <h3>Travel advisory cross-check</h3>
+        <div id="advisory-cross" class="grid"></div>
+        <div id="incident-list"></div>
+      </section>
       <section class="panel" id="extra"></section>
       <section class="panel" id="pii">
         <h2 class="lock">Local only — not sent to Grok</h2>
@@ -282,10 +290,70 @@
       reader.onload = () => { document.getElementById("export-logo").src = reader.result; };
       reader.readAsDataURL(file);
     });
+    let countryReport = null;
+    let incidentTimer = null;
+    function severityLabel(value) {
+      const name = String(value || "medium");
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    function paintCountryReport(report) {
+      countryReport = report;
+      const note = document.getElementById("incident-note");
+      const counts = document.getElementById("incident-counts");
+      const list = document.getElementById("incident-list");
+      const advisories = document.getElementById("advisory-cross");
+      if (!report || report.ok === false) {
+        note.textContent = "The 7-day incident feed could not be loaded.";
+        counts.textContent = "";
+        list.innerHTML = "";
+        return;
+      }
+      const country = report.country || countrySelect.value;
+      if (!report.total) {
+        note.textContent = report.note || ("No verified OSINT incidents logged for " + country + " in the last 7 days; baseline advisory & regional monitoring active");
+      } else {
+        note.textContent = report.total + " verified OSINT incident" + (report.total === 1 ? "" : "s") + " for " + country + " in the last 7 days.";
+      }
+      const severity = report.by_severity || {};
+      const categories = Object.keys(report.by_category || {}).map((name) => name + " " + report.by_category[name]).join(" · ");
+      counts.innerHTML = report.total
+        ? '<span class="band High">High ' + (severity.high || 0) + '</span> <span class="band Medium">Medium ' + (severity.medium || 0) + '</span> <span class="band Low">Low ' + (severity.low || 0) + '</span>'
+          + (categories ? '<span class="note"> ' + escapeText(categories) + "</span>" : "")
+        : "";
+      const sources = report.advisories || {};
+      advisories.innerHTML = ["uk", "us", "ca"].map((key) => {
+        const item = sources[key] || {};
+        return "<article><h3>" + escapeText(item.agency || key.toUpperCase()) + "</h3><p><strong>" + escapeText(item.label || "Unavailable") + "</strong></p><p class=\"note\">" + escapeText(item.summary || item.message || "") + "</p></article>";
+      }).join("");
+      list.innerHTML = (report.incidents || []).map((item) => {
+        const place = item.area ? escapeText(item.area) : "Area not named";
+        const link = item.source ? ' · <a href="' + escapeText(item.source) + '" target="_blank" rel="noopener noreferrer">' + escapeText(item.source_name || "Source") + "</a>" : " · " + escapeText(item.source_name || "");
+        return "<article style=\"padding:8px 0;border-top:1px solid #1E293B\"><p><span class=\"band " + severityLabel(item.severity) + "\">" + severityLabel(item.severity) + "</span> " + escapeText(item.category || "") + "</p><h3 style=\"margin:4px 0\">" + escapeText(item.title) + "</h3><p class=\"note\">" + escapeText(item.timestamp || "") + " · " + place + link + "</p></article>";
+      }).join("");
+    }
+    async function loadCountryIncidents() {
+      const country = countrySelect.value;
+      const area = document.getElementById("city").value.trim();
+      if (!country) return;
+      document.getElementById("incident-note").textContent = "Loading the last 7 days for " + country + "…";
+      try {
+        const query = new URLSearchParams({ country: country, days: "7" });
+        if (area) query.set("area", area);
+        const response = await fetch("/api/risk-assessments/country-incidents?" + query.toString(), { cache: "no-store" });
+        paintCountryReport(await response.json());
+      } catch (err) {
+        paintCountryReport(null);
+      }
+    }
     document.getElementById("country").addEventListener("change", () => {
       const name = countrySelect.value;
       document.getElementById("emergency-numbers").textContent = EMERGENCY[name] || EMERGENCY.default;
       save();
+      loadCountryIncidents();
+    });
+    document.getElementById("city").addEventListener("input", () => {
+      clearTimeout(incidentTimer);
+      incidentTimer = setTimeout(loadCountryIncidents, 400);
     });
     document.body.addEventListener("input", (event) => { if (event.target.id !== "matrix") save(); });
     document.getElementById("reset").addEventListener("click", () => { localStorage.removeItem("georisk.ra.v1"); location.reload(); });
@@ -322,7 +390,14 @@
         template: TEMPLATES[templateSelect.value].title,
         country: countrySelect.value,
         city: document.getElementById("city").value,
-        hazards: rows.map((row) => ({ threat: row.threat, likelihood: row.likelihood, impact: row.impact }))
+        hazards: rows.map((row) => ({ threat: row.threat, likelihood: row.likelihood, impact: row.impact })),
+        recent_incidents: ((countryReport && countryReport.incidents) || []).map((item) => ({
+          timestamp: item.timestamp,
+          severity: item.severity,
+          area: item.area,
+          title: item.title,
+          source_name: item.source_name
+        }))
       };
       window.GeoRiskStream.post("/api/grok/risk-draft", body, {
         onToken: (text) => { output.textContent += text; },
@@ -349,6 +424,7 @@
       document.getElementById("city").value = prefill.get("area") || prefill.get("city");
     }
     save();
+    loadCountryIncidents();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
 </body>

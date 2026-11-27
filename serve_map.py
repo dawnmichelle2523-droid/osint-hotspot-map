@@ -6286,6 +6286,39 @@ def data_response() -> dict:
         }
 
 
+def country_incidents_response(country: str, area: str = "", days: int = 7) -> dict:
+    """Public 7-day incidents for one country, plus the advisory cross-check."""
+    from country_incidents import build_report
+
+    features = []
+    try:
+        features.extend((data_response().get("features") or []))
+    except Exception as exc:
+        print(f"Country incidents could not read the map snapshot: {exc.__class__.__name__}.")
+    try:
+        features.extend(feed_features())
+    except Exception as exc:
+        print(f"Country incidents could not read stored rows: {exc.__class__.__name__}.")
+    try:
+        import global_feeds
+
+        features.extend(global_feeds.features())
+    except Exception as exc:
+        print(f"Country incidents could not read global feeds: {exc.__class__.__name__}.")
+    report = build_report(features, country, area, days)
+    try:
+        import platform_phase1
+
+        checked = platform_phase1.crosscheck_payload(country)
+        report["advisories"] = checked.get("sources") or {}
+        report["advisory_note"] = checked.get("note") or ""
+    except Exception as exc:
+        print(f"Country advisory cross-check failed: {exc.__class__.__name__}.")
+        report["advisories"] = {}
+        report["advisory_note"] = ""
+    return report
+
+
 def data_post_response(raw: bytes) -> dict:
     """Return the live payload. {"view":"regional"} selects the regional overview."""
     view = ""
@@ -7841,6 +7874,15 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
         if verb == "GET" and route == "/api/travel-advisories":
             return 200, "application/json; charset=utf-8", _api_json(travel_advisories_payload())
+        if verb == "GET" and route == "/api/risk-assessments/country-incidents":
+            params = parse_qs(query, keep_blank_values=True)
+            country = (params.get("country") or [""])[0]
+            area = (params.get("area") or params.get("city") or [""])[0]
+            try:
+                days = int((params.get("days") or ["7"])[0])
+            except ValueError:
+                days = 7
+            return 200, "application/json; charset=utf-8", _api_json(country_incidents_response(country, area, days))
         if verb == "GET" and route == "/api/news-stream":
             import news_stream
 
