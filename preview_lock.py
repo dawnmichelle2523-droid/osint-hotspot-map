@@ -1,8 +1,9 @@
-"""Pre-launch search block and optional preview password.
+"""Pre-launch search block, optional preview password, and Okta session gate.
 
 Passwords are read only from the environment. Nothing in this module is a
 password. Removing PREVIEW_PASSWORD and BASIC_AUTH_PASSWORD leaves the site
-open. Indexing stays off until ALLOW_INDEXING is exactly "true" and
+open unless Okta SSO is configured with OKTA_ISSUER and OKTA_CLIENT_ID.
+Indexing stays off until ALLOW_INDEXING is exactly "true" and
 SITE_PRIVATE_MODE is not enabled.
 """
 
@@ -20,7 +21,9 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 COOKIE = "georisk_preview"
 COOKIE_MAX_AGE = 14 * 24 * 60 * 60
-EXEMPT = {"/robots.txt", "/healthz", "/login"}
+# /sso-setup is the Okta integration sheet. It lists public redirect URIs
+# and never the client secret, including before the first successful login.
+EXEMPT = {"/robots.txt", "/healthz", "/login", "/sso-setup"}
 # Field check-in only. Tokens are url-safe and at least 32 characters.
 # The ops dashboard (/check-in) and every other /api/checkins route stay locked.
 _PUBLIC_CHECKIN = re.compile(
@@ -54,8 +57,22 @@ def preview_user() -> str:
     return (os.environ.get("PREVIEW_USER") or "georiskintel").strip() or "georiskintel"
 
 
+def _okta_configured() -> bool:
+    issuer = (os.environ.get("OKTA_ISSUER") or "").strip()
+    client = (os.environ.get("OKTA_CLIENT_ID") or "").strip()
+    if not issuer or not client:
+        return False
+    try:
+        import okta_sso
+    except ImportError:
+        return False
+    return okta_sso.configured()
+
+
 def lock_enabled() -> bool:
-    return bool(preview_password())
+    if preview_password():
+        return True
+    return _okta_configured()
 
 
 def is_public_checkin_path(path: str) -> bool:
@@ -65,15 +82,56 @@ def is_public_checkin_path(path: str) -> bool:
 
 def _signing_key() -> str:
     password = preview_password().encode("utf-8")
-    return hashlib.sha256(b"georisk-preview-v1:" + password).hexdigest()
+    material = b"georisk-preview-v1:" + password
+    # Mix the Okta client secret in only when SSO is actually configured, so a
+    # password-only deployment keeps the same cookie key it has today.
+    if _okta_configured():
+        secret = (os.environ.get("OKTA_CLIENT_SECRET") or "").strip().encode("utf-8")
+        if secret:
+            material += b"\0" + secret
+        elif not password:
+            import okta_sso
+
+            material += b"\0" + okta_sso.process_key()
+    return hashlib.sha256(material).hexdigest()
 
 
 def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(_signing_key(), salt="georisk-preview")
 
 
-def issue_token() -> str:
-    return _serializer().dumps({"ok": True})
+def issue_token(extra: dict | None = None) -> str:
+    payload: dict[str, object] = {"ok": True}
+    if extra:
+        for key, value in extra.items():
+            if key == "ok" or not isinstance(key, str) or not isinstance(value, str):
+                continue
+            if not key.isidentifier() or len(key) > 16 or len(value) > 128:
+                continue
+            payload[key] = value
+    return _serializer().dumps(payload)
+
+
+def attach_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        COOKIE,
+        token,
+        max_age=COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="Lax",
+        secure=_cookie_secure(),
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        COOKIE,
+        path="/",
+        httponly=True,
+        samesite="Lax",
+        secure=_cookie_secure(),
+    )
 
 
 def token_is_valid(token: str) -> bool:
@@ -116,7 +174,98 @@ def safe_next(target: str) -> str:
     return target
 
 
+def _okta_login_markup(nxt: str) -> str:
+    try:
+        import okta_sso
+    except ImportError:
+        return ""
+    return okta_sso.login_markup(nxt)
+
+
+def _login_shell(body: str, extra_css: str = "") -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {ROBOTS_META}
+  <title>Private Preview Access — GeoRiskIntel</title>
+  <style>
+    :root {{ color-scheme: dark; }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #060A13; color: #E2E8F0; font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+      padding: 24px;
+    }}
+    form, .panel-login {{
+      width: min(420px, 100%); background: #0D1424; border: 1px solid #C5A059; border-radius: 14px;
+      padding: 28px 24px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    }}
+    p.kicker {{ margin: 0 0 6px; color: #D4AF37; letter-spacing: 0.14em; font-size: 11px; font-weight: 800; }}
+    h1 {{ margin: 0 0 8px; font-size: 28px; }}
+    p.note {{ margin: 0 0 18px; color: #94A3B8; }}
+    label {{ display: block; color: #94A3B8; font-size: 12px; font-weight: 700; margin-bottom: 6px; }}
+    input {{
+      width: 100%; background: #060A13; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px;
+      padding: 12px; font: inherit;
+    }}
+    button, a.okta-btn {{
+      display: block; text-align: center; text-decoration: none; margin-top: 14px; width: 100%;
+      background: #102A63; color: #D4AF37; border: 1px solid #C5A059; border-radius: 8px; padding: 12px;
+      font: inherit; font-weight: 800; cursor: pointer;
+    }}
+    p.or {{ text-align: center; color: #94A3B8; margin: 16px 0 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }}
+    p.setup {{ margin: 16px 0 0; text-align: center; }}
+    p.setup a {{ color: #D4AF37; }}
+    .error {{ color: #E11D48; font-weight: 700; }}
+    {extra_css}
+  </style>
+</head>
+<body>
+  {body}
+</body>
+</html>
+"""
+
+
+def _login_page_okta_only(markup: str, error: str) -> str:
+    message = f'<p class="error">{html.escape(error)}</p>' if error else ""
+    body = f"""<div class="panel-login">
+    <p class="kicker">GEORISKINTEL</p>
+    <h1>Sign in</h1>
+    <p class="note">Sign in with your organization's Okta account. The dashboard tile uses this same sign-in.</p>
+    {message}
+    {markup}
+    <p class="setup"><a href="/sso-setup">Okta setup sheet</a></p>
+  </div>"""
+    return _login_shell(body)
+
+
+def _login_page_okta_and_password(markup: str, error: str, nxt: str) -> str:
+    message = f'<p class="error">{html.escape(error)}</p>' if error else ""
+    body = f"""<form method="post" action="/login" autocomplete="off">
+    <p class="kicker">GEORISKINTEL</p>
+    <h1>Private Preview Access</h1>
+    <p class="note">This preview is locked. Sign in with Okta, or enter the preview password.</p>
+    {message}
+    {markup}
+    <p class="or">or</p>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+    <input type="hidden" name="next" value="{html.escape(safe_next(nxt), quote=True)}">
+    <button type="submit">Unlock preview</button>
+    <p class="setup"><a href="/sso-setup">Okta setup sheet</a></p>
+  </form>"""
+    return _login_shell(body)
+
+
 def login_page(error: str = "", nxt: str = "/") -> str:
+    markup = _okta_login_markup(nxt)
+    if markup and not preview_password():
+        return _login_page_okta_only(markup, error)
+    if markup:
+        return _login_page_okta_and_password(markup, error, nxt)
     message = f'<p class="error">{error}</p>' if error else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -203,15 +352,7 @@ def install(app: Flask) -> None:
         if request.method == "POST":
             if passwords_match(request.form.get("password") or ""):
                 response = redirect(nxt)
-                response.set_cookie(
-                    COOKIE,
-                    issue_token(),
-                    max_age=COOKIE_MAX_AGE,
-                    httponly=True,
-                    samesite="Lax",
-                    secure=_cookie_secure(),
-                    path="/",
-                )
+                attach_session_cookie(response, issue_token())
                 return response
             return Response(login_page("That password was not accepted.", nxt), mimetype="text/html")
         if _authorized():
@@ -221,7 +362,8 @@ def install(app: Flask) -> None:
     @app.before_request
     def _preview_gate():
         path = request.path or "/"
-        if path in EXEMPT or is_public_checkin_path(path):
+        # OIDC launch, callback, and logout stay open, as do mobile check-in links.
+        if path in EXEMPT or path.startswith("/auth/okta/") or is_public_checkin_path(path):
             return None
         if not lock_enabled():
             return None
