@@ -23,7 +23,7 @@ ALLOWED_FIELDS = {
     "original_risk_level",
 }
 # Personal keys are never copied. Only ALLOWED_FIELDS are read.
-TIER_RANK = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "EXTREME": 3}
+TIER_RANK = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "VERY HIGH": 3, "EXTREME": 4}
 SEVERITY_ORDER = {"HIGH": 0, "MED": 1, "LOW": 2, "INFO": 3}
 CATEGORY_LABELS = {
     "ACT": "Armed Conflict & Terrorism",
@@ -124,12 +124,14 @@ def public_id(title: str, timestamp: str) -> str:
 
 
 def normalize_level(value: object) -> str:
-    key = _text(value, 20).upper()
-    if key in {"MED", "MEDIUM"}:
+    key = " ".join(_text(value, 24).upper().replace("-", " ").split())
+    if key in {"MED", "MEDIUM", "MODERATE"}:
         return "MEDIUM"
+    if key in {"VERY HIGH", "VERYHIGH"}:
+        return "VERY HIGH"
     if key == "HIGH":
         return "HIGH"
-    if key == "EXTREME":
+    if key in {"EXTREME", "SEVERE"}:
         return "EXTREME"
     return "LOW"
 

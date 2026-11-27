@@ -1075,7 +1075,7 @@ def _accessibility_document() -> str:
       <ul class="clean">
         <li>Body text is light slate on navy (<code>#E2E8F0</code> on <code>#060A13</code>), which exceeds the WCAG 2.2 AA contrast ratio for normal text.</li>
         <li>Links on these pages are underlined as well as coloured, so meaning is not carried by colour alone.</li>
-        <li>Risk bands use a text label (Low, Medium, High, Extreme) in addition to colour.</li>
+        <li>Risk bands use a text label (Low, Moderate, High, Very High, Severe) in addition to colour. Incident severity keeps its own text label (Low, Medium, High).</li>
         <li>Focus outlines are a light gold ring on the dark background and meet the non-text contrast expectation.</li>
       </ul>
     </section>
