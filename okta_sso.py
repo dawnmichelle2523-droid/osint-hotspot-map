@@ -756,30 +756,17 @@ _SETUP_PAGE = """<!DOCTYPE html>
 <body>
   <header id="live-bar">
     <a class="brand-lockup" href="/"><span>GeoRiskGlobal</span><span class="risk-pill">REGIONAL RISK</span></a>
-    <nav id="page-nav" aria-label="Sections">
-      <a href="/map">Live Map</a>
-      <a href="/risk-assessments">Risk Assessments</a>
-      <a href="/route-risk">Route risk</a>
-      <a href="/check-in">Check-in</a>
-      <a href="/pricing">Pricing</a>
-      <details class="nav-more">
-        <summary>Tools</summary>
-        <div class="nav-menu">
-          <a href="/reports">Reports</a>
-          <a href="/sentinel-zones">Sentinel zones</a>
-          <a href="/slack-alerts">Slack alerts</a>
-          <a href="/white-label">White-label</a>
-          <a href="/grok-ops">Grok Ops</a>
-          <a href="/sso-setup" aria-current="page">Okta SSO</a>
-          <a href="/briefing">Daily briefing</a>
-          <a href="/world-risk">World risk</a>
-          <a href="/countries">Country guides</a>
-          <a href="/enterprise">Enterprise</a>
-        </div>
-      </details>
-    </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+      <nav id="page-nav" aria-label="Sections">
+        <a href="/">Home</a>
+        <a href="/map">Live Map</a>
+        <a href="/briefing">Daily Briefings</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/contact">Contact</a>
+        <a class="nav-cta nav-cta-drawer" href="/map">Open Live Map</a>
+      </nav>
+      <a class="nav-cta nav-cta-bar" href="/map">Open Live Map</a>
+</header>
   <div class="section-banner">
     <p class="kicker">Enterprise admin</p>
     <h1>Okta SSO and dashboard tile</h1>
@@ -864,6 +851,50 @@ _SETUP_PAGE = """<!DOCTYPE html>
     </section>
   </main>
   <footer>GeoRiskGlobal · Okta SSO setup · client secret stays on the server</footer>
+<footer class="site-footer">
+  <div class="site-footer-grid">
+    <div>
+      <p class="site-footer-label">GeoRiskGlobal</p>
+      <p>Worldwide geopolitical intelligence for organisations that move people.</p>
+    </div>
+    <nav aria-label="Explore">
+      <p class="site-footer-label">Explore</p>
+      <a href="/">Home</a>
+      <a href="/map">Live Map</a>
+      <a href="/map?country=Syria">Syria on the Risk Map</a>
+      <a href="/briefing">Daily Briefings</a>
+      <a href="/briefing#export-pdf">Briefing PDF</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/methodology">Methodology</a>
+      <a href="/contact">Contact</a>
+    </nav>
+    <nav aria-label="Platform">
+      <p class="site-footer-label">Platform</p>
+      <a href="/countries">Country guides</a>
+      <a href="/world-risk">World risk</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/reports">Reports</a>
+      <a href="/sentinel-zones">Sentinel zones</a>
+      <a href="/slack-alerts">Slack alerts</a>
+      <a href="/white-label">White-label</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/sso-setup">Okta SSO</a>
+      <a href="/enterprise">Book a Pilot / Subscribe</a>
+      <a href="/trust">Trust</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/accessibility">Accessibility</a>
+    </nav>
+    <div>
+      <p class="site-footer-label">Standards</p>
+      <p>ISO 31000 · ISO 31030 · BS 8848 · ISO 18788</p>
+      <p>Zero-PII. No third-party tracking. UK GDPR and EU GDPR.</p>
+    </div>
+  </div>
+  <p class="site-footer-powered">Powered by GeoRiskGlobal</p>
+</footer>
+
   <script>
     (function () {
       var buttons = document.querySelectorAll("[data-copy]");

@@ -14,6 +14,8 @@ import app as app_module
 OPS_PAGES = (
     "/",
     "/map",
+    "/methodology",
+    "/contact",
     "/risk-assessments",
     "/route-risk",
     "/sentinel-zones",
@@ -42,7 +44,12 @@ class SiteNavTests(unittest.TestCase):
             html = page.get_data(as_text=True)
             self.assertIn("/static/site-nav.css", html, path)
             self.assertIn('id="page-nav"', html, path)
-            self.assertIn('class="nav-more"', html, path)
+            self.assertNotIn('class="nav-more"', html, path)
+            self.assertNotIn(">Tools</summary>", html, path)
+            self.assertIn('class="brand-lockup" href="/"', html, path)
+            self.assertIn('href="/methodology"', html, path)
+            self.assertIn('href="/contact"', html, path)
+            self.assertIn("Powered by GeoRiskGlobal", html, path)
             self.assertIn('src="/static/logo.png', html, path)
             self.assertIn("Book a Pilot / Subscribe", html, path)
             self.assertIn("page-lead", html, path)

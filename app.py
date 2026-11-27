@@ -262,6 +262,16 @@ def briefing_page() -> Response:
     return _page("briefing.html")
 
 
+@app.get("/methodology")
+def methodology_page() -> Response:
+    return _page("methodology.html")
+
+
+@app.get("/contact")
+def contact_page() -> Response:
+    return _page("contact.html")
+
+
 @app.get("/world-risk")
 def world_risk_page() -> Response:
     return _page("world-risk.html")

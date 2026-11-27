@@ -413,10 +413,11 @@ class OktaEnabledTests(_EnvCase):
         pricing = (ROOT / "pricing.html").read_text(encoding="utf-8")
         live = (ROOT / "index.html").read_text(encoding="utf-8")
         for text in (ops, pricing, live):
-            self.assertIn(">Tools</summary>", text)
+            self.assertNotIn(">Tools</summary>", text)
             self.assertIn('href="/sso-setup">Okta SSO</a>', text)
             self.assertIn('href="/check-in"', text)
             self.assertIn('href="/white-label"', text)
+            self.assertIn('class="brand-lockup" href="/"', text)
         self.assertNotIn("/auth/okta/", pricing)
         self.assertIn('data-gbp-monthly="£29"', pricing)
 
