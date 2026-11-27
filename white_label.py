@@ -661,6 +661,7 @@ def render_widget(facts: dict, brand: dict, home: str) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/static/favicon.png">
   <title>{_esc(org or "GeoRiskIntel")} country risk</title>
   <style>
     :root {{ color-scheme: {theme}; }}

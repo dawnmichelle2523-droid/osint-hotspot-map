@@ -27,9 +27,12 @@ _pin_live_database()
 import okta_sso
 import ppv
 import preview_lock
+import security_compliance
 import serve_map
 
 app = Flask(__name__)
+# Registered first so cookie hardening runs after preview and pass cookies are written.
+security_compliance.install(app)
 from disruption_layer import disruption_bp
 app.register_blueprint(disruption_bp)
 from route_risk import route_bp

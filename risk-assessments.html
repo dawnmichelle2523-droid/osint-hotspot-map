@@ -625,6 +625,8 @@
         contacts: fieldValue("contacts"),
         medical: fieldValue("medical"),
         passport: fieldValue("passport"),
+        advisor: fieldValue("advisor"),
+        advisorDecision: fieldValue("advisor-decision"),
         enterprise: document.getElementById("enterprise").checked,
         org: fieldValue("org-name"),
         context: readContext(),
@@ -650,6 +652,8 @@
           contacts: legacy.contacts,
           medical: legacy.medical,
           passport: legacy.passport,
+          advisor: legacy.advisor,
+          advisorDecision: legacy.advisorDecision,
           enterprise: legacy.enterprise,
           org: legacy.org,
           rows: legacy.rows,
@@ -681,6 +685,8 @@
       setField("contacts", state.contacts || "");
       setField("medical", state.medical || "");
       setField("passport", state.passport || "");
+      setField("advisor", state.advisor || "");
+      if (state.advisorDecision) setField("advisor-decision", state.advisorDecision);
       document.getElementById("enterprise").checked = !!state.enterprise;
       setField("org-name", state.org || "");
       if (state.context) applyContext(state.context);
