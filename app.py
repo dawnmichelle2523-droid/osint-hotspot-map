@@ -25,6 +25,8 @@ import preview_lock
 import serve_map
 
 app = Flask(__name__)
+from disruption_layer import disruption_bp
+app.register_blueprint(disruption_bp)
 preview_lock.install(app)
 ppv.install(app)
 

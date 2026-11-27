@@ -1550,8 +1550,8 @@
     };
     const _bootQuery = new URLSearchParams(window.location.search);
     let countryFilter = COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0 ? _bootQuery.get("country") : "all";
-    const bootLat = Number(_bootQuery.get("lat"));
-    const bootLng = Number(_bootQuery.get("lng"));
+    const bootLat = _bootQuery.has("lat") ? Number(_bootQuery.get("lat")) : NaN;
+    const bootLng = _bootQuery.has("lng") ? Number(_bootQuery.get("lng")) : NaN;
     const bootZoomRaw = Number(_bootQuery.get("zoom"));
     const bootFocusAsset = _bootQuery.get("focusAsset") || "";
     const bootShowAssets = _bootQuery.get("showAssets") === "true";
@@ -3656,6 +3656,7 @@
       render("none");
     });
     window.GeoRiskMap = {
+      map: map,
       focus: function (lat, lng) {
         const latitude = Number(lat);
         const longitude = Number(lng);
@@ -3774,6 +3775,7 @@
     showSyriaGovernorates(false);
     setInterval(() => loadData(), 30000);
   </script>
+  <script src="/static/disruption-layer.js"></script>
   <script src="/static/grok-stream.js"></script>
   <script src="/static/news-stream.js"></script>
   <script src="/static/phase1-map.js"></script>
