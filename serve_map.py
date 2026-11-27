@@ -36,6 +36,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import mimetypes
 from pathlib import Path
 from urllib.parse import parse_qs, unquote
 from zoneinfo import ZoneInfo
@@ -45,6 +46,8 @@ import requests
 from bs4 import BeautifulSoup
 
 import fetch_x_osint as osint
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 ROOT = Path(__file__).resolve().parent
 CACHE = ROOT / "summary_cache.json"
@@ -7994,7 +7997,8 @@ class MapHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def end_headers(self) -> None:
-        self.send_header("Cache-Control", "no-store")
+        if not getattr(self, "_cache_control_set", False):
+            self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
     def _route(self) -> str:
@@ -8034,6 +8038,25 @@ class MapHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         if self._blocked():
             self.send_error(404)
+            return
+        route = self._route()
+        if route in {"/sw.js", "/manifest.webmanifest"}:
+            filename = "sw.js" if route == "/sw.js" else "manifest.webmanifest"
+            path = ROOT / "static" / filename
+            if not path.is_file():
+                self.send_error(404)
+                return
+            payload = path.read_bytes()
+            content_type = "application/javascript" if route == "/sw.js" else "application/manifest+json"
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            if route == "/sw.js":
+                self.send_header("Service-Worker-Allowed", "/")
+                self.send_header("Cache-Control", "no-cache")
+                self._cache_control_set = True
+            self.end_headers()
+            self.wfile.write(payload)
             return
         try:
             import platform_phase1
