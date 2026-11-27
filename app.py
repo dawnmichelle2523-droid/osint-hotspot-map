@@ -35,6 +35,8 @@ from route_risk import route_bp
 app.register_blueprint(route_bp)
 preview_lock.install(app)
 ppv.install(app)
+import ra_diff
+app.register_blueprint(ra_diff.ra_diff_bp)
 
 
 def _enable_basic_auth() -> None:
