@@ -57,7 +57,7 @@
     <p class="kicker">Risk Assessments</p>
     <h1>ISO-aligned Risk Assessment &amp; Pre-Deployment Report builder</h1>
     <p class="page-lead">Build a pre-travel risk report for a team, school trip, or client, then export it as a PDF.</p>
-    <p>Templates, hazards, and controls follow the sector you pick. You can still type your own entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal and medical details stay in this browser and are never sent to the assistant.</p>
+    <p>Templates follow the sector you pick and the country Area of Operations. Sudan is included with the other priority countries. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal and medical details stay in this browser and are never sent to the assistant or stored on the server.</p>
   </div>
   <main>
     <section class="how-it-works" data-how="risk-assessments">
@@ -66,12 +66,30 @@
         <button type="button" class="how-dismiss ghost">Hide</button>
       </div>
       <ol>
-        <li><strong>1. Choose a sector.</strong> Media, a school trip, and a close-protection job each start from a different template.</li>
+        <li><strong>1. Set the Area of Operations.</strong> Pick the region and country where your people operate, or pin that area in this browser.</li>
+        <li><strong>2. Choose a sector.</strong> Media, a school trip, and a close-protection job each start from a different template.</li>
         <li><strong>2. Name the trip.</strong> Example: leave Media &amp; Journalism selected and title it “Beirut bureau — November”.</li>
         <li><strong>3. Export the PDF.</strong> Save a baseline first if you want a later “what changed” check.</li>
       </ol>
     </section>
     <section class="panel no-print" id="sector-panel">
+      <div class="ao-picker" id="ao-picker">
+        <p class="kicker">Area of Operations</p>
+        <p class="note">Choose the region and country where this team operates. Pin stores only the region and country in this browser. A map link such as /risk-assessments?country=Syria&amp;auto=1 opens that country's template.</p>
+        <div class="sector-picker">
+          <label>Region
+            <select id="ao-region" data-ai="1"></select>
+          </label>
+          <label>Country focus
+            <select id="ao-country-jump" aria-label="Jump to a country in this region"></select>
+          </label>
+        </div>
+        <p>
+          <button type="button" id="ao-pin" class="ao-hit">Pin this Area of Operations</button>
+          <button type="button" class="ghost ao-hit" id="ao-clear">Clear pinned Area of Operations</button>
+        </p>
+        <p class="note" id="ao-pin-note"></p>
+      </div>
       <div class="sector-picker">
         <label>Sector
           <select id="sector" data-ai="1">
@@ -128,7 +146,125 @@
         <p class="kicker" id="org-line">GeoRiskIntel</p>
         <h2 id="doc-title" style="margin:0">Security &amp; Travel Risk Assessment</h2>
         <p class="note" id="standards"></p>
+        <p class="note" id="template-badge">Country template: — · Sector template: —</p>
+        <p class="note" id="ao-print-line">Area of Operations: —</p>
+        <p id="hra-rating"><strong id="hra-band">MEDIUM</strong> <span id="hra-score">6</span>/25</p>
+        <p id="hra-tags">Primary areas of risk: Baseline</p>
+        <div class="grid">
+          <label>Deployment dates <input id="hra-dates" data-hra="1" autocomplete="off" placeholder="Dates stay on this device"></label>
+          <label>Primary POCs (callsigns or roles) <input id="hra-pocs" data-hra-local="1" autocomplete="off" placeholder="Callsigns or roles only"></label>
+        </div>
+        <p class="note">POC phone numbers and email addresses belong in the local-only vault. They are not sent to GeoRiskIntel.</p>
       </header>
+      <section class="panel" id="hra-1">
+        <h2>1. Purpose and outline plan</h2>
+        <h3>1.1 General</h3>
+        <div class="grid">
+          <label>Project / assignment title <input id="hra-title" data-hra="1" autocomplete="off" placeholder="Assignment title"></label>
+          <label>Department / unit <input id="hra-unit" data-hra="1" autocomplete="off" placeholder="Desk or unit"></label>
+          <label>Ground dates <input id="hra-ground" data-hra="1" autocomplete="off" placeholder="In-country dates"></label>
+        </div>
+        <h3>Team roster <span class="note">Zero-PII — this browser only</span></h3>
+        <p class="note">Role, callsign, and tracking status can be printed from this device. Phone, email, and IMEI stay in this browser and are never transmitted.</p>
+        <div class="matrix-scroll">
+          <table id="hra-roster">
+            <thead><tr><th>Role</th><th>Callsign</th><th>Tracking</th><th>Phone (local-only)</th><th>Email (local-only)</th><th>IMEI (local-only)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="no-print"><button type="button" id="hra-add-roster">Add roster row</button></p>
+        <h3>1.2 Purpose and outline plan</h3>
+        <label>Purpose and outline <textarea id="hra-purpose" data-hra="1" placeholder="What the deployment is for, and the outline plan."></textarea></label>
+      </section>
+      <section class="panel" id="hra-2">
+        <h2>2. Risk assessment</h2>
+        <h3>2.1 Situation and geopolitical intelligence</h3>
+        <p class="note" id="geo-summary-kicker"></p>
+        <h4>Stability and political context</h4>
+        <p id="geo-stability"></p>
+        <h4>Key actors and drivers</h4>
+        <p id="geo-actors"></p>
+        <h4>Borders, airspace, and maritime</h4>
+        <p id="geo-borders"></p>
+        <h4>Live OSINT activity</h4>
+        <p id="geo-trend"></p>
+        <div id="hra-incident-slot"></div>
+        <h3>2.2 Residual risk matrix</h3>
+        <p class="note">Conflict/War, Terrorism, Crime, Civil Unrest, Kidnap/Detention, Road/Airspace, Digital/InfoSec, and Health/Environmental are pre-filled from the country template. You can edit every row. Edits stay on this device.</p>
+        <div id="hra-matrix-slot"></div>
+        <h3>2.3 Task-specific risk assessment</h3>
+        <label>Task-specific hazards <textarea id="hra-task" data-hra="1" placeholder="Hazards that belong to this assignment, not the country baseline."></textarea></label>
+        <h3>2.4 Risks to contributors, local staff, and third parties</h3>
+        <label>Contributor and local-staff risks <textarea id="hra-contributors" data-hra="1" placeholder="Do not type legal names here. Use roles."></textarea></label>
+      </section>
+      <section class="panel" id="hra-3">
+        <h2>3. Itinerary and logistics</h2>
+        <h3>3.1 Flight, entry, and exit</h3>
+        <label>Entry and exit <textarea id="hra-flights" data-hra="1" placeholder="Routing and border plan. No passport numbers."></textarea></label>
+        <h3>3.2 Accommodation and security perimeter</h3>
+        <label>Accommodation notes <textarea id="hra-lodging" data-hra="1" placeholder="Hotel or compound posture. No guest names."></textarea></label>
+        <h3>3.3 In-country transport</h3>
+        <label>Transport plan <textarea id="hra-moves" data-hra="1" placeholder="Vehicles, drivers by role, and routes."></textarea></label>
+        <h3>3.4 Equipment</h3>
+        <label>PPE, comms, and medical kit <textarea id="hra-kit" data-hra="1" placeholder="What the team carries."></textarea></label>
+        <h3>3.5 Daily activities and check-in</h3>
+        <label>Check-in plan <textarea id="hra-checkins" data-hra="1" placeholder="Cadence and missed-check-in actions."></textarea></label>
+        <p class="note">Field staff use the GeoRiskIntel <a href="/check-in">2-tap check-in beacon</a>. The ops room sees a callsign, not a traveller profile.</p>
+      </section>
+      <section class="panel" id="hra-4">
+        <h2>4. Medical and evacuation</h2>
+        <h3>4.1 Emergency medical and extraction plan</h3>
+        <p id="hra-medical-plan"></p>
+        <label>Evacuation plan <textarea id="hra-medevac-plan" data-hra="1"></textarea></label>
+        <h3>4.2 Insurance and assistance checklist</h3>
+        <label><input id="hra-insure-medical" type="checkbox" data-hra="1"> Medical assistance cover confirmed</label>
+        <label><input id="hra-insure-security" type="checkbox" data-hra="1"> Security evacuation cover confirmed</label>
+        <label><input id="hra-insure-war" type="checkbox" data-hra="1"> War and terrorism extension confirmed where the country needs it</label>
+        <p class="note">GeoRiskIntel complements, rather than replaces, medical and security evacuation cover.</p>
+        <h3>4.3 In-country medical facilities</h3>
+        <div id="hra-facilities"></div>
+      </section>
+      <section class="panel" id="hra-5">
+        <h2>5. Contacts</h2>
+        <p class="note">Zero-PII. Names, phone numbers, and email addresses in this section stay in this browser.</p>
+        <h3>5.1 Internal and ops-room contacts</h3>
+        <label>In-country ops room <textarea id="hra-ops-in" data-hra-local="1" placeholder="Role and callsign. Phone stays on this device."></textarea></label>
+        <label>Home ops room <textarea id="hra-ops-out" data-hra-local="1" placeholder="Role and callsign."></textarea></label>
+        <h3>5.2 External, embassy, and local security contacts</h3>
+        <label>Embassy and local security <textarea id="hra-external" data-hra-local="1" placeholder="Mission or company role. No private numbers required."></textarea></label>
+      </section>
+      <section class="panel" id="hra-6">
+        <h2>6. Consultation and sign-off</h2>
+        <h3>6.1 Expert / HRA advice</h3>
+        <label>Advice received <textarea id="hra-advice" data-hra="1" placeholder="What the adviser recommended. Do not record the adviser's personal contact here."></textarea></label>
+        <h3>6.2 Team briefed</h3>
+        <label><input id="hra-briefed" type="checkbox" data-hra="1"> All team members have been briefed on the risks</label>
+        <h3>6.3 Authorising manager</h3>
+        <div class="grid">
+          <label>Authorising manager role <input id="hra-manager" data-hra-local="1" autocomplete="off" placeholder="Role, not a legal name"></label>
+          <label>Approval date <input id="hra-approved" data-hra="1" type="date"></label>
+        </div>
+        <div id="hra-signoff-slot"></div>
+      </section>
+      <section class="panel" id="hra-7">
+        <h2>7. Travelling staff details</h2>
+        <p class="note">Local-only / zero-PII vault. These details stay in this browser and in a local print or PDF. They are never transmitted to GeoRiskIntel servers.</p>
+        <p class="no-print"><button type="button" id="hra-clear-local">Clear local data</button></p>
+        <div id="hra-vault-slot"></div>
+      </section>
+      <section class="panel" id="hra-8">
+        <h2>8. References, support, and data protection</h2>
+        <h3>8.1 Country advisories and OSINT references</h3>
+        <ul id="hra-references"></ul>
+        <h3>8.2 High-risk and medical support</h3>
+        <ul>
+          <li><a href="/check-in">GeoRiskIntel check-in beacon</a></li>
+          <li><a href="/countries">Country guides</a></li>
+          <li><a href="/">Live OSINT map</a></li>
+        </ul>
+        <h3>8.3 UK/EU GDPR notice</h3>
+        <p>Staff details, medical notes, and contact numbers in this assessment are stored only in this browser. GeoRiskIntel does not receive them. See the <a href="/privacy">privacy notice</a>.</p>
+      </section>
       <section class="panel" id="ra-change-record" aria-label="What changed since the last risk assessment">
         <h2>What changed since the last assessment</h2>
         <p class="note" id="ra-baseline-meta">No baseline snapshot is open. Save one before departure, then check what changed.</p>
@@ -304,6 +440,7 @@
   </main>
   <footer id="app-footer">GeoRiskIntel · Local-only entries remain on this device and are never sent to Grok.</footer>
   <script src="/static/grok-stream.js"></script>
+  <script src="/static/geo-split.js"></script>
   <script src="/static/ra-sectors.js"></script>
   <script>
     const RA_SECTORS = Array.isArray(window.RA_SECTORS) ? window.RA_SECTORS : [];
@@ -323,6 +460,7 @@
     const templateSelect = document.getElementById("template");
     const countrySelect = document.getElementById("country");
     let rows = [];
+    let rowsDirty = false;
     const known = { operations: new Set(), transport: new Set(), accommodation: new Set(), comms: new Set() };
     RA_SECTORS.forEach((sector) => {
       (sector.operations || []).forEach((item) => known.operations.add(item));
@@ -426,6 +564,33 @@
     function readRowsFromDom() {
       document.querySelectorAll("#matrix tbody tr").forEach(syncRow);
     }
+    function hazardRow(item) {
+      const row = blankRow(item.threat || item.category || "Hazard");
+      row.likelihood = Number(item.likelihood) || 2;
+      row.impact = Number(item.impact) || 3;
+      row.control = item.control || item.mitigation || "";
+      row.controlId = "";
+      row.residualL = Number(item.residual_likelihood || item.residualL) || 2;
+      row.residualI = Number(item.residual_impact || item.residualI) || 2;
+      return row;
+    }
+    function layerCountryHazards() {
+      const profile = window.GeoSplit ? GeoSplit.countryTemplate(countrySelect.value) : null;
+      const seeded = profile && profile.hazards ? profile.hazards.map(hazardRow) : [];
+      rows = seeded.length ? seeded : (currentSector() && currentSector().threats || []).slice(0, 6).map(blankRow);
+      rowsDirty = false;
+      paint();
+      document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
+    }
+    window.GeoRiskRows = {
+      dirty: function () { return rowsDirty; },
+      replace: function (list) {
+        if (rowsDirty) return false;
+        rows = (list || []).map(hazardRow);
+        paint();
+        return true;
+      }
+    };
     function paint() {
       const body = document.querySelector("#matrix tbody");
       body.innerHTML = rows.map((row, index) => {
@@ -556,8 +721,11 @@
       document.getElementById("pdr").hidden = !(item && item.pdr);
       paintExtra();
       if (!flags.keepRows && sector) {
-        rows = (sector.threats || []).slice(0, 6).map(blankRow);
-        paint();
+        if (!rowsDirty && window.GeoSplit) layerCountryHazards();
+        else {
+          rows = (sector.threats || []).slice(0, 6).map(blankRow);
+          paint();
+        }
       }
     }
     function applySector(flags) {
@@ -692,7 +860,10 @@
       if (state.context) applyContext(state.context);
       if (keepRows) {
         rows = state.rows.map(normaliseRow);
+        rowsDirty = true;
         paint();
+      } else if (window.GeoSplit) {
+        layerCountryHazards();
       }
       if (state.corridorSummary) {
         document.getElementById("corridor-pasted").hidden = false;
@@ -810,9 +981,11 @@
     paintRatings();
 
     document.getElementById("matrix").addEventListener("input", (event) => {
+      rowsDirty = true;
       const tr = event.target.closest("tr");
       if (tr) syncRow(tr);
       save();
+      document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
     });
     document.getElementById("matrix").addEventListener("change", (event) => {
       const field = event.target;
@@ -845,6 +1018,7 @@
       if (!button) return;
       readRowsFromDom();
       const index = Number(button.closest("tr").dataset.row);
+      rowsDirty = true;
       rows.splice(index, 1);
       paint();
       save();
@@ -853,6 +1027,7 @@
       readRowsFromDom();
       const threat = document.getElementById("threat-pick").value;
       if (!threat) return;
+      rowsDirty = true;
       rows.push(blankRow(threat));
       paint();
       save();
@@ -860,6 +1035,7 @@
     document.getElementById("add-row").addEventListener("click", () => {
       readRowsFromDom();
       const typed = document.getElementById("custom-threat").value.trim();
+      rowsDirty = true;
       rows.push(blankRow(typed || "Additional hazard"));
       document.getElementById("custom-threat").value = "";
       paint();
@@ -936,7 +1112,13 @@
     function syncEmergency() {
       document.getElementById("emergency-numbers").textContent = EMERGENCY[countrySelect.value] || EMERGENCY.default;
     }
-    countrySelect.addEventListener("change", () => { syncEmergency(); save(); loadCountryIncidents(); });
+    countrySelect.addEventListener("change", () => {
+      if (!rowsDirty && window.GeoSplit) layerCountryHazards();
+      syncEmergency();
+      save();
+      loadCountryIncidents();
+      document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
+    });
     document.getElementById("city").addEventListener("input", () => {
       clearTimeout(incidentTimer);
       incidentTimer = setTimeout(loadCountryIncidents, 400);
@@ -1002,7 +1184,14 @@
     });
     showCorridorOffer();
     const prefill = new URLSearchParams(window.location.search);
-    if (prefill.get("country")) ensureCountry(prefill.get("country"));
+    if (prefill.get("country")) {
+      ensureCountry(prefill.get("country"));
+      if (prefill.get("auto") === "1") {
+        rowsDirty = false;
+        if (window.GeoSplit) layerCountryHazards();
+      }
+      document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
+    }
     if (prefill.get("area") || prefill.get("city")) setField("city", prefill.get("area") || prefill.get("city"));
     syncEmergency();
     if (!fieldValue("doc-ref")) document.getElementById("doc-ref").value = "GR-PDR-" + new Date().toISOString().slice(0, 10);
@@ -1010,6 +1199,7 @@
     save();
     loadCountryIncidents();
   </script>
+  <script src="/static/ra-hra.js"></script>
   <script src="/static/ra-diff-audit.js"></script>
 </body>
 </html>

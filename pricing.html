@@ -75,6 +75,8 @@
     .rate-row .price { font-size: 20px; }
     .compliance { border-color: var(--gold-border); }
     .button.ghost { background: transparent; }
+    #ao-calculator select, #ao-calculator input, #ao-calculator .button { min-height: 44px; }
+    #ao-total { margin: 8px 0; color: #F8FAFC; font-size: 32px; font-weight: 800; }
     .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
     .cta-row .button { text-decoration: none; }
     @media (max-width: 1180px) {
@@ -151,6 +153,66 @@
     </div>
     <p id="price-status" aria-live="polite">Showing GBP (£), billed monthly.</p>
     <p class="note ladder-note">The Individual plan is published at $249 a year in USD. Enterprise is an annual invoice after a scoped pilot. Passes and assessment packs are one-off prices and follow the currency toggle.</p>
+
+    <section id="ao-calculator" aria-labelledby="ao-calc-heading">
+      <div class="section-head">
+        <p class="kicker">Area of Operations</p>
+        <h2 id="ao-calc-heading">Country and region price calculator</h2>
+        <p class="note">Price the countries and regions where your people operate. Briefing add-ons are optional and follow the same area. Figures follow the GBP / USD toggle above, and annual billing is 10× monthly. The 7-day pass stays a one-off.</p>
+      </div>
+      <div class="pass-grid">
+        <article class="pass" id="ao-tier-country">
+          <h3>Country-by-country</h3>
+          <p class="price">£149<span class="per">/mo</span></p>
+          <p class="note">$189 a month for the first country, then £49 / $62 a month for each extra country. At 4 or more countries in one region, compare a Regional plan.</p>
+        </article>
+        <article class="pass" id="ao-tier-region">
+          <h3>Region-by-region</h3>
+          <p class="price">£399<span class="per">/mo</span></p>
+          <p class="note">$499 a month for the first region, then £199 / $249 a month for each extra region.</p>
+        </article>
+        <article class="pass" id="ao-tier-global">
+          <h3>Global All-Access</h3>
+          <p class="price">£899<span class="per">/mo</span></p>
+          <p class="note">$1,149 a month. All regions and unlimited countries, including Okta SSO, White-Label Studio, and priority custom risk assessments.</p>
+        </article>
+        <article class="pass" id="ao-pass">
+          <h3>Single-Country 7-Day Pass</h3>
+          <p class="price">£59</p>
+          <p class="note">$75 one-off for a short trip, a school trip, or a single assignment.</p>
+        </article>
+      </div>
+      <article class="panel" id="ao-calc-panel">
+        <h3>Build a quote</h3>
+        <div class="sector-picker">
+          <label>Area
+            <select id="ao-mode" aria-label="Area of Operations pricing mode">
+              <option value="country">Country-by-country</option>
+              <option value="region">Region-by-region</option>
+              <option value="global">Global All-Access</option>
+              <option value="pass">Single-Country 7-Day Pass</option>
+            </select>
+          </label>
+          <label>How many
+            <input id="ao-count" type="number" min="1" max="30" value="1" aria-label="Number of countries or regions">
+          </label>
+          <label>Briefing add-on
+            <select id="ao-briefing" aria-label="Briefing add-on">
+              <option value="none">No briefing</option>
+              <option value="monthly">Monthly briefing</option>
+              <option value="weekly">Weekly briefing</option>
+              <option value="daily">Daily briefing</option>
+              <option value="bundle">All-three briefings bundle</option>
+            </select>
+          </label>
+        </div>
+        <p class="note">Monthly briefing is £29 / $37 per country, £69 / $89 per region, or £129 / $165 global. Weekly is £59 / $75, £129 / $165, or £249 / $315. Daily is £119 / $149, £249 / $315, or £449 / $569. The all-three bundle is about 20% off: £169 / $215 per country, £349 / $445 per region, or £649 / $825 global.</p>
+        <p id="ao-total" aria-live="polite">£149/mo</p>
+        <p id="ao-quote-summary">Country-by-country Area of Operations for 1 country is £149 a month.</p>
+        <p id="ao-quote-suggestion" class="note"></p>
+        <a class="button" href="/enterprise#enquiry">Request / Add to Plan</a>
+      </article>
+    </section>
 
     <section id="plans" aria-labelledby="plans-heading">
       <div class="section-head">
@@ -487,6 +549,36 @@
         });
       });
       paint();
+    }());
+  </script>
+  <script src="/static/geo-split.js"></script>
+  <script>
+    (function () {
+      var mode = document.getElementById("ao-mode");
+      var count = document.getElementById("ao-count");
+      var briefing = document.getElementById("ao-briefing");
+      var total = document.getElementById("ao-total");
+      var summary = document.getElementById("ao-quote-summary");
+      var suggestion = document.getElementById("ao-quote-suggestion");
+      var root = document.getElementById("pricing-root");
+      function paintQuote() {
+        if (!window.GeoSplit || !mode) return;
+        var quote = GeoSplit.quoteAo(mode.value, count.value, briefing.value, root.getAttribute("data-currency") || "gbp", root.getAttribute("data-billing") || "monthly");
+        total.textContent = quote.total_label;
+        summary.textContent = quote.summary;
+        suggestion.textContent = quote.suggestion || "";
+        count.disabled = quote.mode === "global" || quote.mode === "pass";
+        briefing.disabled = quote.mode === "pass";
+      }
+      ["change", "input"].forEach(function (name) {
+        mode.addEventListener(name, paintQuote);
+        count.addEventListener(name, paintQuote);
+        briefing.addEventListener(name, paintQuote);
+      });
+      document.getElementById("pricing-root").addEventListener("click", function () {
+        window.setTimeout(paintQuote, 0);
+      });
+      paintQuote();
     }());
   </script>
 </body>

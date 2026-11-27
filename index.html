@@ -639,6 +639,16 @@
       padding: 6px 8px; font: inherit; font-size: 12px; font-weight: 650;
     }
     #slim-filters button[aria-pressed="true"], #feed-pill { color: #D4AF37; border-color: #C5A059; background: #102A63; }
+    #slim-filters select, #slim-filters button, #country-search, #ao-pin, #ao-clear, .ao-countries button.pill, #region-row button.pill { min-height: 44px; }
+    .ao-note { margin: 6px 0; color: #94A3B8; font-size: 12px; line-height: 1.4; }
+    .ao-countries { max-height: 280px; overflow: auto; }
+    #country-search { width: 100%; margin-top: 8px; background: #060A13; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px; padding: 8px 10px; font: inherit; }
+    #ao-summary { margin: 0; padding: 10px 12px; background: #0D1424; border-bottom: 1px solid #1E293B; }
+    #ao-summary h2 { margin: 0 0 4px; color: #D4AF37; font-size: 14px; }
+    #ao-summary h3 { margin: 8px 0 2px; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #94A3B8; }
+    #ao-summary p { margin: 0; font-size: 13px; }
+    a.ao-pdf { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 8px 8px 0 0; padding: 10px 14px; background: #D4AF37; color: #060A13; font-weight: 800; text-decoration: none; border-radius: 8px; }
+    .ao-pdf-badge { display: inline-flex; align-items: center; min-height: 44px; margin: 8px 8px 0 0; padding: 8px 12px; border: 1px solid #C5A059; border-radius: 999px; color: #D4AF37; font-weight: 700; text-decoration: none; }
     #map-row {
       display: flex; align-items: stretch; width: 100%; min-width: 0;
       height: calc(100vh - 168px); min-height: 520px; flex-shrink: 0;
@@ -903,7 +913,7 @@
     </div>
   </div>
 </header>
-  <p class="map-lead page-lead">Live incidents, official travel advice, and disruption, on one map.</p>
+  <p class="map-lead page-lead">Live incidents for the Area of Operations where your people work. Pick a region, then a country.</p>
   <div id="liveWireTickerBar" role="region" aria-label="News Stream">
     <div id="ticker-badge"><span class="ticker-live-dot" aria-hidden="true"></span>NEWS STREAM</div>
     <div id="ticker-viewport">
@@ -913,25 +923,25 @@
       </div>
     </div>
   </div>
-  <div id="slim-filters" role="toolbar" aria-label="Map filters">
-    <label>Region
-      <select id="slim-region" aria-label="Region">
+  <div id="slim-filters" role="toolbar" aria-label="Area of Operations">
+    <label>Area of Operations
+      <select id="slim-region" aria-label="Area of Operations">
         <option value="all">All regions</option>
-        <option>Global</option>
-        <option>Middle East</option>
-        <option>United States</option>
-        <option>Canada</option>
-        <option>South America</option>
-        <option>APAC</option>
-        <option>Australia</option>
-        <option>Afghanistan</option>
-        <option>Russia &amp; Ukraine</option>
-        <option>UK &amp; Europe</option>
-        <option>Africa</option>
-        <option>South Asia</option>
-        <option>Maritime</option>
+        <option value="Middle East">Middle East</option>
+        <option value="Europe">Europe</option>
+        <option value="Africa">Africa</option>
+        <option value="Asia-Pacific">Asia-Pacific</option>
+        <option value="Americas">Americas</option>
+        <option value="Global">Global</option>
+        <option value="Maritime">Maritime</option>
       </select>
     </label>
+    <label>Country
+      <select id="slim-country" aria-label="Country in this Area of Operations">
+        <option value="all">All countries</option>
+      </select>
+    </label>
+    <button type="button" id="ao-pin-slim">Pin area</button>
     <label>Severity
       <select id="slim-severity" aria-label="Severity">
         <option value="signal" selected>High &amp; Medium</option>
@@ -961,6 +971,23 @@
     <button type="button" id="feed-pill" aria-controls="feed-modal">Feeds</button>
     <button type="button" id="watermark-toggle" aria-pressed="false">Watermark</button>
   </div>
+  <section id="ao-summary" aria-live="polite" aria-label="Geopolitical summary">
+    <h2 id="ao-summary-title">Area of Operations</h2>
+    <p id="ao-summary-lead">Select a region or a country to read the geopolitical summary for where your people operate.</p>
+    <h3>Stability and political context</h3>
+    <p id="ao-summary-stability"></p>
+    <h3>Key actors and drivers</h3>
+    <p id="ao-summary-actors"></p>
+    <h3>Borders, airspace, and maritime</h3>
+    <p id="ao-summary-borders"></p>
+    <h3>Live OSINT activity</h3>
+    <p id="ao-summary-trend"></p>
+    <p id="ao-pdf-offer" hidden>
+      <a id="ao-pdf-link" class="ao-pdf" href="/risk-assessments">Download Risk Assessment (PDF)</a>
+      <span class="ao-pdf-badge" id="ao-pdf-sub">Subscribers: included</span>
+      <a class="ao-pdf-badge" id="ao-pdf-pass" href="/pricing#ao-pass">Single-Country 7-Day Pass £59 ($75)</a>
+    </p>
+  </section>
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
       <div class="feed-modal-head">
@@ -1019,61 +1046,36 @@
         <button type="button" data-jump="saudi">Saudi Arabia</button>
   </nav>
       </details>
-    <details class="filter-dropdown" open>
+    <details class="filter-dropdown" id="ao-filter" open>
       <summary>
-        <span class="filter-label">Region</span>
-        <span class="filter-current"><span data-filter-summary="region">All Regions (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+        <span class="filter-label">Area of Operations</span>
+        <span class="filter-current"><span data-filter-summary="region">All regions (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
       </summary>
-      <div class="row">
-        <button type="button" class="pill" data-region="all" aria-pressed="true">All Regions <span class="n" data-count="all">0</span></button>
-        <button type="button" class="pill" data-region="Global">Global <span class="n" data-count="Global">0</span></button>
+      <p class="ao-note">Focus the map on the countries and regions where your people operate.</p>
+      <div class="row" id="region-row">
+        <button type="button" class="pill" data-region="all" aria-pressed="true">All regions <span class="n" data-count="all">0</span></button>
         <button type="button" class="pill" data-region="Middle East">Middle East <span class="n" data-count="Middle East">0</span></button>
-        <button type="button" class="pill" data-region="United States">United States <span class="n" data-count="United States">0</span></button>
-        <button type="button" class="pill" data-region="Canada">Canada <span class="n" data-count="Canada">0</span></button>
-        <button type="button" class="pill" data-region="South America">South America <span class="n" data-count="South America">0</span></button>
-        <button type="button" class="pill" data-region="APAC">APAC <span class="n" data-count="APAC">0</span></button>
-        <button type="button" class="pill" data-region="Australia">Australia <span class="n" data-count="Australia">0</span></button>
-        <button type="button" class="pill" data-region="Afghanistan">Afghanistan <span class="n" data-count="Afghanistan">0</span></button>
-        <button type="button" class="pill" data-region="Russia & Ukraine">Russia &amp; Ukraine <span class="n" data-count="Russia & Ukraine">0</span></button>
-        <button type="button" class="pill" data-region="UK & Europe">UK &amp; Europe <span class="n" data-count="UK & Europe">0</span></button>
+        <button type="button" class="pill" data-region="Europe">Europe <span class="n" data-count="Europe">0</span></button>
         <button type="button" class="pill" data-region="Africa">Africa <span class="n" data-count="Africa">0</span></button>
-        <button type="button" class="pill" data-region="South Asia">South Asia <span class="n" data-count="South Asia">0</span></button>
-        <button type="button" class="pill" data-region="Syria">Syria <span class="n" data-count="Syria">0</span></button>
-        <button type="button" class="pill" data-region="Iraq">Iraq <span class="n" data-count="Iraq">0</span></button>
-        <button type="button" class="pill" data-region="Saudi Arabia">Saudi Arabia <span class="n" data-count="Saudi Arabia">0</span></button>
-        <button type="button" class="pill" data-region="Iran">Iran <span class="n" data-count="Iran">0</span></button>
-        <button type="button" class="pill" data-region="Lebanon">Lebanon <span class="n" data-count="Lebanon">0</span></button>
-        <button type="button" class="pill" data-region="Israel">Israel <span class="n" data-count="Israel">0</span></button>
-        <button type="button" class="pill" data-region="Palestine">Palestine <span class="n" data-count="Palestine">0</span></button>
-        <button type="button" class="pill" data-region="Jordan">Jordan <span class="n" data-count="Jordan">0</span></button>
-        <button type="button" class="pill" data-region="Yemen">Yemen <span class="n" data-count="Yemen">0</span></button>
-        <button type="button" class="pill" data-region="Sudan">Sudan <span class="n" data-count="Sudan">0</span></button>
-        <button type="button" class="pill" data-region="Chad">Chad <span class="n" data-count="Chad">0</span></button>
-        <button type="button" class="pill" data-region="Gulf States">Gulf States <span class="n" data-count="Gulf States">0</span></button>
+        <button type="button" class="pill" data-region="Asia-Pacific">Asia-Pacific <span class="n" data-count="Asia-Pacific">0</span></button>
+        <button type="button" class="pill" data-region="Americas">Americas <span class="n" data-count="Americas">0</span></button>
+        <button type="button" class="pill" data-region="Global">Global <span class="n" data-count="Global">0</span></button>
         <button type="button" class="pill" data-region="Maritime">Maritime <span class="n" data-count="Maritime">0</span></button>
       </div>
     </details>
-    <details class="filter-dropdown" id="country-filter">
+    <details class="filter-dropdown" id="country-filter" open>
       <summary>
         <span class="filter-label">Country</span>
-        <span class="filter-current"><span data-filter-summary="country">All Countries (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+        <span class="filter-current"><span data-filter-summary="country">All countries (0)</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
       </summary>
-      <div class="row" id="country-row">
-        <button type="button" class="pill" data-country="all" aria-pressed="true">All Countries <span class="n" data-country-count="all">0</span></button>
-        <button type="button" class="pill" data-country="Syria">Syria <span class="n" data-country-count="Syria">0</span></button>
-        <button type="button" class="pill" data-country="Iraq">Iraq <span class="n" data-country-count="Iraq">0</span></button>
-        <button type="button" class="pill" data-country="Saudi Arabia">Saudi Arabia <span class="n" data-country-count="Saudi Arabia">0</span></button>
-        <button type="button" class="pill" data-country="Iran">Iran <span class="n" data-country-count="Iran">0</span></button>
-        <button type="button" class="pill" data-country="Lebanon">Lebanon <span class="n" data-country-count="Lebanon">0</span></button>
-        <button type="button" class="pill" data-country="Israel">Israel <span class="n" data-country-count="Israel">0</span></button>
-        <button type="button" class="pill" data-country="Palestine">Palestine <span class="n" data-country-count="Palestine">0</span></button>
-        <button type="button" class="pill" data-country="Jordan">Jordan <span class="n" data-country-count="Jordan">0</span></button>
-        <button type="button" class="pill" data-country="Yemen">Yemen <span class="n" data-country-count="Yemen">0</span></button>
-        <button type="button" class="pill" data-country="Sudan">Sudan <span class="n" data-country-count="Sudan">0</span></button>
-        <button type="button" class="pill" data-country="Chad">Chad <span class="n" data-country-count="Chad">0</span></button>
-        <button type="button" class="pill" data-country="Gulf States">Gulf States <span class="n" data-country-count="Gulf States">0</span></button>
-        <button type="button" class="pill" data-country="Maritime">Maritime <span class="n" data-country-count="Maritime">0</span></button>
-      </div>
+      <label class="ao-search">Find a country
+        <input id="country-search" type="search" placeholder="Search countries" aria-label="Search countries" autocomplete="off">
+      </label>
+      <p class="ao-note" id="country-help">Live counts follow the region you select. Search to open any country.</p>
+      <div class="row ao-countries" id="country-row"></div>
+      <button type="button" id="ao-pin">Pin this Area of Operations</button>
+      <button type="button" id="ao-clear">Clear pin</button>
+      <p class="ao-note" id="ao-pin-note"></p>
     </details>
     <details class="filter-dropdown" id="syria-governorate-filter">
       <summary>
@@ -1305,6 +1307,7 @@
     <h2>Active Syria governorates</h2>
     <ul id="print-governorates"></ul>
   </section>
+  <script src="/static/geo-split.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
@@ -1594,7 +1597,20 @@
       Other: [26.5, 47.0]
     };
     const _bootQuery = new URLSearchParams(window.location.search);
-    let countryFilter = COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0 ? _bootQuery.get("country") : "all";
+    let countryFilter = "all";
+    let aoSource = "default";
+    if (window.GeoSplit) {
+      const bootAo = GeoSplit.aoFromQuery({
+        region: _bootQuery.get("region") || "",
+        country: _bootQuery.get("country") || "",
+        governorate: _bootQuery.get("governorate") || ""
+      }, GeoSplit.readAo(window.localStorage));
+      region = bootAo.region || "all";
+      countryFilter = bootAo.country || "all";
+      aoSource = bootAo.source || "default";
+    } else if (COUNTRY_TAGS.indexOf(_bootQuery.get("country") || "") >= 0) {
+      countryFilter = _bootQuery.get("country");
+    }
     const bootLat = _bootQuery.has("lat") ? Number(_bootQuery.get("lat")) : NaN;
     const bootLng = _bootQuery.has("lng") ? Number(_bootQuery.get("lng")) : NaN;
     const bootZoomRaw = Number(_bootQuery.get("zoom"));
@@ -1631,7 +1647,13 @@
     if (countryFilter === "Syria") {
       const syriaPanel = document.getElementById("syria-governorate-filter");
       if (syriaPanel) syriaPanel.open = true;
+      if (!region || region === "all") region = "Middle East";
     }
+    if (aoSource === "pinned") {
+      const pinnedNote = document.getElementById("ao-pin-note");
+      if (pinnedNote && window.GeoSplit) pinnedNote.textContent = "Opened your pinned Area of Operations: " + GeoSplit.aoLabel({ region: region, country: countryFilter }) + ". Stored in this browser only.";
+    }
+    writeFilterUrl();
     let searchQuery = "";
     let searchTimer = null;
     let focusSerial = 0;
@@ -1892,6 +1914,7 @@
 
     function matchesArea(props, area) {
       if (!area || area === "all") return true;
+      if (window.GeoSplit) return GeoSplit.eventMatchesScope(props, area);
       const country = featureCountry(props);
       const regionName = String((props && props.region) || "");
       const theatre = String((props && props.theatre) || "");
@@ -1945,8 +1968,10 @@
     }
 
     function countRegion(regionId) {
-      const id = regionId === "all" ? "all" : regionId;
-      return features.filter((feature) => passes(feature, currentOpts(id))).length;
+      const opts = currentOpts(regionId === "all" ? "all" : regionId);
+      opts.country = "all";
+      opts.governorate = "";
+      return features.filter((feature) => passes(feature, opts)).length;
     }
 
     function countCountry(name) {
@@ -1966,11 +1991,14 @@
       const params = new URLSearchParams(window.location.search);
       if (governorateFilter) {
         params.set("country", "Syria");
+        params.set("region", region && region !== "all" ? region : "Middle East");
         params.set("governorate", governorateFilter);
       } else {
         params.delete("governorate");
         if (!countryFilter || countryFilter === "all") params.delete("country");
         else params.set("country", countryFilter);
+        if (!region || region === "all") params.delete("region");
+        else params.set("region", region);
       }
       const query = params.toString();
       const next = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
@@ -1983,8 +2011,9 @@
         flyToRegion(region);
         return;
       }
-      const center = COUNTRY_CENTERS[name];
-      if (center) map.flyTo(center, name === "Other" ? 5 : 6, { duration: 0.75 });
+      const center = (window.GeoSplit && GeoSplit.countryCenter(name)) || COUNTRY_CENTERS[name];
+      if (center) map.flyTo(center, name === "Other" || name === "Maritime" || name === "Gulf States" ? 5 : 6, { duration: 0.75 });
+      else flyToRegion(region);
     }
 
     function gmtStamp(timestamp) {
@@ -2146,8 +2175,10 @@
       if (area) placeBits.push("Area / City: " + esc(area));
       if (Number.isFinite(lat) && Number.isFinite(lng)) placeBits.push(lat.toFixed(4) + ", " + lng.toFixed(4));
       const place = placeBits.length ? '<div class="update-place">' + placeBits.join(" · ") + "</div>" : "";
-      const assess = "/risk-assessments?country=" + encodeURIComponent(country || "") + "&area=" + encodeURIComponent(area || "");
-      const assessLink = '<a class="popup-link" href="' + assess + '">Generate Risk Assessment for this area</a>';
+      const assess = "/risk-assessments?country=" + encodeURIComponent(country || "") + "&area=" + encodeURIComponent(area || "") + (country ? "&auto=1" : "");
+      const assessLink = country
+        ? '<a class="popup-link ao-pdf" href="' + assess + '">Download ' + esc(country) + ' Risk Assessment (PDF)</a>'
+        : '<a class="popup-link" href="' + assess + '">Generate Risk Assessment for this area</a>';
       return (
         '<div class="popup">' +
           '<div class="popup-head">' +
@@ -2272,7 +2303,10 @@
       const slimSeverity = document.getElementById("slim-severity");
       const slimWindow = document.getElementById("slim-window");
       const allEvents = document.getElementById("all-events");
-      if (slimRegion) slimRegion.value = ["all", "Global", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "UK & Europe", "Africa", "South Asia", "Maritime"].indexOf(region) >= 0 ? region : "all";
+      if (slimRegion) {
+        const shown = region === "all" ? "all" : ((window.GeoSplit && GeoSplit.macroRegion(region)) || region);
+        slimRegion.value = [...slimRegion.options].some((option) => option.value === shown) ? shown : "all";
+      }
       if (slimSeverity) slimSeverity.value = severity;
       if (slimWindow) slimWindow.value = timeWindow;
       if (allEvents) allEvents.setAttribute("aria-pressed", String(severity === "all" && timeWindow === "all"));
@@ -2290,28 +2324,14 @@
         if (names.indexOf(current) === -1) areaFilter = "all";
         areaSelect.value = areaFilter;
       }
-      const countryRow = document.getElementById("country-row");
-      if (countryRow) {
-        const seen = {};
-        countryRow.querySelectorAll("[data-country]").forEach((button) => { seen[button.dataset.country] = true; });
-        features.forEach((feature) => {
-          const name = String((feature.properties || {}).country || "");
-          if (!name || seen[name]) return;
-          seen[name] = true;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "pill";
-          button.dataset.country = name;
-          button.innerHTML = esc(name) + ' <span class="n" data-country-count="' + esc(name) + '">0</span>';
-          countryRow.appendChild(button);
-        });
+      paintCountryChoices();
+      const slimCountry = document.getElementById("slim-country");
+      if (slimCountry && document.activeElement !== slimCountry) {
+        const names = countryChoices();
+        const current = countryFilter || "all";
+        slimCountry.innerHTML = '<option value="all">All countries</option>' + names.map((name) => '<option value="' + esc(name) + '">' + esc(name) + " (" + countCountry(name) + ")</option>").join("");
+        slimCountry.value = names.indexOf(current) >= 0 || current === "all" ? current : "all";
       }
-      document.querySelectorAll("[data-country]").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.country === countryFilter));
-      });
-      document.querySelectorAll("[data-country-count]").forEach((node) => {
-        node.textContent = String(countCountry(node.dataset.countryCount));
-      });
       const countrySummary = document.querySelector('[data-filter-summary="country"]');
       if (countrySummary) {
         countrySummary.textContent = (countryFilter === "all" ? "All Countries" : countryFilter) + " (" + countCountry(countryFilter) + ")";
@@ -2332,7 +2352,7 @@
       });
       const regionSummary = document.querySelector('[data-filter-summary="region"]');
       if (regionSummary) {
-        regionSummary.textContent = (region === "all" ? "All Regions" : region) + " (" + countRegion(region) + ")";
+        regionSummary.textContent = (window.GeoSplit ? GeoSplit.aoLabel({ region: region, country: countryFilter }) : (region === "all" ? "All regions" : region)) + " (" + features.filter((feature) => passes(feature, currentOpts(region))).length + ")";
       }
       const windowSummary = document.querySelector('[data-filter-summary="window"]');
       if (windowSummary) {
@@ -2513,7 +2533,12 @@
         map.flyTo(HOME.center, HOME.zoom, { duration: 0.75 });
         return;
       }
-      const center = COUNTRY_CENTERS[regionId];
+      const view = window.GeoSplit && GeoSplit.regionView(regionId);
+      if (view) {
+        map.flyTo(view.center, view.zoom, { duration: 0.75 });
+        return;
+      }
+      const center = (window.GeoSplit && GeoSplit.countryCenter(regionId)) || COUNTRY_CENTERS[regionId];
       if (center) {
         map.flyTo(center, regionId === "Maritime" || regionId === "Gulf States" ? 5 : 6, { duration: 0.75 });
         return;
@@ -2575,6 +2600,111 @@
         if (center) map.flyTo(center, 9, { duration: 0.75 });
         else flyToCountry("Syria");
       }
+      publishAo();
+      paintAoSummary();
+    }
+
+    function countryChoices() {
+      const query = String((document.getElementById("country-search") || {}).value || "").trim().toLowerCase();
+      const base = window.GeoSplit ? GeoSplit.countriesFor(region) : COUNTRY_TAGS.slice();
+      const counts = {};
+      base.forEach((name) => { counts[name] = countCountry(name); });
+      features.forEach((feature) => {
+        const raw = String((feature.properties || {}).country || "");
+        const name = window.GeoSplit ? (GeoSplit.canonicalCountry(raw) || "") : raw;
+        if (!name || counts[name] != null) return;
+        if (region !== "all" && window.GeoSplit && GeoSplit.regionOf(name) && GeoSplit.regionOf(name) !== GeoSplit.macroRegion(region) && GeoSplit.macroRegion(region) && GeoSplit.macroRegion(region) !== "Global") return;
+        counts[name] = countCountry(name);
+      });
+      let names = Object.keys(counts);
+      names.sort((a, b) => (counts[b] - counts[a]) || a.localeCompare(b));
+      if (!query) names = names.filter((name) => counts[name] > 0 || name === countryFilter).concat(names.filter((name) => counts[name] === 0 && name !== countryFilter)).slice(0, 24);
+      else names = names.filter((name) => name.toLowerCase().includes(query));
+      return names;
+    }
+
+    function paintCountryChoices() {
+      const row = document.getElementById("country-row");
+      if (!row) return;
+      const scroll = row.scrollTop;
+      const names = countryChoices();
+      const buttons = ['<button type="button" class="pill" data-country="all" aria-pressed="' + (countryFilter === "all") + '">All countries <span class="n" data-country-count="all">' + countCountry("all") + "</span></button>"];
+      names.forEach((name) => {
+        buttons.push('<button type="button" class="pill" data-country="' + esc(name) + '" aria-pressed="' + (name === countryFilter) + '">' + esc(name) + ' <span class="n" data-country-count="' + esc(name) + '">' + countCountry(name) + "</span></button>");
+      });
+      row.innerHTML = buttons.join("");
+      row.scrollTop = scroll;
+    }
+
+    function publishAo() {
+      const ao = { region: region || "all", country: countryFilter || "all" };
+      window.GeoRiskAO = ao;
+      document.dispatchEvent(new CustomEvent("georisk-ao", { detail: ao }));
+    }
+
+    function paintAoSummary() {
+      const summary = window.GeoSplit ? GeoSplit.composeSummary(features, region, countryFilter) : null;
+      const title = document.getElementById("ao-summary-title");
+      const lead = document.getElementById("ao-summary-lead");
+      const stability = document.getElementById("ao-summary-stability");
+      const actors = document.getElementById("ao-summary-actors");
+      const borders = document.getElementById("ao-summary-borders");
+      const trend = document.getElementById("ao-summary-trend");
+      if (!summary || !title) return;
+      title.textContent = "Area of Operations · " + (summary.title || "All regions");
+      if (lead) lead.textContent = summary.scope === "none" ? summary.stability : (summary.trend && summary.trend.headlines && summary.trend.headlines.length ? "Recent: " + summary.trend.headlines.join(" · ") : "");
+      if (stability) stability.textContent = summary.scope === "none" ? "" : summary.stability;
+      if (actors) actors.textContent = summary.actors || "";
+      if (borders) borders.textContent = summary.borders || "";
+      if (trend) trend.textContent = summary.trend ? summary.trend.sentence : "";
+      const offer = document.getElementById("ao-pdf-offer");
+      const pdfLink = document.getElementById("ao-pdf-link");
+      const pdfSub = document.getElementById("ao-pdf-sub");
+      if (offer && pdfLink) {
+        const selected = countryFilter && countryFilter !== "all" ? countryFilter : "";
+        offer.hidden = !selected;
+        if (selected) {
+          pdfLink.href = "/risk-assessments?country=" + encodeURIComponent(selected) + "&auto=1";
+          pdfLink.textContent = "Download " + selected + " Risk Assessment (PDF)";
+          const covered = ppvGrant && (ppvGrant.scope === selected || (ppvGrant.scope_type === "region" && window.GeoSplit && (GeoSplit.regionOf(selected) === ppvGrant.scope || GeoSplit.macroRegion(ppvGrant.scope) === GeoSplit.regionOf(selected))));
+          if (pdfSub) pdfSub.textContent = covered ? "Your pass covers this country" : "Subscribers: included";
+        }
+      }
+    }
+
+    function pinAo() {
+      if (!window.GeoSplit) return;
+      const saved = GeoSplit.writeAo(window.localStorage, { region: region, country: countryFilter });
+      const note = document.getElementById("ao-pin-note");
+      if (note) note.textContent = "Pinned. This browser will open on " + GeoSplit.aoLabel(saved) + ". No names are stored.";
+    }
+
+    function clearPinnedAo() {
+      if (!window.GeoSplit) return;
+      GeoSplit.clearAo(window.localStorage);
+      const note = document.getElementById("ao-pin-note");
+      if (note) note.textContent = "Pinned Area of Operations cleared from this browser.";
+    }
+
+    function applyCountry(name) {
+      if (!window.GeoSplit) {
+        countryFilter = name;
+      } else if (!name || name === "all") {
+        countryFilter = "all";
+        governorateFilter = "";
+      } else {
+        countryFilter = name;
+        const implied = GeoSplit.regionOf(name);
+        if (implied) region = implied;
+        if (countryFilter !== "Syria") governorateFilter = "";
+      }
+      if (countryFilter === "Syria") {
+        const syriaPanel = document.getElementById("syria-governorate-filter");
+        if (syriaPanel) syriaPanel.open = true;
+      }
+      writeFilterUrl();
+      render(searchQuery ? "search" : "country");
+      refreshAssetLayers();
     }
 
     function applyQuery(value, forcedMode) {
@@ -2985,6 +3115,7 @@
             const point = bootPoint();
             map.flyTo([point.lat, point.lng], point.zoom, { duration: 0.75 });
           } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
+          else if (!window.location.hash && region !== "all") flyToRegion(region);
         }
         return;
       } catch (err) {}
@@ -3014,6 +3145,7 @@
             const point = bootPoint();
             map.flyTo([point.lat, point.lng], point.zoom, { duration: 0.75 });
           } else if (!window.location.hash && countryFilter !== "all") flyToCountry(countryFilter);
+          else if (!window.location.hash && region !== "all") flyToRegion(region);
         }
       } catch (err) {
         setStatus("Could not load hotspots.json.");
@@ -3059,25 +3191,27 @@
         render(searchQuery ? "search" : "none");
         return;
       }
+      if (button.id === "ao-pin") { pinAo(); return; }
+      if (button.id === "ao-clear") { clearPinnedAo(); return; }
       if (button.dataset.region) {
         if (!ppvAllows(button.dataset.region)) { showUnlock(); return; }
         region = button.dataset.region;
-        const view = THEATRE_VIEWS[region];
-        if (view) map.flyTo(view.center, view.zoom, { duration: 0.6 });
+        if (countryFilter !== "all" && window.GeoSplit) {
+          const implied = GeoSplit.regionOf(countryFilter);
+          const macro = GeoSplit.macroRegion(region);
+          if (implied && macro && implied !== macro) {
+            countryFilter = "all";
+            governorateFilter = "";
+          }
+        }
+        if (region === "all") countryFilter = countryFilter;
+        writeFilterUrl();
         render(searchQuery ? "search" : "region");
         return;
       }
       if (button.dataset.country) {
         if (!ppvAllows(button.dataset.country)) { showUnlock(); return; }
-        countryFilter = button.dataset.country;
-        if (countryFilter !== "Syria") governorateFilter = "";
-        if (countryFilter === "Syria") {
-          const syriaPanel = document.getElementById("syria-governorate-filter");
-          if (syriaPanel) syriaPanel.open = true;
-        }
-        writeFilterUrl();
-        render(searchQuery ? "search" : "country");
-        refreshAssetLayers();
+        applyCountry(button.dataset.country);
         return;
       }
       if (button.dataset.governorate) {
@@ -3122,15 +3256,25 @@
     document.getElementById("slim-region").addEventListener("change", (event) => {
       const name = event.target.value || "all";
       if (!ppvAllows(name)) { showUnlock(); event.target.value = ppvGrant ? ppvGrant.scope : region; return; }
-      if (!name || name === "all") {
-        region = "all";
-        render("none");
-        map.flyTo(HOME.center, HOME.zoom, { duration: 0.6 });
-        setStatus("");
-        return;
+      region = name || "all";
+      if (countryFilter !== "all" && window.GeoSplit) {
+        const implied = GeoSplit.regionOf(countryFilter);
+        const macro = GeoSplit.macroRegion(region);
+        if (region === "all" || (implied && macro && implied !== macro)) {
+          countryFilter = "all";
+          governorateFilter = "";
+        }
       }
-      focusTheatre(name);
+      writeFilterUrl();
+      render(region === "all" ? "clear" : "region");
     });
+    document.getElementById("slim-country").addEventListener("change", (event) => {
+      const name = event.target.value || "all";
+      if (!ppvAllows(name)) { showUnlock(); event.target.value = countryFilter; return; }
+      applyCountry(name);
+    });
+    document.getElementById("ao-pin-slim").addEventListener("click", pinAo);
+    document.getElementById("country-search").addEventListener("input", () => paintCountryChoices());
     document.getElementById("slim-severity").addEventListener("change", (event) => {
       severity = event.target.value || "signal";
       render(searchQuery ? "search" : "none");
@@ -3867,6 +4011,10 @@
       if (watermarkToggle) watermarkToggle.setAttribute("aria-pressed", "true");
       paintWatermark();
     }
+    fetch("/api/geo/catalog", { cache: "no-store" }).then((response) => response.json()).then((payload) => {
+      if (window.GeoSplit && payload) GeoSplit.setCatalog(payload);
+      paintAoSummary();
+    }).catch(() => {});
     loadData();
     showSyriaGovernorates(false);
     setInterval(() => loadData(), 30000);
