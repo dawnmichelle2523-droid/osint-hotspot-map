@@ -41,6 +41,20 @@ SOURCES = ROOT / "sources.json"
 # First model, then the retry if the API rejects it.
 MODEL = "grok-4-fast-reasoning"
 BASE_URL = "https://api.x.ai/v1"
+
+
+def _flag_on(name: str) -> bool:
+    return (os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def x_feeds_enabled() -> bool:
+    """X account fetching is off until Dawn turns it on. No paid call is made by default."""
+    return _flag_on("ENABLE_X_FEEDS")
+
+
+def background_xai_enabled() -> bool:
+    """Scheduled and background model calls stay off. On-demand drafts are separate."""
+    return _flag_on("ENABLE_BACKGROUND_XAI")
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
 HTTP_TIMEOUT = 10
@@ -156,6 +170,10 @@ OUTLET_LABELS = {
     "bbcarabic": "BBC Arabic",
     "ajenglish": "Al Jazeera English",
     "alhadath": "Al Hadath",
+    "alhadath_brk": "Al Hadath Breaking",
+    "amharawarupdate": "Amhara War Updates",
+    "aaa_amhara": "Amhara Association of America",
+    "afrimeosint": "AfriMEOSINT",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1023,8 +1041,22 @@ def is_primary_handle(handle: str, batches_by_handle: dict[str, str]) -> bool:
     return batches_by_handle.get(key) in OFFICIAL_BATCHES
 
 
+ESTABLISHED_BREAKING = {"alhadath_brk"}
+ESTABLISHED_BREAKING_TIER = "Established national / breaking news"
+PARTISAN_SOCIAL = {"amharawarupdate", "aaa_amhara"}
+PARTISAN_TIER = "Social-unverified / partisan"
+OSINT_ANALYST = {"afrimeosint"}
+OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
+
+
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
     key = handle.lower()
+    if key in PARTISAN_SOCIAL:
+        return PARTISAN_TIER
+    if key in OSINT_ANALYST:
+        return OSINT_ANALYST_TIER
+    if key in ESTABLISHED_BREAKING:
+        return ESTABLISHED_BREAKING_TIER
     if batch == AGGREGATOR_BATCH or key in AGGREGATOR_HANDLES:
         return "Unverified Lead"
     if key in STATE_MEDIA:
@@ -1196,7 +1228,7 @@ def prepare_incidents(
             cites_named = True
             cites_primary = True
         tier = assign_tier(handle, batch, cites_named or cites_primary)
-        if tier in ("State-Affiliated / Single-Source", "Attributed"):
+        if tier in ("State-Affiliated / Single-Source", "Attributed", ESTABLISHED_BREAKING_TIER, PARTISAN_TIER, OSINT_ANALYST_TIER):
             summary = ensure_named(summary, handle, str(item.get("claimant") or ""))
         seen.add(source)
         features.append(
@@ -1517,6 +1549,9 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
 
 
 def main() -> None:
+    if not x_feeds_enabled():
+        print("X feeds are off. Set ENABLE_X_FEEDS=true to fetch them. No API call was made.")
+        return
     api_key = exit_if_no_key()
     sources = load_sources()
     batches = sources["batches"]

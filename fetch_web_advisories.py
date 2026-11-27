@@ -205,6 +205,9 @@ def search_group(client, api_key: str, domains: list[str], kind: str, category: 
 
 
 def main() -> None:
+    if not osint.background_xai_enabled():
+        print("Scheduled web-advisory search is off. No API call was made.")
+        return
     api_key = osint.exit_if_no_key()
     sources = osint.load_sources()
     notes = sources.get("website_only_checks_note") or []

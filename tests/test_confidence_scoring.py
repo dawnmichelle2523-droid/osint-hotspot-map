@@ -378,6 +378,33 @@ class ApiOutputTests(unittest.TestCase):
         self.assertIn("Confidence: Official Advisory", blob)
         self.assertIn("Confidence: Multi-Source Corroborated", blob)
 
+    def test_partisan_accounts_do_not_corroborate_each_other(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Ashara Media",
+                source="https://t.me/ashara_media/42",
+                source_tier="partisan (pro-Fano) / Social-unverified",
+                title="Security incident in Amhara",
+                summary="Security incident in Amhara",
+                country="Ethiopia",
+                lat=11.6,
+                lng=37.4,
+            ),
+            incident(
+                source_name="AAA_Amhara",
+                source="https://x.com/AAA_Amhara/status/1",
+                source_tier="Social-unverified / partisan",
+                title="Security incident in Amhara",
+                summary="Security incident in Amhara",
+                country="Ethiopia",
+                lat=11.6,
+                lng=37.4,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
 
 if __name__ == "__main__":
     unittest.main()

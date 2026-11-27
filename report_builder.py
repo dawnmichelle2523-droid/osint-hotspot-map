@@ -894,7 +894,7 @@ def deliver_schedule(
     db: store.Store | None = None,
 ) -> dict:
     moment = now or datetime.now(timezone.utc)
-    document = generate(schedule["scope"], schedule["cadence"], now=moment, use_grok=True, db=db)
+    document = generate(schedule["scope"], schedule["cadence"], now=moment, use_grok=False, db=db)
     result = send_document(document, schedule["recipients"], sender=sender, client_label=schedule.get("client_label") or "")
     target = db or store.get_store()
     if result.get("ok"):

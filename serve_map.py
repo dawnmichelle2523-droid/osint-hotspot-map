@@ -82,20 +82,17 @@ _thermal_cache: dict = {"at": 0.0, "points": None}
 ALJAZEERA_ALL_FEED = "https://www.aljazeera.com/xml/rss/all.xml"
 ALJAZEERA_MIDDLE_EAST_PAGE = "https://www.aljazeera.com/where/middle-east/"
 RSS_FEEDS = [
-    ("Al Jazeera Middle East", "https://www.aljazeera.com/xml/rss/middleeast.xml"),
     ("Al Jazeera", ALJAZEERA_ALL_FEED),
     ("BBC Middle East", "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"),
     ("Reuters Middle East & Syria", "https://news.google.com/rss/search?q=site:reuters.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("AP Middle East & Syria", "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("Enab Baladi", "https://english.enabbaladi.net/feed/"),
-    ("Syria Direct", "https://syriadirect.org/feed/"),
-    ("Shafaq English", "https://shafaq.com/en/rss"),
+    ("Syria Direct", "https://syriadirect.org/feed"),
     ("Iraqi News", "https://www.iraqinews.com/feed/"),
-    ("Rudaw English", "https://www.rudaw.net/english/rss"),
-    ("Iran International", "https://www.iranintl.com/en/rss"),
+    ("Iran International", "https://www.iranintl.com/feed/"),
     ("Arab News", "https://www.arabnews.com/rss.xml"),
     ("Al Arabiya English", "https://english.alarabiya.net/tools/rss"),
-    ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
+    ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/category/world/?outputType=xml"),
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
     ("Sudan Tribune", "https://sudantribune.com/feed/"),
@@ -103,17 +100,22 @@ RSS_FEEDS = [
     ("Darfur24", "https://darfur24.com/en/feed/"),
     ("Al Taghyeer", "https://www.altaghyeer.info/en/feed"),
     ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
-    ("ReliefWeb Sudan JSON", "https://api.reliefweb.int/v1/reports?appname=georiskglobal&filter[field]=country.name&filter[value]=Sudan&limit=20"),
     ("Middle East Monitor", "https://www.middleeastmonitor.com/feed/"),
     ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
     ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
-    ("Kurdistan24", "https://www.kurdistan24.net/en/rss"),
-    ("The New Region", "https://thenewregion.com/feed"),
-    ("ISW", "https://www.understandingwar.org/rss.xml"),
+    ("Kurdistan24", "https://www.kurdistan24.net/en/rss.xml"),
     ("Militia Spotlight", "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed"),
     ("Bellingcat", "https://www.bellingcat.com/feed/"),
-    ("Syriac Press", "https://syriacpress.com/feed/"),
 ]
+# Kept, not deleted, so a later health check can turn them back on.
+DISABLED_RSS = (
+    {"name": "Al Jazeera Middle East", "url": "https://www.aljazeera.com/xml/rss/middleeast.xml", "reason": "HTTP 404 on 27 Nov 2026. The all-news RSS remains active.", "checked": "2026-11-27"},
+    {"name": "Shafaq English", "url": "https://shafaq.com/en/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "Rudaw English", "url": "https://www.rudaw.net/english/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "The New Region", "url": "https://thenewregion.com/feed", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "ISW", "url": "https://www.understandingwar.org/rss.xml", "reason": "HTTP 403 on 27 Nov 2026. No public replacement RSS was found.", "checked": "2026-11-27"},
+    {"name": "Syriac Press", "url": "https://syriacpress.com/feed/", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+)
 # These two pages are notices, not always RSS. Never fetch https://mofa.go.jp itself.
 HTML_NOTICE_FEEDS = {
     "https://www.ukmto.org/partner-products/jmic-products": "UKMTO JMIC",
@@ -133,57 +135,74 @@ TELEGRAM_CHANNELS = [
     "sn4hr",
     "D24net",
     "SweidaGov1",
-    "Daraa24_News",
-    "horanfree",
-    "Suwayda24",
-    "DeirEzzor24",
-    "EuphratesPost",
-    "northpressagency",
     "damascusv011",
-    "AleppoTodayTV",
     "syrianmoi",
     "syrianinfowar",
     "OsintTv",
-    "syriahr",
     "EnabBaladi",
     "OSINTdefender",
     "osint613",
     "OsintUpdates",
     "warmonitors",
     "gulfnewsUAE",
-    "AlArabiya_Brk",
     "AsharqNewsBrk",
-    "almasirah",
     "almanarnews",
-    "SabereenNews22",
     "IranIntl_En",
-    "rudaw_english",
     "Rudaw_arabic",
-    "shafaqnews",
     "almaalomah",
-    "INA_Iraq",
-    "kurdistan24",
     "IRNA_en",
-    "Mehrnews_en",
     "presstv",
-    "alarabiya_eng",
-    "skynewsarabia_b",
     "gulfnews",
-    "KUNA_EN",
-    "BNA_EN",
-    "RoyaNews",
-    "alghadnews",
-    "PetraNewsAgency",
     "AuroraIntel",
     "ClashReport",
     "Middle_East_Spectator",
     "QudsNen",
-    "sudanwarmonitor",
-    "darfur24",
-    "sudannews24",
-    "alrakoba_sudan",
     "SudanTribune",
 ]
+# No public posts on the t.me/s preview on 27 Nov 2026. Kept so they can be retried.
+TELEGRAM_DISABLED = (
+    {"channel": "Daraa24_News", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "horanfree", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "Suwayda24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "DeirEzzor24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "EuphratesPost", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "northpressagency", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "AleppoTodayTV", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "syriahr", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "AlArabiya_Brk", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "almasirah", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "SabereenNews22", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "rudaw_english", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "shafaqnews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "INA_Iraq", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "kurdistan24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "Mehrnews_en", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alarabiya_eng", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "skynewsarabia_b", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "KUNA_EN", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "BNA_EN", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "RoyaNews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alghadnews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "PetraNewsAgency", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "sudanwarmonitor", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "darfur24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "sudannews24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alrakoba_sudan", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+)
+# Still polled. Last public post was before October 2026.
+TELEGRAM_STALE = (
+    {"channel": "hawran_osint", "last_post": "2026-02-26", "reason": "Last public post was before October 2026."},
+    {"channel": "SyrianArabNewsAgency", "last_post": "2025-07-01", "reason": "Last public post was before October 2026."},
+    {"channel": "syrianinfowar", "last_post": "2025-11-12", "reason": "Last public post was before October 2026."},
+    {"channel": "OsintTv", "last_post": "2026-05-31", "reason": "Last public post was before October 2026."},
+    {"channel": "OsintUpdates", "last_post": "2025-08-06", "reason": "Last public post was before October 2026."},
+    {"channel": "AsharqNewsBrk", "last_post": "2024-12-25", "reason": "Last public post was before October 2026."},
+    {"channel": "IranIntl_En", "last_post": "2023-10-31", "reason": "Last public post was before October 2026."},
+    {"channel": "Rudaw_arabic", "last_post": "2026-08-14", "reason": "Last public post was before October 2026."},
+    {"channel": "gulfnews", "last_post": "2024-09-09", "reason": "Last public post was before October 2026."},
+    {"channel": "AuroraIntel", "last_post": "2025-06-15", "reason": "Last public post was before October 2026."},
+    {"channel": "SudanTribune", "last_post": "2025-11-24", "reason": "Last public post was before October 2026."},
+)
 # Hyper-local Syrian channels. Their posts stay Syria unless the text names another country.
 SYRIA_LOCAL_CHANNELS = {
     "daraa24_news",
@@ -232,6 +251,7 @@ _X_HANDLE_GROUPS = [
         "faytuksnetwork", "MenchOsint", "DefenceGeek", "WSJ", "uniindianews", "AlarabyTV", "AlHadath",
         "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "anadoluagency", "BBCWorld", "CNN",
         "SkyNews", "AJEnglish", "aawsat_News", "timesofisrael", "Jerusalem_Post", "ynetnews",
+        "Alhadath_Brk",
         "criticalthreats", "ACLEDINFO", "bellingcat", "ELINTNews", "Conflicts", "Osint613",
         "ReutersWorld", "UNDSS",
     ],
@@ -250,6 +270,7 @@ _X_HANDLE_GROUPS = [
         "SUNA_AGENCY_EN", "SUNA_AGENCY",
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
+        "AmharaWarUpdate", "AAA_Amhara",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -449,14 +470,17 @@ _HANDLE_COUNTRY = {
 _RSS_DESK = {
     "https://english.enabbaladi.net/feed/": "Syria",
     "https://syriadirect.org/feed/": "Syria",
+    "https://syriadirect.org/feed": "Syria",
     "https://syriacpress.com/feed/": "Syria",
     "https://shafaq.com/en/rss": "Iraq",
     "https://www.iraqinews.com/feed/": "Iraq",
     "https://www.rudaw.net/english/rss": "Iraq",
     "https://www.kurdistan24.net/en/rss": "Iraq",
+    "https://www.kurdistan24.net/en/rss.xml": "Iraq",
     "https://thenewregion.com/feed": "Iraq",
     "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed": "Iraq",
     "https://www.iranintl.com/en/rss": "Iran",
+    "https://www.iranintl.com/feed/": "Iran",
     "https://www.arabnews.com/rss.xml": "Saudi Arabia",
     "https://english.alarabiya.net/tools/rss": "Saudi Arabia",
     "https://www.dabangasudan.org/en/all-news/feed": "Sudan & Chad",
@@ -469,6 +493,7 @@ _RSS_DESK = {
     "https://khartoumerr.org/feed/": "Sudan & Chad",
     "https://khartoumerr.org/": "Sudan & Chad",
     "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
+    "https://www.thenationalnews.com/arc/outboundfeeds/rss/category/world/?outputType=xml": "Gulf States",
     "https://www.jordantimes.com/rss.xml": "Neighbor States",
     "https://www.ukmto.org/partner-products/jmic-products": "Maritime & Chokepoints",
     "https://www.aljazeera.com/xml/rss/middleeast.xml": "Cross-Cutting Wires",
@@ -585,14 +610,17 @@ COUNTRY_CENTERS = {
     "Red Sea / Maritime": (20.0, 38.5),
     "Strait of Hormuz / Gulf": (26.5667, 56.2667),
     "Other": (26.5, 47.0),
+    "Ethiopia": (9.03, 38.74),
+    "South Africa": (-30.56, 22.94),
 }
 _SEA_COUNTRY_NAMES = frozenset({"Red Sea / Maritime", "Strait of Hormuz / Gulf", "Maritime"})
-# First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
-X_FEED_URLS = [
-    "https://xcancel.com/{handle}/rss",
-    "https://nitter.poast.org/{handle}/rss",
-    "https://nitter.privacydev.net/{handle}/rss",
-]
+# Nitter and xcancel were dead on 27 Nov 2026. The fetch code stays; these URLs are not called.
+DISABLED_X_MIRRORS = (
+    {"url": "https://xcancel.com/{handle}/rss", "reason": "xcancel stand-in was dead on 27 Nov 2026."},
+    {"url": "https://nitter.poast.org/{handle}/rss", "reason": "Nitter stand-in was dead on 27 Nov 2026."},
+    {"url": "https://nitter.privacydev.net/{handle}/rss", "reason": "Nitter stand-in was dead on 27 Nov 2026."},
+)
+X_FEED_URLS: list[str] = []
 X_MIRROR_TIMEOUT = 10
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -1292,6 +1320,9 @@ _CLAIM_HANDLES = {
     "iraqiagency", "iraqipmo", "ikrpresident", "suna_agency_en", "suna_agency",
 }
 _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
+_ESTABLISHED_BREAKING = {"alhadath_brk"}
+_PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
+_OSINT_ANALYST_HANDLES = {"afrimeosint"}
 _SOHR_PHRASE = "according to SOHR, figures unverified"
 _CASUALTY_WORDS = re.compile(
     r"\b(?:killed|killing|dead|deaths|death toll|wounded|casualt(?:y|ies))\b",
@@ -1302,6 +1333,16 @@ _CASUALTY_WORDS = re.compile(
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _PARTISAN_HANDLES):
+        return "Social-unverified / partisan"
+    if _token_named(tokens, _OSINT_ANALYST_HANDLES):
+        return "OSINT analyst / Social-unverified"
+    if _token_named(tokens, _ESTABLISHED_BREAKING):
+        return "Established national / breaking news"
+    if "news24.com" in raw or "feeds.news24.com" in raw:
+        return "Established national"
+    if "ahram.org.eg" in raw:
+        return "State Media"
     if _token_named(tokens, _CAUTION_HANDLES):
         return "Single-Source / Opposition Caution"
     if _token_named(tokens, _CLAIM_HANDLES):
@@ -1761,6 +1802,19 @@ def same_channel(item: dict, row: sqlite3.Row) -> bool:
     return incoming.casefold() == stored.casefold()
 
 
+def partisan_source(*parts: object) -> bool:
+    blob = " ".join(str(part or "") for part in parts).lower()
+    tokens = set(re.findall(r"[a-z0-9_]+", blob))
+    return bool(tokens & _PARTISAN_HANDLES) or "social-unverified / partisan" in blob
+
+
+def both_partisan(item: dict, row: sqlite3.Row) -> bool:
+    """Two advocacy accounts do not count as independent corroboration."""
+    return partisan_source(item.get("source_name"), item.get("source_url"), item.get("source_tier")) and partisan_source(
+        row["source_name"]
+    )
+
+
 def seen_url(conn: sqlite3.Connection, source_url: str) -> bool:
     row = conn.execute(
         "SELECT 1 FROM items WHERE source_url = ? OR url_hash = ? LIMIT 1",
@@ -2209,6 +2263,10 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
             response = requests.get(url, timeout=FEED_TIMEOUT, headers=headers)
         else:
             response = paced_get(url)
+        if response.status_code == 403:
+            print(f"RSS {name} access denied (HTTP 403). The feed stays configured and will be retried.")
+            note_feed("rss", name, False, "HTTP 403")
+            return []
         response.raise_for_status()
         content = response.content or b""
     except Exception as exc:
@@ -2516,12 +2574,41 @@ def poll_aljazeera_liveblog() -> list[dict]:
     return kept
 
 
+_reliefweb_noted = False
+
+
+def reliefweb_reports_url() -> str:
+    """ReliefWeb API v2. Skipped cleanly when RELIEFWEB_APPNAME is unset."""
+    global _reliefweb_noted
+    appname = (os.environ.get("RELIEFWEB_APPNAME") or "").strip()
+    if not appname:
+        if not _reliefweb_noted:
+            print("ReliefWeb API skipped: RELIEFWEB_APPNAME is not set.")
+            _reliefweb_noted = True
+        return ""
+    from urllib.parse import quote
+    safe = quote(appname, safe="")
+    return (
+        "https://api.reliefweb.int/v2/reports?appname=" + safe
+        + "&preset=latest&limit=20&filter[field]=country.name&filter[value]=Sudan"
+    )
+
+
+def active_rss_feeds() -> list[tuple[str, str]]:
+    feeds = list(RSS_FEEDS)
+    url = reliefweb_reports_url()
+    if url:
+        feeds.append(("ReliefWeb Sudan JSON", url))
+    return feeds
+
+
 def fetch_rss_candidates() -> list[dict]:
     found = []
-    with ThreadPoolExecutor(max_workers=len(RSS_FEEDS) or 1) as pool:
+    catalog = active_rss_feeds()
+    with ThreadPoolExecutor(max_workers=len(catalog) or 1) as pool:
         futures = {
             pool.submit(fetch_rss_feed, name, url): name
-            for name, url in RSS_FEEDS
+            for name, url in catalog
         }
         for future, name in futures.items():
             try:
@@ -2649,7 +2736,28 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in SAUDI_MEDIA_X and (saudi_mention(text) or mentions_broad_theater(text)):
         return True
+    if lowered in _PARTISAN_HANDLES and mentions_ethiopia_region(text):
+        return True
+    if lowered in _OSINT_ANALYST_HANDLES and (mentions_ethiopia_region(text) or mentions_horn_or_east_africa(text)):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
+
+
+def mentions_ethiopia_region(text: str) -> bool:
+    """Amhara, Tigray, and the rest of Ethiopia, including Amharic names."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("ethiopia", "ethiopian", "amhara", "tigray", "tigrayan", "addis", "mekelle", "gondar", "bahir dar")):
+        return True
+    return any(term in str(text or "") for term in ("ኢትዮጵያ", "አማራ", "ትግራይ"))
+
+
+def mentions_horn_or_east_africa(text: str) -> bool:
+    """Horn and East Africa places used by regional OSINT accounts."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "horn of africa", "east africa", "eritrea", "somalia", "somali", "djibouti",
+        "kenya", "mogadishu", "hargeisa", "juba", "south sudan", "sudan",
+    ))
 
 
 def canonical_x_url(handle: str, link: str, guid: str) -> str:
@@ -2661,7 +2769,12 @@ def canonical_x_url(handle: str, link: str, guid: str) -> str:
 
 
 def fetch_x_handle(handle: str) -> list[dict]:
-    """Try X mirrors in order. Only the final result is recorded as online or failing."""
+    """Try X mirrors in order. Only the final result is recorded as online or failing.
+
+    Disabled unless ENABLE_X_FEEDS is set. Dead Nitter and xcancel mirrors are not called.
+    """
+    if not osint.x_feeds_enabled():
+        return []
     last_error = "no entries"
     for template in X_FEED_URLS:
         url = template.format(handle=handle)
@@ -3011,10 +3124,13 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
     title = _english_sentence(located.get("title"), 240)
     summary = _english_sentence(located.get("summary"), 500)
     key = get_xai_api_key()
-    if not key:
+    if not key or not osint.background_xai_enabled():
         global _translation_key_noted
         if not _translation_key_noted:
-            print("XAI_API_KEY is missing. Non-English text uses the public translation fallback.")
+            if key:
+                print("Background translation is off. Non-English text uses the public translation fallback. No model call was made.")
+            else:
+                print("XAI_API_KEY is missing. Non-English text uses the public translation fallback.")
             _translation_key_noted = True
         try:
             import feed_quality
@@ -3325,6 +3441,16 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
     ("الكويت", "Kuwait"),
     ("قطر", "Qatar"),
     ("عمان", "Oman"),
+    ("ethiopia", "Ethiopia"),
+    ("ethiopian", "Ethiopia"),
+    ("amhara", "Ethiopia"),
+    ("tigray", "Ethiopia"),
+    ("tigrayan", "Ethiopia"),
+    ("addis ababa", "Ethiopia"),
+    ("mekelle", "Ethiopia"),
+    ("ኢትዮጵያ", "Ethiopia"),
+    ("አማራ", "Ethiopia"),
+    ("ትግራይ", "Ethiopia"),
     ("الإمارات", "UAE"),
     ("الامارات", "UAE"),
 ), key=lambda item: len(item[0]), reverse=True))
@@ -3372,7 +3498,7 @@ def incident_country(text: str) -> str:
     padded = f" {geo_blob(raw)} "
     tokens = set(padded.split())
     for keyword, country in _COUNTRY_NAME_ORDER:
-        if _arabic_keyword(keyword):
+        if _arabic_keyword(keyword) or any(ord(char) > 127 for char in keyword):
             if keyword in raw:
                 return country
             continue
@@ -3679,7 +3805,7 @@ def country_centroid_point(text: str, event_id: object) -> tuple[float, float, s
         named = "Red Sea / Maritime"
     if not named:
         return None
-    country = canonical_country(named)
+    country = canonical_country(named) or (named if named in COUNTRY_CENTERS else "")
     if not country or country == "Other":
         return None
     if named in COUNTRY_CENTERS:
@@ -4555,7 +4681,7 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:
-                if same_channel(item, match):
+                if same_channel(item, match) or both_partisan(item, match):
                     print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
                 else:
                     bump_corroboration(conn, match["id"])
@@ -4653,8 +4779,10 @@ def ingest_feeds() -> dict:
                 finally:
                     conn.close()
             telegram = rotate_slice(TELEGRAM_CHANNELS, batch_index, BATCH_SIZE)
-            handles = rotate_slice(X_HANDLES, x_index, X_BATCH_SIZE)
-            feeds = rotate_slice(RSS_FEEDS, rss_index, RSS_BATCH_SIZE)
+            x_on = osint.x_feeds_enabled()
+            handles = rotate_slice(X_HANDLES, x_index, X_BATCH_SIZE) if x_on else []
+            rss_catalog = active_rss_feeds()
+            feeds = rotate_slice(rss_catalog, rss_index, RSS_BATCH_SIZE)
             checked = len(telegram)
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
@@ -4706,7 +4834,7 @@ def ingest_feeds() -> dict:
             stamp = osint.format_timestamp(now)
             next_batch = (batch_index + BATCH_SIZE) % len(TELEGRAM_CHANNELS) if TELEGRAM_CHANNELS else 0
             next_x = (x_index + X_BATCH_SIZE) % len(X_HANDLES) if X_HANDLES else 0
-            next_rss = (rss_index + RSS_BATCH_SIZE) % len(RSS_FEEDS) if RSS_FEEDS else 0
+            next_rss = (rss_index + RSS_BATCH_SIZE) % len(rss_catalog) if rss_catalog else 0
             with _db_lock:
                 conn = db_connect()
                 try:
@@ -4894,6 +5022,11 @@ def sweep_item(event: dict, now: datetime) -> dict | None:
 def run_grok_sweep() -> int:
     """One Syria and Iraq sweep. A missing key skips the call and does not delete rows."""
     global _sweep_key_noted
+    if not osint.background_xai_enabled():
+        if not _sweep_key_noted:
+            print("Background Grok sweep is off. Set ENABLE_BACKGROUND_XAI=true to allow it. No API call was made.")
+            _sweep_key_noted = True
+        return 0
     key = get_xai_api_key()
     if not key:
         if not _sweep_key_noted:
@@ -5591,7 +5724,7 @@ def _summary_payload(record: dict) -> dict:
     }
 
 
-def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None) -> dict:
+def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None, allow_model: bool = False) -> dict:
     """Summarize stored SQLite events. completed is the official 07:00 window. rolling is the last 24 hours."""
     requested = str(view or "").strip().lower()
     kind = "rolling" if requested == "rolling" else ("active" if requested == "active" else "completed")
@@ -5610,11 +5743,15 @@ def generate_geopolitical_summary(view: str = "completed", force: bool = False, 
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         key = get_xai_api_key()
         fallback = False
-        if not key:
-            print(
-                "XAI_API_KEY is missing. Filled the geopolitical summary from stored events. "
-                "hotspots.json was not changed."
-            )
+        use_model = bool(key) and (allow_model or osint.background_xai_enabled())
+        if not use_model:
+            if key and not allow_model:
+                print("Geopolitical summary used stored events. Background model calls are off. No API call was made.")
+            else:
+                print(
+                    "XAI_API_KEY is missing. Filled the geopolitical summary from stored events. "
+                    "hotspots.json was not changed."
+                )
             overall, regions = deterministic_window_summary(records, start, end)
             fallback = True
         else:
@@ -6194,7 +6331,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
 
 
 def refresh_summary() -> dict:
-    return generate_geopolitical_summary("completed", force=True)
+    return generate_geopolitical_summary("completed", force=True, allow_model=True)
 
 
 def blocked_static(name: str) -> bool:

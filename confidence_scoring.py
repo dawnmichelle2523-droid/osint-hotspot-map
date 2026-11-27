@@ -66,7 +66,8 @@ OFFICIAL_SOURCES = (
     {"id": "ecdc", "label": "ECDC", "markers": ("ecdc",), "feeds": ("ecdc",), "prefixes": ()},
     {"id": "africa-cdc", "label": "Africa CDC", "markers": ("africa cdc",), "feeds": ("africa-cdc",), "prefixes": ()},
     {"id": "crisis-group", "label": "Crisis Group", "markers": ("crisis group", "crisisgroup"), "feeds": ("wire-icg",), "prefixes": ()},
-    {"id": "ukmto", "label": "UKMTO", "markers": ("ukmto",), "feeds": (), "prefixes": ()},
+    {"id": "ukmto", "label": "UKMTO", "markers": ("ukmto",), "feeds": ("ukmto",), "prefixes": ()},
+    {"id": "imb", "label": "IMB Piracy Reporting Centre", "markers": ("icc-ccs.org", "imb piracy"), "feeds": ("imb-prc",), "prefixes": ()},
     {"id": "cmf", "label": "Combined Maritime Forces", "markers": ("combined maritime",), "feeds": ("cmf",), "prefixes": ()},
     {"id": "faa", "label": "FAA", "markers": ("faa",), "feeds": ("faa",), "prefixes": ()},
     {"id": "cisa", "label": "CISA", "markers": ("cisa",), "feeds": ("cisa-kev", "cisa-news"), "prefixes": ("cisa-",)},
@@ -75,6 +76,12 @@ OFFICIAL_SOURCES = (
     {"id": "fcdo", "label": "UK FCDO", "markers": ("fcdo", "foreign-travel-advice"), "feeds": ("uk-fcdo-atom",), "prefixes": ()},
     {"id": "state-dept", "label": "US State Department", "markers": ("state department", "travel.state.gov"), "feeds": ("us-advisories", "us-advisories-rss"), "prefixes": ()},
     {"id": "gac", "label": "Global Affairs Canada", "markers": ("global affairs canada", "travel.gc.ca"), "feeds": ("canada-advisories",), "prefixes": ()},
+    {"id": "germany-travel", "label": "German Foreign Office", "markers": ("auswaertiges-amt.de", "german foreign office"), "feeds": ("de-travel",), "prefixes": ()},
+    {"id": "smartraveller", "label": "Smartraveller", "markers": ("smartraveller",), "feeds": ("au-smartraveller",), "prefixes": ()},
+    {"id": "cdc", "label": "US CDC", "markers": ("cdc.gov", "wwwnc.cdc.gov"), "feeds": ("cdc-travel",), "prefixes": ()},
+    {"id": "copernicus", "label": "Copernicus EMS", "markers": ("copernicus",), "feeds": ("copernicus-ems",), "prefixes": ()},
+    {"id": "un-news", "label": "UN News", "markers": ("news.un.org", "un news"), "feeds": ("un-news",), "prefixes": ()},
+    {"id": "ua-air-alert", "label": "Ukrainian air-raid alerts", "markers": ("air-raid", "air_alert_ua"), "feeds": ("tg-air-alert-ua",), "prefixes": ()},
 )
 
 GENERIC_CATEGORIES = {
@@ -118,6 +125,7 @@ def score_incidents(incidents: list) -> list:
         prepared.append({
             "target": target,
             "official": official is not None,
+            "partisan": _is_partisan(view),
             "key": key,
             "display": display,
             "coords": _coords(view),
@@ -356,8 +364,19 @@ def _keywords(view: dict) -> set[str]:
     return {token for token in _WORD.findall(text) if token not in _STOPWORDS}
 
 
+def _is_partisan(view: dict) -> bool:
+    """Advocacy accounts do not corroborate each other."""
+    tier = " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()).casefold()
+    if "partisan" in tier:
+        return True
+    blob = _identity_blob(view)
+    return any(_marker_in(blob, handle) for handle in ("amharawarupdate", "aaa_amhara", "ashara_media"))
+
+
 def _corroborates(left: dict, right: dict) -> bool:
     if left["key"].startswith("anon:") or right["key"].startswith("anon:") or left["key"] == right["key"]:
+        return False
+    if left.get("partisan") and right.get("partisan"):
         return False
     if left["when"] is None or right["when"] is None:
         return False

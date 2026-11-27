@@ -1,8 +1,7 @@
 """Spam filtering, English translation, and place resolution for OSINT items.
 
-Translation uses Grok only when XAI_API_KEY is set on the server. Otherwise it
-tries a public translation endpoint and keeps the original text if that is
-offline. Results are cached by a hash of the source text.
+Translation uses a public endpoint during ingest. Grok is not called unless
+ENABLE_BACKGROUND_XAI is set. Results are cached by a hash of the source text.
 """
 
 from __future__ import annotations
@@ -345,6 +344,12 @@ COUNTRIES = {
     "turkey": (38.96, 35.24, "Turkey"),
     "egypt": (26.82, 30.8, "Egypt"),
     "libya": (26.34, 17.23, "Libya"),
+    "haiti": (18.97, -72.29, "Haiti"),
+    "mexico": (23.63, -102.55, "Mexico"),
+    "myanmar": (21.91, 95.96, "Myanmar"),
+    "burkina faso": (12.24, -1.56, "Burkina Faso"),
+    "south sudan": (6.88, 31.31, "South Sudan"),
+    "cuba": (21.52, -77.78, "Cuba"),
     "somalia": (5.15, 46.2, "Somalia"),
     "nigeria": (9.08, 8.68, "Nigeria"),
     "kenya": (0.02, 37.91, "Kenya"),
@@ -552,15 +557,31 @@ def enrich_event(event: dict, live_translation: bool = True, ingest: bool = Fals
         item.get("lng"),
         item.get("id") or item.get("source") or original_title,
     )
+    stored_origin = " ".join(str(item.get("coord_origin") or "").split()).lower()
+    stored_precision = " ".join(str(item.get("geo_precision") or "").split())
     item["lat"] = geo["lat"]
     item["lng"] = geo["lng"]
     if geo.get("country"):
         item["country"] = geo["country"]
-    if geo.get("area"):
-        item["area"] = geo["area"]
-        item["location_name"] = geo["area"]
-    if geo.get("geo_precision"):
-        item["geo_precision"] = geo["geo_precision"]
+    # A country centroid already has coordinates. Do not relabel it as an exact site.
+    if stored_origin in {"centroid", "country", "region", "admin", "sea", "fallback"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "Country"
+    elif stored_origin in {"place", "city", "district", "geocode", "locality", "area"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "City / Area"
+        if geo.get("area"):
+            item["area"] = geo["area"]
+            item["location_name"] = geo["area"]
+    elif stored_origin in {"feed-point", "site", "facility", "event", "epicentre", "epicenter"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or geo.get("geo_precision") or "Exact"
+    else:
+        if geo.get("area"):
+            item["area"] = geo["area"]
+            item["location_name"] = geo["area"]
+        if geo.get("geo_precision"):
+            item["geo_precision"] = geo["geo_precision"]
     if not item.get("region") or item.get("region") == "Global":
         item["region"] = theatre_for(item.get("country"))
     return item
@@ -592,6 +613,7 @@ def annotate_feature(feature: dict) -> dict | None:
         "area": enriched.get("area") or props.get("area") or "",
         "location_name": enriched.get("location_name") or props.get("location_name") or enriched.get("area") or "",
         "geo_precision": enriched.get("geo_precision") or props.get("geo_precision") or "",
+        "coord_origin": enriched.get("coord_origin") or props.get("coord_origin") or "",
         "original_text": enriched.get("original_text") or props.get("original_text") or "",
     })
     if enriched.get("lat") is not None and enriched.get("lng") is not None:
@@ -727,6 +749,14 @@ def _api_key() -> str:
 
 
 def _grok_translate(text: str) -> str:
+    """Paid translation stays off unless a background model call is explicitly enabled."""
+    try:
+        import fetch_x_osint as osint
+
+        if not osint.background_xai_enabled():
+            return ""
+    except Exception:
+        return ""
     key = _api_key()
     if not key:
         return ""

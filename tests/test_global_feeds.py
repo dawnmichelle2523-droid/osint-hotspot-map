@@ -82,6 +82,76 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(status["DeepStateMap Snapshot"], "offline")
         self.assertIn(status["USGS Earthquakes M4.5+"], {"active", "unchecked"})
 
+    def test_7sur7_stays_disabled_because_it_has_no_rss(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "7sur7")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["source_tier"], "National outlet")
+        self.assertEqual(feed["language"], "French")
+        self.assertEqual(feed["default_country"], "Democratic Republic of the Congo")
+        self.assertEqual(feed["parser"], "")
+        result = gf._fetch_feed(feed, [{"id": "old"}])
+        self.assertEqual(result["status"], "disabled")
+        self.assertEqual(result["error"], "no RSS available")
+        self.assertEqual(result["events"], [])
+        status = {item["source_name"]: item for item in gf.status_rows()}
+        self.assertEqual(status["7sur7.cd"]["status"], "disabled")
+        self.assertEqual(status["7sur7.cd"]["last_error"], "no RSS available")
+
+    def test_ashara_keeps_place_and_drops_personal_names(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "tg-ashara")
+        self.assertEqual(feed["language"], "am")
+        self.assertEqual(feed["source_tier"], "partisan (pro-Fano) / Social-unverified")
+        self.assertTrue(feed["low_yield"])
+        self.assertIn("Amharic", feed["yield_note"])
+        self.assertNotIn("ENABLE_X", feed["url"])
+        page = """
+        <div class="tgme_widget_message" data-post="ashara_media/42">
+          <div class="tgme_widget_message_text">Defectors: Abebe Bekele, Chaltu Tesfaye. Fighting in Amhara.</div>
+          <time datetime="2026-11-27T12:00:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="ashara_media/43">
+          <div class="tgme_widget_message_text">አበበ በቀለ እና ጫልቱ ተስፋዬ ከአፋር</div>
+          <time datetime="2026-11-27T13:00:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_ashara(feed, page.encode())
+        self.assertEqual(len(events), 2)
+        blob = json.dumps(events)
+        self.assertNotIn("Abebe", blob)
+        self.assertNotIn("Bekele", blob)
+        self.assertNotIn("Chaltu", blob)
+        self.assertNotIn("Tesfaye", blob)
+        self.assertNotIn("አበበ", blob)
+        self.assertNotIn("በቀለ", blob)
+        self.assertEqual(events[0]["location_name"], "Amhara")
+        self.assertEqual(events[0]["country"], "Ethiopia")
+        self.assertEqual(events[0]["source_tier"], "partisan (pro-Fano) / Social-unverified")
+        self.assertEqual(events[0]["original_text"] if "original_text" in events[0] else "", "")
+        self.assertIn("Amhara", events[0]["summary"])
+        self.assertEqual(events[1]["location_name"], "Afar")
+        self.assertNotIn("አበበ", events[1]["summary"])
+
+    def test_ahram_is_kept_for_a_quiet_block_and_imb_is_public(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        ahram = feeds["ahram"]
+        self.assertEqual(ahram["source_tier"], "State Media")
+        self.assertEqual(ahram["default_country"], "Egypt")
+        self.assertIn(403, ahram["quiet_http"])
+        self.assertIn("Rss.aspx", ahram["url"])
+        imb = feeds["imb-prc"]
+        self.assertEqual(imb["url"], "https://icc-ccs.org/feed/")
+        self.assertEqual(imb["source_tier"], "Official")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Eight sailors kidnapped off Somalia</title>
+          <description>Pirates seized the crew in the Gulf of Aden.</description>
+          <link>https://icc-ccs.org/example</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(imb, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Somalia", events[0]["title"])
+        self.assertEqual(events[0]["source_tier"], "Official")
+
 
 if __name__ == "__main__":
     unittest.main()

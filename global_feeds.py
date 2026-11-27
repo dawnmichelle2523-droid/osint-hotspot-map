@@ -186,7 +186,9 @@ def _feeds() -> list[dict]:
         {"id": "eonet", "name": "NASA EONET Natural Events", "region": "Global", "category": "Natural Disaster",
          "url": "https://eonet.gsfc.nasa.gov/api/v3/events/geojson?status=open&limit=100", "parser": "geojson"},
         {"id": "gdacs-rss", "name": "GDACS 24h Disasters", "region": "Global", "category": "Disaster",
-         "url": "https://www.gdacs.org/xml/rss_24h.xml", "parser": "gdacs-rss", "timeout": 12},
+         "url": "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ;TC;FL;VO;WF;DR",
+         "parser": "gdacs", "timeout": 12, "source_tier": "Official", "coord_origin": "feed-point",
+         "geo_precision": "Exact"},
         {"id": "ifrc", "name": "IFRC GO Events", "region": "Global", "category": "Disaster",
          "url": "https://goadmin.ifrc.org/api/v2/event/?limit=50&ordering=-disaster_start_date", "parser": "ifrc"},
         {"id": "usgs-quakes", "name": "USGS Earthquakes M4.5+", "region": "Global", "category": "Seismic",
@@ -387,6 +389,7 @@ def _feeds() -> list[dict]:
         "limit": 8,
         "timeout": 12,
     })
+    feeds.extend(_catalogue_feeds())
     return feeds
 
 
@@ -465,6 +468,20 @@ def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra
     if severity not in {"low", "medium", "high"}:
         severity = "medium"
     source = _clip(extra.get("source") or feed.get("url") or feed["id"], 300)
+    origin = _clip(extra.get("coord_origin") or feed.get("coord_origin") or "", 40)
+    precision = _clip(extra.get("geo_precision") or feed.get("geo_precision") or "", 80)
+    # PR #33 supplies incident_badges. Stay compatible when that module is absent.
+    try:
+        import incident_badges
+
+        if not origin:
+            origin = _clip(incident_badges.default_coord_origin(feed), 40)
+        if not precision and origin:
+            precision = _clip(incident_badges.precision_for_origin(origin), 80)
+    except Exception:
+        pass
+    tier = _clip(extra.get("source_tier") or feed.get("source_tier") or "", 80)
+    location = _clip(extra.get("location_name") or extra.get("area") or "", 120)
     return {
         "id": _clip(extra.get("id") or source or title, 180),
         "title": _clip(title, 180) or feed["name"],
@@ -479,6 +496,10 @@ def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra
         "timestamp": _stamp(extra.get("timestamp")),
         "source": source,
         "source_name": feed["name"],
+        "source_tier": tier,
+        "geo_precision": precision,
+        "coord_origin": origin,
+        "location_name": location,
     }
 
 
@@ -619,7 +640,12 @@ def _advisory_level(text: str) -> int:
         return int(match.group(1))
     if "avoid all travel" in lowered or "do not travel" in lowered:
         return 4
-    if "avoid non-essential" in lowered or "avoid all but essential" in lowered or "reconsider travel" in lowered:
+    if (
+        "avoid non-essential" in lowered
+        or "avoid all but essential" in lowered
+        or "reconsider travel" in lowered
+        or "reconsider your need" in lowered
+    ):
         return 3
     if "high degree of caution" in lowered or "increased caution" in lowered:
         return 2
@@ -642,6 +668,7 @@ def _advisory_events(feed: dict, rows: list[tuple[str, str, str, str]]) -> list[
             feed, f"{country}: {label}", text or label, lat, lng,
             country=country, severity=severity, timestamp=updated, source=url or feed.get("url"),
             id=country + ":" + feed["id"],
+            coord_origin="centroid", geo_precision="Country", location_name=country,
         ))
         if len(found) >= 40:
             break
@@ -1173,10 +1200,14 @@ SECURITY_RE = re.compile(
     r"\b(attack|attacks|explosion|explode|protest|unrest|kidnapping|kidnap|shooting|"
     r"airstrike|air strike|security|evacuation|blast|bomb|missile|clash|militant|"
     r"terror|hostage|coup|riot|shelling|drone|armed|flood|earthquake|cyclone|wildfire|"
-    r"warning|alert|fighting|violence|killed|war|conflict|crisis|ceasefire|troops|bombing)\b",
+    r"warning|alert|fighting|violence|killed|war|conflict|crisis|ceasefire|troops|bombing|"
+    r"piracy|pirates?|hijack\w*|kidnapp?\w*)\b",
     re.IGNORECASE,
 )
-JSON_PARSERS = {"gdacs", "wa", "geojson", "usgs", "nws", "ifrc", "kev", "floods", "emsc", "swpc", "who", "gdelt"}
+JSON_PARSERS = {
+    "gdacs", "wa", "geojson", "usgs", "nws", "ifrc", "kev", "floods", "emsc", "swpc", "who", "gdelt",
+    "germany-travel", "copernicus", "bluesky",
+}
 _SKIP_NEAREST = {"usa", "uae", "turkiye", "burma"}
 
 
@@ -1212,6 +1243,15 @@ def _place_event(feed: dict, title: str, summary: str, country: str = "", **extr
         geo = {"lat": None, "lng": None, "country": country}
     if geo.get("lat") is None:
         return None
+    precision = str(geo.get("geo_precision") or "")
+    if precision == "City / Area":
+        origin = "place"
+    elif precision == "Country":
+        origin = "centroid"
+    elif precision == "Exact":
+        origin = "feed-point"
+    else:
+        origin = ""
     return _event(
         feed, title, summary or title, geo["lat"], geo["lng"],
         country=geo.get("country") or country or feed.get("default_country") or "",
@@ -1219,6 +1259,9 @@ def _place_event(feed: dict, title: str, summary: str, country: str = "", **extr
         timestamp=extra.get("timestamp"),
         source=extra.get("source") or feed.get("url"),
         id=extra.get("id") or title,
+        coord_origin=extra.get("coord_origin") or origin,
+        geo_precision=extra.get("geo_precision") or precision,
+        location_name=extra.get("location_name") or geo.get("area") or "",
     )
 
 
@@ -1516,6 +1559,451 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
     return found
 
 
+ISO2_TO_COUNTRY = {
+    "AF": "Afghanistan", "AL": "Albania", "DZ": "Algeria", "AO": "Angola", "AR": "Argentina",
+    "AM": "Armenia", "AU": "Australia", "AT": "Austria", "AZ": "Azerbaijan", "BH": "Bahrain",
+    "BD": "Bangladesh", "BY": "Belarus", "BE": "Belgium", "BZ": "Belize", "BJ": "Benin",
+    "BO": "Bolivia", "BA": "Bosnia and Herzegovina", "BR": "Brazil", "BG": "Bulgaria",
+    "BF": "Burkina Faso", "MM": "Myanmar", "BI": "Burundi", "KH": "Cambodia", "CM": "Cameroon",
+    "CA": "Canada", "CF": "Central African Republic", "TD": "Chad", "CL": "Chile", "CN": "China",
+    "CO": "Colombia", "CG": "Congo", "CD": "Democratic Republic of the Congo", "CR": "Costa Rica",
+    "CU": "Cuba", "CY": "Cyprus", "CZ": "Czechia", "DK": "Denmark", "DJ": "Djibouti",
+    "DO": "Dominican Republic", "EC": "Ecuador", "EG": "Egypt", "SV": "El Salvador", "ER": "Eritrea",
+    "EE": "Estonia", "ET": "Ethiopia", "FI": "Finland", "FR": "France", "GE": "Georgia",
+    "DE": "Germany", "GH": "Ghana", "GR": "Greece", "GT": "Guatemala", "GN": "Guinea",
+    "GY": "Guyana", "HT": "Haiti", "HN": "Honduras", "HU": "Hungary", "IN": "India",
+    "ID": "Indonesia", "IR": "Iran", "IQ": "Iraq", "IE": "Ireland", "IL": "Israel",
+    "IT": "Italy", "JM": "Jamaica", "JP": "Japan", "JO": "Jordan", "KZ": "Kazakhstan",
+    "KE": "Kenya", "XK": "Kosovo", "KW": "Kuwait", "KG": "Kyrgyzstan", "LA": "Laos",
+    "LV": "Latvia", "LB": "Lebanon", "LY": "Libya", "LT": "Lithuania", "MG": "Madagascar",
+    "ML": "Mali", "MR": "Mauritania", "MX": "Mexico", "MD": "Moldova", "MN": "Mongolia",
+    "ME": "Montenegro", "MA": "Morocco", "MZ": "Mozambique", "NP": "Nepal", "NL": "Netherlands",
+    "NZ": "New Zealand", "NI": "Nicaragua", "NE": "Niger", "NG": "Nigeria", "KP": "North Korea",
+    "MK": "North Macedonia", "NO": "Norway", "OM": "Oman", "PK": "Pakistan", "PS": "Palestine",
+    "PA": "Panama", "PG": "Papua New Guinea", "PY": "Paraguay", "PE": "Peru", "PH": "Philippines",
+    "PL": "Poland", "PT": "Portugal", "QA": "Qatar", "RO": "Romania", "RU": "Russia",
+    "RW": "Rwanda", "SA": "Saudi Arabia", "SN": "Senegal", "RS": "Serbia", "SL": "Sierra Leone",
+    "SG": "Singapore", "SO": "Somalia", "ZA": "South Africa", "KR": "South Korea",
+    "SS": "South Sudan", "ES": "Spain", "LK": "Sri Lanka", "SD": "Sudan", "SR": "Suriname",
+    "SE": "Sweden", "CH": "Switzerland", "SY": "Syria", "TW": "Taiwan", "TJ": "Tajikistan",
+    "TZ": "Tanzania", "TH": "Thailand", "TG": "Togo", "TT": "Trinidad and Tobago", "TN": "Tunisia",
+    "TR": "Turkey", "TM": "Turkmenistan", "UG": "Uganda", "UA": "Ukraine", "AE": "United Arab Emirates",
+    "GB": "United Kingdom", "US": "United States", "UY": "Uruguay", "UZ": "Uzbekistan",
+    "VE": "Venezuela", "VN": "Vietnam", "YE": "Yemen", "ZM": "Zambia", "ZW": "Zimbabwe",
+    "CI": "Ivory Coast",
+}
+
+
+def parse_germany_travel(feed: dict, content: bytes) -> list[dict]:
+    """German Foreign Office open-data travel warnings. Full and partial warnings only."""
+    payload = _loads(content)
+    response = payload.get("response") if isinstance(payload, dict) else None
+    if not isinstance(response, dict):
+        return []
+    rows = []
+    for item in response.values():
+        if not isinstance(item, dict):
+            continue
+        if item.get("warning"):
+            advice = "Level 4: Do not travel. German Foreign Office travel warning."
+        elif item.get("partialWarning"):
+            advice = "Level 3: Reconsider travel. Partial German Foreign Office travel warning."
+        else:
+            continue
+        iso = str(item.get("countryCode") or "").strip().upper()
+        country = ISO2_TO_COUNTRY.get(iso, "")
+        if not country:
+            continue
+        updated = item.get("lastModified") or item.get("effective") or ""
+        rows.append((country, advice, "https://www.auswaertiges-amt.de/opendata/travelwarning#" + iso, updated))
+    return _advisory_events(feed, rows)
+
+
+def _cdc_country(title: str) -> str:
+    text = re.sub(r"^level\s*[1-4]\s*[-–:]\s*", "", title, flags=re.I).strip()
+    if re.search(r"\bglobal\b", text, re.I) and not re.search(r"\bin\b", text, re.I):
+        return ""
+    match = re.search(r"\bin\s+(.+)$", text, flags=re.I)
+    if not match:
+        return ""
+    first = match.group(1).split(",")[0]
+    first = re.sub(r"\s+and\s+.*$", "", first, flags=re.I)
+    first = re.sub(r"^(?:the\s+)?republic of\s+", "", first, flags=re.I)
+    first = re.sub(r"^the\s+", "", first, flags=re.I)
+    return first.strip(" .")
+
+
+def parse_cdc_travel(feed: dict, content: bytes) -> list[dict]:
+    """US CDC travel notices. Level 2 and above are kept; level 1 practice notices are not."""
+    found = []
+    for entry in _entries(content)[:40]:
+        if len(found) >= 20:
+            break
+        title = _strip(entry.get("title"))
+        match = re.search(r"level\s*([1-4])", title, flags=re.I)
+        if not match or int(match.group(1)) < 2:
+            continue
+        country = _cdc_country(title)
+        point = _centroid_name(country)
+        if point is None:
+            continue
+        level = int(match.group(1))
+        lat, lng = _jitter(point[0], point[1], country + "cdc")
+        summary = _strip(entry.get("summary") or entry.get("description") or title)
+        severity = "high" if level >= 3 else "medium"
+        label = "Level 3 — Avoid non-essential travel" if level >= 3 else "Level 2 — Practice enhanced precautions"
+        found.append(_event(
+            feed, f"{country}: {label}", summary or title, lat, lng,
+            country=country, severity=severity,
+            timestamp=entry.get("published") or entry.get("updated"),
+            source=entry.get("link") or feed.get("url"),
+            id="cdc:" + country,
+            coord_origin="centroid", geo_precision="Country", location_name=country,
+        ))
+    return found
+
+
+def parse_copernicus(feed: dict, content: bytes) -> list[dict]:
+    """Copernicus EMS rapid-mapping activations. The centroid is the mapped event."""
+    payload = _loads(content)
+    rows = payload.get("results") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return []
+    found = []
+    for item in rows:
+        if not isinstance(item, dict) or len(found) >= 12:
+            break
+        title = _strip(item.get("name") or item.get("code") or "Copernicus activation")
+        summary = _strip(item.get("search_snippet") or title)
+        countries = item.get("countries") or []
+        country = ""
+        if isinstance(countries, list) and countries and isinstance(countries[0], dict):
+            country = str(countries[0].get("short_name") or "")
+        point = None
+        origin = "feed-point"
+        centroid = str(item.get("centroid") or "")
+        match = re.search(r"POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)", centroid, re.I)
+        if match:
+            point = _pair(match.group(2), match.group(1))
+        if point is None:
+            point = _centroid_name(country)
+            origin = "centroid"
+            if point:
+                point = _jitter(point[0], point[1], str(item.get("code") or title))
+        if point is None:
+            continue
+        code = str(item.get("code") or title)
+        found.append(_event(
+            feed, title, summary or title, point[0], point[1],
+            country=country, severity="high" if not item.get("closed") else "medium",
+            timestamp=item.get("lastUpdate") or item.get("activationTime"),
+            source="https://mapping.emergency.copernicus.eu/activations/" + code,
+            id=code,
+            coord_origin=origin,
+            geo_precision="Exact" if origin == "feed-point" else "Country",
+            location_name=country,
+        ))
+    return found
+
+
+def parse_bluesky(feed: dict, content: bytes) -> list[dict]:
+    """Public Bluesky AppView posts from the outlet account only. No other users are stored."""
+    payload = _loads(content)
+    rows = payload.get("feed") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return []
+    actor = str(feed.get("actor") or "").strip().lower()
+    found = []
+    for row in rows:
+        if not isinstance(row, dict) or len(found) >= int(feed.get("limit") or 6):
+            break
+        post = row.get("post") if isinstance(row.get("post"), dict) else None
+        if not post:
+            continue
+        handle = str((post.get("author") or {}).get("handle") or "").strip().lower()
+        if actor and handle != actor:
+            continue
+        record = post.get("record") if isinstance(post.get("record"), dict) else {}
+        if record.get("reply"):
+            continue
+        text = _strip(record.get("text") or "")
+        if not text or not SECURITY_RE.search(text):
+            continue
+        uri = str(post.get("uri") or "")
+        rkey = uri.rsplit("/", 1)[-1] if "/" in uri else ""
+        if not rkey or not actor:
+            continue
+        link = f"https://bsky.app/profile/{actor}/post/{rkey}"
+        placed = _place_event(
+            feed, text[:180], text[:500], feed.get("default_country") or "",
+            timestamp=record.get("createdAt"), source=link, id=link,
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
+def parse_telegram_preview(feed: dict, content: bytes) -> list[dict]:
+    """Public t.me/s preview. Only the channel name is kept, not other users."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(content.decode("utf-8", "replace"), "html.parser")
+    channel = str(feed.get("channel") or "").strip()
+    found = []
+    for wrap in soup.select(".tgme_widget_message"):
+        if len(found) >= int(feed.get("limit") or 8):
+            break
+        post = " ".join(str(wrap.get("data-post") or "").split())
+        if channel and post and not post.lower().startswith(channel.lower() + "/"):
+            continue
+        node = wrap.select_one(".tgme_widget_message_text")
+        if node is None:
+            continue
+        text = _strip(node.get_text(" ", strip=True))
+        if not text:
+            continue
+        if not feed.get("keep_all") and not SECURITY_RE.search(text):
+            continue
+        clock = wrap.select_one("time")
+        when = clock.get("datetime") if clock is not None else ""
+        link = f"https://t.me/{post}" if post else str(feed.get("url") or "")
+        placed = _place_event(
+            feed, text[:180], text[:500], feed.get("default_country") or "",
+            timestamp=when or "", source=link, id=post or text[:80],
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
+# Public place names only. Nothing else from an Ashara post is copied into storage.
+_ASHARA_PLACES = (
+    ("ባህር ዳር", "Bahir Dar", 11.57, 37.36, "place"),
+    ("bahir dar", "Bahir Dar", 11.57, 37.36, "place"),
+    ("ጎንደር", "Gondar", 12.60, 37.45, "place"),
+    ("gondar", "Gondar", 12.60, 37.45, "place"),
+    ("ላሊበላ", "Lalibela", 12.03, 39.04, "place"),
+    ("lalibela", "Lalibela", 12.03, 39.04, "place"),
+    ("ደሴ", "Dessie", 11.13, 39.63, "place"),
+    ("dessie", "Dessie", 11.13, 39.63, "place"),
+    ("ሰመራ", "Semera", 11.79, 41.01, "place"),
+    ("semera", "Semera", 11.79, 41.01, "place"),
+    ("አዲስ አበባ", "Addis Ababa", 9.03, 38.74, "place"),
+    ("addis ababa", "Addis Ababa", 9.03, 38.74, "place"),
+    ("addis", "Addis Ababa", 9.03, 38.74, "place"),
+    ("አፋር", "Afar", 11.50, 41.00, "centroid"),
+    ("afar", "Afar", 11.50, 41.00, "centroid"),
+    ("አማራ", "Amhara", 11.60, 37.40, "centroid"),
+    ("amhara", "Amhara", 11.60, 37.40, "centroid"),
+    ("ኢትዮጵያ", "Ethiopia", 9.15, 40.49, "centroid"),
+    ("ethiopia", "Ethiopia", 9.15, 40.49, "centroid"),
+)
+
+
+def ashara_place(text: str) -> tuple[str, float, float, str]:
+    """Return an allow-listed place. The rest of the post, including any names, is ignored."""
+    lowered = str(text or "").lower()
+    for needle, label, lat, lng, origin in _ASHARA_PLACES:
+        if needle in lowered or needle in str(text or ""):
+            return label, lat, lng, origin
+    return "Ethiopia", 9.15, 40.49, "centroid"
+
+
+def parse_ashara(feed: dict, content: bytes) -> list[dict]:
+    """Ashara Media via the public t.me/s preview.
+
+    Posts are Amharic and sometimes list named people. Only a fixed place
+    label is stored. The channel name is the only identity kept.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(content.decode("utf-8", "replace"), "html.parser")
+    channel = str(feed.get("channel") or "ashara_media").strip()
+    found = []
+    for wrap in soup.select(".tgme_widget_message"):
+        if len(found) >= int(feed.get("limit") or 8):
+            break
+        post = " ".join(str(wrap.get("data-post") or "").split())
+        if post and not post.lower().startswith(channel.lower() + "/"):
+            continue
+        node = wrap.select_one(".tgme_widget_message_text")
+        if node is None:
+            continue
+        raw = _strip(node.get_text(" ", strip=True))
+        if not raw:
+            continue
+        place, lat, lng, origin = ashara_place(raw)
+        clock = wrap.select_one("time")
+        when = clock.get("datetime") if clock is not None else ""
+        link = f"https://t.me/{post}" if post else str(feed.get("url") or "")
+        summary = f"Ashara Media reported a security incident in {place}."
+        found.append(_event(
+            feed, summary, summary, lat, lng,
+            country="Ethiopia", severity="medium", timestamp=when or "",
+            source=link, id=post or link,
+            coord_origin=origin,
+            geo_precision="City / Area" if origin == "place" else "Country",
+            location_name=place,
+        ))
+    return found
+
+
+def _wire(feed_id: str, name: str, url: str, country: str, tier: str) -> dict:
+    return {
+        "id": feed_id,
+        "name": name,
+        "region": "Global",
+        "category": "Security",
+        "url": url,
+        "parser": "security-rss",
+        "default_country": country,
+        "limit": 6,
+        "source_tier": tier,
+    }
+
+
+def _local(feed_id: str, name: str, url: str, country: str, region: str) -> dict:
+    return {
+        "id": feed_id,
+        "name": name,
+        "region": region,
+        "category": "Security",
+        "url": url,
+        "parser": "security-rss",
+        "default_country": country,
+        "limit": 6,
+        "source_tier": "Wire / Local Outlet",
+    }
+
+
+def _catalogue_feeds() -> list[dict]:
+    """Free public sources added after the 27 Nov 2026 health check."""
+    feeds = [
+        {"id": "de-travel", "name": "German Foreign Office travel warnings", "region": "Global",
+         "category": "Travel Advisory", "url": "https://www.auswaertiges-amt.de/opendata/travelwarning",
+         "parser": "germany-travel", "source_tier": "Official", "coord_origin": "centroid", "geo_precision": "Country"},
+        {"id": "au-smartraveller", "name": "Australia Smartraveller", "region": "Global",
+         "category": "Travel Advisory", "url": "https://www.smartraveller.gov.au/countries/documents/index.rss",
+         "parser": "us-rss", "source_tier": "Official", "coord_origin": "centroid", "geo_precision": "Country"},
+        {"id": "cdc-travel", "name": "US CDC travel notices", "region": "Global",
+         "category": "Travel Advisory", "url": "https://wwwnc.cdc.gov/travel/rss/notices.xml",
+         "parser": "cdc-travel", "source_tier": "Official", "coord_origin": "centroid", "geo_precision": "Country"},
+        {"id": "copernicus-ems", "name": "Copernicus EMS rapid mapping", "region": "Global",
+         "category": "Disaster", "url": "https://mapping.emergency.copernicus.eu/activations/api/activations/?limit=20",
+         "parser": "copernicus", "source_tier": "Official", "coord_origin": "feed-point", "geo_precision": "Exact",
+         "timeout": 12},
+        {"id": "un-news", "name": "UN News", "region": "Global", "category": "Security",
+         "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+         "parser": "security-rss", "source_tier": "Official", "limit": 8},
+        _wire("wire-anadolu", "Anadolu Agency", "https://www.aa.com.tr/en/rss/default?cat=guncel", "Turkey", "Wire / Outlet"),
+        _wire("wire-ansa", "ANSA English", "https://www.ansa.it/english/news/english_nr_rss.xml", "Italy", "Wire / Outlet"),
+        _wire("wire-yonhap", "Yonhap", "https://en.yna.co.kr/RSS/news.xml", "South Korea", "Wire / Outlet"),
+        _wire("wire-ukrinform", "Ukrinform", "https://www.ukrinform.net/rss/block-lastnews", "Ukraine", "State Media"),
+        _wire("wire-interfax-ua", "Interfax-Ukraine", "https://en.interfax.com.ua/news/last.rss", "Ukraine", "Wire / Outlet"),
+        _wire("wire-antara", "Antara", "https://en.antaranews.com/rss/news.xml", "Indonesia", "Wire / Outlet"),
+        _wire("wire-focus-taiwan", "Focus Taiwan", "https://feeds.feedburner.com/rsscna/engnews", "Taiwan", "Wire / Outlet"),
+        _wire("wire-agencia-brasil", "Agência Brasil", "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml", "Brazil", "Wire / Outlet"),
+        _wire("wire-irna", "IRNA", "https://en.irna.ir/rss", "Iran", "State Media"),
+        _wire("wire-tass", "TASS", "https://tass.com/rss/v2.xml", "Russia", "State Media"),
+        _wire("wire-prensa-latina", "Prensa Latina", "https://www.plenglish.com/feed/", "Cuba", "State Media"),
+        _wire("wire-andina", "Andina", "https://andina.pe/agencia/rss.aspx", "Peru", "State Media"),
+        _local("local-syria-direct", "Syria Direct", "https://syriadirect.org/feed", "Syria", "Middle East"),
+        _local("local-north-press", "North Press Agency", "https://npasyria.com/en/feed/", "Syria", "Middle East"),
+        _local("local-sanaa-center", "Sanaa Center", "https://sanaacenter.org/feed", "Yemen", "Middle East"),
+        _local("local-south24", "South24", "https://south24.net/news/rss.xml", "Yemen", "Middle East"),
+        _local("local-libya-herald", "Libya Herald", "https://libyaherald.com/feed/", "Libya", "Africa"),
+        _local("local-sudan-war-monitor", "Sudan War Monitor", "https://sudanwarmonitor.com/feed", "Sudan", "Africa"),
+        _local("local-ayin", "Ayin Network", "https://3ayin.com/en/feed/", "Sudan", "Africa"),
+        _local("local-eye-radio", "Eye Radio", "https://www.eyeradio.org/feed/", "South Sudan", "Africa"),
+        _local("local-garowe", "Garowe Online", "https://www.garoweonline.com/feed/en", "Somalia", "Africa"),
+        _local("local-studio-tamani", "Studio Tamani", "https://www.studiotamani.org/feed/", "Mali", "Africa"),
+        _local("local-burkina24", "Burkina24", "https://www.burkina24.com/feed/", "Burkina Faso", "Africa"),
+        _local("local-tamtaminfo", "Tamtaminfo", "https://tamtaminfo.com/feed/", "Niger", "Africa"),
+        _local("local-tchadinfos", "Tchadinfos", "https://tchadinfos.com/feed/", "Chad", "Africa"),
+        _local("local-premium-times", "Premium Times", "https://www.premiumtimesng.com/feed", "Nigeria", "Africa"),
+        _local("local-actualite-cd", "Actualite.cd", "https://actualite.cd/rss.xml", "Democratic Republic of the Congo", "Africa"),
+        _local("local-ethiopia-insight", "Ethiopia Insight", "https://www.ethiopia-insight.com/feed/", "Ethiopia", "Africa"),
+        _local("local-kabulnow", "KabulNow", "https://kabulnow.com/feed/", "Afghanistan", "Afghanistan"),
+        _local("local-balochistan-post", "The Balochistan Post", "https://thebalochistanpost.net/feed/", "Pakistan", "South Asia"),
+        _local("local-irrawaddy", "The Irrawaddy", "https://www.irrawaddy.com/feed", "Myanmar", "APAC"),
+        _local("local-kyiv-independent", "Kyiv Independent", "https://kyivindependent.com/news-archive/rss/", "Ukraine", "Russia & Ukraine"),
+        _local("local-ukrainska-pravda", "Ukrainska Pravda", "https://www.pravda.com.ua/eng/rss/", "Ukraine", "Russia & Ukraine"),
+        _local("local-meduza", "Meduza", "https://meduza.io/rss/en/all", "Russia", "Russia & Ukraine"),
+        _local("local-moscow-times", "The Moscow Times", "https://www.themoscowtimes.com/rss/news", "Russia", "Russia & Ukraine"),
+        _local("local-times-of-israel", "Times of Israel", "https://www.timesofisrael.com/feed/", "Israel", "Middle East"),
+        _local("local-972", "+972 Magazine", "https://www.972mag.com/feed/", "Israel", "Middle East"),
+        _local("local-naharnet", "Naharnet", "https://www.naharnet.com/tags/lebanon/en/feed.atom", "Lebanon", "Middle East"),
+        _local("local-hrana", "HRANA", "https://www.en-hrana.org/feed/", "Iran", "Middle East"),
+        _local("local-haitian-times", "The Haitian Times", "https://haitiantimes.com/feed/", "Haiti", "Global"),
+        _local("local-borderland-beat", "Borderland Beat", "https://www.borderlandbeat.com/feeds/posts/default", "Mexico", "Global"),
+        _local("local-la-silla", "La Silla Vacía", "https://www.lasillavacia.com/feed/", "Colombia", "South America"),
+        _local("local-caracas-chronicles", "Caracas Chronicles", "https://www.caracaschronicles.com/feed/", "Venezuela", "South America"),
+        {"id": "bsky-reuters", "name": "Reuters on Bluesky", "region": "Global", "category": "Security",
+         "url": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=reuters.com&limit=25",
+         "parser": "bluesky", "actor": "reuters.com", "source_tier": "Wire / Outlet", "limit": 6},
+        {"id": "bsky-ap", "name": "AP on Bluesky", "region": "Global", "category": "Security",
+         "url": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=apnews.com&limit=25",
+         "parser": "bluesky", "actor": "apnews.com", "source_tier": "Wire / Outlet", "limit": 6},
+        {"id": "bsky-aljazeera", "name": "Al Jazeera on Bluesky", "region": "Global", "category": "Security",
+         "url": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=aljazeera.com&limit=25",
+         "parser": "bluesky", "actor": "aljazeera.com", "source_tier": "Wire / Outlet", "limit": 6},
+        {"id": "bsky-kyiv-independent", "name": "Kyiv Independent on Bluesky", "region": "Russia & Ukraine",
+         "category": "Security", "default_country": "Ukraine",
+         "url": "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=kyivindependent.com&limit=25",
+         "parser": "bluesky", "actor": "kyivindependent.com", "source_tier": "Wire / Local Outlet", "limit": 6},
+        {"id": "tg-deepstateua", "name": "DeepStateUA", "region": "Russia & Ukraine", "category": "Conflict",
+         "url": "https://t.me/s/DeepStateUA", "parser": "telegram", "channel": "DeepStateUA",
+         "default_country": "Ukraine", "source_tier": "OSINT", "limit": 8},
+        {"id": "tg-air-alert-ua", "name": "Ukrainian air-raid alerts", "region": "Russia & Ukraine",
+         "category": "Security", "url": "https://t.me/s/air_alert_ua", "parser": "telegram",
+         "channel": "air_alert_ua", "default_country": "Ukraine", "source_tier": "Official",
+         "keep_all": True, "limit": 8},
+        {"id": "tg-astra", "name": "ASTRA", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://t.me/s/astrapress", "parser": "telegram", "channel": "astrapress",
+         "default_country": "Russia", "source_tier": "Wire / Local Outlet", "limit": 8},
+        # News24 returns HTTP 403 to this datacentre. Kept so Railway can fetch it; a 403 fails quietly.
+        {"id": "news24-top", "name": "News24", "region": "Africa", "category": "Security",
+         "url": "https://feeds.news24.com/articles/news24/TopStories/rss",
+         "parser": "security-rss", "default_country": "South Africa", "source_tier": "Established national",
+         "limit": 6, "quiet_http": (403,)},
+        {"id": "news24-sa", "name": "News24 South Africa", "region": "Africa", "category": "Security",
+         "url": "https://feeds.news24.com/articles/news24/SouthAfrica/rss",
+         "parser": "security-rss", "default_country": "South Africa", "source_tier": "Established national",
+         "limit": 6, "quiet_http": (403,)},
+        {"id": "news24-politics", "name": "News24 Politics", "region": "Africa", "category": "Security",
+         "url": "https://feeds.news24.com/articles/news24/Politics/rss",
+         "parser": "security-rss", "default_country": "South Africa", "source_tier": "Established national",
+         "limit": 6, "quiet_http": (403,)},
+        # The whole english.ahram.org.eg host returns a Cloudflare 403 from this network,
+        # including /UI/Front/Rss.aspx. No other public feed URL was reachable. Kept for Railway.
+        {"id": "ahram", "name": "Ahram Online", "region": "Africa", "category": "Security",
+         "url": "https://english.ahram.org.eg/UI/Front/Rss.aspx",
+         "parser": "security-rss", "default_country": "Egypt", "source_tier": "State Media",
+         "limit": 6, "quiet_http": (403,)},
+        {"id": "imb-prc", "name": "IMB Piracy Reporting Centre", "region": "Maritime", "category": "Security",
+         "url": "https://icc-ccs.org/feed/",
+         "parser": "security-rss", "default_country": "Maritime", "source_tier": "Official", "limit": 6},
+        # Drupal site. /feed, /rss and /rss.xml are 404, and the taxonomy feed is empty.
+        # No general HTML listing scraper exists, so this stays disabled rather than a new scraper.
+        {"id": "7sur7", "name": "7sur7.cd", "region": "Africa", "category": "Security",
+         "url": "https://www.7sur7.cd/", "parser": "", "default_country": "Democratic Republic of the Congo",
+         "language": "French", "source_tier": "National outlet", "disabled": True,
+         "reason": "no RSS available"},
+        {"id": "tg-ashara", "name": "Ashara Media", "region": "Africa", "category": "Security",
+         "url": "https://t.me/s/ashara_media", "parser": "ashara", "channel": "ashara_media",
+         "default_country": "Ethiopia", "language": "am",
+         "source_tier": "partisan (pro-Fano) / Social-unverified",
+         "low_yield": True,
+         "yield_note": (
+             "Low yield. Posts are Amharic, and the gazetteer has no Amharic keywords, "
+             "so only Ethiopia, Amhara, Afar and a few towns can be placed. "
+             "Personal names are not stored."
+         ),
+         "limit": 8},
+    ]
+    return feeds
+
+
 def prepare_events(events: list[dict]) -> list[dict]:
     """Spam-filter, translate into English, and keep a coordinate on every alert."""
     try:
@@ -1563,6 +2051,12 @@ PARSERS = {
     "wa": parse_wa,
     "rss-centroid": parse_rss_centroid,
     "deepstate": parse_deepstate,
+    "germany-travel": parse_germany_travel,
+    "cdc-travel": parse_cdc_travel,
+    "copernicus": parse_copernicus,
+    "bluesky": parse_bluesky,
+    "telegram": parse_telegram_preview,
+    "ashara": parse_ashara,
 }
 
 
@@ -1610,6 +2104,8 @@ def _get(url: str, user_agent: str, read_timeout: int = READ_TIMEOUT) -> bytes:
 
 
 def _fetch_feed(feed: dict, previous: list[dict]) -> dict:
+    if feed.get("disabled"):
+        return {"ok": False, "status": "disabled", "error": str(feed.get("reason") or "disabled"), "events": []}
     if feed.get("parser") == "keyed":
         return _keyed_status(feed)
     try:
@@ -1778,8 +2274,9 @@ def features() -> list[dict]:
                     "source": event.get("source") or "",
                     "source_name": event.get("source_name") or row.get("name") or "",
                     "source_label": event.get("source_name") or row.get("name") or "",
-                    "source_tier": "Official / Primary",
-                    "verification_tier": "Official / Primary",
+                    "source_tier": event.get("source_tier") or "Official / Primary",
+                    "coord_origin": event.get("coord_origin") or "",
+                    "verification_tier": event.get("source_tier") or "Official / Primary",
                     "region": event.get("region") or row.get("region") or "Global",
                     "theatre": event.get("theatre") or event.get("region") or row.get("region") or "Global",
                     "country": event.get("country") or "",
@@ -1827,7 +2324,9 @@ def status_rows() -> list[dict]:
     for feed_id, feed in catalog.items():
         row = recorded.get(feed_id) if isinstance(recorded.get(feed_id), dict) else {}
         status = str(row.get("status") or "")
-        if status not in {"active", "offline", "standby"}:
+        if feed.get("disabled"):
+            status = "disabled"
+        elif status not in {"active", "offline", "standby"}:
             status = "standby" if feed.get("parser") == "keyed" and not _env_value(feed.get("env") or (), bool(feed.get("needs_all"))) else "unchecked"
         rows.append({
             "source_name": feed["name"],
@@ -1836,6 +2335,6 @@ def status_rows() -> list[dict]:
             "category": feed["category"],
             "status": status,
             "last_checked": row.get("checked") or "",
-            "last_error": row.get("error") or "",
+            "last_error": (feed.get("reason") or "") if feed.get("disabled") else (row.get("error") or ""),
         })
     return rows
