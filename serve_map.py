@@ -6472,6 +6472,13 @@ def start_translation_pass() -> None:
 
 
 def _api_json(payload: dict) -> bytes:
+    try:
+        import ppv
+
+        if ppv.is_sensitive(ppv.request_route()):
+            payload = ppv.restrict(payload)
+    except Exception:
+        pass
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
@@ -7851,6 +7858,24 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
     route = path.split("?", 1)[0]
     query = path.split("?", 1)[1] if "?" in path else ""
     verb = str(method or "GET").upper()
+    try:
+        import ppv
+
+        ppv.set_route(route)
+        if ppv.current() and route in {"/api/export.csv", "/api/export.geojson"} and ppv.export_blocked(query):
+            if route.endswith(".csv"):
+                return 200, "text/csv; charset=utf-8", b"title,summary\n"
+            return 200, "application/geo+json; charset=utf-8", b'{"type":"FeatureCollection","features":[]}'
+        if ppv.current() and route in {"/api/daily-chart", "/api/daily-chart.png"}:
+            if route.endswith(".png"):
+                return 200, "image/png", dark_map_png()
+            return 200, "application/json; charset=utf-8", _api_json(empty_daily_chart())
+        if ppv.current() and route.startswith("/api/country-assets/"):
+            asset_country = unquote(route[len("/api/country-assets/"):]).strip("/")
+            if not ppv.matches({"country": asset_country}, ppv.current()):
+                return 200, "application/json; charset=utf-8", _api_json({"ok": False, "message": "This pass does not include that country.", "assets": []})
+    except Exception:
+        pass
     if not route.startswith("/api/"):
         return None
     try:

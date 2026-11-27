@@ -44,6 +44,20 @@
       <pre id="triage-out" class="note" style="white-space:pre-wrap"></pre>
     </section>
     <section class="panel">
+      <h2>Test a 7-day Single-Region Pass</h2>
+      <p class="note">Preview sign-in is required. The link locks the live map to one region or country and adds a viewer watermark. Set PPV_SECRET on the server first.</p>
+      <label>Scope
+        <select id="ppv-type">
+          <option value="region">Region</option>
+          <option value="country">Country</option>
+        </select>
+      </label>
+      <label>Name <input id="ppv-scope" type="text" placeholder="UK &amp; Europe or Kenya"></label>
+      <label>Viewer <input id="ppv-viewer" type="text" placeholder="desk@example.com or pass id"></label>
+      <p><button type="button" id="ppv-issue">Issue 7-day pass</button></p>
+      <p id="ppv-result" class="note"></p>
+    </section>
+    <section class="panel">
       <h2>Live triage log</h2>
       <table><thead><tr><th>Time</th><th>Title</th><th>Country</th><th>Severity</th><th>Source</th></tr></thead><tbody id="log"></tbody></table>
     </section>
@@ -70,6 +84,26 @@
       document.getElementById("log").innerHTML = (data.triage_log || []).map((item) => "<tr><td>" + esc(item.at) + "</td><td>" + esc(item.title) + "</td><td>" + esc(item.country) + "</td><td>" + esc(item.severity) + "</td><td>" + esc(item.source) + "</td></tr>").join("") || "<tr><td colspan=\"5\">No triage yet.</td></tr>";
       document.getElementById("drawer-body").innerHTML = "<p>" + (data.configured ? "Grok is configured on the server." : "XAI_API_KEY is not set. Local drafts still work.") + "</p><p>Tokens " + ((data.tokens && data.tokens.total) || 0) + "</p>";
     }
+    document.getElementById("ppv-issue").addEventListener("click", async () => {
+      const result = document.getElementById("ppv-result");
+      result.textContent = "Issuing…";
+      const response = await fetch("/api/admin/ppv-pass", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scope_type: document.getElementById("ppv-type").value,
+          scope: document.getElementById("ppv-scope").value,
+          viewer: document.getElementById("ppv-viewer").value,
+          days: 7
+        })
+      });
+      const data = await response.json();
+      if (!data.ok) {
+        result.textContent = data.message || "The pass was not issued.";
+        return;
+      }
+      result.innerHTML = "Open this link to test the lock: <a href=\"" + esc(data.url) + "\">" + esc(data.url) + "</a>";
+    });
     document.getElementById("check").addEventListener("click", async () => {
       document.getElementById("health-note").textContent = "Checking…";
       const response = await fetch("/api/grok/health", { method: "POST" });

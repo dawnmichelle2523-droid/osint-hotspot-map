@@ -7,7 +7,6 @@ from pathlib import Path
 
 from flask import Flask, Response, abort, request, send_from_directory
 
-
 def _pin_live_database() -> None:
     """Keep the live feed database on durable storage before serve_map reads DB_PATH."""
     if (os.environ.get("DB_PATH") or "").strip():
@@ -21,11 +20,13 @@ def _pin_live_database() -> None:
 
 _pin_live_database()
 
+import ppv
 import preview_lock
 import serve_map
 
 app = Flask(__name__)
 preview_lock.install(app)
+ppv.install(app)
 
 
 def _enable_basic_auth() -> None:
@@ -44,6 +45,8 @@ def _enable_basic_auth() -> None:
 
 
 def _json(payload: dict) -> Response:
+    if ppv.is_sensitive(request.path):
+        payload = ppv.restrict(payload)
     body = serve_map.json.dumps(payload, ensure_ascii=False)
     response = Response(body, mimetype="application/json")
     response.headers["Cache-Control"] = "no-store"
@@ -140,6 +143,9 @@ def api_export_geojson() -> Response:
 
 @app.get("/api/country-assets/<path:country>")
 def api_country_assets(country: str) -> Response:
+    grant = ppv.current()
+    if grant and not ppv.matches({"country": country}, grant):
+        return _json({"ok": False, "message": "This pass does not include that country.", "assets": []})
     return _json(serve_map.country_assets_payload(country))
 
 

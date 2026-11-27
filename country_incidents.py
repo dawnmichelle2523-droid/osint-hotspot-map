@@ -127,13 +127,16 @@ def build_report(features: list[dict], country: str, area: str = "", days: int =
             continue
         props = _props(feature)
         title = " ".join(str(props.get("title") or "").split())
+        summary = " ".join(str(props.get("summary") or props.get("description") or "").split())
         if not title:
             continue
         try:
             import feed_quality
 
-            if feed_quality.is_noise(title, props.get("summary"), props.get("source")):
+            if feed_quality.is_noise(title, summary, props.get("source")):
                 continue
+            title = feed_quality.translate_text(title, live=True, ingest=True) or title
+            summary = feed_quality.translate_text(summary, live=True, ingest=True) if summary else ""
         except Exception:
             pass
         if not _matches_country(props, country_name):
@@ -153,7 +156,7 @@ def build_report(features: list[dict], country: str, area: str = "", days: int =
         lat, lng = _coords(feature, props)
         matched.append({
             "title": title[:180],
-            "summary": " ".join(str(props.get("summary") or "").split())[:320],
+            "summary": summary[:320],
             "timestamp": props.get("timestamp") or "",
             "area": props.get("area") or props.get("location_name") or props.get("governorate") or "",
             "severity": severity,
