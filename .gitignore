@@ -12,3 +12,6 @@ data_snapshot_cache.json
 country_assets_cache.json
 country_calendar_cache.json
 data/
+slack_alerts.db
+slack_alerts.db-wal
+slack_alerts.db-shm

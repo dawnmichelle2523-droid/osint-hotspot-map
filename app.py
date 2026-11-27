@@ -294,7 +294,35 @@ def static_file(filename: str) -> Response:
     return send_from_directory(serve_map.ROOT, filename)
 
 
+def _install_slack_alerts() -> None:
+    """Register Slack ops-room alerts and wake the dispatcher after each ingest batch."""
+    try:
+        import slack_alerts
+    except Exception as exc:
+        print(f"Slack alerts were not loaded: {exc.__class__.__name__}.")
+        return
+    app.register_blueprint(slack_alerts.slack_bp)
+    original = serve_map.ingest_feeds
+
+    def _ingest_with_slack_dispatch():
+        result = original()
+        try:
+            slack_alerts.notify_after_ingest()
+        except Exception as exc:
+            print(f"Slack alert hook failed: {exc.__class__.__name__}.")
+        return result
+
+    serve_map.ingest_feeds = _ingest_with_slack_dispatch
+    if (os.environ.get("DISABLE_BACKGROUND") or "").strip().lower() in {"1", "true", "yes"}:
+        return
+    try:
+        slack_alerts.start_dispatcher()
+    except Exception as exc:
+        print(f"Slack alert dispatcher did not start: {exc.__class__.__name__}.")
+
+
 _enable_basic_auth()
+_install_slack_alerts()
 if (os.environ.get("DISABLE_BACKGROUND") or "").strip().lower() not in {"1", "true", "yes"}:
     serve_map.start_background()
 import report_builder

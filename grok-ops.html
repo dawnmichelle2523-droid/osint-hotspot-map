@@ -10,12 +10,13 @@
 </head>
 <body>
   <header id="live-bar">
-    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
       <a href="/reports">Reports</a>
       <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
       <a href="/grok-ops" aria-current="page">Grok Ops</a>
+      <a href="/slack-alerts">Slack Alerts</a>
       <a href="/pricing">Pricing</a>
       <a href="/enterprise">Enterprise</a>
     </nav>
@@ -56,6 +57,13 @@
       <label>Viewer <input id="ppv-viewer" type="text" placeholder="desk@example.com or pass id"></label>
       <p><button type="button" id="ppv-issue">Issue 7-day pass</button></p>
       <p id="ppv-result" class="note"></p>
+    </section>
+    <section class="panel strip">
+      <div>
+        <h2>Live Slack alerts</h2>
+        <p class="note">Push matching incidents to an ops-room webhook. Block Kit cards use no Grok tokens. HIGH and Tsunami alerts send immediately.</p>
+      </div>
+      <a class="button" href="/slack-alerts">Open Slack alerts</a>
     </section>
     <section class="panel">
       <h2>Live triage log</h2>
