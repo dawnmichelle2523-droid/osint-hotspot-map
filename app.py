@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 
 from flask import Flask, Response, abort, request, send_from_directory
@@ -353,8 +354,51 @@ def _install_slack_alerts() -> None:
         print(f"Slack alert dispatcher did not start: {exc.__class__.__name__}.")
 
 
+def _schedule_sentinel_evaluation() -> None:
+    """Match the latest incidents to Sentinel Zones without stalling ingest."""
+
+    def _run() -> None:
+        try:
+            import sentinel_zones
+
+            incidents = sentinel_zones.load_live_incidents()
+            sentinel_zones.evaluate_incidents_for_zones(incidents)
+        except Exception as exc:
+            print(f"Sentinel zone evaluation failed: {exc.__class__.__name__}.")
+
+    try:
+        if (os.environ.get("SENTINEL_EVAL_SYNC") or "").strip().lower() in {"1", "true", "yes"}:
+            _run()
+            return
+        threading.Thread(target=_run, name="sentinel-zones", daemon=True).start()
+    except Exception as exc:
+        print(f"Sentinel zone evaluation was not scheduled: {exc.__class__.__name__}.")
+
+
+def _install_sentinel_zones() -> None:
+    """Register geofenced trip watches and evaluate them after each ingest batch."""
+    try:
+        import sentinel_zones
+    except Exception as exc:
+        print(f"Sentinel zones were not loaded: {exc.__class__.__name__}.")
+        return
+    app.register_blueprint(sentinel_zones.sentinel_bp)
+    previous = serve_map.ingest_feeds
+
+    def _ingest_with_sentinel():
+        result = previous()
+        try:
+            _schedule_sentinel_evaluation()
+        except Exception as exc:
+            print(f"Sentinel zone evaluation was not scheduled: {exc.__class__.__name__}.")
+        return result
+
+    serve_map.ingest_feeds = _ingest_with_sentinel
+
+
 _enable_basic_auth()
 _install_slack_alerts()
+_install_sentinel_zones()
 if (os.environ.get("DISABLE_BACKGROUND") or "").strip().lower() not in {"1", "true", "yes"}:
     serve_map.start_background()
 import report_builder
