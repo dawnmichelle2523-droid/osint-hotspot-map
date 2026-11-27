@@ -112,6 +112,24 @@ THEATRE_OF = {
     "yemen": "Middle East", "saudi arabia": "Middle East", "bahrain": "Middle East",
     "kuwait": "Middle East", "qatar": "Middle East", "united arab emirates": "Middle East",
     "uae": "Middle East", "oman": "Middle East", "sudan": "Middle East", "chad": "Middle East",
+    "united kingdom": "UK & Europe", "uk": "UK & Europe", "ireland": "UK & Europe",
+    "france": "UK & Europe", "germany": "UK & Europe", "italy": "UK & Europe",
+    "spain": "UK & Europe", "poland": "UK & Europe", "greece": "UK & Europe",
+    "norway": "UK & Europe", "sweden": "UK & Europe", "finland": "UK & Europe",
+    "denmark": "UK & Europe", "netherlands": "UK & Europe", "belgium": "UK & Europe",
+    "portugal": "UK & Europe", "austria": "UK & Europe", "switzerland": "UK & Europe",
+    "czechia": "UK & Europe", "hungary": "UK & Europe", "romania": "UK & Europe",
+    "turkey": "UK & Europe", "turkiye": "UK & Europe",
+    "egypt": "Africa", "libya": "Africa", "tunisia": "Africa", "algeria": "Africa",
+    "nigeria": "Africa", "kenya": "Africa", "ethiopia": "Africa", "somalia": "Africa",
+    "south africa": "Africa", "mali": "Africa", "ghana": "Africa", "senegal": "Africa",
+    "tanzania": "Africa", "uganda": "Africa", "mozambique": "Africa", "angola": "Africa",
+    "cameroon": "Africa", "niger": "Africa", "morocco": "Africa",
+    "democratic republic of the congo": "Africa", "congo": "Africa",
+    "south sudan": "Africa", "ivory coast": "Africa", "rwanda": "Africa",
+    "india": "South Asia", "pakistan": "South Asia", "bangladesh": "South Asia",
+    "nepal": "South Asia", "sri lanka": "South Asia", "maldives": "South Asia",
+    "maritime": "Maritime",
 }
 VOLCANO_POINTS = {
     "great sitkin": (52.076, -176.111), "kilauea": (19.421, -155.287), "mauna loa": (19.475, -155.608),
@@ -164,10 +182,13 @@ SA_COUNTRIES = (
 
 
 def _feeds() -> list[dict]:
-    return [
-        {"id": "gdacs", "name": "GDACS Global Disasters", "region": "Global", "category": "Disaster",
-         "url": "https://www.gdacs.org/gdacsapi/api/events/geteventlist/events4app", "parser": "gdacs",
-         "timeout": GDACS_TIMEOUT},
+    feeds = [
+        {"id": "eonet", "name": "NASA EONET Natural Events", "region": "Global", "category": "Natural Disaster",
+         "url": "https://eonet.gsfc.nasa.gov/api/v3/events/geojson?status=open&limit=100", "parser": "geojson"},
+        {"id": "gdacs-rss", "name": "GDACS 24h Disasters", "region": "Global", "category": "Disaster",
+         "url": "https://www.gdacs.org/xml/rss_24h.xml", "parser": "gdacs-rss", "timeout": 12},
+        {"id": "ifrc", "name": "IFRC GO Events", "region": "Global", "category": "Disaster",
+         "url": "https://goadmin.ifrc.org/api/v2/event/?limit=50&ordering=-disaster_start_date", "parser": "ifrc"},
         {"id": "usgs-quakes", "name": "USGS Earthquakes M4.5+", "region": "Global", "category": "Seismic",
          "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson", "parser": "usgs"},
         {"id": "uk-fcdo-atom", "name": "UK FCDO Travel Advice", "region": "Global", "category": "Travel Advisory",
@@ -182,14 +203,39 @@ def _feeds() -> list[dict]:
          "url": "https://api.weather.gov/alerts/active?severity=Extreme,Severe", "parser": "nws", "user_agent": NWS_USER_AGENT},
         {"id": "usgs-volcanoes", "name": "USGS Elevated Volcanoes", "region": "United States", "category": "Volcano",
          "url": "https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes", "parser": "volcano"},
-        {"id": "tsunami", "name": "NWS Tsunami Warning Center", "region": "United States", "category": "Tsunami",
+        {"id": "tsunami-ntwc", "name": "NTWC Pacific Tsunami Atom", "region": "United States", "category": "Tsunami",
          "url": "https://www.tsunami.gov/events/xml/PAAQAtom.xml", "parser": "atom-point"},
+        {"id": "tsunami-ptwc", "name": "PTWC Pacific Tsunami Atom", "region": "United States", "category": "Tsunami",
+         "url": "https://www.tsunami.gov/events/xml/PHEBAtom.xml", "parser": "atom-point"},
+        {"id": "tsunami-ntwc-cap", "name": "NTWC Tsunami CAP", "region": "United States", "category": "Tsunami",
+         "url": "https://www.tsunami.gov/events/xml/PAAQCAP.xml", "parser": "cap"},
+        {"id": "tsunami-ptwc-cap", "name": "PTWC Tsunami CAP", "region": "United States", "category": "Tsunami",
+         "url": "https://www.tsunami.gov/events/xml/PHEBCAP.xml", "parser": "cap"},
+        {"id": "nws-tsunami", "name": "NWS Tsunami Warnings", "region": "United States", "category": "Tsunami",
+         "url": "https://api.weather.gov/alerts/active?event=Tsunami%20Warning,Tsunami%20Advisory,Tsunami%20Watch",
+         "parser": "nws", "user_agent": NWS_USER_AGENT},
         {"id": "nhc", "name": "NHC Atlantic Tropical Cyclones", "region": "United States", "category": "Cyclone",
-         "url": "https://www.nhc.noaa.gov/index-at.xml", "parser": "nhc"},
+         "url": "https://www.nhc.noaa.gov/index-at.xml", "parser": "nhc", "anchor": (25.0, -70.0)},
+        {"id": "nhc-ep", "name": "NHC Eastern Pacific Cyclones", "region": "United States", "category": "Cyclone",
+         "url": "https://www.nhc.noaa.gov/index-ep.xml", "parser": "nhc", "anchor": (15.0, -120.0)},
+        {"id": "nhc-cp", "name": "NHC Central Pacific Cyclones", "region": "United States", "category": "Cyclone",
+         "url": "https://www.nhc.noaa.gov/index-cp.xml", "parser": "nhc", "anchor": (20.0, -157.0)},
+        {"id": "jtwc", "name": "JTWC Tropical Cyclones", "region": "Global", "category": "Cyclone",
+         "url": "https://www.metoc.navy.mil/jtwc/rss/jtwc.rss", "parser": "nhc", "anchor": (15.0, 140.0)},
+        {"id": "swpc", "name": "NOAA SWPC Space Weather", "region": "United States", "category": "Weather",
+         "url": "https://services.swpc.noaa.gov/products/alerts.json", "parser": "swpc"},
         {"id": "faa", "name": "FAA Airport Disruptions", "region": "United States", "category": "Aviation",
          "url": "https://nasstatus.faa.gov/api/airport-events", "parser": "faa"},
-        {"id": "cisa", "name": "CISA Cybersecurity Advisories", "region": "Global", "category": "Cyber",
-         "url": "https://www.cisa.gov/cybersecurity-advisories/alerts.xml", "parser": "cisa"},
+        {"id": "cisa-kev", "name": "CISA Known Exploited Vulnerabilities", "region": "Global", "category": "Cyber",
+         "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json", "parser": "kev"},
+        {"id": "cisa-news", "name": "CISA News", "region": "Global", "category": "Cyber",
+         "url": "https://www.cisa.gov/news.xml", "parser": "placed-rss", "default_country": "United States", "limit": 8},
+        {"id": "ncsc-news", "name": "UK NCSC News", "region": "UK & Europe", "category": "Cyber",
+         "url": "https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml", "parser": "placed-rss",
+         "default_country": "United Kingdom", "limit": 8},
+        {"id": "cert-eu", "name": "CERT-EU Advisories", "region": "UK & Europe", "category": "Cyber",
+         "url": "https://cert.europa.eu/publications/security-advisories-rss", "parser": "placed-rss",
+         "default_country": "Belgium", "limit": 8},
         {"id": "eccc", "name": "ECCC Weather Alerts", "region": "Canada", "category": "Weather",
          "url": "https://api.weather.gc.ca/collections/weather-alerts/items?f=json&limit=25", "parser": "geojson"},
         {"id": "alert-ready", "name": "Alert Ready Canada", "region": "Canada", "category": "Weather",
@@ -204,14 +250,78 @@ def _feeds() -> list[dict]:
          "url": "https://www.jma.go.jp/bosai/typhoon/data/targetTc.json", "parser": "jma-typhoon"},
         {"id": "nsw-rfs", "name": "NSW Rural Fire Service", "region": "Australia", "category": "Disaster",
          "url": "https://www.rfs.nsw.gov.au/feeds/majorIncidents.json", "parser": "geojson"},
-        {"id": "emergency-wa", "name": "Emergency WA Incidents", "region": "Australia", "category": "Disaster",
-         "url": "https://www.emergency.wa.gov.au/data/incident_FCAD.json", "parser": "wa"},
+        {"id": "vic-emergency", "name": "VicEmergency Incidents", "region": "Australia", "category": "Disaster",
+         "url": "https://emergency.vic.gov.au/public/osom-geojson.json", "parser": "geojson", "default_country": "Australia"},
+        {"id": "qld-bushfire", "name": "Queensland Bushfire Alerts", "region": "Australia", "category": "Disaster",
+         "url": "https://publiccontent-gis-psba-qld-gov-au.s3.amazonaws.com/content/Feeds/BushfireCurrentIncidents/bushfireAlert.json",
+         "parser": "geojson", "default_country": "Australia"},
         {"id": "amu", "name": "Amu TV", "region": "Afghanistan", "category": "Security",
          "url": "https://amu.tv/feed/", "parser": "rss-centroid"},
         {"id": "afintl", "name": "Afghanistan International", "region": "Afghanistan", "category": "Security",
          "url": "https://afintl.com/feed", "parser": "rss-centroid"},
         {"id": "deepstate", "name": "DeepStateMap Snapshot", "region": "Russia & Ukraine", "category": "Conflict",
          "url": "https://deepstatemap.live/api/history/last", "parser": "deepstate"},
+        {"id": "uk-floods", "name": "UK Flood Warnings", "region": "UK & Europe", "category": "Weather",
+         "url": "https://environment.data.gov.uk/flood-monitoring/id/floods?min-severity=3", "parser": "floods"},
+        {"id": "bbc-uk", "name": "BBC News UK", "region": "UK & Europe", "category": "Security",
+         "url": "https://feeds.bbci.co.uk/news/uk/rss.xml", "parser": "placed-rss", "default_country": "United Kingdom", "limit": 8},
+        {"id": "ncsc-advisories", "name": "UK NCSC Advisories", "region": "UK & Europe", "category": "Cyber",
+         "url": "https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml", "parser": "placed-rss",
+         "default_country": "United Kingdom", "limit": 8},
+        {"id": "emsc", "name": "EMSC Earthquakes", "region": "UK & Europe", "category": "Seismic",
+         "url": "https://www.seismicportal.eu/fdsnws/event/1/query?limit=50&format=json&orderby=time", "parser": "emsc"},
+        {"id": "met-norway", "name": "MET Norway Alerts", "region": "UK & Europe", "category": "Weather",
+         "url": "https://api.met.no/weatherapi/metalerts/2.0/current.json", "parser": "geojson",
+         "default_country": "Norway", "user_agent": "GeoRiskIntel/1.0 (osint-hotspot-map; public weather ingest)"},
+        {"id": "bbc-europe", "name": "BBC News Europe", "region": "UK & Europe", "category": "Security",
+         "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml", "parser": "placed-rss", "limit": 8},
+        {"id": "balkan", "name": "Balkan Insight", "region": "UK & Europe", "category": "Security",
+         "url": "https://balkaninsight.com/feed/", "parser": "placed-rss", "limit": 8},
+        {"id": "ecdc", "name": "ECDC Threat Reports", "region": "UK & Europe", "category": "Health",
+         "url": "https://www.ecdc.europa.eu/en/taxonomy/term/1505/feed", "parser": "placed-rss",
+         "default_country": "Sweden", "limit": 8},
+        {"id": "allafrica", "name": "AllAfrica Conflict", "region": "Africa", "category": "Conflict",
+         "url": "https://allafrica.com/tools/headlines/rdf/conflict/headlines.rdf", "parser": "placed-rss", "limit": 8},
+        {"id": "dabanga", "name": "Radio Dabanga", "region": "Africa", "category": "Conflict",
+         "url": "https://www.dabangasudan.org/feed", "parser": "placed-rss", "default_country": "Sudan", "limit": 8},
+        {"id": "tamazuj", "name": "Radio Tamazuj", "region": "Africa", "category": "Conflict",
+         "url": "https://www.radiotamazuj.org/en/feed", "parser": "placed-rss", "default_country": "South Sudan", "limit": 8},
+        {"id": "bbc-africa", "name": "BBC News Africa", "region": "Africa", "category": "Security",
+         "url": "https://feeds.bbci.co.uk/news/world/africa/rss.xml", "parser": "placed-rss", "limit": 8},
+        {"id": "africa-cdc", "name": "Africa CDC", "region": "Africa", "category": "Health",
+         "url": "https://africacdc.org/news-item/feed/", "parser": "placed-rss", "default_country": "Ethiopia", "limit": 8},
+        {"id": "sachet", "name": "India NDMA SACHET", "region": "South Asia", "category": "Disaster",
+         "url": "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml", "parser": "placed-rss",
+         "default_country": "India", "limit": 10},
+        {"id": "dawn", "name": "Dawn Pakistan", "region": "South Asia", "category": "Security",
+         "url": "https://www.dawn.com/feeds/home", "parser": "placed-rss", "default_country": "Pakistan", "limit": 8},
+        {"id": "hindu", "name": "The Hindu National", "region": "South Asia", "category": "Security",
+         "url": "https://www.thehindu.com/news/national/feeder/default.rss", "parser": "placed-rss", "default_country": "India", "limit": 8},
+        {"id": "dhaka", "name": "Dhaka Tribune", "region": "South Asia", "category": "Security",
+         "url": "https://www.dhakatribune.com/feed/", "parser": "placed-rss", "default_country": "Bangladesh", "limit": 8},
+        {"id": "kathmandu", "name": "Kathmandu Post", "region": "South Asia", "category": "Security",
+         "url": "https://kathmandupost.com/rss", "parser": "placed-rss", "default_country": "Nepal", "limit": 8},
+        {"id": "cmf", "name": "Combined Maritime Forces", "region": "Maritime", "category": "Security",
+         "url": "https://combinedmaritimeforces.com/feed/", "parser": "placed-rss", "default_country": "Maritime", "limit": 8},
+        {"id": "gvp", "name": "Smithsonian Weekly Volcanoes", "region": "Global", "category": "Volcano",
+         "url": "https://volcano.si.edu/news/WeeklyVolcanoRSS.xml", "parser": "placed-rss", "limit": 8},
+        {"id": "who-don", "name": "WHO Disease Outbreak News", "region": "Global", "category": "Health",
+         "url": "https://www.who.int/api/news/diseaseoutbreaknews?$orderby=PublicationDateAndTime%20desc&$top=20", "parser": "who"},
+        {"id": "gdelt", "name": "GDELT Security Incidents", "region": "Global", "category": "Security",
+         "url": "https://api.gdeltproject.org/api/v2/geo/geo?query=(attack%20OR%20explosion%20OR%20protest%20OR%20unrest%20OR%20kidnapping%20OR%20shooting%20OR%20airstrike%20OR%20security%20OR%20evacuation)&mode=PointData&format=GeoJSON&timespan=24h&maxpoints=150",
+         "parser": "gdelt", "timeout": 12},
+        {"id": "wire-bbc", "name": "BBC World Security", "region": "Global", "category": "Security",
+         "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "parser": "security-rss"},
+        {"id": "wire-aj", "name": "Al Jazeera Security", "region": "Global", "category": "Security",
+         "url": "https://www.aljazeera.com/xml/rss/all.xml", "parser": "security-rss"},
+        {"id": "wire-f24", "name": "France 24 Security", "region": "Global", "category": "Security",
+         "url": "https://www.france24.com/en/rss", "parser": "security-rss"},
+        {"id": "wire-dw", "name": "DW World Security", "region": "Global", "category": "Security",
+         "url": "https://rss.dw.com/xml/rss-en-world", "parser": "security-rss"},
+        {"id": "wire-guardian", "name": "Guardian World Security", "region": "Global", "category": "Security",
+         "url": "https://www.theguardian.com/world/rss", "parser": "security-rss"},
+        {"id": "wire-icg", "name": "International Crisis Group", "region": "Global", "category": "Conflict",
+         "url": "https://www.crisisgroup.org/rss.xml", "parser": "security-rss"},
         {"id": "cloudflare", "name": "Cloudflare Radar", "region": "Global", "category": "Cyber",
          "parser": "keyed", "env": ("CLOUDFLARE_RADAR_TOKEN", "CF_API_TOKEN")},
         {"id": "ioda", "name": "IODA Internet Outages", "region": "Global", "category": "Cyber",
@@ -221,6 +331,63 @@ def _feeds() -> list[dict]:
         {"id": "acled", "name": "ACLED", "region": "Global", "category": "Conflict",
          "parser": "keyed", "env": ("ACLED_API_KEY", "ACLED_EMAIL"), "needs_all": True},
     ]
+    for slug, country in (
+        ("united-kingdom", "United Kingdom"),
+        ("germany", "Germany"),
+        ("france", "France"),
+        ("spain", "Spain"),
+        ("italy", "Italy"),
+        ("poland", "Poland"),
+        ("greece", "Greece"),
+    ):
+        feeds.append({
+            "id": "meteoalarm-" + slug,
+            "name": "MeteoAlarm " + country,
+            "region": "UK & Europe",
+            "category": "Weather",
+            "url": "https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-" + slug,
+            "parser": "placed-rss",
+            "default_country": country,
+            "limit": 8,
+        })
+    for slug, label in (
+        ("wildfires", "Wildfires"),
+        ("severeStorms", "Severe Storms"),
+        ("floods", "Floods"),
+        ("landslides", "Landslides"),
+        ("volcanoes", "Volcanoes"),
+        ("seaLakeIce", "Sea and Lake Ice"),
+        ("dustHaze", "Dust and Haze"),
+    ):
+        feeds.append({
+            "id": "eonet-" + slug.lower(),
+            "name": "NASA EONET " + label,
+            "region": "Global",
+            "category": "Natural Disaster",
+            "url": "https://eonet.gsfc.nasa.gov/api/v3/events/geojson?category=" + slug + "&status=open&limit=40",
+            "parser": "geojson",
+        })
+    feeds.append({
+        "id": "wfigs",
+        "name": "NIFC Current Wildfires",
+        "region": "United States",
+        "category": "Natural Disaster",
+        "url": "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query?where=1%3D1&outFields=IncidentName,POOState,IncidentTypeCategory&returnGeometry=true&f=geojson&resultRecordCount=25",
+        "parser": "geojson",
+        "default_country": "United States",
+    })
+    feeds.append({
+        "id": "inciweb",
+        "name": "InciWeb Wildfires",
+        "region": "United States",
+        "category": "Natural Disaster",
+        "url": "https://inciweb.wildfire.gov/incidents/rss.xml",
+        "parser": "placed-rss",
+        "default_country": "United States",
+        "limit": 8,
+        "timeout": 12,
+    })
+    return feeds
 
 
 def _now() -> str:
@@ -292,7 +459,7 @@ def _jitter(lat: float, lng: float, key: str) -> tuple[float, float]:
 
 
 def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra) -> dict:
-    country = _clip(extra.get("country") or "", 80)
+    country = _clip(extra.get("country") or feed.get("default_country") or "", 80)
     theatre = extra.get("theatre") or _theatre(country, feed["region"])
     severity = extra.get("severity") or "medium"
     if severity not in {"low", "medium", "high"}:
@@ -364,12 +531,16 @@ def _geojson_events(feed: dict, payload, category_hint: str = "") -> list[dict]:
             point = _pair(props.get("latitude") or props.get("lat"), props.get("longitude") or props.get("lon") or props.get("lng"))
         if point is None:
             continue
-        title = props.get("title") or props.get("headline") or props.get("event") or props.get("name") or props.get("alert") or feed["name"]
-        summary = props.get("description") or props.get("summary") or props.get("areaDesc") or title
+        title = (
+            props.get("title") or props.get("headline") or props.get("event") or props.get("name")
+            or props.get("IncidentName") or props.get("alert") or feed["name"]
+        )
+        summary = props.get("description") or props.get("summary") or props.get("areaDesc") or props.get("instruction") or title
         severity = "high" if str(props.get("severity") or "").lower() in {"extreme", "severe", "red"} else "medium"
+        country = props.get("country") or feed.get("default_country") or _nearest_country(point[0], point[1])
         found.append(_event(
             feed, str(title), _strip(summary), point[0], point[1],
-            country=props.get("country") or props.get("areaDesc") or "",
+            country=country,
             severity=severity,
             timestamp=props.get("sent") or props.get("updated") or props.get("effective") or props.get("time"),
             source=props.get("url") or props.get("link") or props.get("@id") or feed.get("url"),
@@ -717,10 +888,13 @@ def parse_atom_point(feed: dict, content: bytes) -> list[dict]:
                 point = _jitter(point[0], point[1], title)
         if point is None:
             continue
+        if feed.get("category") == "Tsunami" and "tsunami" not in (title or "").lower():
+            title = "Tsunami alert: " + (title or feed["name"])
+        severity = "high" if feed.get("category") != "Tsunami" or "warning" in lowered else "medium"
         found.append(_event(
             feed, title or feed["name"], summary or title, point[0], point[1],
             country=feed["region"] if feed["region"] != "Global" else "",
-            severity="high", timestamp=entry.get("updated") or entry.get("published"),
+            severity=severity, timestamp=entry.get("updated") or entry.get("published"),
             source=entry.get("link") or feed["url"], id=entry.get("id") or title,
         ))
     return found
@@ -737,10 +911,12 @@ def parse_nhc(feed: dict, content: bytes) -> list[dict]:
             continue
         if not any(word in lowered for word in ("hurricane", "tropical", "storm", "cyclone", "depression")):
             continue
-        point = _coord_in_text(blob) or _jitter(25.0, -70.0, title)
+        anchor = feed.get("anchor") or (25.0, -70.0)
+        point = _coord_in_text(blob) or _jitter(anchor[0], anchor[1], title)
         found.append(_event(
-            feed, title or "Atlantic tropical cyclone", summary or title, point[0], point[1],
-            country="United States", theatre="United States", severity="high",
+            feed, title or "Tropical cyclone", summary or title, point[0], point[1],
+            country="United States" if feed.get("region") == "United States" else _nearest_country(point[0], point[1]),
+            theatre=feed.get("region") or "United States", severity="high",
             timestamp=entry.get("published") or entry.get("updated"),
             source=entry.get("link") or feed["url"], id=entry.get("id") or title,
         ))
@@ -993,8 +1169,381 @@ def parse_deepstate(feed: dict, content: bytes) -> list[dict]:
     )]
 
 
+SECURITY_RE = re.compile(
+    r"\b(attack|attacks|explosion|explode|protest|unrest|kidnapping|kidnap|shooting|"
+    r"airstrike|air strike|security|evacuation|blast|bomb|missile|clash|militant|"
+    r"terror|hostage|coup|riot|shelling|drone|armed|flood|earthquake|cyclone|wildfire|"
+    r"warning|alert|fighting|violence|killed|war|conflict|crisis|ceasefire|troops|bombing)\b",
+    re.IGNORECASE,
+)
+JSON_PARSERS = {"gdacs", "wa", "geojson", "usgs", "nws", "ifrc", "kev", "floods", "emsc", "swpc", "who", "gdelt"}
+_SKIP_NEAREST = {"usa", "uae", "turkiye", "burma"}
+
+
+def _nearest_country(lat: float, lng: float) -> str:
+    best_key = ""
+    best_distance = 10**9
+    for key, point in CENTROIDS.items():
+        if key in _SKIP_NEAREST:
+            continue
+        distance = (lat - point[0]) ** 2 + (lng - point[1]) ** 2
+        if distance < best_distance:
+            best_distance = distance
+            best_key = key
+    if not best_key or best_distance > 500:
+        return ""
+    try:
+        import feed_quality
+
+        row = feed_quality.COUNTRIES.get(best_key)
+        if row:
+            return row[2]
+    except Exception:
+        pass
+    return " ".join(part.capitalize() for part in best_key.split())
+
+
+def _place_event(feed: dict, title: str, summary: str, country: str = "", **extra) -> dict | None:
+    try:
+        import feed_quality
+
+        geo = feed_quality.geolocate(title, summary, country or feed.get("default_country") or "", salt=extra.get("id") or title)
+    except Exception:
+        geo = {"lat": None, "lng": None, "country": country}
+    if geo.get("lat") is None:
+        return None
+    return _event(
+        feed, title, summary or title, geo["lat"], geo["lng"],
+        country=geo.get("country") or country or feed.get("default_country") or "",
+        severity=extra.get("severity") or "medium",
+        timestamp=extra.get("timestamp"),
+        source=extra.get("source") or feed.get("url"),
+        id=extra.get("id") or title,
+    )
+
+
+def parse_cap(feed: dict, content: bytes) -> list[dict]:
+    """One CAP 1.2 alert, including tsunami warning-center messages."""
+    text = content.decode("utf-8", "replace")
+    lowered = text.lower()
+    if any(phrase in lowered for phrase in ("no tsunami", "there is no tsunami", "no warning")):
+        return []
+
+    def _tag(name: str) -> str:
+        match = re.search(rf"<{name}[^>]*>(.*?)</{name}>", text, re.I | re.S)
+        return _strip(match.group(1) if match else "")
+
+    event = _tag("event") or _tag("headline") or feed["name"]
+    summary = _tag("description") or _tag("headline") or _tag("areaDesc") or event
+    if feed.get("category") == "Tsunami" and "tsunami" not in event.lower():
+        event = "Tsunami alert: " + event
+    point = None
+    circle = re.search(r"<circle>\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)", text, re.I)
+    if circle:
+        point = _pair(circle.group(1), circle.group(2))
+    if point is None:
+        polygon = re.search(r"<polygon>\s*([^<]+)</polygon>", text, re.I)
+        if polygon:
+            pair = re.search(r"(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)", polygon.group(1))
+            if pair:
+                point = _pair(pair.group(1), pair.group(2))
+    if point is None:
+        point = _coord_in_text(summary) or _jitter(*(_centroid_name("united states") or (39.8, -98.6)), event)
+    severity = "high" if "warning" in lowered else "medium"
+    return [_event(
+        feed, event, summary, point[0], point[1],
+        country=_nearest_country(point[0], point[1]) or "United States",
+        severity=severity, timestamp=_tag("sent"),
+        source=feed.get("url"), id=_tag("identifier") or event,
+    )]
+
+
+def parse_gdacs_rss(feed: dict, content: bytes) -> list[dict]:
+    found = []
+    for entry in _entries(content)[:20]:
+        title = _strip(entry.get("title")) or "GDACS alert"
+        summary = _strip(entry.get("summary") or entry.get("description") or "")
+        blob = title + " " + summary
+        lowered = blob.lower()
+        if "green alert" in lowered or "green earthquake" in lowered:
+            continue
+        point = None
+        raw = entry.get("georss_point") or entry.get("where")
+        if isinstance(raw, str):
+            parts = raw.split()
+            if len(parts) >= 2:
+                point = _pair(parts[0], parts[1])
+        if point is None:
+            point = _coord_in_text(blob)
+        if point is None:
+            continue
+        severity = "high" if "red" in lowered else "medium"
+        found.append(_event(
+            feed, title, summary or title, point[0], point[1],
+            country=_nearest_country(point[0], point[1]), severity=severity,
+            timestamp=entry.get("updated") or entry.get("published"),
+            source=entry.get("link") or feed["url"], id=entry.get("id") or title,
+        ))
+    return found
+
+
+def parse_ifrc(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    rows = payload.get("results") if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+    found = []
+    for item in rows or []:
+        if not isinstance(item, dict) or len(found) >= 20:
+            break
+        countries = item.get("countries") or []
+        country = ""
+        if isinstance(countries, list) and countries and isinstance(countries[0], dict):
+            country = str(countries[0].get("name") or countries[0].get("society_name") or "")
+        country = country or str(item.get("country") or "")
+        dtype = item.get("dtype") or {}
+        kind = dtype.get("name") if isinstance(dtype, dict) else str(dtype or "")
+        title = _strip(item.get("name") or kind or "IFRC event")
+        summary = _strip(item.get("summary") or item.get("description") or kind or title)
+        point = _pair(item.get("lat") or item.get("latitude"), item.get("lon") or item.get("lng") or item.get("longitude"))
+        if point is None:
+            placed = _place_event(feed, title, summary, country, timestamp=item.get("disaster_start_date"), source=item.get("url") or feed["url"], id=str(item.get("id") or title))
+            if placed:
+                found.append(placed)
+            continue
+        found.append(_event(
+            feed, title, summary, point[0], point[1], country=country,
+            severity="high" if str(kind).lower() in {"earthquake", "cyclone", "flood"} else "medium",
+            timestamp=item.get("disaster_start_date") or item.get("created_at"),
+            source=item.get("url") or feed["url"], id=str(item.get("id") or title),
+        ))
+    return found
+
+
+def parse_kev(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    rows = payload.get("vulnerabilities") if isinstance(payload, dict) else []
+    if not isinstance(rows, list):
+        return []
+    rows = sorted(rows, key=lambda item: str(item.get("dateAdded") or ""), reverse=True)[:15]
+    base = CENTROIDS["united states"]
+    found = []
+    for index, item in enumerate(rows):
+        if not isinstance(item, dict):
+            continue
+        cve = str(item.get("cveID") or "CVE")
+        name = _strip(item.get("vulnerabilityName") or item.get("product") or "Exploited vulnerability")
+        title = f"{cve}: {name}"
+        summary = _strip(item.get("shortDescription") or item.get("notes") or title)
+        lat, lng = _jitter(base[0], base[1], cve + str(index))
+        ransomware = str(item.get("knownRansomwareCampaignUse") or "").lower() == "known"
+        found.append(_event(
+            feed, title, summary, lat, lng, country="United States", theatre="Global",
+            severity="high" if ransomware else "medium",
+            timestamp=item.get("dateAdded"), source="https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+            id=cve,
+        ))
+    return found
+
+
+def parse_uk_floods(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    items = payload.get("items") if isinstance(payload, dict) else []
+    found = []
+    for item in items or []:
+        if not isinstance(item, dict) or len(found) >= 20:
+            break
+        area = item.get("floodArea") if isinstance(item.get("floodArea"), dict) else {}
+        point = _pair(area.get("lat"), area.get("long") or area.get("lon"))
+        county = str(area.get("county") or item.get("eaAreaName") or "")
+        summary = _strip(item.get("message") or item.get("description") or "")
+        title = _strip(item.get("severity") or "Flood warning")
+        if county:
+            title = f"{title}: {county}"
+        if point is None:
+            placed = _place_event(
+                feed, title, f"{county} {summary}", "United Kingdom",
+                severity="high" if str(item.get("severityLevel")) in {"1", "2"} else "medium",
+                timestamp=item.get("timeMessageChanged") or item.get("timeRaised"),
+                source=item.get("@id") or feed["url"], id=str(item.get("floodAreaID") or title),
+            )
+            if placed:
+                found.append(placed)
+            continue
+        found.append(_event(
+            feed, title, summary or title, point[0], point[1], country="United Kingdom",
+            severity="high" if str(item.get("severityLevel")) in {"1", "2"} else "medium",
+            timestamp=item.get("timeMessageChanged") or item.get("timeRaised"),
+            source=item.get("@id") or feed["url"], id=str(item.get("floodAreaID") or title),
+        ))
+    return found
+
+
+def parse_emsc(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    found = []
+    for feature in (payload.get("features") or [])[:25]:
+        props = feature.get("properties") or {}
+        coords = (feature.get("geometry") or {}).get("coordinates") or []
+        if len(coords) < 2:
+            continue
+        point = _pair(coords[1], coords[0])
+        if point is None:
+            continue
+        mag = _float(props.get("mag")) or 0
+        place = str(props.get("flynn_region") or props.get("place") or "Earthquake")
+        country = place.split(",")[-1].strip() if "," in place else _nearest_country(point[0], point[1])
+        title = props.get("title") or f"M{mag:.1f} {place}"
+        severity = "high" if mag >= 6 else "medium" if mag >= 5 else "low"
+        found.append(_event(
+            feed, str(title), place, point[0], point[1], country=country, severity=severity,
+            timestamp=props.get("time"), source=props.get("url") or feed["url"],
+            id=str(feature.get("id") or props.get("unid") or title),
+        ))
+    return found
+
+
+def parse_swpc(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    rows = payload if isinstance(payload, list) else payload.get("alerts") or []
+    found = []
+    for index, item in enumerate(rows[:8]):
+        if not isinstance(item, dict):
+            continue
+        message = _strip(item.get("message") or item.get("product_id") or "Space weather alert")
+        title = _strip(item.get("product_id") or "Space weather alert")
+        lat, lng = _jitter(40.015, -105.2705, title + str(index))
+        severity = "high" if "warning" in message.lower() else "medium"
+        found.append(_event(
+            feed, title, message, lat, lng, country="United States", theatre="United States",
+            severity=severity, timestamp=item.get("issue_datetime"),
+            source="https://www.swpc.noaa.gov/", id=str(item.get("issue_datetime") or title) + str(index),
+        ))
+    return found
+
+
+def parse_who(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    rows = []
+    if isinstance(payload, dict):
+        rows = payload.get("value") or (payload.get("d") or {}).get("results") or payload.get("results") or []
+    elif isinstance(payload, list):
+        rows = payload
+    found = []
+    for item in rows:
+        if not isinstance(item, dict) or len(found) >= 12:
+            break
+        title = _strip(item.get("Title") or item.get("title") or item.get("Name") or "Disease outbreak")
+        summary = _strip(item.get("Overview") or item.get("Summary") or item.get("summary") or title)
+        placed = _place_event(
+            feed, title, summary, "",
+            timestamp=item.get("PublicationDateAndTime") or item.get("DatePublished") or "",
+            source=item.get("Url") or item.get("ItemDefaultUrl") or feed["url"],
+            id=str(item.get("Id") or item.get("id") or title),
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
+def parse_gdelt(feed: dict, content: bytes) -> list[dict]:
+    payload = _loads(content)
+    features = payload.get("features") if isinstance(payload, dict) else []
+    if not isinstance(features, list):
+        raise FeedError("GDELT returned no points")
+    found = []
+    per_country: dict[str, int] = {}
+    for feature in features:
+        if len(found) >= 80 or not isinstance(feature, dict):
+            break
+        point = _ring_point(feature.get("geometry") or {})
+        if point is None:
+            continue
+        props = feature.get("properties") or {}
+        html = str(props.get("html") or "")
+        snippets = re.findall(r">([^<]{12,180})<", html)
+        headline = _strip(snippets[-1] if snippets else "")
+        place = _strip(props.get("name") or "")
+        title = headline or place or "Security incident"
+        summary = _strip(place + " " + headline) or title
+        country = _nearest_country(point[0], point[1])
+        if per_country.get(country, 0) >= 3:
+            continue
+        per_country[country] = per_country.get(country, 0) + 1
+        lowered = (title + " " + summary).lower()
+        severity = "high" if any(word in lowered for word in ("attack", "explosion", "airstrike", "shooting", "kidnap")) else "medium"
+        found.append(_event(
+            feed, title, summary, point[0], point[1], country=country, severity=severity,
+            timestamp=_now(), source=feed["url"], id=f"{point[0]},{point[1]}:{title[:80]}",
+        ))
+    return found
+
+
+def parse_placed_rss(feed: dict, content: bytes) -> list[dict]:
+    limit = int(feed.get("limit") or 8)
+    found = []
+    for entry in _entries(content)[: limit + 4]:
+        if len(found) >= limit:
+            break
+        title = _strip(entry.get("title")) or feed["name"]
+        summary = _strip(entry.get("summary") or entry.get("description") or "")
+        placed = _place_event(
+            feed, title, summary, feed.get("default_country") or "",
+            timestamp=entry.get("published") or entry.get("updated"),
+            source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
+def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
+    limit = int(feed.get("limit") or 8)
+    found = []
+    for entry in _entries(content)[:24]:
+        if len(found) >= limit:
+            break
+        title = _strip(entry.get("title")) or ""
+        summary = _strip(entry.get("summary") or entry.get("description") or "")
+        if not SECURITY_RE.search(title + " " + summary):
+            continue
+        placed = _place_event(
+            feed, title, summary, feed.get("default_country") or "",
+            severity="high" if SECURITY_RE.search(title) else "medium",
+            timestamp=entry.get("published") or entry.get("updated"),
+            source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
+def prepare_events(events: list[dict]) -> list[dict]:
+    """Spam-filter, translate into English, and keep a coordinate on every alert."""
+    try:
+        import feed_quality
+
+        cleaned = []
+        for event in events:
+            item = feed_quality.enrich_event(event, live_translation=True, ingest=True)
+            if item is not None and item.get("lat") is not None:
+                cleaned.append(item)
+        return feed_quality.dedupe(cleaned)
+    except Exception:
+        return [event for event in events if isinstance(event, dict) and event.get("lat") is not None]
+
+
 PARSERS = {
     "gdacs": parse_gdacs,
+    "gdacs-rss": parse_gdacs_rss,
+    "cap": parse_cap,
+    "ifrc": parse_ifrc,
+    "kev": parse_kev,
+    "floods": parse_uk_floods,
+    "emsc": parse_emsc,
+    "swpc": parse_swpc,
+    "who": parse_who,
+    "gdelt": parse_gdelt,
+    "placed-rss": parse_placed_rss,
+    "security-rss": parse_security_rss,
     "usgs": parse_usgs,
     "uk-atom": parse_uk_atom,
     "us-advisory": parse_us_advisory,
@@ -1065,23 +1614,12 @@ def _fetch_feed(feed: dict, previous: list[dict]) -> dict:
         return _keyed_status(feed)
     try:
         content = _get(feed["url"], feed.get("user_agent") or USER_AGENT, int(feed.get("timeout") or READ_TIMEOUT))
-        if feed["parser"] in {"gdacs", "wa", "geojson", "usgs", "nws"} and content.lstrip().startswith(b"<"):
+        if feed["parser"] in JSON_PARSERS and content.lstrip().startswith(b"<"):
             raise FeedError("Source returned a web page instead of feed data")
-        events = PARSERS[feed["parser"]](feed, content)
-        try:
-            import feed_quality
-
-            cleaned = []
-            for event in events:
-                item = feed_quality.enrich_event(event, live_translation=True)
-                if item is not None and item.get("lat") is not None:
-                    cleaned.append(item)
-            events = feed_quality.dedupe(cleaned)
-        except Exception:
-            events = [event for event in events if event.get("lat") is not None]
+        events = prepare_events(PARSERS[feed["parser"]](feed, content))
         if feed.get("id") == "uk-fcdo-atom":
             seen = {str(item.get("id")) for item in events}
-            for extra in _uk_watched(feed):
+            for extra in prepare_events(_uk_watched(feed)):
                 if str(extra.get("id")) not in seen:
                     events.append(extra)
         return {"ok": True, "status": "active", "error": "", "events": events}
@@ -1165,6 +1703,8 @@ def refresh(force: bool = False) -> None:
                 }
                 state = "ok" if result.get("ok") else result.get("status")
                 print(f"Global feed {feed['name']}: {state}, {len(updated[feed['id']]['events'])} events.")
+        known = {feed["id"] for feed in feeds}
+        updated = {key: value for key, value in updated.items() if key in known}
     finally:
         with _lock:
             _memory["feeds"] = updated
@@ -1207,10 +1747,11 @@ def features() -> list[dict]:
     with _lock:
         _load_memory()
         feeds = dict(_memory.get("feeds") or {})
+    catalog = {feed["id"] for feed in _feeds()}
     seen = set()
     rows = []
     for feed_id, row in feeds.items():
-        if not isinstance(row, dict):
+        if feed_id not in catalog or not isinstance(row, dict):
             continue
         for event in row.get("events") or []:
             if not isinstance(event, dict):
@@ -1219,16 +1760,19 @@ def features() -> list[dict]:
             if point is None:
                 continue
             key = str(event.get("id") or event.get("source") or "")
-            if key and key in seen:
+            title_key = _norm(event.get("title") or "")[:90]
+            if (key and key in seen) or (title_key and title_key in seen):
                 continue
             if key:
                 seen.add(key)
+            if title_key:
+                seen.add(title_key)
             rows.append({
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [point[1], point[0]]},
                 "properties": {
-                    "title": event.get("title") or row.get("name") or "OSINT event",
-                    "summary": event.get("summary") or "",
+                    "title": _english(event.get("title") or row.get("name") or "OSINT event"),
+                    "summary": _english(event.get("summary") or ""),
                     "severity": event.get("severity") or "medium",
                     "timestamp": event.get("timestamp") or "",
                     "source": event.get("source") or "",
@@ -1257,9 +1801,21 @@ def features() -> list[dict]:
     rank = {"high": 0, "medium": 1, "low": 2}
     for items in grouped.values():
         items.sort(key=lambda feature: rank.get(feature["properties"]["severity"], 1))
-        balanced.extend(items[:10])
+        feed_id = str(items[0]["properties"].get("feed_id") or "")
+        limit = 36 if feed_id == "gdelt" else 12 if feed_id in {"eonet", "gdacs-rss"} else 8
+        balanced.extend(items[:limit])
     balanced.sort(key=lambda feature: rank.get(feature["properties"]["severity"], 1))
-    return balanced[:180]
+    return balanced[:420]
+
+
+def _english(value: object) -> str:
+    text = " ".join(str(value or "").split())
+    try:
+        import feed_quality
+
+        return feed_quality.translate_text(text, live=True, ingest=True)
+    except Exception:
+        return text
 
 
 def status_rows() -> list[dict]:

@@ -22,6 +22,7 @@ CACHE_PATH = ROOT / "translation_cache.json"
 _lock = threading.Lock()
 _cache: dict[str, str] | None = None
 _live_budget = {"n": 0, "reset": 0.0}
+_ingest_budget = {"n": 0, "reset": 0.0}
 
 PROMO_RE = re.compile(
     r"\b(subscribe|join our|follow us|promo code|airdrop|giveaway|1xbet|"
@@ -34,7 +35,15 @@ URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 WORD_RE = re.compile(r"[A-Za-z\u0600-\u06FF\u0400-\u04FF\u4E00-\u9FFF]{3,}")
 FOREIGN_SCRIPT_RE = re.compile(
     r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0400-\u04FF\u0590-\u05FF"
-    r"\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]"
+    r"\u0370-\u03FF\u0530-\u058F\u0900-\u097F\u0980-\u09FF\u0E00-\u0E7F"
+    r"\u10A0-\u10FF\u1200-\u137F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]"
+)
+LOCAL_WORD_RE = re.compile(
+    r"\b(warnung|unwetter|gefahr|hochwasser|für|nicht|alerte|vigilance|inondation|"
+    r"séisme|alerta|aviso|terremoto|inundación|inundacion|allerta|avviso|"
+    r"varsel|flom|jordskjelv|ikke|ostrzeżenie|ostrzezenie|powódź|powodz|"
+    r"waarschuwing|overstroming|gevaar|vigilancia)\b",
+    re.IGNORECASE,
 )
 ACCENT_RE = re.compile(r"[áéíóúãõâêôçñüÁÉÍÓÚÃÕÂÊÔÇÑÜ]")
 ROMANCE_RE = re.compile(
@@ -179,6 +188,99 @@ _PLACES = [
     (("kinshasa",), -4.4419, 15.2663, "Democratic Republic of the Congo", "Kinshasa"),
     (("bamako",), 12.6392, -8.0029, "Mali", "Bamako"),
     (("ndjamena", "n'djamena"), 12.1348, 15.0557, "Chad", "N'Djamena"),
+    (("manchester",), 53.4808, -2.2426, "United Kingdom", "Manchester"),
+    (("birmingham",), 52.4862, -1.8904, "United Kingdom", "Birmingham"),
+    (("leeds",), 53.8008, -1.5491, "United Kingdom", "Leeds"),
+    (("glasgow",), 55.8642, -4.2518, "United Kingdom", "Glasgow"),
+    (("edinburgh",), 55.9533, -3.1883, "United Kingdom", "Edinburgh"),
+    (("cardiff",), 51.4816, -3.1791, "United Kingdom", "Cardiff"),
+    (("belfast",), 54.5973, -5.9301, "United Kingdom", "Belfast"),
+    (("bristol",), 51.4545, -2.5879, "United Kingdom", "Bristol"),
+    (("liverpool",), 53.4084, -2.9916, "United Kingdom", "Liverpool"),
+    (("newcastle",), 54.9783, -1.6178, "United Kingdom", "Newcastle"),
+    (("sheffield",), 53.3811, -1.4701, "United Kingdom", "Sheffield"),
+    (("nottingham",), 52.9548, -1.1581, "United Kingdom", "Nottingham"),
+    (("southampton",), 50.9097, -1.4044, "United Kingdom", "Southampton"),
+    (("plymouth",), 50.3755, -4.1427, "United Kingdom", "Plymouth"),
+    (("aberdeen",), 57.1497, -2.0943, "United Kingdom", "Aberdeen"),
+    (("oxford",), 51.752, -1.2577, "United Kingdom", "Oxford"),
+    (("cambridge",), 52.2053, 0.1218, "United Kingdom", "Cambridge"),
+    (("norfolk",), 52.614, 0.886, "United Kingdom", "Norfolk"),
+    (("suffolk",), 52.1872, 1.0, "United Kingdom", "Suffolk"),
+    (("kent",), 51.2787, 0.5217, "United Kingdom", "Kent"),
+    (("essex",), 51.7356, 0.4685, "United Kingdom", "Essex"),
+    (("cornwall",), 50.266, -5.0527, "United Kingdom", "Cornwall"),
+    (("devon",), 50.7156, -3.5309, "United Kingdom", "Devon"),
+    (("yorkshire",), 53.9591, -1.0815, "United Kingdom", "Yorkshire"),
+    (("lancashire",), 53.7632, -2.7044, "United Kingdom", "Lancashire"),
+    (("surrey",), 51.3148, -0.56, "United Kingdom", "Surrey"),
+    (("hampshire",), 51.0577, -1.3081, "United Kingdom", "Hampshire"),
+    (("cumbria",), 54.5772, -2.7975, "United Kingdom", "Cumbria"),
+    (("oslo",), 59.9139, 10.7522, "Norway", "Oslo"),
+    (("stockholm",), 59.3293, 18.0686, "Sweden", "Stockholm"),
+    (("helsinki",), 60.1699, 24.9384, "Finland", "Helsinki"),
+    (("copenhagen",), 55.6761, 12.5683, "Denmark", "Copenhagen"),
+    (("amsterdam",), 52.3676, 4.9041, "Netherlands", "Amsterdam"),
+    (("brussels",), 50.8503, 4.3517, "Belgium", "Brussels"),
+    (("vienna",), 48.2082, 16.3738, "Austria", "Vienna"),
+    (("prague",), 50.0755, 14.4378, "Czechia", "Prague"),
+    (("budapest",), 47.4979, 19.0402, "Hungary", "Budapest"),
+    (("bucharest",), 44.4268, 26.1025, "Romania", "Bucharest"),
+    (("lisbon",), 38.7223, -9.1393, "Portugal", "Lisbon"),
+    (("dublin",), 53.3498, -6.2603, "Ireland", "Dublin"),
+    (("bern",), 46.948, 7.4474, "Switzerland", "Bern"),
+    (("zagreb",), 45.815, 15.9819, "Croatia", "Zagreb"),
+    (("belgrade",), 44.7866, 20.4489, "Serbia", "Belgrade"),
+    (("sarajevo",), 43.8563, 18.4131, "Bosnia and Herzegovina", "Sarajevo"),
+    (("tirana",), 41.3275, 19.8187, "Albania", "Tirana"),
+    (("sofia",), 42.6977, 23.3219, "Bulgaria", "Sofia"),
+    (("bratislava",), 48.1486, 17.1077, "Slovakia", "Bratislava"),
+    (("ljubljana",), 46.0569, 14.5058, "Slovenia", "Ljubljana"),
+    (("tallinn",), 59.437, 24.7536, "Estonia", "Tallinn"),
+    (("riga",), 56.9496, 24.1052, "Latvia", "Riga"),
+    (("vilnius",), 54.6872, 25.2797, "Lithuania", "Vilnius"),
+    (("reykjavik",), 64.1466, -21.9426, "Iceland", "Reykjavik"),
+    (("dakar",), 14.7167, -17.4677, "Senegal", "Dakar"),
+    (("accra",), 5.6037, -0.187, "Ghana", "Accra"),
+    (("abidjan",), 5.36, -4.0083, "Ivory Coast", "Abidjan"),
+    (("kampala",), 0.3476, 32.5825, "Uganda", "Kampala"),
+    (("dar es salaam",), -6.7924, 39.2083, "Tanzania", "Dar es Salaam"),
+    (("kigali",), -1.9441, 30.0619, "Rwanda", "Kigali"),
+    (("maputo",), -25.9692, 32.5732, "Mozambique", "Maputo"),
+    (("luanda",), -8.839, 13.2894, "Angola", "Luanda"),
+    (("abuja",), 9.0765, 7.3986, "Nigeria", "Abuja"),
+    (("juba",), 4.8594, 31.5713, "South Sudan", "Juba"),
+    (("ouagadougou",), 12.3714, -1.5197, "Burkina Faso", "Ouagadougou"),
+    (("niamey",), 13.5116, 2.1254, "Niger", "Niamey"),
+    (("conakry",), 9.6412, -13.5784, "Guinea", "Conakry"),
+    (("freetown",), 8.4657, -13.2317, "Sierra Leone", "Freetown"),
+    (("monrovia",), 6.3156, -10.8074, "Liberia", "Monrovia"),
+    (("cape town",), -33.9249, 18.4241, "South Africa", "Cape Town"),
+    (("durban",), -29.8587, 31.0218, "South Africa", "Durban"),
+    (("harare",), -17.8252, 31.0335, "Zimbabwe", "Harare"),
+    (("lusaka",), -15.3875, 28.3228, "Zambia", "Lusaka"),
+    (("yaounde", "yaoundé"), 3.848, 11.5021, "Cameroon", "Yaounde"),
+    (("douala",), 4.0511, 9.7679, "Cameroon", "Douala"),
+    (("el fasher", "al-fashir"), 13.6281, 25.3494, "Sudan", "El Fasher"),
+    (("nyala",), 12.05, 24.8833, "Sudan", "Nyala"),
+    (("delhi", "new delhi"), 28.6139, 77.209, "India", "Delhi"),
+    (("mumbai",), 19.076, 72.8777, "India", "Mumbai"),
+    (("kolkata", "calcutta"), 22.5726, 88.3639, "India", "Kolkata"),
+    (("chennai",), 13.0827, 80.2707, "India", "Chennai"),
+    (("bengaluru", "bangalore"), 12.9716, 77.5946, "India", "Bengaluru"),
+    (("hyderabad",), 17.385, 78.4867, "India", "Hyderabad"),
+    (("karachi",), 24.8607, 67.0011, "Pakistan", "Karachi"),
+    (("lahore",), 31.5204, 74.3587, "Pakistan", "Lahore"),
+    (("islamabad",), 33.6844, 73.0479, "Pakistan", "Islamabad"),
+    (("dhaka",), 23.8103, 90.4125, "Bangladesh", "Dhaka"),
+    (("chittagong", "chattogram"), 22.3569, 91.7832, "Bangladesh", "Chittagong"),
+    (("kathmandu",), 27.7172, 85.324, "Nepal", "Kathmandu"),
+    (("colombo",), 6.9271, 79.8612, "Sri Lanka", "Colombo"),
+    (("gulf of aden",), 12.5, 48.0, "Maritime", "Gulf of Aden"),
+    (("arabian sea",), 16.0, 64.0, "Maritime", "Arabian Sea"),
+    (("red sea",), 20.0, 38.5, "Maritime", "Red Sea"),
+    (("english channel",), 50.2, -1.0, "Maritime", "English Channel"),
+    (("strait of malacca", "malacca strait"), 2.5, 101.5, "Maritime", "Strait of Malacca"),
 ]
 COUNTRIES = {
     "syria": (34.8, 38.99, "Syria"),
@@ -220,10 +322,26 @@ COUNTRIES = {
     "ukraine": (48.38, 31.17, "Ukraine"),
     "russia": (61.52, 105.32, "Russia"),
     "united kingdom": (55.38, -3.44, "United Kingdom"),
+    "uk": (55.38, -3.44, "United Kingdom"),
+    "ireland": (53.41, -8.24, "Ireland"),
     "france": (46.23, 2.21, "France"),
     "germany": (51.17, 10.45, "Germany"),
     "italy": (41.87, 12.57, "Italy"),
     "spain": (40.46, -3.75, "Spain"),
+    "poland": (51.92, 19.15, "Poland"),
+    "greece": (39.07, 21.82, "Greece"),
+    "norway": (60.47, 8.47, "Norway"),
+    "sweden": (60.13, 18.64, "Sweden"),
+    "finland": (61.92, 25.75, "Finland"),
+    "denmark": (56.26, 9.5, "Denmark"),
+    "netherlands": (52.13, 5.29, "Netherlands"),
+    "belgium": (50.5, 4.47, "Belgium"),
+    "portugal": (39.4, -8.22, "Portugal"),
+    "austria": (47.52, 14.55, "Austria"),
+    "switzerland": (46.82, 8.23, "Switzerland"),
+    "czechia": (49.82, 15.47, "Czechia"),
+    "hungary": (47.16, 19.5, "Hungary"),
+    "romania": (45.94, 24.97, "Romania"),
     "turkey": (38.96, 35.24, "Turkey"),
     "egypt": (26.82, 30.8, "Egypt"),
     "libya": (26.34, 17.23, "Libya"),
@@ -233,6 +351,21 @@ COUNTRIES = {
     "ethiopia": (9.15, 40.49, "Ethiopia"),
     "south africa": (-30.56, 22.94, "South Africa"),
     "mali": (17.57, -4.0, "Mali"),
+    "ghana": (7.95, -1.02, "Ghana"),
+    "senegal": (14.5, -14.45, "Senegal"),
+    "tanzania": (-6.37, 34.89, "Tanzania"),
+    "uganda": (1.37, 32.29, "Uganda"),
+    "mozambique": (-18.67, 35.53, "Mozambique"),
+    "angola": (-11.2, 17.87, "Angola"),
+    "cameroon": (7.37, 12.35, "Cameroon"),
+    "niger": (17.61, 8.08, "Niger"),
+    "morocco": (31.79, -7.09, "Morocco"),
+    "democratic republic of the congo": (-4.04, 21.76, "Democratic Republic of the Congo"),
+    "india": (20.59, 78.96, "India"),
+    "pakistan": (30.38, 69.35, "Pakistan"),
+    "bangladesh": (23.68, 90.36, "Bangladesh"),
+    "nepal": (28.39, 84.12, "Nepal"),
+    "sri lanka": (7.87, 80.77, "Sri Lanka"),
     "maritime": (20.0, 38.5, "Maritime"),
 }
 THEATRE = {
@@ -241,7 +374,7 @@ THEATRE = {
     "Jordan": "Middle East", "Yemen": "Middle East", "Saudi Arabia": "Middle East",
     "Sudan": "Middle East", "Chad": "Middle East", "UAE": "Middle East",
     "Qatar": "Middle East", "Bahrain": "Middle East", "Kuwait": "Middle East",
-    "Oman": "Middle East", "Maritime": "Middle East",
+    "Oman": "Middle East", "Maritime": "Maritime",
     "United States": "United States", "Canada": "Canada",
     "Brazil": "South America", "Colombia": "South America", "Venezuela": "South America",
     "Peru": "South America", "Chile": "South America", "Argentina": "South America",
@@ -251,12 +384,21 @@ THEATRE = {
     "Singapore": "APAC", "Malaysia": "APAC",
     "Australia": "Australia", "Afghanistan": "Afghanistan",
     "Ukraine": "Russia & Ukraine", "Russia": "Russia & Ukraine",
-    "United Kingdom": "Europe", "France": "Europe", "Germany": "Europe",
-    "Italy": "Europe", "Spain": "Europe", "Poland": "Europe", "Greece": "Europe",
-    "Turkey": "Europe", "Egypt": "Africa", "Libya": "Africa", "Tunisia": "Africa",
+    "United Kingdom": "UK & Europe", "Ireland": "UK & Europe", "France": "UK & Europe",
+    "Germany": "UK & Europe", "Italy": "UK & Europe", "Spain": "UK & Europe",
+    "Poland": "UK & Europe", "Greece": "UK & Europe", "Norway": "UK & Europe",
+    "Sweden": "UK & Europe", "Finland": "UK & Europe", "Denmark": "UK & Europe",
+    "Netherlands": "UK & Europe", "Belgium": "UK & Europe", "Portugal": "UK & Europe",
+    "Austria": "UK & Europe", "Switzerland": "UK & Europe", "Czechia": "UK & Europe",
+    "Hungary": "UK & Europe", "Romania": "UK & Europe", "Turkey": "UK & Europe",
+    "Egypt": "Africa", "Libya": "Africa", "Tunisia": "Africa",
     "Algeria": "Africa", "Nigeria": "Africa", "Kenya": "Africa", "Ethiopia": "Africa",
     "Somalia": "Africa", "South Africa": "Africa", "Mali": "Africa",
-    "Democratic Republic of the Congo": "Africa",
+    "Ghana": "Africa", "Senegal": "Africa", "Tanzania": "Africa", "Uganda": "Africa",
+    "Mozambique": "Africa", "Angola": "Africa", "Cameroon": "Africa", "Niger": "Africa",
+    "Morocco": "Africa", "Democratic Republic of the Congo": "Africa",
+    "India": "South Asia", "Pakistan": "South Asia", "Bangladesh": "South Asia",
+    "Nepal": "South Asia", "Sri Lanka": "South Asia",
 }
 
 
@@ -319,20 +461,24 @@ def needs_translation(text: object) -> bool:
         return False
     if FOREIGN_SCRIPT_RE.search(raw):
         return True
-    if len(ACCENT_RE.findall(raw)) >= 2:
+    if ACCENT_RE.search(raw):
         return True
-    return len(ROMANCE_RE.findall(raw)) >= 2
+    if len(ROMANCE_RE.findall(raw)) >= 2:
+        return True
+    return len(LOCAL_WORD_RE.findall(raw)) >= 2
 
 
-def translate_text(text: object, live: bool = True) -> str:
-    raw = " ".join(str(text or "").split())
+def translate_text(text: object, live: bool = True, ingest: bool = False) -> str:
+    """Return clean English. Feed ingest uses its own budget so a busy map does not skip alerts."""
+    raw = re.sub(r"<[^>]+>", " ", str(text or ""))
+    raw = " ".join(raw.replace("&nbsp;", " ").replace("&amp;", "&").split())
     if not raw or not needs_translation(raw):
         return raw
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     cached = _cache_get(digest)
     if cached:
         return cached
-    if not live or not _allow_live():
+    if not live or not _allow_live(ingest=ingest):
         return raw
     translated = _grok_translate(raw) or _google_translate(raw) or _mymemory_translate(raw)
     cleaned = " ".join(str(translated or "").split())
@@ -384,16 +530,16 @@ def theatre_for(country: object) -> str:
     return THEATRE.get(str(country or ""), "Global")
 
 
-def enrich_event(event: dict, live_translation: bool = True) -> dict | None:
+def enrich_event(event: dict, live_translation: bool = True, ingest: bool = False) -> dict | None:
     if not isinstance(event, dict):
         return None
-    if is_noise(event.get("title"), event.get("summary"), event.get("source") or event.get("source_url")):
+    if is_noise(event.get("title"), event.get("summary") or event.get("description") or event.get("message"), event.get("source") or event.get("source_url")):
         return None
     item = dict(event)
     original_title = " ".join(str(item.get("title") or "").split())
-    original_summary = " ".join(str(item.get("summary") or "").split())
-    title = translate_text(original_title, live=live_translation)
-    summary = translate_text(original_summary, live=live_translation) if original_summary else ""
+    original_summary = " ".join(str(item.get("summary") or item.get("description") or item.get("message") or "").split())
+    title = translate_text(original_title, live=live_translation, ingest=ingest)
+    summary = translate_text(original_summary, live=live_translation, ingest=ingest) if original_summary else ""
     if title != original_title and original_title:
         item["original_text"] = original_title[:500]
     item["title"] = title or original_title
@@ -525,8 +671,16 @@ def _jitter(lat: float, lng: float, salt: str, scale: float):
     return round(max(-90, min(90, lat + dlat)), 5), round(max(-180, min(180, lng + dlng)), 5)
 
 
-def _allow_live() -> bool:
+def _allow_live(ingest: bool = False) -> bool:
     now = time.time()
+    if ingest:
+        if now - _ingest_budget["reset"] > 600:
+            _ingest_budget["n"] = 0
+            _ingest_budget["reset"] = now
+        if _ingest_budget["n"] >= 800:
+            return False
+        _ingest_budget["n"] += 1
+        return True
     if now - _live_budget["reset"] > 30:
         _live_budget["n"] = 0
         _live_budget["reset"] = now
