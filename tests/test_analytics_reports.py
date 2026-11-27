@@ -487,10 +487,14 @@ class HistoryStoreTests(unittest.TestCase):
         self.assertIn(b"Send Test Now", script.data)
         pricing = client.get("/pricing")
         self.assertEqual(pricing.status_code, 200)
-        self.assertIn(b"Automated Intelligence Reports (Optional Add-On)", pricing.data)
+        self.assertIn(b"Automated Intelligence Email Reports", pricing.data)
         self.assertIn(b"Request / Add to Plan", pricing.data)
-        self.assertIn(b"dailyM: 149", pricing.data)
-        self.assertIn(b"dailyM: 189", pricing.data)
+        self.assertIn(b'data-price="report-daily"', pricing.data)
+        self.assertIn(b'data-gbp-monthly="\xc2\xa379"', pricing.data)
+        self.assertIn(b'data-usd-monthly="$99"', pricing.data)
+        self.assertIn(b'data-price="report-region"', pricing.data)
+        self.assertIn(b'data-gbp-monthly="\xc2\xa3149"', pricing.data)
+        self.assertIn(b'data-usd-monthly="$195"', pricing.data)
         created = client.post("/api/reports/schedules", json={
             "client_label": "Route client",
             "recipients": "route@example.com",

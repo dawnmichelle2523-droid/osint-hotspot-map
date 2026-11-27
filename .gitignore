@@ -15,3 +15,7 @@ data/
 checkins.db
 checkins.db-wal
 checkins.db-shm
+sentinel_zones.db
+slack_alerts.db
+slack_alerts.db-wal
+slack_alerts.db-shm
