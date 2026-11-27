@@ -35,6 +35,8 @@ RATE_WINDOW_SECONDS = 600
 RATE_MAX = 30
 
 PAGES = {
+    "/": "home.html",
+    "/map": "index.html",
     "/grok-ops": "grok-ops.html",
     "/risk-assessments": "risk-assessments.html",
     "/pricing": "pricing.html",

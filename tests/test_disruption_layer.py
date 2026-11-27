@@ -164,12 +164,19 @@ class DisruptionLayerTests(unittest.TestCase):
             self.assertIn(b"/api/disruptions", script.data)
         finally:
             script.close()
-        page = client.get("/")
+        page = client.get("/map")
         try:
             self.assertEqual(page.status_code, 200)
             self.assertIn(b"/static/disruption-layer.js", page.data)
         finally:
             page.close()
+        home = client.get("/")
+        try:
+            self.assertEqual(home.status_code, 200)
+            self.assertIn(b"Global Geopolitical Risk Intelligence", home.data)
+            self.assertNotIn(b"/static/disruption-layer.js", home.data)
+        finally:
+            home.close()
         with mock.patch("disruption_layer.requests.get", side_effect=offline_get):
             disruption_layer.clear_cache()
             live = client.get("/api/disruptions")

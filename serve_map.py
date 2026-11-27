@@ -8069,6 +8069,24 @@ def start_background() -> None:
     start_briefing_daemon()
 
 
+HOME_DEEP_LINK_KEYS = frozenset({
+    "country", "region", "governorate", "lat", "lng", "zoom",
+    "focusAsset", "showAssets", "basemap", "pass", "severity", "time",
+})
+
+
+def home_url_opens_the_map(target: str) -> bool:
+    """True when a legacy homepage URL carries a live-map query."""
+    query = target.split("?", 1)[1] if "?" in (target or "") else ""
+    if not query:
+        return False
+    params = parse_qs(query, keep_blank_values=False)
+    for key in HOME_DEEP_LINK_KEYS:
+        if any(str(value).strip() for value in (params.get(key) or [])):
+            return True
+    return False
+
+
 class MapHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -8117,6 +8135,14 @@ class MapHandler(SimpleHTTPRequestHandler):
             self.send_error(404)
             return
         route = self._route()
+        if route == "/" and home_url_opens_the_map(self.path):
+            query = self.path.split("?", 1)[1] if "?" in self.path else ""
+            location = "/map" + (("?" + query) if query else "")
+            self.send_response(302)
+            self.send_header("Location", location)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if route in {"/sw.js", "/manifest.webmanifest"}:
             filename = "sw.js" if route == "/sw.js" else "manifest.webmanifest"
             path = ROOT / "static" / filename

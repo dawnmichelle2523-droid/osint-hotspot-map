@@ -9,7 +9,8 @@ import preview_lock
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGES = {
-    "/": "index.html",
+    "/": "home.html",
+    "/map": "index.html",
     "/pricing": "pricing.html",
     "/enterprise": "enterprise.html",
     "/risk-assessments": "risk-assessments.html",
@@ -148,7 +149,7 @@ class PassthroughRobotsTests(unittest.TestCase):
         os.environ.pop("BASIC_AUTH_PASSWORD", None)
         os.environ.pop("ALLOW_INDEXING", None)
         client = _passthrough_app().test_client()
-        for path in ("/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
+        for path in ("/", "/map", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
             page = client.get(path)
             self.assertEqual(page.status_code, 200, path)
             self.assertEqual(page.headers["X-Robots-Tag"], "noindex, nofollow, noarchive", path)
@@ -180,7 +181,7 @@ class PassthroughRobotsTests(unittest.TestCase):
         os.environ["PREVIEW_PASSWORD"] = "correct-horse"
         os.environ.pop("ALLOW_INDEXING", None)
         client = _passthrough_app().test_client()
-        for path in ("/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops", "/static/platform.css"):
+        for path in ("/", "/map", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops", "/static/platform.css"):
             blocked = client.get(path)
             self.assertEqual(blocked.status_code, 302, path)
             self.assertTrue(blocked.headers["Location"].startswith("/login"), path)
@@ -252,7 +253,7 @@ class ProductionRouteTests(unittest.TestCase):
         self.serve_map.data_response = lambda: {"ok": True, "events": []}
         client = self.app.test_client()
         try:
-            for path in ("/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
+            for path in ("/", "/map", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
                 page = client.get(path)
                 self.assertEqual(page.status_code, 200, path)
                 self.assertEqual(page.headers["X-Robots-Tag"], "noindex, nofollow, noarchive", path)
@@ -278,7 +279,7 @@ class ProductionRouteTests(unittest.TestCase):
         os.environ["PREVIEW_PASSWORD"] = "correct-horse"
         os.environ.pop("ALLOW_INDEXING", None)
         client = self.app.test_client()
-        for path in ("/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
+        for path in ("/", "/map", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops"):
             blocked = client.get(path)
             self.assertEqual(blocked.status_code, 302, path)
             self.assertTrue(blocked.headers["Location"].startswith("/login"), path)

@@ -336,10 +336,16 @@ class ApiOutputTests(unittest.TestCase):
         import app as app_module
 
         client = app_module.app.test_client()
-        page = client.get("/")
+        page = client.get("/map")
         self.assertEqual(page.status_code, 200)
         html = page.get_data(as_text=True)
         page.close()
+        home = client.get("/")
+        self.assertEqual(home.status_code, 200)
+        home_html = home.get_data(as_text=True)
+        home.close()
+        self.assertIn("Global Geopolitical Risk Intelligence", home_html)
+        self.assertNotIn("confidenceMarkup", home_html)
         self.assertIn("All Confidence", html)
         self.assertIn("Corroborated+", html)
         self.assertIn("confidenceMarkup", html)

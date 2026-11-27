@@ -737,7 +737,7 @@ def _nav_link(href: str, label: str, current: str) -> str:
 
 def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, current: str) -> str:
     primary = (
-        ("/", "Live map"),
+        ("/map", "Live Map"),
         ("/risk-assessments", "Risk Assessments"),
         ("/route-risk", "Route risk"),
         ("/check-in", "Check-in"),

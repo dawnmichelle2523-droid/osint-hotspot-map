@@ -489,6 +489,11 @@ class ProductionCheckinRouteTests(unittest.TestCase):
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)
         self.assertIn(b'href="/check-in"', home.data)
+        self.assertIn(b"Global Geopolitical Risk Intelligence", home.data)
+        live = self.client.get("/map")
+        self.assertEqual(live.status_code, 200)
+        self.assertIn(b'href="/check-in"', live.data)
+        self.assertIn(b"leaflet", live.data.lower())
         created = self.client.post("/api/checkins", json={
             "callsign": "CREW-BEIRUT-1",
             "sector": "media",

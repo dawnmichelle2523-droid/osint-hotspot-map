@@ -974,7 +974,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
         <span class="nav-toggle-bars" aria-hidden="true"></span>
       </button>
       <nav id="page-nav" aria-label="Sections">
-        <a href="/">Live map</a>
+        <a href="/map">Live Map</a>
         <a href="/risk-assessments">Risk Assessments</a>
         <a href="/route-risk">Route risk</a>
         <a href="/check-in" aria-current="page">Check-in</a>

@@ -7,7 +7,7 @@ import os
 import threading
 from pathlib import Path
 
-from flask import Flask, Response, abort, request, send_from_directory
+from flask import Flask, Response, abort, redirect, request, send_from_directory
 
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
@@ -244,6 +244,16 @@ def api_forward(endpoint: str) -> Response:
 
 @app.get("/")
 def index() -> Response:
+    if serve_map.home_url_opens_the_map(request.full_path):
+        location = "/map"
+        if request.query_string:
+            location += "?" + request.query_string.decode("utf-8", "replace")
+        return redirect(location, code=302)
+    return _page("home.html")
+
+
+@app.get("/map")
+def live_map_page() -> Response:
     return _page("index.html")
 
 
