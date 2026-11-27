@@ -6,6 +6,8 @@ venv/
 advisory_cache.json
 advisory_crosscheck_cache.json
 global_feed_cache.json
+translation_cache.json
+news_stream_cache.json
 country_assets_cache.json
 country_calendar_cache.json
 data/

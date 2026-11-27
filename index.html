@@ -1008,7 +1008,12 @@
         <button type="button" class="pill" data-feedcat="Travel Advisory">Travel advisory</button>
       </div>
     </details>
-    <label class="rail-select">Actor
+      <label class="rail-select">Area / City
+      <select id="area-filter" aria-label="Area or city">
+        <option value="all">All areas</option>
+      </select>
+    </label>
+      <label class="rail-select">Actor
       <select id="actor-filter" aria-label="Actor">
         <option value="all">All</option>
         <option>IDF</option>
@@ -1096,7 +1101,14 @@
       <p class="headlines-note">All live events, newest first.</p>
       <div id="headline-list"><p class="headline-empty">Loading headlines…</p></div>
     </div>
-  </section>
+      </section>
+      <section id="news-stream" class="drawer-panel" aria-label="Recent OSINT news streams">
+        <div class="headlines-head">
+          <h2>Recent OSINT News Streams</h2>
+        </div>
+        <div id="news-regions" class="wire-tiers" role="group" aria-label="News region"></div>
+        <div id="news-list"><p class="headline-empty">Loading news wires…</p></div>
+      </section>
       <section id="syria-index" class="drawer-panel" aria-label="Syria Risk Index">
         <h2>Syria Risk Index</h2>
         <div class="syria-index-scroll">
@@ -1292,31 +1304,35 @@
     map.getPane("labels").style.pointerEvents = "none";
     map.createPane("darkbase");
     map.getPane("darkbase").style.zIndex = "200";
-    /* CARTO's public dark_all tiles currently return an "API key required" watermark.
-       OpenStreetMap tiles in this pane stay dark and are real data through z19. */
-    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.95) contrast(0.9)";
+    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.92) contrast(0.92)";
     const esriAttr = 'Tiles &copy; Esri';
-    const osmAttr = '&copy; OpenStreetMap contributors';
-    function darkBase() {
-      return L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: osmAttr,
-        subdomains: "abc",
+    const tacticalDark = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: esriAttr,
+      maxNativeZoom: 16,
+      maxZoom: 19,
+      pane: "darkbase"
+    });
+    const maritimeDark = L.layerGroup([
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+        attribution: esriAttr,
+        maxNativeZoom: 14,
+        maxZoom: 19
+      }),
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+        maxNativeZoom: 14,
         maxZoom: 19,
-        maxNativeZoom: 19,
-        pane: "darkbase"
-      });
-    }
-    const tacticalDark = darkBase();
-    const maritimeDark = darkBase();
+        pane: "labels"
+      })
+    ]);
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: esriAttr,
         maxZoom: 19,
-        maxNativeZoom: 17
+        maxNativeZoom: 16
       }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 19,
-        maxNativeZoom: 17,
+        maxNativeZoom: 16,
         pane: "labels"
       })
     ]);
@@ -1334,7 +1350,7 @@
         button.setAttribute("aria-pressed", String(button.dataset.basemap === key));
       });
     }
-    setBasemap("tactical");
+    setBasemap(new URLSearchParams(window.location.search).get("basemap") || "tactical");
     map.setView(HOME.center, HOME.zoom);
     map.invalidateSize();
     window.addEventListener("load", () => map.invalidateSize());
@@ -1355,6 +1371,7 @@
     let timeWindow = "all";
     let severity = "all";
     let feedCategory = "all";
+    let areaFilter = "all";
     let updatesQuery = "";
     let governorateCounts = {};
     let category = "all";
@@ -1598,6 +1615,7 @@
         props.source_handle,
         props.governorate,
         props.country,
+        props.area,
         sourceLabel(props)
       ];
       return fields.some((value) => String(value || "").toLowerCase().includes(needle));
@@ -1695,6 +1713,10 @@
       if (!matchesArea(props, opts.region)) return false;
       if (opts.country && !matchesArea(props, opts.country)) return false;
       if (opts.governorate && featureGovernorate(props) !== opts.governorate) return false;
+      if (areaFilter !== "all") {
+        const areaName = String(props.area || props.location_name || props.governorate || "");
+        if (areaName !== areaFilter) return false;
+      }
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
       return matchesQuery(props, opts.query || "");
@@ -1836,11 +1858,13 @@
 
     function originalArabicBlock(props) {
       const original = String(props.original_text || "").trim();
-      if (!original) return "";
+      const title = String(props.title || "").trim();
+      if (!original || original === title) return "";
+      const rtl = hasArabicScript(original) ? ' dir="rtl"' : "";
       return (
         '<details class="original-arabic">' +
-          "<summary>Original Arabic</summary>" +
-          '<div dir="rtl">' + esc(original) + "</div>" +
+          "<summary>Original</summary>" +
+          "<div" + rtl + ">" + esc(original) + "</div>" +
         "</details>"
       );
     }
@@ -1894,9 +1918,15 @@
       const surface = englishSurface(props);
       const headline = surface.title;
       const link = originalPostLink(props);
-      const place = props.location_name
-        ? '<div class="update-place">' + esc(props.location_name) + "</div>"
-        : "";
+      const country = String(props.country || "").trim();
+      const area = String(props.area || props.location_name || props.governorate || "").trim();
+      const lat = Number(props.lat != null ? props.lat : props._ringLat);
+      const lng = Number(props.lng != null ? props.lng : props._ringLng);
+      const placeBits = [];
+      if (country) placeBits.push("Country: " + esc(country));
+      if (area) placeBits.push("Area / City: " + esc(area));
+      if (Number.isFinite(lat) && Number.isFinite(lng)) placeBits.push(lat.toFixed(4) + ", " + lng.toFixed(4));
+      const place = placeBits.length ? '<div class="update-place">' + placeBits.join(" · ") + "</div>" : "";
       return (
         '<div class="popup">' +
           '<div class="popup-head">' +
@@ -2011,6 +2041,36 @@
       });
       const feedSummary = document.querySelector('[data-filter-summary="feedcat"]');
       if (feedSummary) feedSummary.textContent = feedCategory === "all" ? "All" : feedCategory;
+      const areaSelect = document.getElementById("area-filter");
+      if (areaSelect) {
+        const counts = {};
+        features.forEach((feature) => {
+          const name = String((feature.properties || {}).area || (feature.properties || {}).location_name || "");
+          if (!name || name.length > 48) return;
+          counts[name] = (counts[name] || 0) + 1;
+        });
+        const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b)).slice(0, 40);
+        const current = areaFilter;
+        areaSelect.innerHTML = '<option value="all">All areas</option>' + names.map((name) => '<option value="' + esc(name) + '">' + esc(name) + " (" + counts[name] + ")</option>").join("");
+        if (names.indexOf(current) === -1) areaFilter = "all";
+        areaSelect.value = areaFilter;
+      }
+      const countryRow = document.getElementById("country-row");
+      if (countryRow) {
+        const seen = {};
+        countryRow.querySelectorAll("[data-country]").forEach((button) => { seen[button.dataset.country] = true; });
+        features.forEach((feature) => {
+          const name = String((feature.properties || {}).country || "");
+          if (!name || seen[name]) return;
+          seen[name] = true;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "pill";
+          button.dataset.country = name;
+          button.innerHTML = esc(name) + ' <span class="n" data-country-count="' + esc(name) + '">0</span>';
+          countryRow.appendChild(button);
+        });
+      }
       document.querySelectorAll("[data-country]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.country === countryFilter));
       });
@@ -2711,6 +2771,10 @@
       map.invalidateSize();
       window.setTimeout(() => map.invalidateSize(), 60);
     });
+    document.getElementById("area-filter").addEventListener("change", (event) => {
+      areaFilter = event.target.value || "all";
+      render(searchQuery ? "search" : "none");
+    });
     document.getElementById("actor-filter").addEventListener("change", (event) => {
       actorFilter = event.target.value || "all";
       render(searchQuery ? "search" : "none");
@@ -3275,6 +3339,12 @@
       render("none");
     });
     window.GeoRiskMap = {
+      focus: function (lat, lng) {
+        const latitude = Number(lat);
+        const longitude = Number(lng);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+        map.flyTo([latitude, longitude], 8, { duration: 0.6 });
+      },
       snapshot: function () {
         const opts = currentOpts(region);
         const visible = features.filter((feature) => passes(feature, opts)).slice(0, 24);
@@ -3349,6 +3419,7 @@
     setInterval(() => loadData(), 30000);
   </script>
   <script src="/static/grok-stream.js"></script>
+  <script src="/static/news-stream.js"></script>
   <script src="/static/phase1-map.js"></script>
 </body>
 </html>

@@ -2990,8 +2990,20 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
     if not key:
         global _translation_key_noted
         if not _translation_key_noted:
-            print("XAI_API_KEY is missing. Left title and summary unchanged.")
+            print("XAI_API_KEY is missing. Non-English text uses the public translation fallback.")
             _translation_key_noted = True
+        try:
+            import feed_quality
+
+            if feed_quality.needs_translation(incoming_title) or feed_quality.needs_translation(original):
+                translated = feed_quality.translate_text(original or incoming_title)
+                if translated and not contains_arabic(translated):
+                    stored["title"] = translated[:240]
+                    stored["summary"] = (feed_quality.translate_text(incoming_summary) or translated)[:500]
+                    stored["original_text"] = (original or incoming_title)[:2000]
+                    return route_event_country(_apply_threat(stored, located), located)
+        except Exception as exc:
+            print(f"Translation fallback failed: {exc.__class__.__name__}.")
         if title:
             stored["title"] = title
         if summary:
@@ -4243,11 +4255,18 @@ _spam_purged = False
 
 
 def is_spam_post(text: str) -> bool:
-    """Dating, gambling, and promo spam. A place name by itself is not spam."""
+    """Dating, gambling, promo, bare-link, and empty posts. A place name by itself is not spam."""
     raw = str(text or "")
     if _SPAM_BOUNDARY_RE.search(raw):
         return True
-    return any(token in raw for token in _SPAM_ARABIC_TERMS)
+    if any(token in raw for token in _SPAM_ARABIC_TERMS):
+        return True
+    try:
+        import feed_quality
+
+        return feed_quality.is_noise(raw)
+    except Exception:
+        return False
 
 
 def spam_post_text(*parts: object) -> str:
@@ -6024,6 +6043,23 @@ def region_escalation(now: datetime | None = None) -> dict[str, dict]:
     return trends
 
 
+def _annotate_live_features(features: list[dict]) -> list[dict]:
+    """Drop noise and fill coordinates so each remaining alert can be pinned."""
+    try:
+        import feed_quality
+    except Exception:
+        return features
+    prepared = []
+    for feature in features:
+        try:
+            annotated = feed_quality.annotate_feature(feature)
+        except Exception:
+            annotated = feature
+        if annotated and (annotated.get("geometry") or {}).get("type") == "Point":
+            prepared.append(annotated)
+    return prepared
+
+
 def data_payload() -> dict:
     now = datetime.now(timezone.utc)
     features = [feature for feature in combined_features() if within_live_window(feature, now)]
@@ -6034,6 +6070,7 @@ def data_payload() -> dict:
         features.extend(global_feeds.features())
     except Exception as exc:
         print(f"Global feeds were not added: {exc.__class__.__name__}.")
+    features = _annotate_live_features(features)
     events = live_events_from(features)
     with _db_lock:
         conn = db_connect()
@@ -7733,6 +7770,12 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
         if verb == "GET" and route == "/api/travel-advisories":
             return 200, "application/json; charset=utf-8", _api_json(travel_advisories_payload())
+        if verb == "GET" and route == "/api/news-stream":
+            import news_stream
+
+            params = parse_qs(query, keep_blank_values=True)
+            region = (params.get("region") or [""])[0]
+            return 200, "application/json; charset=utf-8", _api_json(news_stream.payload(region))
         if verb == "GET" and route.startswith("/api/country-assets/"):
             country = unquote(route[len("/api/country-assets/"):]).strip("/")
             return 200, "application/json; charset=utf-8", _api_json(country_assets_payload(country))
@@ -7795,6 +7838,12 @@ def start_background() -> None:
         global_feeds.start()
     except Exception as exc:
         print(f"Global feeds did not start: {exc.__class__.__name__}.")
+    try:
+        import news_stream
+
+        news_stream.start()
+    except Exception as exc:
+        print(f"News stream did not start: {exc.__class__.__name__}.")
     start_translation_pass()
     start_poller()
     start_sweep_daemon()

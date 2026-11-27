@@ -182,12 +182,11 @@
     const map = L.map("risk-map", { worldCopyJump: true, minZoom: 2, maxZoom: 19 }).setView([20, 15], 2);
     map.createPane("darkbase");
     map.getPane("darkbase").style.zIndex = "200";
-    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.95) contrast(0.9)";
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      subdomains: "abc",
+    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.92) contrast(0.92)";
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri",
+      maxNativeZoom: 16,
       maxZoom: 19,
-      maxNativeZoom: 19,
       pane: "darkbase"
     }).addTo(map);
     spikeLayer.addTo(map);
