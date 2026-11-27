@@ -28,6 +28,7 @@ html, body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--t
 #page-nav { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
 #page-nav a { color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: var(--gold); background: var(--navy); border-color: var(--gold-border); }
+a.nav-cta { margin-left: auto; color: #060A13; background: var(--gold); border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
 .section-banner { padding: 18px 16px 8px; max-width: 1180px; margin: 0 auto; }
 .kicker { margin: 0 0 4px; color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .section-banner h1 { margin: 0 0 6px; font-size: clamp(26px, 4vw, 36px); line-height: 1.15; }

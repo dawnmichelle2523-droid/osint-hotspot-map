@@ -6178,6 +6178,9 @@ def blocked_static(name: str) -> bool:
         "enquiries.jsonl",
         "advisory_crosscheck_cache.json",
         "global_feed_cache.json",
+        "data_snapshot_cache.json",
+        "news_stream_cache.json",
+        "translation_cache.json",
     }
     return name in hidden or name.endswith(".sqlite") or name.endswith(".db") or name.startswith(".")
 
@@ -6195,9 +6198,77 @@ def thermal_response() -> dict:
         }
 
 
-def data_response() -> dict:
+DATA_SNAPSHOT_PATH = ROOT / "data_snapshot_cache.json"
+_snapshot_lock = threading.Lock()
+_snapshot_refreshing = False
+_snapshot_payload: dict | None = None
+_snapshot_at = 0.0
+
+
+def _load_snapshot() -> dict | None:
+    global _snapshot_payload, _snapshot_at
+    with _snapshot_lock:
+        if isinstance(_snapshot_payload, dict):
+            return _snapshot_payload
     try:
-        return data_payload()
+        payload = json.loads(DATA_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    with _snapshot_lock:
+        _snapshot_payload = payload
+        _snapshot_at = time.time()
+    return payload
+
+
+def _store_snapshot(payload: dict) -> None:
+    global _snapshot_payload, _snapshot_at
+    with _snapshot_lock:
+        _snapshot_payload = payload
+        _snapshot_at = time.time()
+    try:
+        temporary = DATA_SNAPSHOT_PATH.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(DATA_SNAPSHOT_PATH)
+    except (OSError, TypeError):
+        pass
+
+
+def _refresh_snapshot() -> None:
+    global _snapshot_refreshing
+    with _snapshot_lock:
+        if _snapshot_refreshing:
+            return
+        _snapshot_refreshing = True
+    try:
+        _store_snapshot(data_payload())
+    except Exception as exc:
+        print(f"Data snapshot refresh failed: {exc.__class__.__name__}.")
+    finally:
+        with _snapshot_lock:
+            _snapshot_refreshing = False
+
+
+def _schedule_snapshot(max_age: float = 20.0) -> None:
+    with _snapshot_lock:
+        fresh = isinstance(_snapshot_payload, dict) and time.time() - _snapshot_at < max_age
+        busy = _snapshot_refreshing
+    if fresh or busy:
+        return
+    threading.Thread(target=_refresh_snapshot, name="data-snapshot", daemon=True).start()
+
+
+def data_response() -> dict:
+    """Return the last snapshot immediately. A refresh runs in the background."""
+    cached = _load_snapshot()
+    if isinstance(cached, dict):
+        _schedule_snapshot()
+        return cached
+    try:
+        payload = data_payload()
+        _store_snapshot(payload)
+        return payload
     except Exception as exc:
         print(f"GET /api/data failed: {exc.__class__.__name__}")
         return {

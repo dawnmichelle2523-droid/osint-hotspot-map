@@ -41,7 +41,8 @@
       padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
     }
     #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: #D4AF37; background: #102A63; border-color: #C5A059; }
-    #page-nav { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+    a.nav-cta { color: #060A13; background: #D4AF37; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    #page-nav { flex: 1 1 520px; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     #live-bar {
       display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
       padding: 8px 12px;
@@ -557,7 +558,7 @@
       position: relative; z-index: 20;
       flex: 0 0 auto; min-height: 72px;
       display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 8px 16px; flex-wrap: nowrap; overflow: visible;
+      gap: 12px; padding: 8px 16px; flex-wrap: wrap; overflow: visible;
     }
     .brand-lockup { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 0 auto; }
     #brandLogo {
@@ -594,6 +595,7 @@
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
     }
     #ops-panel #fetch-live, #ops-panel #wall-mode, #ops-panel #feed-health, #ops-panel #export-data { width: 100%; text-align: left; }
+    #ops-panel a { color: #D4AF37; text-decoration: none; font-size: 12px; font-weight: 700; }
     #export-data {
       color: #F8FAFC; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
       padding: 4px 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
@@ -608,15 +610,28 @@
     body.wall-mode #workspace { flex: 1 1 auto; min-height: 0; }
     body.wall-mode #map-row { flex: 1 1 auto; min-height: 0; height: 100%; }
     body.wall-mode #sidebar,
+    body.wall-mode #slim-filters,
     body.wall-mode #intel-panel,
     body.wall-mode #app-footer,
     body.wall-mode #filter-toggle { display: none !important; }
     body.wall-mode #stage,
     body.wall-mode #map { height: 100%; min-height: 0; }
+    #slim-filters {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
+      padding: 8px 12px; background: #0D1424; border-bottom: 1px solid #1E293B;
+    }
+    #slim-filters label { display: flex; flex-direction: column; gap: 3px; color: #94A3B8; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+    #slim-filters select, #slim-filters button {
+      background: #060A13; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-weight: 650;
+    }
+    #slim-filters button[aria-pressed="true"], #feed-pill { color: #D4AF37; border-color: #C5A059; background: #102A63; }
     #map-row {
       display: flex; align-items: stretch; width: 100%; min-width: 0;
-      height: 62vh; min-height: 450px; flex-shrink: 0;
+      height: calc(100vh - 168px); min-height: 520px; flex-shrink: 0;
     }
+    body.intel-open #map-row { height: 54vh; min-height: 360px; }
+    body:not(.intel-open) #intel-panel { display: none; }
     #sidebar {
       position: relative; top: auto; left: auto; right: auto; bottom: auto;
       width: 260px; flex: 0 0 260px; height: 100%; min-height: 450px; transform: none; z-index: 2;
@@ -758,22 +773,20 @@
     }
   </style>
 </head>
-<body class="filters-open drawer-open">
+<body class="filters-closed">
   <header id="live-bar">
     <div class="brand-lockup">
       <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
       <span class="risk-pill">REGIONAL RISK</span>
     </div>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/" aria-current="page">OSINT Map</a>
+      <a href="/" aria-current="page">Map</a>
       <a href="/risk-assessments" class="nav-emphasis" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
-      <a href="/briefing">Briefing</a>
-      <a href="/world-risk">World Risk</a>
-      <a href="/countries">Countries</a>
       <a href="/grok-ops">Grok Ops</a>
       <a href="/pricing">Pricing</a>
       <a href="/enterprise">Enterprise</a>
     </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
     <form id="header-search" class="search-row" role="search" autocomplete="off">
       <input id="search-input" type="search" placeholder="Search country, city, crossing, or keyword..." aria-label="Search country, city, crossing, or keyword">
       <button id="search-clear" type="button" aria-label="Clear">×</button>
@@ -799,6 +812,9 @@
             </div>
           </div>
           <button type="button" id="export-data">📥 Export CSV / GeoJSON</button>
+          <a href="/briefing">Briefing</a>
+          <a href="/world-risk">World Risk</a>
+          <a href="/countries">Countries</a>
           <span id="last-updated">Last updated: not yet</span>
         </div>
       </details>
@@ -812,6 +828,44 @@
         <div class="ticker-seq" id="ticker-seq-clone" aria-hidden="true"></div>
       </div>
     </div>
+  </div>
+  <div id="slim-filters" role="toolbar" aria-label="Map filters">
+    <label>Region
+      <select id="slim-region" aria-label="Region">
+        <option value="all">All regions</option>
+        <option>Global</option>
+        <option>Middle East</option>
+        <option>United States</option>
+        <option>Canada</option>
+        <option>South America</option>
+        <option>APAC</option>
+        <option>Australia</option>
+        <option>Afghanistan</option>
+        <option>Russia &amp; Ukraine</option>
+      </select>
+    </label>
+    <label>Severity
+      <select id="slim-severity" aria-label="Severity">
+        <option value="signal" selected>High &amp; Medium</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+        <option value="all">All</option>
+      </select>
+    </label>
+    <label>Time window
+      <select id="slim-window" aria-label="Time window">
+        <option value="48h" selected>Last 48 hours</option>
+        <option value="24h">Last 24 hours</option>
+        <option value="7d">Last 7 days</option>
+        <option value="2h">Last 2 hours</option>
+        <option value="all">All active</option>
+      </select>
+    </label>
+    <button type="button" id="all-events" aria-pressed="false">All Events</button>
+    <button type="button" id="toggle-news" aria-expanded="false" aria-controls="news-stream">News</button>
+    <button type="button" id="toggle-analyst">Analyst</button>
+    <button type="button" id="feed-pill" aria-controls="feed-modal">Feeds</button>
   </div>
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
@@ -830,7 +884,7 @@
     <div id="map-row">
     <aside id="sidebar">
       <div id="rail-head">
-        <button id="filter-toggle" type="button" aria-expanded="true" aria-controls="sidebar" aria-label="Collapse filters">☰</button>
+        <button id="filter-toggle" type="button" aria-expanded="false" aria-controls="sidebar" aria-label="Expand filters">☰</button>
         <span>Filters</span>
       </div>
       <h1>OSINT Map</h1>
@@ -1152,7 +1206,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
-    const WINDOWS = { "2h": 2 * 3600 * 1000, "24h": 24 * 3600 * 1000, "7d": 7 * 24 * 3600 * 1000, all: null };
+    const WINDOWS = { "2h": 2 * 3600 * 1000, "24h": 24 * 3600 * 1000, "48h": 48 * 3600 * 1000, "7d": 7 * 24 * 3600 * 1000, all: null };
     const HOME = { center: [26.5, 47.0], zoom: 5 };
     const JUMPS = {
       global: { center: [20, 10], zoom: 2 },
@@ -1368,8 +1422,8 @@
     const assetPayloads = {};
     let assetMarkers = [];
     let loadedOnce = false;
-    let timeWindow = "all";
-    let severity = "all";
+    let timeWindow = "48h";
+    let severity = "signal";
     let feedCategory = "all";
     let areaFilter = "all";
     let updatesQuery = "";
@@ -1706,7 +1760,10 @@
           if (tagged && tagged !== "Conflict" && tagged !== "Security") return false;
         } else if (tagged !== feedCategory) return false;
       }
-      if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
+      const rank = String(props.severity || "").toLowerCase();
+      if (opts.severity === "signal") {
+        if (rank !== "high" && rank !== "medium") return false;
+      } else if (opts.severity !== "all" && rank !== opts.severity) return false;
       if (opts.category !== "all" && incidentCode(props) !== opts.category && props.category !== opts.category) return false;
       if (opts.actor !== "all" && String(props.actor || "Unattributed") !== opts.actor) return false;
       if (opts.system !== "all" && String(props.system_type || "") !== opts.system) return false;
@@ -1927,6 +1984,8 @@
       if (area) placeBits.push("Area / City: " + esc(area));
       if (Number.isFinite(lat) && Number.isFinite(lng)) placeBits.push(lat.toFixed(4) + ", " + lng.toFixed(4));
       const place = placeBits.length ? '<div class="update-place">' + placeBits.join(" · ") + "</div>" : "";
+      const assess = "/risk-assessments?country=" + encodeURIComponent(country || "") + "&area=" + encodeURIComponent(area || "");
+      const assessLink = '<a class="popup-link" href="' + assess + '">Generate Risk Assessment for this area</a>';
       return (
         '<div class="popup">' +
           '<div class="popup-head">' +
@@ -1939,6 +1998,7 @@
           "<h3>" + esc(headline) + "</h3>" +
           analystTags(props) +
           place +
+          assessLink +
           '<p class="summary">' + esc(surface.summary) + "</p>" +
           originalArabicBlock(props) +
           '<div class="when">' + esc(gmtStamp(props.timestamp)) + "</div>" +
@@ -2041,6 +2101,14 @@
       });
       const feedSummary = document.querySelector('[data-filter-summary="feedcat"]');
       if (feedSummary) feedSummary.textContent = feedCategory === "all" ? "All" : feedCategory;
+      const slimRegion = document.getElementById("slim-region");
+      const slimSeverity = document.getElementById("slim-severity");
+      const slimWindow = document.getElementById("slim-window");
+      const allEvents = document.getElementById("all-events");
+      if (slimRegion) slimRegion.value = ["all", "Global", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine"].indexOf(region) >= 0 ? region : "all";
+      if (slimSeverity) slimSeverity.value = severity;
+      if (slimWindow) slimWindow.value = timeWindow;
+      if (allEvents) allEvents.setAttribute("aria-pressed", String(severity === "all" && timeWindow === "all"));
       const areaSelect = document.getElementById("area-filter");
       if (areaSelect) {
         const counts = {};
@@ -2101,11 +2169,11 @@
       }
       const windowSummary = document.querySelector('[data-filter-summary="window"]');
       if (windowSummary) {
-        windowSummary.textContent = { "2h": "Last 2 Hours", "24h": "Last 24 Hours", "7d": "Last 7 Days", all: "All Active" }[timeWindow] || "All Active";
+        windowSummary.textContent = { "2h": "Last 2 Hours", "24h": "Last 24 Hours", "48h": "Last 48 Hours", "7d": "Last 7 Days", all: "All Active" }[timeWindow] || "All Active";
       }
       const severitySummary = document.querySelector('[data-filter-summary="severity"]');
       if (severitySummary) {
-        severitySummary.textContent = { all: "All", high: "High", medium: "Medium", low: "Low" }[severity] || "All";
+        severitySummary.textContent = { signal: "High & Medium", all: "All", high: "High", medium: "Medium", low: "Low" }[severity] || "All";
       }
       document.querySelectorAll("[data-cat-count]").forEach((node) => {
         const id = node.dataset.catCount;
@@ -2770,6 +2838,45 @@
       filterToggle.setAttribute("aria-label", open ? "Collapse filters" : "Expand filters");
       map.invalidateSize();
       window.setTimeout(() => map.invalidateSize(), 60);
+    });
+    document.getElementById("slim-region").addEventListener("change", (event) => {
+      region = event.target.value || "all";
+      const view = THEATRE_VIEWS[region];
+      if (view) map.flyTo(view.center, view.zoom, { duration: 0.6 });
+      render(searchQuery ? "search" : "region");
+    });
+    document.getElementById("slim-severity").addEventListener("change", (event) => {
+      severity = event.target.value || "signal";
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("slim-window").addEventListener("change", (event) => {
+      timeWindow = event.target.value || "48h";
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("all-events").addEventListener("click", () => {
+      const expand = !(severity === "all" && timeWindow === "all");
+      severity = expand ? "all" : "signal";
+      timeWindow = expand ? "all" : "48h";
+      render("none");
+    });
+    document.getElementById("toggle-news").addEventListener("click", () => {
+      const open = document.body.classList.toggle("intel-open");
+      document.getElementById("toggle-news").setAttribute("aria-expanded", String(open));
+      const headlines = document.getElementById("headlines");
+      const syria = document.getElementById("syria-index");
+      const news = document.getElementById("news-stream");
+      if (headlines) headlines.hidden = true;
+      if (syria) syria.hidden = true;
+      if (news) news.hidden = false;
+      if (open && news) news.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      map.invalidateSize();
+    });
+    document.getElementById("toggle-analyst").addEventListener("click", () => {
+      const button = document.getElementById("open-copilot");
+      if (button) button.click();
+    });
+    document.getElementById("feed-pill").addEventListener("click", () => {
+      document.getElementById("feed-health").click();
     });
     document.getElementById("area-filter").addEventListener("change", (event) => {
       areaFilter = event.target.value || "all";

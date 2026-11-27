@@ -432,11 +432,6 @@ def annotate_feature(feature: dict) -> dict | None:
     }, live_translation=False)
     if enriched is None:
         return None
-    # A cache hit can still translate. One live call per item is capped.
-    if needs_translation(enriched.get("title")):
-        enriched["title"] = translate_text(enriched.get("title"), live=True)
-    if needs_translation(enriched.get("summary")):
-        enriched["summary"] = translate_text(enriched.get("summary"), live=True)
     props.update({
         "title": enriched.get("title") or props.get("title") or "",
         "summary": enriched.get("summary") or props.get("summary") or "",
