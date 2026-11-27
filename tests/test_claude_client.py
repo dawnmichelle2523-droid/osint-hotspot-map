@@ -10,6 +10,8 @@ from unittest.mock import patch
 os.environ["DISABLE_BACKGROUND"] = "1"
 os.environ["DISABLE_HISTORICAL_SYNC"] = "1"
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ.pop("GeoRiskIntel", None)
+os.environ.pop("GEORISKINTEL", None)
 os.environ.pop("CLAUDE_RA_MODEL", None)
 os.environ.pop("CLAUDE_BRIEF_MODEL", None)
 for _name in (
@@ -30,6 +32,14 @@ from app import app
 
 ROOT = Path(__file__).resolve().parents[1]
 KEY = "sk-ant-test-secret-value"
+PRIMARY_KEY = "sk-ant-primary-test-value"
+FALLBACK_KEY = "sk-ant-georiskintel-test-value"
+
+
+def _clear_anthropic_keys():
+    os.environ["ANTHROPIC_API_KEY"] = ""
+    os.environ.pop("GeoRiskIntel", None)
+    os.environ.pop("GEORISKINTEL", None)
 STAFF = "Jane Doe"
 EMAIL = "jane.doe@news.example"
 PHONE = "+44 7700 900123"
@@ -97,7 +107,7 @@ def _pii_body():
 
 class ClaudeClientTests(unittest.TestCase):
     def setUp(self):
-        os.environ["ANTHROPIC_API_KEY"] = ""
+        _clear_anthropic_keys()
         os.environ.pop("CLAUDE_RA_MODEL", None)
         os.environ.pop("CLAUDE_BRIEF_MODEL", None)
         claude_client.reset_call_count()
@@ -105,7 +115,7 @@ class ClaudeClientTests(unittest.TestCase):
         self.client = app.test_client()
 
     def tearDown(self):
-        os.environ["ANTHROPIC_API_KEY"] = ""
+        _clear_anthropic_keys()
         os.environ.pop("CLAUDE_RA_MODEL", None)
         os.environ.pop("CLAUDE_BRIEF_MODEL", None)
 
@@ -405,6 +415,115 @@ class ClaudeClientTests(unittest.TestCase):
         self.assertEqual(claude_client.estimate_usd("claude-haiku-5-5", 100_000, 0), 0.01)
         self.assertEqual(claude_client.estimate_usd("claude-haiku-5-5", 100_001, 0), round(100_001 / 1_000_000 * 0.5, 6))
         self.assertIsNone(claude_client.estimate_usd("claude-unknown-model", 10, 10))
+
+    def _capture_draft(self, calls):
+        def capture(url, json=None, headers=None, timeout=None):
+            calls.append({"json": json, "headers": headers})
+            return FakeResponse(200, _ok_payload())
+
+        return capture
+
+    def test_anthropic_api_key_takes_precedence_over_georiskintel(self):
+        os.environ["ANTHROPIC_API_KEY"] = PRIMARY_KEY
+        os.environ["GeoRiskIntel"] = FALLBACK_KEY
+        seen = []
+        with patch("claude_client.requests.post", side_effect=self._capture_draft(seen)):
+            risk = self.client.post("/api/risk-assessments/ai-draft", json={"country": "Iraq", "sector": "Media"})
+            brief = claude_client.draft_briefing({"country": "Iraq", "cadence": "daily"})
+            status = self.client.get("/api/ai/claude-status")
+        self.assertEqual(claude_client.get_anthropic_api_key(), PRIMARY_KEY)
+        self.assertEqual(len(seen), 2)
+        self.assertEqual(seen[0]["headers"]["x-api-key"], PRIMARY_KEY)
+        self.assertEqual(seen[1]["headers"]["x-api-key"], PRIMARY_KEY)
+        self.assertTrue(status.get_json()["configured"])
+        published = json.dumps(risk.get_json()) + json.dumps(brief) + status.get_data(as_text=True)
+        self.assertNotIn(PRIMARY_KEY, published)
+        self.assertNotIn(FALLBACK_KEY, published)
+        self.assertNotIn("GeoRiskIntel", published)
+
+    def test_georiskintel_fallback_configures_claude_and_drafts(self):
+        blanks = (None, "", "   ", "\n\t")
+        for blank in blanks:
+            claude_client.reset_call_count()
+            if blank is None:
+                os.environ.pop("ANTHROPIC_API_KEY", None)
+            else:
+                os.environ["ANTHROPIC_API_KEY"] = blank
+            os.environ["GeoRiskIntel"] = f"  {FALLBACK_KEY}  "
+            seen = []
+            with patch("claude_client.requests.post", side_effect=self._capture_draft(seen)):
+                status = self.client.get("/api/ai/claude-status")
+                routed = serve_map.handle_api("GET", "/api/ai/claude-status")
+                risk = self.client.post(
+                    "/api/risk-assessments/ai-draft",
+                    json={"country": "Iraq", "sector": "Media", "operation": f"Desk note {FALLBACK_KEY}"},
+                )
+                brief = serve_map.handle_api(
+                    "POST",
+                    "/api/briefings/ai-draft",
+                    json.dumps({"country": "Yemen", "cadence": "weekly", "summary": FALLBACK_KEY}).encode("utf-8"),
+                )
+            self.assertEqual(claude_client.get_anthropic_api_key(), FALLBACK_KEY, repr(blank))
+            self.assertEqual(status.get_json()["configured"], True, repr(blank))
+            routed_body = json.loads(routed[2].decode("utf-8"))
+            self.assertEqual(routed_body["configured"], True)
+            self.assertEqual(len(seen), 2)
+            self.assertEqual(seen[0]["headers"]["x-api-key"], FALLBACK_KEY)
+            self.assertEqual(seen[1]["headers"]["x-api-key"], FALLBACK_KEY)
+            risk_body = risk.get_json()
+            brief_body = json.loads(brief[2].decode("utf-8"))
+            self.assertEqual(risk_body["source"], "claude")
+            self.assertEqual(brief_body["source"], "claude")
+            published = (
+                json.dumps(risk_body)
+                + json.dumps(brief_body)
+                + json.dumps(routed_body)
+                + status.get_data(as_text=True)
+            )
+            self.assertNotIn(FALLBACK_KEY, published)
+            prompt = json.dumps([call["json"] for call in seen])
+            self.assertNotIn(FALLBACK_KEY, prompt)
+            self.assertIn("Iraq", prompt)
+
+        os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GeoRiskIntel", None)
+        os.environ["GEORISKINTEL"] = FALLBACK_KEY
+        with patch("claude_client.requests.post", side_effect=AssertionError("wrong-case name must not call Anthropic")):
+            wrong_case = self.client.get("/api/ai/claude-status").get_json()
+        self.assertEqual(claude_client.get_anthropic_api_key(), "")
+        self.assertEqual(wrong_case["configured"], False)
+        self.assertNotIn(FALLBACK_KEY, json.dumps(wrong_case))
+
+    def test_status_unconfigured_when_both_keys_are_blank(self):
+        cases = (
+            {"ANTHROPIC_API_KEY": None, "GeoRiskIntel": None},
+            {"ANTHROPIC_API_KEY": "", "GeoRiskIntel": ""},
+            {"ANTHROPIC_API_KEY": " \t\n", "GeoRiskIntel": "   "},
+            {"ANTHROPIC_API_KEY": None, "GeoRiskIntel": "  "},
+            {"ANTHROPIC_API_KEY": "", "GeoRiskIntel": None},
+        )
+
+        def explode(*args, **kwargs):
+            raise AssertionError("a blank key must not call Anthropic")
+
+        for case in cases:
+            for name, value in case.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+            with patch("claude_client.requests.post", side_effect=explode):
+                payload = claude_client.status_payload()
+                response = self.client.post("/api/ai/claude-status")
+                draft = self.client.post("/api/briefings/ai-draft", json={"country": "Chad", "cadence": "daily"})
+            self.assertEqual(claude_client.get_anthropic_api_key(), "")
+            self.assertEqual(payload["configured"], False)
+            self.assertEqual(response.get_json()["configured"], False)
+            self.assertEqual(draft.get_json()["source"], "local")
+            self.assertEqual(draft.get_json()["usage"]["estimated_usd"], 0)
+            self.assertEqual(claude_client.anthropic_calls(), 0)
+            self.assertNotIn(FALLBACK_KEY, response.get_data(as_text=True))
+            self.assertNotIn(PRIMARY_KEY, response.get_data(as_text=True))
 
     def test_builtin_server_dispatch_matches_flask(self):
         os.environ["ANTHROPIC_API_KEY"] = ""

@@ -1,6 +1,6 @@
 # Claude integration (on demand)
 
-Claude is optional. The map, the pollers, the 07:00 briefings, and the scheduled reports keep working with no Anthropic key and no Anthropic spend. A draft is sent to Claude only when someone clicks **Draft with Claude** (or calls the draft endpoint) and `ANTHROPIC_API_KEY` is set.
+Claude is optional. The map, the pollers, the 07:00 briefings, and the scheduled reports keep working with no Anthropic key and no Anthropic spend. A draft is sent to Claude only when someone clicks **Draft with Claude** (or calls the draft endpoint) and a server key is set.
 
 Nothing in this path calls xAI.
 
@@ -10,11 +10,12 @@ Set these on the server process. Do not put them in HTML or JavaScript, and do n
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Server key for the Messages API. Empty means Claude stays off. | unset |
+| `ANTHROPIC_API_KEY` | Preferred server key for the Messages API. | unset |
+| `GeoRiskIntel` | Fallback key, used only when `ANTHROPIC_API_KEY` is unset or blank. The name is case-sensitive. `GEORISKINTEL` is not read. | unset |
 | `CLAUDE_RA_MODEL` | Model for country and sector risk-assessment drafts. | `claude-sonnet-5-5` |
 | `CLAUDE_BRIEF_MODEL` | Model for daily, weekly, and monthly area briefings. | `claude-haiku-5-5` |
 
-The module reads the process environment. A local `.env` file is loaded only when `python-dotenv` is installed, and it does not override variables that are already set. The key is never written into a response or a log line.
+Claude stays off when both key values are unset or blank. The module reads the process environment. A local `.env` file is loaded only when `python-dotenv` is installed, and it does not override variables that are already set. The key is never written into a response or a log line.
 
 ## Endpoints
 
@@ -49,7 +50,7 @@ Emails, phone numbers, IMEIs, passport-like IDs, and labeled staff names are str
 
 ## When Claude is not called
 
-- `ANTHROPIC_API_KEY` is missing
+- `ANTHROPIC_API_KEY` and `GeoRiskIntel` are both missing or blank
 - Anthropic returns an error, a rate limit, or an empty draft
 - any page load, health check, ingest poll, or scheduled report
 
