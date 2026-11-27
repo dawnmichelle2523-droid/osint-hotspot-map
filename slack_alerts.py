@@ -218,8 +218,8 @@ def map_link(country: object, base_url: str | None = None) -> str:
     base = public_base_url(base_url)
     name = " ".join(str(country or "").split())
     if not name:
-        return base + "/"
-    return base + "/?country=" + quote(name, safe="")
+        return base + "/map"
+    return base + "/map?country=" + quote(name, safe="")
 
 
 def _loads(value: object, default):

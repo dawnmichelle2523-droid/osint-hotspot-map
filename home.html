@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GeoRiskGlobal — Global Geopolitical Risk Intelligence</title>
+  <meta name="description" content="GeoRiskGlobal provides real-time OSINT monitoring, daily regional briefings, and ISO-aligned bespoke country risk assessments for media organisations, NGOs, humanitarian teams, and corporate travel and security directors.">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GeoRiskGlobal">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <script src="/static/pwa-register.js" defer></script>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #060A13;
+      --panel: #0D1424;
+      --ink: #F8FAFC;
+      --muted: #94A3B8;
+      --gold: #D4AF37;
+      --gold-deep: #C5A059;
+      --cobalt: #102A63;
+      --line: #1E293B;
+    }
+    * { box-sizing: border-box; }
+    html { overflow-x: clip; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 420px at 12% -10%, rgba(16, 42, 99, 0.72), transparent 62%),
+        radial-gradient(680px 320px at 100% 0%, rgba(212, 175, 55, 0.12), transparent 55%),
+        var(--bg);
+      color: var(--ink);
+      font: 16px/1.5 "Segoe UI", system-ui, sans-serif;
+      overflow-x: clip;
+    }
+    .skip {
+      position: absolute;
+      left: 12px;
+      top: -40px;
+      z-index: 200;
+      background: var(--gold);
+      color: #060A13;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .skip:focus { top: 12px; }
+    #live-bar.site-shell {
+      border-bottom: 1px solid transparent;
+      background-image: linear-gradient(#060A13, #060A13), linear-gradient(90deg, #102A63 0%, #D4AF37 45%, rgba(110, 88, 37, 0.05) 100%);
+      background-origin: padding-box, border-box;
+      background-clip: padding-box, border-box;
+    }
+    #live-bar.site-shell #pwa-install {
+      align-self: flex-end;
+      width: auto;
+      margin: 0 12px 6px auto;
+    }
+    main { display: block; }
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+    .hero { padding: 28px 0 8px; }
+    .lockup {
+      display: block;
+      width: min(520px, 100%);
+      height: auto;
+    }
+    .kicker {
+      margin: 18px 0 8px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      max-width: 100%;
+      font-size: clamp(1.7rem, 6.4vw, 3.15rem);
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      font-weight: 750;
+    }
+    .hero .page-lead {
+      margin: 0;
+      max-width: 62ch;
+      color: #E2E8F0;
+      font-size: clamp(1rem, 2.6vw, 1.15rem);
+      line-height: 1.5;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 800;
+      text-decoration: none;
+      text-align: center;
+      flex: 1 1 180px;
+      max-width: 100%;
+    }
+    .actions .primary {
+      background: var(--gold);
+      color: #060A13;
+      border: 1px solid var(--gold);
+    }
+    .actions .primary:hover { background: #E4C35A; }
+    .actions .secondary {
+      background: transparent;
+      color: var(--gold);
+      border: 1px solid var(--gold-deep);
+    }
+    .actions .secondary:hover { background: var(--cobalt); color: #F8FAFC; }
+    .audience {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 22px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .audience li {
+      margin: 0;
+      color: #E2E8F0;
+      background: rgba(13, 20, 36, 0.86);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .section { padding: 28px 0; }
+    .section h2 {
+      margin: 0 0 6px;
+      font-size: clamp(1.35rem, 3vw, 1.85rem);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .section > .wrap > p.intro {
+      margin: 0 0 16px;
+      max-width: 68ch;
+      color: var(--muted);
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .capability {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+      min-height: 100%;
+      padding: 16px;
+      text-decoration: none;
+      color: inherit;
+      background: linear-gradient(180deg, rgba(16, 42, 99, 0.35), rgba(13, 20, 36, 0.96) 72px);
+      border: 1px solid var(--line);
+      border-top: 2px solid var(--gold-deep);
+      border-radius: 14px;
+    }
+    .capability:hover { border-color: var(--gold-deep); }
+    .index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--cobalt);
+      color: var(--gold);
+      border: 1px solid var(--gold-deep);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .capability h3 {
+      margin: 4px 0 0;
+      font-size: 1.12rem;
+      line-height: 1.25;
+    }
+    .capability p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .go {
+      margin-top: auto;
+      padding-top: 8px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .standards {
+      background: rgba(13, 20, 36, 0.72);
+      border-block: 1px solid var(--line);
+    }
+    .standard-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .standard-list li {
+      min-width: 0;
+      margin: 0;
+      padding: 12px 14px;
+      background: #060A13;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    .standard-list strong {
+      display: block;
+      color: var(--gold);
+      font-size: 14px;
+      letter-spacing: 0.02em;
+    }
+    .standard-list span { color: #E2E8F0; font-size: 14px; }
+    .enquiry {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      background:
+        linear-gradient(135deg, rgba(16, 42, 99, 0.85), rgba(13, 20, 36, 0.95) 48%),
+        #0D1424;
+      border: 1px solid var(--gold-deep);
+      border-radius: 16px;
+    }
+    .enquiry h2 { margin: 0; }
+    .enquiry p { margin: 0; color: #E2E8F0; }
+    .enquiry .note { color: var(--muted); font-size: 14px; }
+    .site-footer {
+      border-top: 1px solid #6E5825;
+      background: #0D1424;
+      padding: 22px 0 28px;
+    }
+    .powered {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 12px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+    .powered img { height: 36px; width: auto; max-width: min(220px, 62vw); }
+    .foot-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin: 0 0 12px;
+      padding: 0;
+      list-style: none;
+    }
+    .foot-nav a { color: var(--gold); font-weight: 700; text-decoration: none; }
+    .foot-nav a:hover { text-decoration: underline; }
+    .copy { margin: 0; color: var(--muted); font-size: 13px; }
+    @media (min-width: 720px) {
+      .hero { padding-top: 42px; }
+      h1 { max-width: 18ch; }
+      .cards, .standard-list { grid-template-columns: 1fr 1fr; }
+      .standard-list li:last-child { grid-column: 1 / -1; }
+      .actions a { flex: 0 1 auto; }
+      .enquiry { grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr); align-items: end; }
+    }
+    @media (min-width: 1100px) {
+      .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      #live-bar, .actions, .site-footer .foot-nav { display: none !important; }
+      .capability, .standard-list li, .enquiry { border-color: #bbb; background: #fff; color: #111; }
+      .capability p, .page-lead, .copy { color: #222; }
+    }
+  </style>
+  <script>
+    (function () {
+      var hash = window.location.hash || "";
+      if (hash.indexOf("#pin=") === 0) {
+        window.location.replace("/map" + window.location.search + hash);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header id="live-bar" class="site-shell">
+    <div class="nav-backdrop"></div>
+    <div class="nav-row">
+      <a class="brand-lockup" href="/">
+        <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
+      </a>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav id="page-nav" aria-label="Sections">
+        <a href="/map">Live Map</a>
+        <a href="/risk-assessments">Risk Assessments</a>
+        <a href="/route-risk">Route risk</a>
+        <a href="/check-in">Check-in</a>
+        <a href="/pricing">Pricing</a>
+        <details class="nav-more">
+          <summary>Tools</summary>
+          <div class="nav-menu">
+            <a href="/reports">Reports</a>
+            <a href="/sentinel-zones">Sentinel zones</a>
+            <a href="/slack-alerts">Slack alerts</a>
+            <a href="/white-label">White-label</a>
+            <a href="/grok-ops">Grok Ops</a>
+            <a href="/sso-setup">Okta SSO</a>
+            <a href="/briefing">Daily briefing</a>
+            <a href="/world-risk">World risk</a>
+            <a href="/countries">Country guides</a>
+            <a href="/enterprise">Enterprise</a>
+          </div>
+        </details>
+        <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+      </nav>
+      <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <img class="lockup" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
+        <p class="kicker">For desks that move people</p>
+        <h1 id="hero-title">Global Geopolitical Risk Intelligence &amp; Bespoke Security Risk Assessments</h1>
+        <p class="page-lead">Real-time OSINT monitoring, daily regional briefings, and ISO-aligned country risk assessments for media organisations, NGOs, humanitarian teams, and corporate travel and security directors.</p>
+        <div class="actions">
+          <a class="primary" href="/map">Explore Live Map</a>
+          <a class="primary" href="/pricing">View Pricing</a>
+          <a class="secondary" href="/briefing">Daily Briefings</a>
+          <a class="secondary" href="/risk-assessments">Risk Assessments</a>
+        </div>
+        <ul class="audience" aria-label="Who GeoRiskGlobal is written for">
+          <li>Media organisations</li>
+          <li>NGOs</li>
+          <li>Humanitarian teams</li>
+          <li>Corporate travel and security directors</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="capabilities-title">
+      <div class="wrap">
+        <h2 id="capabilities-title">Four core capabilities</h2>
+        <p class="intro">One desk for the live picture, the morning brief, the country assessment, and a price your organisation can approve.</p>
+        <div class="cards">
+          <a class="capability" href="/map">
+            <span class="index">01</span>
+            <h3>Live OSINT Hotspot Map</h3>
+            <p>Real-time global incident tracking across conflict zones, maritime chokepoints, aviation advisories, and civil unrest.</p>
+            <span class="go">Open the live map</span>
+          </a>
+          <a class="capability" href="/briefing">
+            <span class="index">02</span>
+            <h3>Daily Geopolitical Briefings</h3>
+            <p>Concise, decision-ready daily Area of Operations (AO) intelligence digests written in UK English.</p>
+            <span class="go">Read daily briefings</span>
+          </a>
+          <a class="capability" href="/risk-assessments">
+            <span class="index">03</span>
+            <h3>Bespoke Country Risk Assessments</h3>
+            <p>Senior security-advisor grade assessments with colour-coded 5×5 Likelihood × Impact matrices, threat and mitigation tables, and branded A4 PDF exports.</p>
+            <span class="go">Build a risk assessment</span>
+          </a>
+          <a class="capability" href="/pricing">
+            <span class="index">04</span>
+            <h3>Transparent Subscription &amp; Enterprise Tiers</h3>
+            <p>Flexible GBP and USD individual, team, and enterprise plans with bespoke assessment add-ons.</p>
+            <span class="go">View pricing</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section standards" aria-labelledby="standards-title">
+      <div class="wrap">
+        <h2 id="standards-title">Standards and methodology</h2>
+        <p class="intro">The assessment model and the travel-risk workflow are aligned with these standards. Alignment is how the product is built. It is not a claim that a certificate has been issued.</p>
+        <ul class="standard-list">
+          <li><strong>ISO 31000</strong><span>Risk management principles and the structure of the assessment.</span></li>
+          <li><strong>ISO 31030</strong><span>Travel risk management for organisations that send people abroad.</span></li>
+          <li><strong>BS 8848</strong><span>Visits, fieldwork, expeditions, and adventurous activities outside the United Kingdom.</span></li>
+          <li><strong>ISO 18788</strong><span>Management system for private security operations.</span></li>
+          <li><strong>UK GDPR and EU GDPR</strong><span>Zero-PII architecture. Traveller, medical, and pupil details stay in the browser and are not written to GeoRiskGlobal servers.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="enquiry" aria-labelledby="enquiry-title">
+      <div class="wrap">
+        <div class="enquiry">
+          <div>
+            <p class="kicker">Bespoke risk assessment</p>
+            <h2 id="enquiry-title">Commission a country or deployment assessment</h2>
+            <p>Organisations that need a custom country, corridor, or deployment risk assessment can start from the assessment builder or ask the desk for a scoped piece of work. Pricing for individual, team, and enterprise plans, including bespoke add-ons, is published in GBP and USD.</p>
+          </div>
+          <div class="actions">
+            <a class="primary" href="/risk-assessments">Start a risk assessment</a>
+            <a class="secondary" href="/pricing">View plans and add-ons</a>
+            <a class="secondary" href="mailto:contact@georiskglobal.com?subject=GeoRiskGlobal%20bespoke%20assessment%20enquiry">Email contact@georiskglobal.com</a>
+          </div>
+        </div>
+        <p class="intro" style="margin-top:12px">This page does not collect or store personal data. The email link opens in your own mail programme. Nothing on this homepage is written to a GeoRiskGlobal database.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="powered"><img src="/static/logo.png" alt=""><span>Powered by GeoRiskGlobal</span></p>
+      <ul class="foot-nav">
+        <li><a href="/map">Live Map</a></li>
+        <li><a href="/briefing">Daily briefings</a></li>
+        <li><a href="/risk-assessments">Risk assessments</a></li>
+        <li><a href="/world-risk">World risk</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+        <li><a href="/trust">Trust</a></li>
+      </ul>
+      <p class="copy">© 2026 GeoRiskGlobal. For authorised recipients.</p>
+    </div>
+  </footer>
+</body>
+</html>

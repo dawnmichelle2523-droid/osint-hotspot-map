@@ -310,9 +310,12 @@ def _next_url() -> str:
     from flask import request
 
     pairs = [(key, value) for key, value in request.args.items() if key != "pass"]
+    path = request.path or "/"
+    if path == "/":
+        path = "/map"
     if not pairs:
-        return request.path
-    return request.path + "?" + "&".join(f"{quote(key)}={quote(value)}" for key, value in pairs)
+        return path
+    return path + "?" + "&".join(f"{quote(key)}={quote(value)}" for key, value in pairs)
 
 
 def install(app) -> None:
@@ -400,7 +403,7 @@ def install(app) -> None:
         except (RuntimeError, ValueError) as exc:
             return jsonify({"ok": False, "message": str(exc)}), 400
         grant = verify(token) or {}
-        link = request.host_url.rstrip("/") + "/?pass=" + quote(token, safe="")
+        link = request.host_url.rstrip("/") + "/map?pass=" + quote(token, safe="")
         return jsonify({
             "ok": True,
             "token": token,

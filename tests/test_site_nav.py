@@ -13,6 +13,7 @@ import app as app_module
 
 OPS_PAGES = (
     "/",
+    "/map",
     "/risk-assessments",
     "/route-risk",
     "/sentinel-zones",

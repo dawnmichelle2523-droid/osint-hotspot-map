@@ -197,15 +197,15 @@ class SlackAlertTests(unittest.TestCase):
         self.assertLessEqual(_section(long_card).count("\n"), 2)
         button = _button(high)
         self.assertEqual(button["text"]["text"], "View on Live Map")
-        self.assertEqual(button["url"], "https://ops.example/?country=Syria")
+        self.assertEqual(button["url"], "https://ops.example/map?country=Syria")
         saudi = slack_alerts.build_block_kit(self._incident(country="Saudi Arabia"), "https://ops.example")
-        self.assertEqual(_button(saudi)["url"], "https://ops.example/?country=Saudi%20Arabia")
+        self.assertEqual(_button(saudi)["url"], "https://ops.example/map?country=Saudi%20Arabia")
         context = next(block for block in high["attachments"][0]["blocks"] if block["type"] == "context")
         self.assertIn("Field wire", context["elements"][0]["text"])
         self.assertIn("UTC", context["elements"][0]["text"])
         os.environ["PUBLIC_BASE_URL"] = "https://desk.example/"
         from_env = slack_alerts.build_block_kit(self._incident())
-        self.assertEqual(_button(from_env)["url"], "https://desk.example/?country=Syria")
+        self.assertEqual(_button(from_env)["url"], "https://desk.example/map?country=Syria")
 
     def test_matching_region_country_category_and_severity(self):
         strict = {
@@ -321,7 +321,7 @@ class SlackAlertTests(unittest.TestCase):
         self.assertEqual(stats["sent"], 1)
         self.assertEqual(stats["queued"], 0)
         self.assertEqual(calls[0][1]["attachments"][0]["color"], "#dc2626")
-        self.assertEqual(_button(calls[0][1])["url"], "https://ops.example/?country=Japan")
+        self.assertEqual(_button(calls[0][1])["url"], "https://ops.example/map?country=Japan")
 
     def test_disabled_channel_is_silent(self):
         self._channel(enabled=False)
@@ -500,7 +500,7 @@ class SlackAlertTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()["payload"]
         self.assertEqual(payload["attachments"][0]["color"], "#3b82f6")
-        self.assertTrue(_button(payload)["url"].startswith("http://localhost/?country=Iraq"))
+        self.assertTrue(_button(payload)["url"].startswith("http://localhost/map?country=Iraq"))
 
     def test_routes_beat_a_later_catch_all(self):
         app = Flask(__name__)

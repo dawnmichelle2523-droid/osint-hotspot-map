@@ -4,10 +4,11 @@
    POST requests and auth responses are never stored.
    The origin marks API responses no-store. That only bypasses the HTTP cache.
    The Cache API below is the explicit field snapshot. */
-const SHELL_CACHE = "georiskglobal-shell-v4";
+const SHELL_CACHE = "georiskglobal-shell-v5";
 const API_CACHE = "georiskglobal-api-v2";
 const SHELL = [
   "/",
+  "/map",
   "/risk-assessments",
   "/sentinel-zones",
   "/reports",

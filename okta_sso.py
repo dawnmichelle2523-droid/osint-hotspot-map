@@ -707,7 +707,7 @@ _SETUP_PAGE = """<!DOCTYPE html>
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100vh; background: #060A13; color: #E2E8F0; font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
     #live-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #C5A059; background: #060A13; }
-    .brand-lockup { display: flex; align-items: center; gap: 8px; color: #D4AF37; font-weight: 800; letter-spacing: .04em; }
+    .brand-lockup { display: flex; align-items: center; gap: 8px; color: #D4AF37; font-weight: 800; letter-spacing: .04em; text-decoration: none; }
     .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: .08em; font-weight: 700; }
     #page-nav { display: flex; gap: 6px; max-width: 100%; flex-wrap: wrap; align-items: center; }
     #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -755,9 +755,9 @@ _SETUP_PAGE = """<!DOCTYPE html>
 </head>
 <body>
   <header id="live-bar">
-    <div class="brand-lockup"><span>GeoRiskGlobal</span><span class="risk-pill">REGIONAL RISK</span></div>
+    <a class="brand-lockup" href="/"><span>GeoRiskGlobal</span><span class="risk-pill">REGIONAL RISK</span></a>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Live map</a>
+      <a href="/map">Live Map</a>
       <a href="/risk-assessments">Risk Assessments</a>
       <a href="/route-risk">Route risk</a>
       <a href="/check-in">Check-in</a>

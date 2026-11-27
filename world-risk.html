@@ -95,7 +95,7 @@
       <span class="nav-toggle-bars" aria-hidden="true"></span>
     </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Live map</a>
+      <a href="/map">Live Map</a>
       <a href="/risk-assessments">Risk Assessments</a>
       <a href="/route-risk">Route risk</a>
       <a href="/check-in">Check-in</a>
@@ -162,7 +162,7 @@
       <a class="official-link" id="drawer-official" href="" target="_blank" rel="noopener noreferrer" hidden>Official advisory</a>
       <h3>Live incidents</h3>
       <ul class="incident-list" id="drawer-incidents"></ul>
-      <a class="map-link" id="drawer-map" href="/">View on Tactical OSINT Map</a>
+      <a class="map-link" id="drawer-map" href="/map">View on Tactical OSINT Map</a>
     </aside>
   </div>
   <footer id="app-footer">GeoRiskGlobal · Proprietary Client Intelligence — For Authorised Recipients Only.</footer>
@@ -272,7 +272,7 @@
         ? matches.slice(0, 8).map((item) => "<li>" + esc((item.properties || {}).title || "Incident") + "</li>").join("")
         : "<li>No matching live incidents.</li>";
       const country = row.mapCountry || props.ADMIN || "";
-      document.getElementById("drawer-map").href = "/?country=" + encodeURIComponent(country);
+      document.getElementById("drawer-map").href = "/map?country=" + encodeURIComponent(country);
       document.getElementById("risk-drawer").hidden = false;
     }
     function paintSpikes() {

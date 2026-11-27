@@ -16,7 +16,7 @@ for _name in ("PREVIEW_PASSWORD", "PREVIEW_USER", "BASIC_AUTH_PASSWORD", "BASIC_
 import app as app_module
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = ("/", "/risk-assessments", "/sentinel-zones", "/grok-ops")
+PAGES = ("/", "/map", "/risk-assessments", "/sentinel-zones", "/grok-ops")
 ICONS = {
     "/static/icons/icon-192.png": (192, 192),
     "/static/icons/icon-512.png": (512, 512),
