@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>White-Label Studio — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="stylesheet" href="/static/platform.css">
+  <style>
+    .brand-lockup img { height: 36px; width: auto; display: block; }
+    .studio { display: grid; grid-template-columns: minmax(280px, 420px) minmax(280px, 1fr); gap: 16px; align-items: start; }
+    .studio label span { display: block; margin-bottom: 4px; }
+    .row { display: grid; grid-template-columns: 52px 1fr; gap: 8px; align-items: center; }
+    input[type="color"] { padding: 4px; height: 40px; }
+    .modes { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .modes label { flex-direction: row; align-items: center; gap: 8px; color: var(--text); white-space: nowrap; }
+    input[type="color"] { width: 52px; min-width: 52px; padding: 2px; }
+    .preview-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .preview-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    #logo-slot { width: 42px; height: 42px; border-radius: 10px; overflow: hidden; background: #102A63; display: grid; place-items: center; flex: 0 0 auto; }
+    #logo-slot img, #logo-slot svg { width: 42px; height: 42px; object-fit: cover; display: block; }
+    #preview { width: 100%; border: 0; border-radius: 10px; background: #07111F; }
+    textarea.snippet { min-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .copy-row { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; }
+    #copy-status { min-height: 1.2em; }
+    .rule { border: 1px solid var(--gold-border); border-radius: 10px; padding: 8px 10px; color: var(--gold); font-size: 12px; font-weight: 700; }
+    @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">WHITE-LABEL</span></div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">Map</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/white-label" aria-current="page">White-Label</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </header>
+  <div class="section-banner">
+    <p class="kicker">Client portal embeds</p>
+    <h1>White-Label Studio</h1>
+    <p>TMCs, insurers, private security companies, and universities can place a live country-risk badge, ticker, or mini-map on their own intranet. Their logo and accent travel with the embed. The Powered by GeoRiskIntel badge stays on every widget.</p>
+  </div>
+  <main>
+    <div class="studio">
+      <form id="studio-form" class="panel" action="/embed/widget" method="get" target="preview">
+        <h2>Brand</h2>
+        <label><span>Organization name</span><input id="org" name="org" type="text" maxlength="80" value="Atlas Secure Travel" autocomplete="organization"></label>
+        <label><span>Custom logo URL (https only)</span><input id="logo" name="logo" type="url" inputmode="url" placeholder="https://cdn.example.com/logo.png" autocomplete="off" spellcheck="false"></label>
+        <label><span>Or preview a local image / SVG badge</span><input id="logo-file" type="file" accept="image/*,.svg"></label>
+        <p id="logo-note" class="note">No https logo yet. The widget draws an SVG monogram from the organization name. A local file previews here and is not uploaded.</p>
+        <label><span>Primary brand accent</span>
+          <span class="row">
+            <input id="accent" name="accent" type="color" value="#1B4F8A" aria-label="Accent colour">
+            <input id="accent-hex" type="text" value="#1B4F8A" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Accent hex">
+          </span>
+        </label>
+        <label><span>Theme</span>
+          <select id="theme" name="theme">
+            <option value="dark" selected>Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+        <label><span>Default country</span><input id="country" name="country" type="text" list="countries" value="Yemen" autocomplete="off"></label>
+        <datalist id="countries">
+          <option value="Yemen"></option>
+          <option value="Syria"></option>
+          <option value="Iraq"></option>
+          <option value="Lebanon"></option>
+          <option value="Israel"></option>
+          <option value="Jordan"></option>
+          <option value="Saudi Arabia"></option>
+          <option value="United Arab Emirates"></option>
+          <option value="Egypt"></option>
+          <option value="Turkey"></option>
+          <option value="Iran"></option>
+          <option value="Sudan"></option>
+          <option value="Ukraine"></option>
+          <option value="United Kingdom"></option>
+          <option value="France"></option>
+          <option value="Germany"></option>
+          <option value="United States"></option>
+          <option value="Nigeria"></option>
+          <option value="Kenya"></option>
+          <option value="India"></option>
+          <option value="Pakistan"></option>
+          <option value="Japan"></option>
+          <option value="Australia"></option>
+        </datalist>
+        <label><span>Region</span>
+          <select id="region" name="region">
+            <option value="">Use the country only</option>
+            <option value="Middle East" selected>Middle East</option>
+            <option value="UK &amp; Europe">UK &amp; Europe</option>
+            <option value="Africa">Africa</option>
+            <option value="South Asia">South Asia</option>
+            <option value="Americas">Americas</option>
+            <option value="Asia-Pacific">Asia-Pacific</option>
+            <option value="Maritime">Maritime</option>
+            <option value="Global">Global</option>
+          </select>
+        </label>
+        <fieldset>
+          <legend>Widget type</legend>
+          <div class="modes">
+            <label><input id="mode-badge" type="radio" name="mode" value="badge" checked> Country Risk Badge</label>
+            <label><input id="mode-ticker" type="radio" name="mode" value="ticker"> Compact Live Ticker</label>
+            <label><input id="mode-map" type="radio" name="mode" value="map"> Interactive Mini-Map</label>
+          </div>
+        </fieldset>
+        <p><button type="submit">Update preview</button></p>
+        <p class="rule">Powered by GeoRiskIntel is rendered on every embed. It cannot be removed with a query parameter, theme, or brand colour.</p>
+      </form>
+      <section class="preview-card" aria-label="Live widget preview">
+        <div class="preview-head">
+          <div id="logo-slot" aria-hidden="true"></div>
+          <div>
+            <strong id="preview-org">Atlas Secure Travel</strong>
+            <p class="note" id="preview-caption">Side-by-side preview. The client mark is on the left; the live widget, including the fixed GeoRiskIntel bar, is below.</p>
+          </div>
+        </div>
+        <iframe id="preview" name="preview" title="Branded country risk widget preview" src="/embed/widget?mode=badge&amp;country=Yemen&amp;region=Middle%20East&amp;org=Atlas%20Secure%20Travel&amp;accent=%231B4F8A&amp;theme=dark" style="height:260px" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+        <h2>Embed snippets</h2>
+        <label><span>iframe</span><textarea id="iframe-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-iframe">Copy iframe</button></p>
+        <label><span>script</span><textarea id="script-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-script">Copy script</button><span id="copy-status" class="note" role="status"></span></p>
+      </section>
+    </div>
+  </main>
+  <footer>GeoRiskIntel · white-label embeds keep the Powered by GeoRiskIntel badge</footer>
+  <script>
+    "use strict";
+    (function () {
+      var HEIGHTS = { badge: 260, ticker: 96, map: 400 };
+      var form = document.getElementById("studio-form");
+      var orgInput = document.getElementById("org");
+      var logoInput = document.getElementById("logo");
+      var fileInput = document.getElementById("logo-file");
+      var accentInput = document.getElementById("accent");
+      var hexInput = document.getElementById("accent-hex");
+      var themeInput = document.getElementById("theme");
+      var countryInput = document.getElementById("country");
+      var regionInput = document.getElementById("region");
+      var preview = document.getElementById("preview");
+      var logoSlot = document.getElementById("logo-slot");
+      var logoNote = document.getElementById("logo-note");
+      var previewOrg = document.getElementById("preview-org");
+      var iframeSnippet = document.getElementById("iframe-snippet");
+      var scriptSnippet = document.getElementById("script-snippet");
+      var copyStatus = document.getElementById("copy-status");
+      var localPreview = "";
+      var localObjectUrl = "";
+      var timer = 0;
+      var nodes = [form, orgInput, logoInput, fileInput, accentInput, hexInput, themeInput, countryInput, regionInput, preview, logoSlot, iframeSnippet, scriptSnippet];
+      if (nodes.some(function (node) { return !node; })) {
+        return;
+      }
+
+      function safeOrg(value) {
+        return String(value || "")
+          .replace(/javascript\s*:/gi, "")
+          .replace(/vbscript\s*:/gi, "")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/[<>]/g, " ")
+          .replace(/[\u0000-\u001f]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 80);
+      }
+
+      function safePlace(value) {
+        return String(value || "").replace(/[^A-Za-z0-9 &'.,\/-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+      }
+
+      function expandHex(value) {
+        var text = String(value || "").trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(text)) {
+          return text.toUpperCase();
+        }
+        if (/^#[0-9a-fA-F]{3}$/.test(text)) {
+          return ("#" + text.slice(1).split("").map(function (ch) { return ch + ch; }).join("")).toUpperCase();
+        }
+        return "";
+      }
+
+      function safeLogo(value) {
+        var raw = String(value || "").trim();
+        if (!raw || raw.length > 400 || /[\s<>"'\\]/.test(raw)) {
+          return "";
+        }
+        var decoded = raw;
+        try {
+          decoded = decodeURIComponent(raw);
+        } catch (err) {
+          return "";
+        }
+        if (/javascript:|vbscript:|data:/i.test(decoded) || /[<>"'\\\n\r\t]/.test(decoded)) {
+          return "";
+        }
+        try {
+          var url = new URL(raw);
+          if (url.protocol !== "https:" || url.username || url.password) {
+            return "";
+          }
+        } catch (err) {
+          return "";
+        }
+        return raw;
+      }
+
+      function htmlEscape(value) {
+        return String(value).replace(/[&<>"']/g, function (ch) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+        });
+      }
+
+      function selectedMode() {
+        var chosen = document.querySelector('input[name="mode"]:checked');
+        var mode = chosen ? chosen.value : "badge";
+        return HEIGHTS[mode] ? mode : "badge";
+      }
+
+      function monogram(org) {
+        var parts = String(org || "").split(/[^A-Za-z0-9]+/).filter(Boolean);
+        if (!parts.length) {
+          return "GR";
+        }
+        if (parts.length === 1) {
+          return parts[0].slice(0, 2).toUpperCase();
+        }
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+
+      function paintLogo(org, httpsLogo, accent) {
+        while (logoSlot.firstChild) {
+          logoSlot.removeChild(logoSlot.firstChild);
+        }
+        if (localPreview || httpsLogo) {
+          var img = document.createElement("img");
+          img.alt = "";
+          img.referrerPolicy = "no-referrer";
+          img.src = localPreview || httpsLogo;
+          logoSlot.appendChild(img);
+          return;
+        }
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 64 64");
+        svg.setAttribute("role", "img");
+        var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("width", "64");
+        rect.setAttribute("height", "64");
+        rect.setAttribute("rx", "14");
+        rect.setAttribute("fill", accent);
+        var text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", "32");
+        text.setAttribute("y", "40");
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("font-size", "24");
+        text.setAttribute("font-family", "Segoe UI, sans-serif");
+        text.setAttribute("font-weight", "700");
+        text.setAttribute("fill", "#FFFFFF");
+        text.textContent = monogram(org);
+        svg.appendChild(rect);
+        svg.appendChild(text);
+        logoSlot.appendChild(svg);
+      }
+
+      function render() {
+        var org = safeOrg(orgInput.value);
+        var logo = safeLogo(logoInput.value);
+        var accent = expandHex(hexInput.value) || expandHex(accentInput.value) || "#D4AF37";
+        var theme = themeInput.value === "light" ? "light" : "dark";
+        var country = safePlace(countryInput.value);
+        var region = safePlace(regionInput.value);
+        var mode = selectedMode();
+        var params = new URLSearchParams();
+        params.set("mode", mode);
+        params.set("theme", theme);
+        params.set("accent", accent);
+        if (country) params.set("country", country);
+        if (region) params.set("region", region);
+        if (org) params.set("org", org);
+        if (logo) params.set("logo", logo);
+        var src = location.origin + "/embed/widget?" + params.toString();
+        var title = (org || "GeoRiskIntel") + " country risk";
+        var height = HEIGHTS[mode];
+        preview.style.height = height + "px";
+        preview.title = title;
+        if (preview.getAttribute("src") !== src) {
+          preview.src = src;
+        }
+        var iframe = '<iframe src="' + htmlEscape(src) + '" title="' + htmlEscape(title) + '" style="width:100%;max-width:480px;height:' + height + 'px;border:0;overflow:hidden;" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe>';
+        var script = '<script>(function(){var s=document.currentScript;if(!s||!s.parentNode)return;var f=document.createElement("iframe");f.src=' + JSON.stringify(src) + ';f.title=' + JSON.stringify(title) + ';f.style.cssText=' + JSON.stringify("width:100%;max-width:480px;height:" + height + "px;border:0;overflow:hidden;") + ';f.loading="lazy";f.referrerPolicy="no-referrer";f.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");s.parentNode.insertBefore(f,s);})();<' + '/script>';
+        iframeSnippet.value = iframe;
+        scriptSnippet.value = script;
+        previewOrg.textContent = org || "Client widget";
+        paintLogo(org, logo, accent);
+        if (localPreview) {
+          logoNote.textContent = "Local image is a studio preview only. Embeds accept https logo URLs; otherwise the widget uses an SVG monogram.";
+        } else if (logo) {
+          logoNote.textContent = "This https logo is included in the embed snippet.";
+        } else {
+          logoNote.textContent = "No https logo yet. The widget draws an SVG monogram from the organization name. A local file previews here and is not uploaded.";
+        }
+      }
+
+      function schedule() {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(render, 120);
+      }
+
+      function copyFrom(id) {
+        var node = document.getElementById(id);
+        var text = node ? node.value : "";
+        function done(message) {
+          copyStatus.textContent = message;
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(function () {
+            done("Copied.");
+          }).catch(function () {
+            if (node) {
+              node.focus();
+              node.select();
+            }
+            done("Select the snippet and copy it.");
+          });
+          return;
+        }
+        if (node) {
+          node.focus();
+          node.select();
+        }
+        done("Select the snippet and copy it.");
+      }
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        render();
+      });
+      [orgInput, logoInput, themeInput, countryInput, regionInput].forEach(function (node) {
+        node.addEventListener("input", schedule);
+        node.addEventListener("change", schedule);
+      });
+      document.querySelectorAll('input[name="mode"]').forEach(function (node) {
+        node.addEventListener("change", schedule);
+      });
+      accentInput.addEventListener("input", function () {
+        hexInput.value = String(accentInput.value || "").toUpperCase();
+        schedule();
+      });
+      hexInput.addEventListener("input", function () {
+        var next = expandHex(hexInput.value);
+        if (next && next.length === 7) {
+          accentInput.value = next;
+        }
+        schedule();
+      });
+      fileInput.addEventListener("change", function () {
+        if (localObjectUrl) {
+          URL.revokeObjectURL(localObjectUrl);
+          localObjectUrl = "";
+        }
+        localPreview = "";
+        var file = fileInput.files && fileInput.files[0];
+        if (file && /^image\//.test(file.type || "")) {
+          try {
+            localObjectUrl = URL.createObjectURL(file);
+            localPreview = localObjectUrl;
+          } catch (err) {
+            localPreview = "";
+          }
+        }
+        render();
+      });
+      document.getElementById("copy-iframe").addEventListener("click", function () { copyFrom("iframe-snippet"); });
+      document.getElementById("copy-script").addEventListener("click", function () { copyFrom("script-snippet"); });
+      render();
+    }());
+  </script>
+</body>
+</html>
