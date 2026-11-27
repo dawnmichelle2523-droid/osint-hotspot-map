@@ -1,6 +1,7 @@
 (function () {
   const REGIONS = ["All", "Global", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "Europe", "Africa"];
   let region = "All";
+  let confidence = "all";
   let items = [];
 
   function esc(value) {
@@ -28,10 +29,30 @@
       paint();
     });
   }
+  function confidenceBadge(item) {
+    const tier = String(item.confidence_tier || "").toLowerCase();
+    if (tier !== "official" && tier !== "corroborated" && tier !== "unverified") return "";
+    const labels = { official: "Official Advisory", corroborated: "Multi-Source Corroborated", unverified: "Single-Source Unverified" };
+    const label = item.confidence_label || labels[tier];
+    const score = Number(item.confidence_score);
+    const sources = Array.isArray(item.corroborating_sources) ? item.corroborating_sources.filter(Boolean) : [];
+    const count = Number(item.corroboration_count);
+    const scoreText = Number.isFinite(score) ? " " + Math.round(score) : "";
+    const detail = Number.isFinite(count) && count >= 2 && sources.length
+      ? '<p class="confidence-sources">Sources (' + sources.length + "): " + esc(sources.join(", ")) + "</p>"
+      : "";
+    return '<p class="confidence-badge confidence-' + tier + '">' + esc(label) + scoreText + "</p>" + detail;
+  }
+  function passesConfidence(item) {
+    const tier = String(item.confidence_tier || "");
+    if (confidence === "official") return tier === "official";
+    if (confidence === "corroborated") return tier === "official" || tier === "corroborated";
+    return true;
+  }
   function paint() {
     const host = document.getElementById("news-list");
     if (!host) return;
-    const rows = items.filter((item) => region === "All" || item.region === region || item.country === region);
+    const rows = items.filter((item) => (region === "All" || item.region === region || item.country === region) && passesConfidence(item));
     if (!rows.length) {
       host.innerHTML = '<p class="headline-empty">No headlines for this region yet.</p>';
       return;
@@ -43,6 +64,7 @@
         : "";
       return '<article class="headline-card"' + focus + ' style="cursor:' + (focus ? "pointer" : "default") + '">' +
         '<p class="source-pill">' + esc(item.source_name || "Wire") + "</p>" +
+        confidenceBadge(item) +
         "<h3>" + esc(item.title || "Update") + "</h3>" +
         (item.summary && item.summary !== item.title ? '<p class="summary">' + esc(item.summary) + "</p>" : "") +
         '<p class="update-place">' + esc(place) + (place ? " · " : "") + esc(relative(item.timestamp)) +
@@ -68,6 +90,10 @@
     if (window.GeoRiskMap && window.GeoRiskMap.focus) {
       window.GeoRiskMap.focus(card.dataset.newsLat, card.dataset.newsLng);
     }
+  });
+  document.addEventListener("georisk-confidence", (event) => {
+    confidence = event.detail || "all";
+    paint();
   });
   if (document.getElementById("news-list")) {
     load();

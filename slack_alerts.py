@@ -352,7 +352,7 @@ def normalize_incident(raw: dict) -> dict:
     source = str(flat.get("source") or flat.get("source_url") or "").strip()
     timestamp = str(flat.get("timestamp") or flat.get("published_at") or flat.get("ingested_at") or "").strip()
     region = " ".join(str(flat.get("theatre") or flat.get("region") or "").split())
-    return {
+    incident = {
         "event_key": event_key_for(flat),
         "title": title[:240],
         "summary": summary[:700],
@@ -366,6 +366,14 @@ def normalize_incident(raw: dict) -> dict:
         "timestamp": timestamp or utc_stamp(),
         "threat_code": flat.get("threat_code"),
     }
+    for key in ("confidence_tier", "confidence_label", "confidence_score", "corroborating_sources", "corroboration_count"):
+        if key not in flat:
+            continue
+        value = flat.get(key)
+        if value is None or value == "":
+            continue
+        incident[key] = list(value) if key == "corroborating_sources" and isinstance(value, list) else value
+    return incident
 
 
 def _region_candidates(incident: dict) -> set[str]:
@@ -498,6 +506,40 @@ def _header_text(incident: dict) -> str:
     return " · ".join(str(part) for part in parts if part)[:150]
 
 
+def confidence_badge_text(incident: dict) -> str:
+    """Short confidence line for a Block Kit card. Empty when the incident has no tier."""
+    if not isinstance(incident, dict):
+        return ""
+    label = " ".join(str(incident.get("confidence_label") or "").split())
+    tier = " ".join(str(incident.get("confidence_tier") or "").split()).lower()
+    if not label and tier in {"official", "corroborated", "unverified"}:
+        label = {
+            "official": "Official Advisory",
+            "corroborated": "Multi-Source Corroborated",
+            "unverified": "Single-Source Unverified",
+        }[tier]
+    if not label:
+        return ""
+    parts = [label]
+    score = incident.get("confidence_score")
+    if isinstance(score, bool):
+        score = None
+    if isinstance(score, (int, float)) and not isinstance(score, bool):
+        parts.append(str(int(score)))
+    elif isinstance(score, str) and score.strip().isdigit():
+        parts.append(score.strip())
+    sources = incident.get("corroborating_sources")
+    try:
+        count = int(incident.get("corroboration_count"))
+    except (TypeError, ValueError):
+        count = len(sources) if isinstance(sources, list) else 0
+    if count >= 2 and isinstance(sources, list):
+        names = [" ".join(str(name).split()) for name in sources if " ".join(str(name).split())]
+        if names:
+            parts.append(", ".join(names))
+    return " · ".join(parts)
+
+
 def _button(country: object, base_url: str | None) -> dict:
     return {
         "type": "button",
@@ -516,6 +558,10 @@ def build_block_kit(incident: dict, base_url: str | None = None) -> dict:
         section += "\n" + slack_escape(summary)
     fallback = f"GeoRiskIntel {item['severity']} · {item['country']} · {item['title']}"[:300]
     context = f"Source: *{slack_escape(_source_label(item))}* · {display_stamp(item['timestamp'])}"
+    elements = [{"type": "mrkdwn", "text": context[:300]}]
+    badge = confidence_badge_text(item)
+    if badge:
+        elements.append({"type": "mrkdwn", "text": ("Confidence: " + slack_escape(badge))[:300]})
     return {
         "text": fallback,
         "attachments": [
@@ -525,7 +571,7 @@ def build_block_kit(incident: dict, base_url: str | None = None) -> dict:
                 "blocks": [
                     {"type": "header", "text": {"type": "plain_text", "text": _header_text(item), "emoji": True}},
                     {"type": "section", "text": {"type": "mrkdwn", "text": section[:3000]}},
-                    {"type": "context", "elements": [{"type": "mrkdwn", "text": context[:300]}]},
+                    {"type": "context", "elements": elements},
                     {"type": "actions", "elements": [_button(item.get("country"), base_url)]},
                 ],
             }
@@ -557,6 +603,9 @@ def build_digest_payload(incidents: list[dict], base_url: str | None = None) -> 
         text = f"*{slack_escape(place)}*\n*{slack_escape(item['title'])}*"
         if line:
             text += "\n" + slack_escape(line)
+        badge = confidence_badge_text(item)
+        if badge:
+            text += "\n" + slack_escape("Confidence: " + badge)
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": text[:3000]}})
     blocks.append(
         {
