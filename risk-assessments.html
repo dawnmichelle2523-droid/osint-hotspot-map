@@ -121,6 +121,19 @@
         <div id="advisory-cross" class="grid"></div>
         <div id="incident-list"></div>
       </section>
+      <section class="panel no-print" id="corridor-import" hidden>
+        <h2>Corridor risk ready to paste</h2>
+        <p class="note" id="corridor-import-note"></p>
+        <p>
+          <button type="button" id="paste-corridor">Paste into assessment</button>
+          <button type="button" class="ghost" id="dismiss-corridor">Dismiss</button>
+        </p>
+      </section>
+      <section class="panel" id="corridor-pasted" hidden>
+        <h2>Corridor Risk Summary</h2>
+        <p class="note" id="corridor-pasted-meta"></p>
+        <pre id="corridor-pasted-body" class="note" style="white-space:pre-wrap"></pre>
+      </section>
       <section class="panel" id="extra"></section>
       <section class="panel" id="pii">
         <h2 class="lock" id="pii-title">Local only — not sent to Grok</h2>
@@ -534,7 +547,9 @@
         enterprise: document.getElementById("enterprise").checked,
         org: fieldValue("org-name"),
         context: readContext(),
-        rows: rows
+        rows: rows,
+        corridorSummary: corridorText(),
+        corridorMeta: corridorMetaText()
       };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) {}
     }
@@ -592,8 +607,77 @@
         rows = state.rows.map(normaliseRow);
         paint();
       }
+      if (state.corridorSummary) {
+        document.getElementById("corridor-pasted").hidden = false;
+        document.getElementById("corridor-pasted-body").textContent = state.corridorSummary;
+        document.getElementById("corridor-pasted-meta").textContent = state.corridorMeta || "";
+      }
       paintProtocolLine();
       toggleEnterprise();
+    }
+    function corridorText() {
+      const node = document.getElementById("corridor-pasted-body");
+      return node ? node.textContent : "";
+    }
+    function corridorMetaText() {
+      const node = document.getElementById("corridor-pasted-meta");
+      return node ? node.textContent : "";
+    }
+    function readCorridorImport() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("georisk.corridor.v1") || "null");
+        return saved && typeof saved === "object" ? saved : null;
+      } catch (err) {
+        return null;
+      }
+    }
+    function showCorridorOffer() {
+      const box = document.getElementById("corridor-import");
+      const saved = readCorridorImport();
+      if (!box) return;
+      if (!saved || !saved.summary || saved.dismissed || corridorText().trim() === String(saved.summary)) {
+        box.hidden = true;
+        return;
+      }
+      box.hidden = false;
+      const origin = saved.origin || "Origin";
+      const destination = saved.destination || "Destination";
+      const score = saved.score == null ? "—" : saved.score;
+      document.getElementById("corridor-import-note").textContent =
+        origin + " → " + destination + " · " + score + " / 100 " + (saved.tier || "") + ". Paste adds the brief to this assessment and to the PDF.";
+    }
+    function pasteCorridor() {
+      const saved = readCorridorImport();
+      if (!saved || !saved.summary) return;
+      const cityWasEmpty = !fieldValue("city").trim();
+      if (cityWasEmpty && saved.country) ensureCountry(saved.country);
+      if (cityWasEmpty && saved.origin && saved.destination) setField("city", saved.origin + " → " + saved.destination);
+      document.getElementById("corridor-pasted").hidden = false;
+      document.getElementById("corridor-pasted-body").textContent = saved.summary;
+      const meta = "Score " + (saved.score == null ? "—" : saved.score) + " / 100 · " + (saved.tier || "") + " · " + (saved.buffer_km || "") + " km buffer";
+      document.getElementById("corridor-pasted-meta").textContent = saved.origin && saved.destination ? meta + " · " + saved.origin + " → " + saved.destination : meta;
+      readRowsFromDom();
+      const pairs = { LOW: [2, 2], MODERATE: [3, 3], ELEVATED: [4, 3], HIGH: [4, 4], CRITICAL: [5, 5] };
+      const pair = pairs[saved.tier] || [3, 3];
+      const control = "Corridor score " + (saved.score == null ? "" : saved.score) + "/100 (" + (saved.tier || "") + "). " + String(saved.summary).slice(0, 900);
+      const index = rows.findIndex((row) => /^movement corridor/i.test(row.threat || ""));
+      if (index >= 0) {
+        rows[index].threat = "Movement corridor";
+        rows[index].likelihood = pair[0];
+        rows[index].impact = pair[1];
+        rows[index].control = control;
+        rows[index].controlId = "";
+      } else {
+        const row = blankRow("Movement corridor");
+        row.likelihood = pair[0];
+        row.impact = pair[1];
+        row.control = control;
+        row.controlId = "";
+        rows.push(row);
+      }
+      paint();
+      save();
+      document.getElementById("corridor-import").hidden = true;
     }
     function toggleEnterprise() {
       const on = document.getElementById("enterprise").checked;
@@ -820,6 +904,16 @@
     });
 
     restore();
+    document.getElementById("paste-corridor").addEventListener("click", pasteCorridor);
+    document.getElementById("dismiss-corridor").addEventListener("click", () => {
+      const saved = readCorridorImport();
+      if (saved) {
+        saved.dismissed = true;
+        try { localStorage.setItem("georisk.corridor.v1", JSON.stringify(saved)); } catch (err) {}
+      }
+      document.getElementById("corridor-import").hidden = true;
+    });
+    showCorridorOffer();
     const prefill = new URLSearchParams(window.location.search);
     if (prefill.get("country")) ensureCountry(prefill.get("country"));
     if (prefill.get("area") || prefill.get("city")) setField("city", prefill.get("area") || prefill.get("city"));
