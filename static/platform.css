@@ -43,6 +43,9 @@ button, .button { color: var(--gold); background: var(--navy); border: 1px solid
 button.ghost { background: transparent; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
 .note { color: var(--muted); font-size: 13px; }
+.claude-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); color: var(--muted); }
+.claude-pill.ready { color: #ccfbf1; border-color: #0f766e; }
+.claude-pill.idle { color: var(--gold); border-color: var(--gold-border); }
 .lock { color: var(--gold); font-size: 12px; font-weight: 700; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }

@@ -44,6 +44,8 @@ import checkin_beacon
 app.register_blueprint(checkin_beacon.checkin_bp)
 import ra_diff
 app.register_blueprint(ra_diff.ra_diff_bp)
+import claude_client
+app.register_blueprint(claude_client.claude_bp)
 
 
 def _enable_basic_auth() -> None:

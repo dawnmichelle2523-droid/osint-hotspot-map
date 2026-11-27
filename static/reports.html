@@ -101,7 +101,12 @@
         <button type="button" id="generate">Generate report</button>
         <button type="button" id="print" class="ghost">Print / PDF</button>
         <button type="button" id="download" class="ghost">Download HTML</button>
+        <button type="button" id="claude-draft" data-claude-endpoint="/api/briefings/ai-draft" aria-describedby="claude-cost">Draft with Claude</button>
+        <span id="claude-status" class="claude-pill idle" role="status" data-claude-status>Add ANTHROPIC_API_KEY</span>
       </div>
+      <p class="note">Draft with Claude is a separate click. It does not send the report and it is not part of the 07:00 schedule.</p>
+      <p class="note" id="claude-cost" data-claude-rates role="status"></p>
+      <pre id="claude-narrative" class="note" style="white-space:pre-wrap"></pre>
       <p class="note status" id="generate-status" role="status"></p>
     </section>
     <section class="panel">
@@ -160,6 +165,7 @@
     </section>
   </main>
   <footer>GeoRiskIntel · For clients only, not for copy or distribution.</footer>
+  <script src="/static/claude-draft.js"></script>
   <script src="/static/reports.js"></script>
 </body>
 </html>
