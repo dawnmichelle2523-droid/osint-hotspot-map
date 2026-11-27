@@ -6,12 +6,16 @@ import os
 
 from flask import Flask, Response, abort, request, send_from_directory
 
+import preview_lock
 import serve_map
 
 app = Flask(__name__)
+preview_lock.install(app)
 
 
 def _enable_basic_auth() -> None:
+    if preview_lock.lock_enabled():
+        return
     username = (os.environ.get("BASIC_AUTH_USERNAME") or "").strip()
     password = os.environ.get("BASIC_AUTH_PASSWORD") or ""
     if not username or not password:
