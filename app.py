@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import mimetypes
 import os
 import threading
 from pathlib import Path
 
 from flask import Flask, Response, abort, request, send_from_directory
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 def _pin_live_database() -> None:
     """Keep the live feed database on durable storage before serve_map reads DB_PATH."""
@@ -98,7 +101,15 @@ def _page(filename: str, directory=None) -> Response:
 
 @app.after_request
 def _no_store(response: Response) -> Response:
+    path = request.path or ""
+    if path == "/sw.js" and response.status_code == 200:
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Content-Type"] = "application/javascript"
+        return response
     response.headers["Cache-Control"] = "no-store"
+    if path in {"/manifest.webmanifest", "/static/manifest.webmanifest"} and response.status_code == 200:
+        response.headers["Content-Type"] = "application/manifest+json"
     return response
 
 
@@ -263,16 +274,17 @@ def reports_page() -> Response:
 
 @app.get("/manifest.webmanifest")
 def web_manifest() -> Response:
-    response = send_from_directory(serve_map.ROOT, "manifest.webmanifest")
+    response = send_from_directory(serve_map.ROOT / "static", "manifest.webmanifest")
     response.headers["Content-Type"] = "application/manifest+json"
     return response
 
 
 @app.get("/sw.js")
 def service_worker() -> Response:
-    response = send_from_directory(serve_map.ROOT, "sw.js")
+    response = send_from_directory(serve_map.ROOT / "static", "sw.js")
     response.headers["Content-Type"] = "application/javascript"
     response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
     return response
 
 
