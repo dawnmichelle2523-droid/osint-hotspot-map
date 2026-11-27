@@ -68,8 +68,21 @@
         <button type="button" id="download">Download / Export PDF</button>
         <button type="button" id="autodraft">Auto-Draft mitigations</button>
         <button type="button" class="ghost" id="reset">Clear local draft</button>
+        <button type="button" id="ra-check-changed">Check What Changed</button>
       </div>
+      <div class="toolbar" id="ra-snapshot-tools">
+        <label>Assessment name <input id="ra-snapshot-name" placeholder="Syria media — 25 Nov" autocomplete="off"></label>
+        <label>Saved assessments
+          <select id="ra-snapshot-list"><option value="">No saved assessments yet</option></select>
+        </label>
+        <button type="button" id="ra-save-snapshot">Save baseline snapshot</button>
+        <button type="button" class="ghost" id="ra-open-snapshot">Re-open</button>
+        <button type="button" class="ghost" id="ra-delete-snapshot">Delete</button>
+        <button type="button" class="ghost" id="ra-clear-browser">Clear Local Browser Data</button>
+      </div>
+      <p class="note" id="ra-snapshot-note">Snapshots stay in this browser. Check What Changed sends only the country, region, baseline time, incident ids, and original risk level.</p>
       <p class="note" id="privacy">Fields marked local-only never leave this browser. Auto-Draft sends the sector, compliance standard, operation type, destination, transport, accommodation and comms protocols, and hazard scores only.</p>
+      <p class="note" id="ra-hygiene-note">Personal and reviewer details stay strictly in this browser and are never sent to GeoRiskIntel servers.</p>
       <div id="enterprise-fields" class="grid" hidden>
         <label>Client organisation <input id="org-name" data-local="1" autocomplete="off" placeholder="Shown on the PDF only"></label>
         <label>Logo upload <input id="org-logo" type="file" accept="image/*"></label>
@@ -82,6 +95,40 @@
         <h2 id="doc-title" style="margin:0">Security &amp; Travel Risk Assessment</h2>
         <p class="note" id="standards"></p>
       </header>
+      <section class="panel" id="ra-change-record" aria-label="What changed since the last risk assessment">
+        <h2>What changed since the last assessment</h2>
+        <p class="note" id="ra-baseline-meta">No baseline snapshot is open. Save one before departure, then check what changed.</p>
+        <p id="ra-diff-banner" class="diff-banner" role="status" aria-live="polite" hidden></p>
+        <div id="ra-diff-upgrades"></div>
+        <div id="ra-diff-list"></div>
+      </section>
+      <section class="panel" id="ra-audit-panel" aria-label="Human reviewer sign-off and audit trail">
+        <h2>Human review sign-off</h2>
+        <p id="ra-ai-label" class="note">No Grok auto-draft used. Qualified human sign-off is still required before issue.</p>
+        <p class="note">ISO 31030 · BS 8848 · EU AI Act human-in-the-loop. Reviewer name and qualification stay on this device and are printed only in this export.</p>
+        <div class="grid no-print">
+          <label>Reviewer name <input id="ra-reviewer-name" autocomplete="name"></label>
+          <label>Qualification / role <input id="ra-reviewer-role" placeholder="Qualified Security Risk Manager" autocomplete="organization-title"></label>
+          <label>Sign-off status
+            <select id="ra-signoff-status">
+              <option>Approved</option>
+              <option>Approved with Conditions</option>
+              <option>Hold</option>
+            </select>
+          </label>
+        </div>
+        <p class="no-print"><button type="button" id="ra-signoff">Record human sign-off</button></p>
+        <p class="note no-print" id="ra-signoff-note"></p>
+        <table id="ra-audit-log">
+          <caption class="note">Timestamped audit trail (UTC / GMT)</caption>
+          <thead>
+            <tr><th>Event</th><th>Reviewer</th><th>Qualification / role</th><th>Status</th><th>UTC timestamp</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5">No audit events yet. Save a baseline snapshot to open the trail.</td></tr>
+          </tbody>
+        </table>
+      </section>
       <section class="panel">
         <h2>Context</h2>
         <div class="grid">
@@ -923,5 +970,6 @@
     save();
     loadCountryIncidents();
   </script>
+  <script src="/static/ra-diff-audit.js"></script>
 </body>
 </html>

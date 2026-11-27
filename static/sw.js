@@ -24,6 +24,7 @@ const SHELL = [
   "/static/grok-stream.js",
   "/static/news-stream.js",
   "/static/ra-sectors.js",
+  "/static/ra-diff-audit.js",
   "/static/reports.js"
 ];
 

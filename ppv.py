@@ -322,6 +322,10 @@ def install(app) -> None:
     @app.before_request
     def _load_pass():
         set_route(request.path)
+        # Client-portal embeds must not read or write a pass cookie.
+        if (request.path or "").startswith("/embed/widget"):
+            set_current(None)
+            return None
         explicit = (request.args.get("pass") or "").strip()
         header = (request.headers.get("X-GeoRisk-Pass") or "").strip()
         cookie = (request.cookies.get(COOKIE) or "").strip()
@@ -355,6 +359,8 @@ def install(app) -> None:
 
     @app.after_request
     def _store_pass(response: Response) -> Response:
+        if (request.path or "").startswith("/embed/widget"):
+            return response
         if request.environ.get("ppv_clear"):
             response.delete_cookie(COOKIE, path="/")
             return response

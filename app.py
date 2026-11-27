@@ -37,6 +37,8 @@ preview_lock.install(app)
 ppv.install(app)
 import checkin_beacon
 app.register_blueprint(checkin_beacon.checkin_bp)
+import ra_diff
+app.register_blueprint(ra_diff.ra_diff_bp)
 
 
 def _enable_basic_auth() -> None:
@@ -330,6 +332,10 @@ def api_grok_copilot() -> Response:
 @app.get("/api/travel-advisories")
 def api_travel_advisories() -> Response:
     return _json(serve_map.travel_advisories_payload())
+
+
+from white_label import whitelabel_bp
+app.register_blueprint(whitelabel_bp)
 
 
 @app.get("/<path:filename>")
