@@ -28,14 +28,34 @@
   <div class="section-banner" id="risk-subhead">
     <p class="kicker">Risk Assessments</p>
     <h1>ISO-aligned Risk Assessment &amp; Pre-Deployment Report builder</h1>
-    <p>Choose a template, score the matrix, and export a PDF. Standards covered: ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal traveller and medical details stay in this browser and are never sent to Grok.</p>
+    <p>Choose a sector. Templates, assignment types, hazards, controls, and transport, accommodation and comms protocols follow that sector. You can still type a custom entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Local-only personal and medical details stay in this browser and are never sent to Grok.</p>
   </div>
   <main>
-    <section class="panel no-print">
-      <div class="toolbar">
-        <label>Template
+    <section class="panel no-print" id="sector-panel">
+      <div class="sector-picker">
+        <label>Sector
+          <select id="sector" data-ai="1">
+            <option value="media">Media &amp; Journalism</option>
+            <option value="government">Governments &amp; Public Sector</option>
+            <option value="tmc">Travel Risk Agencies &amp; TMCs</option>
+            <option value="insurance">Insurance &amp; Compliance</option>
+            <option value="ngo">NGOs &amp; Humanitarian</option>
+            <option value="psc">Private Security Companies (PSCs) &amp; Ops Rooms</option>
+            <option value="schools">Schools &amp; Universities (BS 8848)</option>
+            <option value="private">Private Individuals &amp; Expats</option>
+            <option value="csuite">C-Suite Executives &amp; Family Offices</option>
+            <option value="medical">Medical Risk &amp; Assistance</option>
+          </select>
+        </label>
+        <label>Template / compliance standard
           <select id="template" data-ai="1"></select>
         </label>
+      </div>
+      <p class="note" id="sector-blurb"></p>
+      <label id="template-custom-label" hidden>Custom compliance standard
+        <input id="template-custom" data-ai="1" autocomplete="off" placeholder="Type a standard or template name">
+      </label>
+      <div class="toolbar">
         <label class="lock">Enterprise PDF
           <input id="enterprise" type="checkbox">
         </label>
@@ -43,9 +63,9 @@
         <button type="button" id="autodraft">Auto-Draft mitigations</button>
         <button type="button" class="ghost" id="reset">Clear local draft</button>
       </div>
-      <p class="note" id="privacy">Personal and medical fields are marked local-only. Auto-Draft sends destination, template, and hazard scores only.</p>
+      <p class="note" id="privacy">Fields marked local-only never leave this browser. Auto-Draft sends the sector, compliance standard, operation type, destination, transport, accommodation and comms protocols, and hazard scores only.</p>
       <div id="enterprise-fields" class="grid" hidden>
-        <label>Client organisation <input id="org-name" data-local="1" placeholder="Shown on the PDF only"></label>
+        <label>Client organisation <input id="org-name" data-local="1" autocomplete="off" placeholder="Shown on the PDF only"></label>
         <label>Logo upload <input id="org-logo" type="file" accept="image/*"></label>
       </div>
     </section>
@@ -62,14 +82,30 @@
           <label>Destination country
             <select id="country" data-ai="1"></select>
           </label>
-          <label>City or area <input id="city" data-ai="1" placeholder="Place name only"></label>
-          <label>Purpose
-            <select id="purpose" data-ai="1">
-              <option>Media</option><option>Corporate</option><option>NGO</option><option>Study</option><option>Close protection</option><option>Private</option><option>Executive</option>
-            </select>
+          <label>City or area <input id="city" data-ai="1" autocomplete="off" placeholder="Place name only"></label>
+          <label>Operation / assignment / trip type
+            <input id="purpose" list="purpose-list" data-ai="1" autocomplete="off" placeholder="Choose or type a custom type">
+            <datalist id="purpose-list"></datalist>
           </label>
-          <label>Movement window <input id="window" data-local="1" placeholder="Dates stay on this device"></label>
+          <label>Movement window <input id="window" data-local="1" autocomplete="off" placeholder="Dates stay on this device"></label>
         </div>
+        <h3>Transport, accommodation and comms protocols</h3>
+        <div class="grid">
+          <label>Transport
+            <input id="transport" list="transport-list" data-ai="1" autocomplete="off" placeholder="Choose or type a custom protocol">
+            <datalist id="transport-list"></datalist>
+          </label>
+          <label>Accommodation
+            <input id="accommodation" list="accommodation-list" data-ai="1" autocomplete="off" placeholder="Choose or type a custom protocol">
+            <datalist id="accommodation-list"></datalist>
+          </label>
+          <label>Comms
+            <input id="comms" list="comms-list" data-ai="1" autocomplete="off" placeholder="Choose or type a custom protocol">
+            <datalist id="comms-list"></datalist>
+          </label>
+        </div>
+        <p class="note" id="protocol-line"></p>
+        <p class="note">Choose a protocol or type your own. Do not enter names, medical details, or contact numbers in these fields.</p>
       </section>
       <section class="panel" id="live-incidents" aria-label="Recent incidents last 7 days">
         <h2>Live OSINT Incident Summary — Last 7 Days</h2>
@@ -81,27 +117,50 @@
       </section>
       <section class="panel" id="extra"></section>
       <section class="panel" id="pii">
-        <h2 class="lock">Local only — not sent to Grok</h2>
+        <h2 class="lock" id="pii-title">Local only — not sent to Grok</h2>
+        <p class="note" id="pii-note">These fields stay in this browser. They are never sent to the server or to Grok, and they are omitted from Auto-Draft.</p>
         <div class="grid">
-          <label>Traveller or party names <textarea id="names" data-local="pii"></textarea></label>
-          <label>Emergency contacts <textarea id="contacts" data-local="pii"></textarea></label>
-          <label>Medical notes, allergies, medication <textarea id="medical" data-local="pii"></textarea></label>
-          <label>Passport or ID reference <input id="passport" data-local="pii" autocomplete="off"></label>
+          <label><span id="caption-names">Traveller or party names (Local-Only)</span><textarea id="names" data-local="pii" autocomplete="off"></textarea></label>
+          <label><span id="caption-contacts">Emergency contacts (Local-Only)</span><textarea id="contacts" data-local="pii" autocomplete="off"></textarea></label>
+          <label><span id="caption-medical">Medical notes, allergies, medication (Local-Only)</span><textarea id="medical" data-local="pii" autocomplete="off"></textarea></label>
+          <label><span id="caption-passport">Passport or ID reference (Local-Only)</span><input id="passport" data-local="pii" autocomplete="off"></label>
         </div>
       </section>
       <section class="panel">
         <h2>Scored risk matrix</h2>
-        <p class="note">Inherent score = Likelihood (1–5) × Impact (1–5). Low 1–4, Medium 5–9, High 10–16, Extreme 17–25.</p>
-        <div style="overflow-x:auto">
+        <p class="note">Inherent score = Likelihood (1–5) × Impact (1–5). Low 1–4, Medium 5–9, High 10–16, Extreme 17–25. Pick a sector control to fill the control measures and the residual score. You can edit the text, or type a hazard that is not listed.</p>
+        <div class="grid no-print">
+          <label>Primary threat and hazard categories
+            <select id="threat-pick"></select>
+          </label>
+          <label>Custom hazard
+            <input id="custom-threat" autocomplete="off" placeholder="Type a hazard that is not listed">
+          </label>
+        </div>
+        <p class="no-print">
+          <button type="button" id="add-threat">Add selected hazard</button>
+          <button type="button" id="add-row" class="ghost">Add custom hazard</button>
+        </p>
+        <div class="matrix-scroll">
           <table class="matrix" id="matrix">
             <thead>
-              <tr><th>Threat / hazard</th><th>L</th><th>I</th><th>Rating</th><th>Mitigation controls</th><th>Owner</th><th>Residual L</th><th>Residual I</th><th>Residual</th></tr>
+              <tr>
+                <th>Threat / hazard</th>
+                <th>L</th>
+                <th>I</th>
+                <th>Rating</th>
+                <th>Control measures</th>
+                <th>Owner</th>
+                <th>Residual L</th>
+                <th>Residual I</th>
+                <th>Residual</th>
+                <th class="no-print"></th>
+              </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
-        <div id="matrix-cards"></div>
-        <p class="no-print"><button type="button" id="add-row" class="ghost">Add hazard</button></p>
+        <datalist id="owner-list"></datalist>
       </section>
       <section class="panel" id="pdr" hidden>
         <h2>Pre-deployment report</h2>
@@ -131,7 +190,7 @@
         <p id="emergency-numbers" class="note"></p>
         <h3 class="lock">Optional Qualified SRM Advisor sign-off — local only</h3>
         <div class="grid">
-          <label>Advisor name <input id="advisor" data-local="pii"></label>
+          <label>Advisor name <input id="advisor" data-local="pii" autocomplete="off"></label>
           <label>Decision
             <select id="advisor-decision" data-local="1"><option>Not used</option><option>Accept</option><option>Return</option></select>
           </label>
@@ -139,38 +198,39 @@
       </section>
       <section class="panel" id="ai-panel">
         <h2>Auto-draft</h2>
-        <pre id="ai-draft" class="note" style="white-space:pre-wrap">Mitigation draft appears here. Personal fields are not included.</pre>
+        <pre id="ai-draft" class="note" style="white-space:pre-wrap">Mitigation draft appears here. The sector and compliance standard are included. Local-only fields are not.</pre>
       </section>
     </article>
   </main>
-  <footer id="app-footer">GeoRiskIntel · Personal and medical entries remain on this device.</footer>
+  <footer id="app-footer">GeoRiskIntel · Local-only entries remain on this device and are never sent to Grok.</footer>
   <script src="/static/grok-stream.js"></script>
+  <script src="/static/ra-sectors.js"></script>
   <script>
-    const TEMPLATES = {
-      security: { title: "Security & Travel Risk Assessment", standards: "ISO 31000 · ISO 31030", hazards: ["Armed conflict / indirect fire", "Terrorism", "Kidnap / detention", "Civil unrest", "Road traffic collision", "Crime"] },
-      medical: { title: "Medical Risk Assessment", standards: "ISO 45001 · ISO 31030", hazards: ["Limited trauma surgery", "Unreliable ambulance", "Endemic disease", "ICU or blood-supply gap", "Medevac delay", "Counterfeit medicine"] },
-      school: { title: "School & University Trip Risk Assessment", standards: "BS 8848 · US study-abroad safeguarding", hazards: ["Supervision ratio", "Medical emergency away from care", "Safeguarding incident", "Transport accident", "Political unrest", "Lost communications"] },
-      cp: { title: "Close Protection / Advance Risk Assessment", standards: "ISO 18788", hazards: ["Attack on the route", "Hostile venue surveillance", "Hospital not viable", "Evac route blocked", "Insider threat", "Communications failure"] },
-      private: { title: "Private Individual Travel Risk Assessment", standards: "ISO 31030", hazards: ["Crime", "Road safety", "Health emergency", "Political unrest", "Natural hazard", "Scam / fraud"] },
-      pdr: { title: "Executive Pre-Deployment Report", standards: "ISO 31000 · ISO 31030 · ISO 22361 · ISO 45001", hazards: ["City threat", "Movement corridor", "Venue access", "Medical escalation", "Communications and tracking", "Strategic kidnap"] }
-    };
+    const RA_SECTORS = Array.isArray(window.RA_SECTORS) ? window.RA_SECTORS : [];
+    const STORAGE_KEY = "georisk.ra.v2";
     const COUNTRIES = ["Syria","Iraq","Lebanon","Israel","Palestine","Jordan","Iran","Saudi Arabia","Yemen","Sudan","Chad","Bahrain","Kuwait","Qatar","UAE","Oman","Turkey","Egypt","Libya","Ukraine","Afghanistan","United States","Canada","Other"];
-    const OWNERS = ["Security manager", "Team leader", "Medic", "School lead", "CP advance", "Client"];
     const RATINGS = ["Excellent", "Good", "Moderate", "Poor", "Very Poor"];
     const HEALTH_ROWS = ["Public healthcare", "Private healthcare", "Ambulance reliability", "Trauma / hospital access", "Endemic health burden", "Medevac hub access"];
     const SECURITY_ROWS = ["Overall security", "Terrorism", "Armed conflict", "Crime", "Civil unrest", "Kidnap", "Movement / route"];
     const EMERGENCY = { Syria: "Local emergency services vary. FCDO and embassy numbers should be confirmed before travel.", default: "Confirm local police, ambulance, and fire numbers plus the relevant embassy before departure." };
+    const LEGACY_SECTOR = {
+      Media: "media", Corporate: "tmc", NGO: "ngo", Study: "schools",
+      "Close protection": "psc", Private: "private", Executive: "csuite",
+      medical: "medical", school: "schools", cp: "psc", private: "private",
+      pdr: "csuite", security: "media"
+    };
+    const sectorSelect = document.getElementById("sector");
     const templateSelect = document.getElementById("template");
     const countrySelect = document.getElementById("country");
-    Object.entries(TEMPLATES).forEach(([id, item]) => {
-      const option = document.createElement("option");
-      option.value = id; option.textContent = item.title; templateSelect.appendChild(option);
-    });
-    COUNTRIES.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name; option.textContent = name; countrySelect.appendChild(option);
-    });
     let rows = [];
+    const known = { operations: new Set(), transport: new Set(), accommodation: new Set(), comms: new Set() };
+    RA_SECTORS.forEach((sector) => {
+      (sector.operations || []).forEach((item) => known.operations.add(item));
+      (sector.transport || []).forEach((item) => known.transport.add(item));
+      (sector.accommodation || []).forEach((item) => known.accommodation.add(item));
+      (sector.comms || []).forEach((item) => known.comms.add(item));
+    });
+
     function band(score) {
       const n = Number(score) || 0;
       if (n <= 4) return "Low";
@@ -178,110 +238,459 @@
       if (n <= 16) return "High";
       return "Extreme";
     }
-    function blankRow(threat) {
-      return { threat: threat, likelihood: 3, impact: 3, control: "", owner: OWNERS[0], residualL: 2, residualI: 2 };
+    function bandHtml(score) {
+      const name = band(score);
+      return "<span class=\"band " + name + "\">" + name + " · " + score + "</span>";
     }
-    function select(options, value, attr) {
-      return "<select " + attr + ">" + options.map((item) => "<option" + (item === value ? " selected" : "") + ">" + item + "</option>").join("") + "</select>";
+    function escapeAttr(value) {
+      return String(value || "").replace(/[&"<>]/g, (ch) => ({ "&": "&amp;", "\"": "&quot;", "<": "&lt;", ">": "&gt;" }[ch]));
+    }
+    function escapeText(value) {
+      return String(value || "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch]));
+    }
+    function currentSector() {
+      return RA_SECTORS.find((item) => item.id === sectorSelect.value) || RA_SECTORS[0] || null;
+    }
+    function currentTemplate() {
+      const sector = currentSector();
+      if (!sector) return null;
+      return (sector.templates || []).find((item) => item.id === templateSelect.value) || null;
+    }
+    function standardsText() {
+      if (templateSelect.value === "__custom__") {
+        return document.getElementById("template-custom").value.trim() || "Custom standard";
+      }
+      const item = currentTemplate();
+      return item ? item.standards : "";
+    }
+    function suggestedControl(threat) {
+      const sector = currentSector();
+      const controls = (sector && sector.controls) || [];
+      return controls.find((item) => (item.appliesTo || []).indexOf(threat) !== -1) || null;
+    }
+    function blankRow(threat) {
+      const sector = currentSector();
+      const owners = (sector && sector.owners) || ["Team leader"];
+      const match = suggestedControl(threat);
+      return {
+        threat: threat || "Additional hazard",
+        likelihood: 3,
+        impact: 3,
+        control: match ? match.text : "",
+        controlId: match ? match.id : "",
+        owner: owners[0] || "Team leader",
+        residualL: match ? Number(match.residualL) || 2 : 2,
+        residualI: match ? Number(match.residualI) || 2 : 2
+      };
+    }
+    function normaliseRow(row) {
+      const next = blankRow(row && row.threat);
+      const source = row || {};
+      next.threat = source.threat || next.threat;
+      next.likelihood = Number(source.likelihood) || 3;
+      next.impact = Number(source.impact) || 3;
+      next.control = source.control != null ? source.control : next.control;
+      next.controlId = source.controlId || "";
+      next.owner = source.owner || next.owner;
+      next.residualL = Number(source.residualL) || next.residualL;
+      next.residualI = Number(source.residualI) || next.residualI;
+      if (source.control) {
+        next.control = source.control;
+      }
+      return next;
     }
     function numberSelect(value, attr) {
-      return select(["1","2","3","4","5"], String(value), attr);
+      return "<select " + attr + ">" + ["1", "2", "3", "4", "5"].map((item) => "<option" + (item === String(value) ? " selected" : "") + ">" + item + "</option>").join("") + "</select>";
+    }
+    function controlOptions(selectedId) {
+      const controls = (currentSector() && currentSector().controls) || [];
+      const head = "<option value=\"\">Choose a control…</option>";
+      return head + controls.map((item) => "<option value=\"" + escapeAttr(item.id) + "\"" + (item.id === selectedId ? " selected" : "") + ">" + escapeText(item.label) + "</option>").join("");
+    }
+    function paintBand(cell, score) {
+      if (cell) cell.innerHTML = bandHtml(score);
+    }
+    function syncRow(tr) {
+      const index = Number(tr.dataset.row);
+      const row = rows[index];
+      if (!row) return;
+      tr.querySelectorAll("[data-field]").forEach((field) => {
+        const key = field.dataset.field;
+        if (key === "controlPick") return;
+        if (key === "likelihood" || key === "impact" || key === "residualL" || key === "residualI") row[key] = Number(field.value) || 1;
+        else row[key] = field.value;
+      });
+      paintBand(tr.querySelector("[data-score=\"inherent\"]"), row.likelihood * row.impact);
+      paintBand(tr.querySelector("[data-score=\"residual\"]"), row.residualL * row.residualI);
+    }
+    function readRowsFromDom() {
+      document.querySelectorAll("#matrix tbody tr").forEach(syncRow);
     }
     function paint() {
       const body = document.querySelector("#matrix tbody");
-      const cards = document.getElementById("matrix-cards");
       body.innerHTML = rows.map((row, index) => {
         const score = row.likelihood * row.impact;
         const residual = row.residualL * row.residualI;
-        return "<tr data-row=\"" + index + "\"><td><input data-field=\"threat\" value=\"" + escapeAttr(row.threat) + "\"></td><td>" + numberSelect(row.likelihood, "data-field=\"likelihood\"") + "</td><td>" + numberSelect(row.impact, "data-field=\"impact\"") + "</td><td><span class=\"band " + band(score) + "\">" + band(score) + " · " + score + "</span></td><td><textarea data-field=\"control\">" + escapeText(row.control) + "</textarea></td><td>" + select(OWNERS, row.owner, "data-field=\"owner\"") + "</td><td>" + numberSelect(row.residualL, "data-field=\"residualL\"") + "</td><td>" + numberSelect(row.residualI, "data-field=\"residualI\"") + "</td><td><span class=\"band " + band(residual) + "\">" + band(residual) + " · " + residual + "</span></td></tr>";
-      }).join("");
-      cards.innerHTML = rows.map((row, index) => {
-        const score = row.likelihood * row.impact;
-        return "<article class=\"matrix-card\"><strong>" + escapeText(row.threat) + "</strong><p><span class=\"band " + band(score) + "\">" + band(score) + " · " + score + "</span></p><p class=\"note\">Use the table on a wider screen to edit this row.</p></article>";
+        return "<tr data-row=\"" + index + "\">" +
+          "<td><input data-field=\"threat\" value=\"" + escapeAttr(row.threat) + "\" autocomplete=\"off\"></td>" +
+          "<td>" + numberSelect(row.likelihood, "data-field=\"likelihood\"") + "</td>" +
+          "<td>" + numberSelect(row.impact, "data-field=\"impact\"") + "</td>" +
+          "<td data-score=\"inherent\">" + bandHtml(score) + "</td>" +
+          "<td><select class=\"no-print\" data-field=\"controlPick\" aria-label=\"Pre-built control\">" + controlOptions(row.controlId) + "</select><textarea data-field=\"control\">" + escapeText(row.control) + "</textarea></td>" +
+          "<td><input data-field=\"owner\" list=\"owner-list\" value=\"" + escapeAttr(row.owner) + "\" autocomplete=\"off\"></td>" +
+          "<td>" + numberSelect(row.residualL, "data-field=\"residualL\"") + "</td>" +
+          "<td>" + numberSelect(row.residualI, "data-field=\"residualI\"") + "</td>" +
+          "<td data-score=\"residual\">" + bandHtml(residual) + "</td>" +
+          "<td class=\"no-print\"><button type=\"button\" class=\"ghost\" data-remove=\"1\">Remove</button></td>" +
+          "</tr>";
       }).join("");
     }
-    function escapeAttr(value) { return String(value || "").replace(/[&"]/g, (ch) => ch === "&" ? "&amp;" : "&quot;"); }
-    function escapeText(value) { return String(value || "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch])); }
-    function readRows() {
-      document.querySelectorAll("#matrix tbody tr").forEach((tr) => {
-        const index = Number(tr.dataset.row);
-        tr.querySelectorAll("[data-field]").forEach((field) => {
-          const key = field.dataset.field;
-          rows[index][key] = field.tagName === "SELECT" && ["likelihood","impact","residualL","residualI"].includes(key) ? Number(field.value) : field.value;
-        });
+    function fillDataList(id, items) {
+      const list = document.getElementById(id);
+      list.replaceChildren();
+      (items || []).forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item;
+        list.appendChild(option);
       });
     }
-    function applyTemplate() {
-      const item = TEMPLATES[templateSelect.value];
-      document.getElementById("doc-title").textContent = item.title;
-      document.getElementById("standards").textContent = item.standards;
-      document.getElementById("pdr").hidden = templateSelect.value !== "pdr";
-      rows = item.hazards.map(blankRow);
-      paintExtra();
-      paint();
+    function fillSelectValues(id, items) {
+      const select = document.getElementById(id);
+      select.replaceChildren();
+      (items || []).forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        select.appendChild(option);
+      });
+    }
+    function fillTemplateSelect(sector, preferredId) {
+      templateSelect.replaceChildren();
+      (sector.templates || []).forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.title;
+        templateSelect.appendChild(option);
+      });
+      const custom = document.createElement("option");
+      custom.value = "__custom__";
+      custom.textContent = "Custom standard…";
+      templateSelect.appendChild(custom);
+      const ids = (sector.templates || []).map((item) => item.id).concat("__custom__");
+      templateSelect.value = preferredId && ids.indexOf(preferredId) !== -1 ? preferredId : (sector.templates[0] ? sector.templates[0].id : "__custom__");
+    }
+    function paintSectorSelect() {
+      if (!RA_SECTORS.length) return;
+      const current = sectorSelect.value || RA_SECTORS[0].id;
+      sectorSelect.replaceChildren();
+      RA_SECTORS.forEach((sector) => {
+        const option = document.createElement("option");
+        option.value = sector.id;
+        option.textContent = sector.label;
+        sectorSelect.appendChild(option);
+      });
+      sectorSelect.value = RA_SECTORS.some((sector) => sector.id === current) ? current : RA_SECTORS[0].id;
+    }
+    function setLocalLabels(sector) {
+      const labels = (sector && sector.localLabels) || {};
+      document.getElementById("pii-title").textContent = labels.heading || "Local only — not sent to Grok";
+      document.getElementById("caption-names").textContent = labels.names || "Names (Local-Only)";
+      document.getElementById("caption-contacts").textContent = labels.contacts || "Emergency contacts (Local-Only)";
+      document.getElementById("caption-medical").textContent = labels.medical || "Medical notes (Local-Only)";
+      document.getElementById("caption-passport").textContent = labels.passport || "Identity reference (Local-Only)";
+    }
+    function readContext() {
+      const values = {};
+      document.querySelectorAll("[data-context]").forEach((field) => { values[field.dataset.context] = field.value; });
+      return values;
+    }
+    function applyContext(values) {
+      if (!values) return;
+      Object.keys(values).forEach((key) => {
+        const field = document.querySelector("[data-context=\"" + CSS.escape(key) + "\"]");
+        if (!field) return;
+        if (field.tagName === "SELECT" && ![...field.options].some((option) => option.value === values[key])) return;
+        field.value = values[key];
+      });
     }
     function paintExtra() {
       const host = document.getElementById("extra");
-      const id = templateSelect.value;
-      if (id === "medical" || id === "pdr") {
-        host.innerHTML = "<h2>Destination healthcare context</h2><div class=\"grid\"><label>Healthcare standard <select id=\"care-standard\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label><label>Ambulance reliability <select id=\"ambulance\" data-ai=\"1\"><option>Reliable</option><option>Uneven</option><option>Unreliable</option></select></label><label>Trauma access <select id=\"trauma\" data-ai=\"1\"><option>Major trauma centre</option><option>Limited</option><option>Absent</option></select></label></div>";
-      } else if (id === "school") {
-        host.innerHTML = "<h2>BS 8848 / study-abroad</h2><div class=\"grid\"><label>Age range <select data-ai=\"1\"><option>Under 16</option><option>16–18</option><option>18+</option></select></label><label>Staff to student ratio <select data-ai=\"1\"><option>1:6</option><option>1:8</option><option>1:10</option><option>1:15</option></select></label><label>Safeguarding lead role <input data-ai=\"1\" value=\"School lead\"></label></div><p class=\"note\">Pupil names stay in the local-only section and are not uploaded.</p>";
-      } else if (id === "cp") {
-        host.innerHTML = "<h2>ISO 18788 advance</h2><div class=\"grid\"><label>Route type <select data-ai=\"1\"><option>Road</option><option>Air</option><option>Mixed</option></select></label><label>Venue <select data-ai=\"1\"><option>Hotel</option><option>Residence</option><option>Office</option><option>Event site</option></select></label><label>Evac method <select data-ai=\"1\"><option>Road</option><option>Rotary</option><option>Fixed wing</option><option>Armoured</option></select></label></div>";
-      } else {
-        host.innerHTML = "<h2>Scope</h2><p class=\"note\">" + TEMPLATES[id].standards + ". Score destination threat only. Do not type names or medical history into the hazard controls.</p>";
+      const previous = readContext();
+      const sector = currentSector();
+      if (!sector) {
+        host.innerHTML = "";
+        return;
       }
+      const fields = sector.context || [];
+      if (!fields.length) {
+        host.innerHTML = "<h2>Scope</h2><p class=\"note\">" + escapeText(standardsText()) + ". Score destination threat only. Do not type names or medical history into the hazard controls.</p>";
+        return;
+      }
+      const html = fields.map((field) => {
+        if (field.options) {
+          return "<label>" + escapeText(field.label) + "<select data-context=\"" + escapeAttr(field.id) + "\" data-ai=\"1\">" + field.options.map((item) => "<option>" + escapeText(item) + "</option>").join("") + "</select></label>";
+        }
+        return "<label>" + escapeText(field.label) + "<input data-context=\"" + escapeAttr(field.id) + "\" data-ai=\"1\" autocomplete=\"off\" value=\"" + escapeAttr(field.value || "") + "\"></label>";
+      }).join("");
+      host.innerHTML = "<h2>" + escapeText(sector.contextTitle || "Sector context") + "</h2><div class=\"grid\">" + html + "</div>" + (sector.contextNote ? "<p class=\"note\">" + escapeText(sector.contextNote) + "</p>" : "");
+      applyContext(previous);
+    }
+    function paintProtocolLine() {
+      const parts = ["purpose", "transport", "accommodation", "comms"].map((id) => document.getElementById(id).value.trim()).filter(Boolean);
+      document.getElementById("protocol-line").textContent = parts.join(" · ");
+    }
+    function adoptField(id, options, knownSet) {
+      const field = document.getElementById(id);
+      const value = field.value.trim();
+      if (!value || knownSet.has(value)) field.value = (options && options[0]) || "";
+    }
+    function applyTemplate(flags) {
+      flags = flags || {};
+      const sector = currentSector();
+      const item = currentTemplate();
+      const custom = templateSelect.value === "__custom__";
+      document.getElementById("template-custom-label").hidden = !custom;
+      const customTitle = document.getElementById("template-custom").value.trim();
+      document.getElementById("doc-title").textContent = custom ? (customTitle || "Custom risk assessment") : (item ? item.title : "Risk assessment");
+      document.getElementById("standards").textContent = sector ? (sector.label + " · " + standardsText()) : standardsText();
+      document.getElementById("pdr").hidden = !(item && item.pdr);
+      paintExtra();
+      if (!flags.keepRows && sector) {
+        rows = (sector.threats || []).slice(0, 6).map(blankRow);
+        paint();
+      }
+    }
+    function applySector(flags) {
+      flags = flags || {};
+      const sector = currentSector();
+      if (!sector) {
+        document.getElementById("sector-blurb").textContent = "Sector list failed to load.";
+        return;
+      }
+      document.getElementById("sector-blurb").textContent = sector.summary || "";
+      fillTemplateSelect(sector, flags.templateId);
+      fillDataList("purpose-list", sector.operations);
+      fillDataList("transport-list", sector.transport);
+      fillDataList("accommodation-list", sector.accommodation);
+      fillDataList("comms-list", sector.comms);
+      fillSelectValues("threat-pick", sector.threats);
+      fillDataList("owner-list", sector.owners);
+      setLocalLabels(sector);
+      if (!flags.keepProtocols) {
+        adoptField("purpose", sector.operations, known.operations);
+        adoptField("transport", sector.transport, known.transport);
+        adoptField("accommodation", sector.accommodation, known.accommodation);
+        adoptField("comms", sector.comms, known.comms);
+      }
+      applyTemplate({ keepRows: !!flags.keepRows });
+      paintProtocolLine();
     }
     function paintRatings() {
       document.getElementById("health-matrix").innerHTML = HEALTH_ROWS.map((name) => "<label>" + name + "<select data-rating=\"health\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label>").join("");
       document.getElementById("security-matrix").innerHTML = SECURITY_ROWS.map((name) => "<label>" + name + "<select data-rating=\"security\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label>").join("");
     }
+    function ensureCountry(name) {
+      if (!name) return;
+      if (![...countrySelect.options].some((option) => option.value === name)) {
+        const extra = document.createElement("option");
+        extra.value = name;
+        extra.textContent = name;
+        countrySelect.appendChild(extra);
+      }
+      countrySelect.value = name;
+    }
+    function fieldValue(id) {
+      const node = document.getElementById(id);
+      return node ? node.value : "";
+    }
+    function setField(id, value) {
+      const node = document.getElementById(id);
+      if (node && value != null) node.value = value;
+    }
     function save() {
-      readRows();
+      readRowsFromDom();
+      paintProtocolLine();
       const state = {
+        sector: sectorSelect.value,
         template: templateSelect.value,
+        templateCustom: fieldValue("template-custom"),
         country: countrySelect.value,
-        city: document.getElementById("city").value,
-        purpose: document.getElementById("purpose").value,
-        window: document.getElementById("window").value,
-        names: document.getElementById("names").value,
-        contacts: document.getElementById("contacts").value,
-        medical: document.getElementById("medical").value,
-        passport: document.getElementById("passport").value,
+        city: fieldValue("city"),
+        purpose: fieldValue("purpose"),
+        window: fieldValue("window"),
+        transport: fieldValue("transport"),
+        accommodation: fieldValue("accommodation"),
+        comms: fieldValue("comms"),
+        names: fieldValue("names"),
+        contacts: fieldValue("contacts"),
+        medical: fieldValue("medical"),
+        passport: fieldValue("passport"),
         enterprise: document.getElementById("enterprise").checked,
-        org: document.getElementById("org-name").value,
+        org: fieldValue("org-name"),
+        context: readContext(),
         rows: rows
       };
-      try { localStorage.setItem("georisk.ra.v1", JSON.stringify(state)); } catch (err) {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) {}
+    }
+    function loadState() {
+      try {
+        const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (current && typeof current === "object") return current;
+      } catch (err) {}
+      try {
+        const legacy = JSON.parse(localStorage.getItem("georisk.ra.v1") || "null");
+        if (!legacy || typeof legacy !== "object") return null;
+        return {
+          country: legacy.country,
+          city: legacy.city,
+          window: legacy.window,
+          names: legacy.names,
+          contacts: legacy.contacts,
+          medical: legacy.medical,
+          passport: legacy.passport,
+          enterprise: legacy.enterprise,
+          org: legacy.org,
+          rows: legacy.rows,
+          sector: LEGACY_SECTOR[legacy.purpose] || LEGACY_SECTOR[legacy.template] || "",
+          template: legacy.template === "pdr" ? "pdr" : ""
+        };
+      } catch (err) {
+        return null;
+      }
     }
     function restore() {
-      let state = null;
-      try { state = JSON.parse(localStorage.getItem("georisk.ra.v1") || "null"); } catch (err) { state = null; }
-      if (!state) { applyTemplate(); return; }
-      templateSelect.value = state.template || "security";
-      applyTemplate();
-      countrySelect.value = state.country || COUNTRIES[0];
-      document.getElementById("city").value = state.city || "";
-      document.getElementById("purpose").value = state.purpose || "Media";
-      document.getElementById("window").value = state.window || "";
-      document.getElementById("names").value = state.names || "";
-      document.getElementById("contacts").value = state.contacts || "";
-      document.getElementById("medical").value = state.medical || "";
-      document.getElementById("passport").value = state.passport || "";
+      const state = loadState();
+      if (state && state.sector && RA_SECTORS.some((item) => item.id === state.sector)) sectorSelect.value = state.sector;
+      if (state && state.templateCustom) document.getElementById("template-custom").value = state.templateCustom;
+      const keepRows = !!(state && Array.isArray(state.rows) && state.rows.length);
+      applySector({
+        templateId: state && state.template,
+        keepRows: keepRows
+      });
+      if (!state) return;
+      ensureCountry(state.country || "");
+      setField("city", state.city || "");
+      if (state.purpose) setField("purpose", state.purpose);
+      setField("window", state.window || "");
+      if (state.transport) setField("transport", state.transport);
+      if (state.accommodation) setField("accommodation", state.accommodation);
+      if (state.comms) setField("comms", state.comms);
+      setField("names", state.names || "");
+      setField("contacts", state.contacts || "");
+      setField("medical", state.medical || "");
+      setField("passport", state.passport || "");
       document.getElementById("enterprise").checked = !!state.enterprise;
-      document.getElementById("org-name").value = state.org || "";
-      if (Array.isArray(state.rows) && state.rows.length) { rows = state.rows; paint(); }
+      setField("org-name", state.org || "");
+      if (state.context) applyContext(state.context);
+      if (keepRows) {
+        rows = state.rows.map(normaliseRow);
+        paint();
+      }
+      paintProtocolLine();
       toggleEnterprise();
     }
     function toggleEnterprise() {
       const on = document.getElementById("enterprise").checked;
       document.getElementById("enterprise-fields").hidden = !on;
-      document.getElementById("org-line").textContent = on && document.getElementById("org-name").value ? document.getElementById("org-name").value : "GeoRiskIntel";
+      document.getElementById("org-line").textContent = on && fieldValue("org-name") ? fieldValue("org-name") : "GeoRiskIntel";
     }
-    document.getElementById("matrix").addEventListener("input", () => { readRows(); paint(); save(); });
-    document.getElementById("add-row").addEventListener("click", () => { readRows(); rows.push(blankRow("Additional hazard")); paint(); save(); });
-    templateSelect.addEventListener("change", applyTemplate);
+    function draftPayload() {
+      readRowsFromDom();
+      const sector = currentSector();
+      const item = currentTemplate();
+      const custom = templateSelect.value === "__custom__";
+      const recent = ((countryReport && countryReport.incidents) || []).map((incident) => ({
+        timestamp: incident.timestamp,
+        severity: incident.severity,
+        area: incident.area,
+        title: incident.title,
+        source_name: incident.source_name
+      }));
+      const body = {
+        sector: sector ? sector.label : "",
+        compliance_standard: standardsText(),
+        template: custom ? (fieldValue("template-custom").trim() || "Custom risk assessment") : (item ? item.title : ""),
+        operation: fieldValue("purpose").trim(),
+        country: countrySelect.value,
+        city: fieldValue("city").trim(),
+        transport: fieldValue("transport").trim(),
+        accommodation: fieldValue("accommodation").trim(),
+        comms: fieldValue("comms").trim(),
+        hazards: rows.map((row) => ({ threat: row.threat, likelihood: row.likelihood, impact: row.impact })),
+        recent_incidents: recent
+      };
+      ["names", "contacts", "medical", "passport", "advisor", "window", "callsign", "callsigns", "roster", "allergies"].forEach((key) => { delete body[key]; });
+      return body;
+    }
+
+    COUNTRIES.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      countrySelect.appendChild(option);
+    });
+    paintSectorSelect();
+    paintRatings();
+
+    document.getElementById("matrix").addEventListener("input", (event) => {
+      const tr = event.target.closest("tr");
+      if (tr) syncRow(tr);
+      save();
+    });
+    document.getElementById("matrix").addEventListener("change", (event) => {
+      const field = event.target;
+      if (field.dataset.field !== "controlPick") return;
+      const tr = field.closest("tr");
+      const index = Number(tr.dataset.row);
+      const sector = currentSector();
+      const control = ((sector && sector.controls) || []).find((item) => item.id === field.value);
+      if (!rows[index]) return;
+      if (!control) {
+        rows[index].controlId = "";
+        save();
+        return;
+      }
+      rows[index].control = control.text;
+      rows[index].controlId = control.id;
+      rows[index].residualL = Number(control.residualL) || 2;
+      rows[index].residualI = Number(control.residualI) || 2;
+      const area = tr.querySelector("[data-field=\"control\"]");
+      const residualL = tr.querySelector("[data-field=\"residualL\"]");
+      const residualI = tr.querySelector("[data-field=\"residualI\"]");
+      if (area) area.value = control.text;
+      if (residualL) residualL.value = String(rows[index].residualL);
+      if (residualI) residualI.value = String(rows[index].residualI);
+      syncRow(tr);
+      save();
+    });
+    document.getElementById("matrix").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove]");
+      if (!button) return;
+      readRowsFromDom();
+      const index = Number(button.closest("tr").dataset.row);
+      rows.splice(index, 1);
+      paint();
+      save();
+    });
+    document.getElementById("add-threat").addEventListener("click", () => {
+      readRowsFromDom();
+      const threat = document.getElementById("threat-pick").value;
+      if (!threat) return;
+      rows.push(blankRow(threat));
+      paint();
+      save();
+    });
+    document.getElementById("add-row").addEventListener("click", () => {
+      readRowsFromDom();
+      const typed = document.getElementById("custom-threat").value.trim();
+      rows.push(blankRow(typed || "Additional hazard"));
+      document.getElementById("custom-threat").value = "";
+      paint();
+      save();
+    });
+    sectorSelect.addEventListener("change", () => { applySector({}); save(); });
+    templateSelect.addEventListener("change", () => { applyTemplate({ keepRows: true }); save(); });
+    document.getElementById("template-custom").addEventListener("input", () => { applyTemplate({ keepRows: true }); save(); });
     document.getElementById("enterprise").addEventListener("change", () => { toggleEnterprise(); save(); });
     document.getElementById("org-name").addEventListener("input", () => { toggleEnterprise(); save(); });
     document.getElementById("org-logo").addEventListener("change", (event) => {
@@ -291,6 +700,7 @@
       reader.onload = () => { document.getElementById("export-logo").src = reader.result; };
       reader.readAsDataURL(file);
     });
+
     let countryReport = null;
     let incidentTimer = null;
     function severityLabel(value) {
@@ -334,7 +744,7 @@
     }
     async function loadCountryIncidents() {
       const country = countrySelect.value;
-      const area = document.getElementById("city").value.trim();
+      const area = fieldValue("city").trim();
       if (!country) return;
       document.getElementById("incident-note").textContent = "Loading the last 7 days for " + country + "…";
       try {
@@ -346,23 +756,28 @@
         paintCountryReport(null);
       }
     }
-    document.getElementById("country").addEventListener("change", () => {
-      const name = countrySelect.value;
-      document.getElementById("emergency-numbers").textContent = EMERGENCY[name] || EMERGENCY.default;
-      save();
-      loadCountryIncidents();
-    });
+    function syncEmergency() {
+      document.getElementById("emergency-numbers").textContent = EMERGENCY[countrySelect.value] || EMERGENCY.default;
+    }
+    countrySelect.addEventListener("change", () => { syncEmergency(); save(); loadCountryIncidents(); });
     document.getElementById("city").addEventListener("input", () => {
       clearTimeout(incidentTimer);
       incidentTimer = setTimeout(loadCountryIncidents, 400);
     });
-    document.body.addEventListener("input", (event) => { if (event.target.id !== "matrix") save(); });
-    document.getElementById("reset").addEventListener("click", () => { localStorage.removeItem("georisk.ra.v1"); location.reload(); });
+    document.body.addEventListener("input", (event) => {
+      if (event.target.closest("#matrix")) return;
+      save();
+    });
+    document.getElementById("reset").addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("georisk.ra.v1");
+      location.reload();
+    });
     document.getElementById("download").addEventListener("click", () => { save(); window.print(); });
     document.getElementById("add-hospital").addEventListener("click", () => {
       const wrap = document.createElement("div");
       wrap.className = "grid";
-      wrap.innerHTML = "<label>Facility <input data-local=\"facility\"></label><label>City <input data-local=\"facility\"></label><label>Capability <input data-local=\"facility\"></label><label>Public phone <input data-local=\"facility\"></label>";
+      wrap.innerHTML = "<label>Facility <input data-local=\"facility\" autocomplete=\"off\"></label><label>City <input data-local=\"facility\" autocomplete=\"off\"></label><label>Capability <input data-local=\"facility\" autocomplete=\"off\"></label><label>Public phone <input data-local=\"facility\" autocomplete=\"off\"></label>";
       document.getElementById("hospitals").appendChild(wrap);
     });
     document.getElementById("pull-osint").addEventListener("click", async () => {
@@ -371,7 +786,7 @@
       try {
         const response = await fetch("/api/data", { cache: "no-store" });
         const data = await response.json();
-        const city = document.getElementById("city").value.toLowerCase();
+        const city = fieldValue("city").toLowerCase();
         const country = countrySelect.value.toLowerCase();
         const hits = (data.features || []).filter((feature) => {
           const props = feature.properties || {};
@@ -384,46 +799,27 @@
       }
     });
     document.getElementById("autodraft").addEventListener("click", () => {
-      readRows();
       const output = document.getElementById("ai-draft");
       output.textContent = "";
-      const body = {
-        template: TEMPLATES[templateSelect.value].title,
-        country: countrySelect.value,
-        city: document.getElementById("city").value,
-        hazards: rows.map((row) => ({ threat: row.threat, likelihood: row.likelihood, impact: row.impact })),
-        recent_incidents: ((countryReport && countryReport.incidents) || []).map((item) => ({
-          timestamp: item.timestamp,
-          severity: item.severity,
-          area: item.area,
-          title: item.title,
-          source_name: item.source_name
-        }))
-      };
+      const body = draftPayload();
+      if (!window.GeoRiskStream) {
+        output.textContent = "Auto-draft is unavailable.";
+        return;
+      }
       window.GeoRiskStream.post("/api/grok/risk-draft", body, {
         onToken: (text) => { output.textContent += text; },
         onDone: (payload) => { if (payload.message) output.textContent += "\n\n" + payload.message; },
         onError: (payload) => { output.textContent = payload.message || "Auto-draft is unavailable."; }
       });
     });
-    paintRatings();
-    document.getElementById("emergency-numbers").textContent = EMERGENCY.default;
-    document.getElementById("doc-ref").value = "GR-PDR-" + new Date().toISOString().slice(0, 10);
+
     restore();
     const prefill = new URLSearchParams(window.location.search);
-    if (prefill.get("country")) {
-      const named = prefill.get("country");
-      if (![...countrySelect.options].some((option) => option.value === named)) {
-        const extra = document.createElement("option");
-        extra.value = named;
-        extra.textContent = named;
-        countrySelect.appendChild(extra);
-      }
-      countrySelect.value = named;
-    }
-    if (prefill.get("area") || prefill.get("city")) {
-      document.getElementById("city").value = prefill.get("area") || prefill.get("city");
-    }
+    if (prefill.get("country")) ensureCountry(prefill.get("country"));
+    if (prefill.get("area") || prefill.get("city")) setField("city", prefill.get("area") || prefill.get("city"));
+    syncEmergency();
+    if (!fieldValue("doc-ref")) document.getElementById("doc-ref").value = "GR-PDR-" + new Date().toISOString().slice(0, 10);
+    document.getElementById("doc-ref").value = document.getElementById("doc-ref").value || ("GR-PDR-" + new Date().toISOString().slice(0, 10));
     save();
     loadCountryIncidents();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
