@@ -14,34 +14,55 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="/static/pwa-register.js" defer></script>
   <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops" aria-current="page">Grok Ops</a>
-      <a href="/white-label" title="Client-branded embed studio">White-Label</a>
-      <a href="/slack-alerts">Slack Alerts</a>
-      <a href="/sentinel-zones">Sentinel Zones</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
       <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops" aria-current="page">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-    <button type="button" id="open-drawer">Quick view</button>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+    <button class="nav-extra" type="button" id="open-drawer">Quick view</button>
+  </div>
+</header>
   <div class="section-banner">
     <p class="kicker">Grok Ops</p>
-    <h1>API health, usage, theatres, and triage</h1>
-    <p>The API key stays on the server. This page never receives it. Personal and medical text is stripped before any model call.</p>
+    <h1>Assistant health, regions, and triage</h1>
+    <p class="page-lead">Check that the assistant is connected, see which regions are active, and turn a public note into an incident card.</p>
+    <p>The access key stays on the server. This page never receives it. Personal and medical text is removed before any assistant call.</p>
   </div>
   <main>
     <section class="cards" id="status-cards">
       <article class="card"><h2>API</h2><p class="price" id="health">…</p><p class="note" id="health-note"></p><button type="button" id="check">Check API</button></article>
-      <article class="card"><h2>Tokens this process</h2><p class="price" id="tokens">0</p><p class="note" id="rate"></p></article>
+      <article class="card"><h2>Usage this session</h2><p class="price" id="tokens">0</p><p class="note" id="rate"></p></article>
       <article class="card"><h2>Model</h2><p class="price" id="model">grok-3-mini</p><p class="note" id="latency"></p></article>
     </section>
     <section class="panel">
@@ -49,8 +70,8 @@
       <div id="theatres" class="grid"></div>
     </section>
     <section class="panel">
-      <h2>Triage to incident JSON</h2>
-      <label>Public OSINT note <textarea id="triage-text" placeholder="Paste a public report. Do not include names, medical details, or contact data."></textarea></label>
+      <h2>Turn a public note into an incident</h2>
+      <label>Public report <textarea id="triage-text" placeholder="Paste a public report. Do not include names, medical details, or contact data."></textarea></label>
       <p><button type="button" id="triage">Triage</button></p>
       <pre id="triage-out" class="note" style="white-space:pre-wrap"></pre>
     </section>
@@ -71,7 +92,7 @@
     <section class="panel strip">
       <div>
         <h2>Live Slack alerts</h2>
-        <p class="note">Push matching incidents to an ops-room webhook. Block Kit cards use no Grok tokens. HIGH and Tsunami alerts send immediately.</p>
+        <p class="note">Send matching incidents to a Slack channel. Urgent and tsunami alerts go immediately. This does not use the assistant.</p>
       </div>
       <a class="button" href="/slack-alerts">Open Slack alerts</a>
     </section>

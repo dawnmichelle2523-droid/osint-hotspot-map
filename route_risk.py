@@ -726,22 +726,22 @@ def _display_line(waypoints: list[tuple[float, float]]) -> list[tuple[float, flo
 
 def _routing_note(reason: str, water: str = "") -> str:
     if reason == "ok":
-        return "Driving route from the public OSRM service. The distance is the road distance."
+        return "Driving route from the public road service. The distance is the road distance."
     if reason == "timeout":
-        return "OSRM did not answer within 4 seconds. The corridor is the great-circle line between stops."
+        return "The road service did not answer within 4 seconds. The corridor is the straight line between stops."
     if reason == "unreachable":
-        return "OSRM could not be reached. The corridor is the great-circle line between stops."
+        return "The road service could not be reached. The corridor is the straight line between stops."
     if reason == "no-route":
-        return "OSRM had no driving route, which often means water or a closed border. The corridor is the great-circle line between stops."
+        return "No driving route was found, which often means water or a closed border. The corridor is the straight line between stops."
     if reason == "disabled":
-        return "Public driving routing is off. The corridor is the great-circle line between stops."
+        return "Road routing is turned off. The corridor is the straight line between stops."
     if reason == "sea_or_border":
         where = water or "open water or a border detour"
         return (
             f"The driving route crosses {where}. "
-            "The corridor is scored on the great-circle line instead."
+            "The corridor is scored on the straight line instead."
         )
-    return "The corridor is the great-circle line between stops."
+    return "The corridor is the straight line between stops."
 
 
 def resolve_route(waypoints: list[tuple[float, float]], buffer_km: float, osrm_fetch=None) -> dict:
