@@ -170,10 +170,13 @@ OUTLET_LABELS = {
     "bbcarabic": "BBC Arabic",
     "ajenglish": "Al Jazeera English",
     "alhadath": "Al Hadath",
+    "alarabiya": "Al Arabiya",
+    "alarabiya_eng": "Al Arabiya English",
     "alhadath_brk": "Al Hadath Breaking",
     "amharawarupdate": "Amhara War Updates",
     "aaa_amhara": "Amhara Association of America",
     "afrimeosint": "AfriMEOSINT",
+    "baidoaonline": "Baidoa Online",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1047,6 +1050,10 @@ PARTISAN_SOCIAL = {"amharawarupdate", "aaa_amhara"}
 PARTISAN_TIER = "Social-unverified / partisan"
 OSINT_ANALYST = {"afrimeosint"}
 OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
+LOCAL_OUTLET_X = {"baidoaonline"}
+LOCAL_OUTLET_TIER = "Local outlet"
+ALARABIYA_X = {"alarabiya", "alarabiya_eng"}
+ALARABIYA_TIER = "Regional broadcaster / Saudi state-aligned"
 
 
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
@@ -1055,6 +1062,10 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
         return PARTISAN_TIER
     if key in OSINT_ANALYST:
         return OSINT_ANALYST_TIER
+    if key in LOCAL_OUTLET_X:
+        return LOCAL_OUTLET_TIER
+    if key in ALARABIYA_X:
+        return ALARABIYA_TIER
     if key in ESTABLISHED_BREAKING:
         return ESTABLISHED_BREAKING_TIER
     if batch == AGGREGATOR_BATCH or key in AGGREGATOR_HANDLES:

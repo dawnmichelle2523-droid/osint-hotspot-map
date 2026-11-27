@@ -126,6 +126,7 @@ def score_incidents(incidents: list) -> list:
             "target": target,
             "official": official is not None,
             "partisan": _is_partisan(view),
+            "mbc": _is_mbc_family(view),
             "key": key,
             "display": display,
             "coords": _coords(view),
@@ -364,6 +365,15 @@ def _keywords(view: dict) -> set[str]:
     return {token for token in _WORD.findall(text) if token not in _STOPWORDS}
 
 
+_MBC_MARKERS = ("alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk", "alarabiya.net")
+
+
+def _is_mbc_family(view: dict) -> bool:
+    """Al Arabiya and Al Hadath belong to one network."""
+    blob = _identity_blob(view)
+    return any(_marker_in(blob, marker) for marker in _MBC_MARKERS)
+
+
 def _is_partisan(view: dict) -> bool:
     """Advocacy accounts do not corroborate each other."""
     tier = " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()).casefold()
@@ -377,6 +387,8 @@ def _corroborates(left: dict, right: dict) -> bool:
     if left["key"].startswith("anon:") or right["key"].startswith("anon:") or left["key"] == right["key"]:
         return False
     if left.get("partisan") and right.get("partisan"):
+        return False
+    if left.get("mbc") and right.get("mbc"):
         return False
     if left["when"] is None or right["when"] is None:
         return False

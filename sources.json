@@ -3,8 +3,10 @@
     "mandatory_and_maritime": ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali", "_MartinKelly_", "CENTCOM", "CENTCOMFarsi"],
     "official_primary": ["IDF", "IDFSpokesperson", "AvichayAdraee", "CJFCSpox", "SaudiDCD", "Reuters", "AP", "AFP", "NNALeb", "IRIMFA_SPOX"],
     "established_breaking": ["Alhadath_Brk"],
+    "alarabiya": ["AlArabiya", "AlArabiya_Eng"],
     "ethiopia_amhara": ["AmharaWarUpdate", "AAA_Amhara"],
-    "horn_osint": ["AfriMEOSINT"]
+    "horn_osint": ["AfriMEOSINT"],
+    "somalia_local": ["BaidoaOnline"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]

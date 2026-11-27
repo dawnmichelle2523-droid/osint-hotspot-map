@@ -44,6 +44,24 @@ class XGateTests(unittest.TestCase):
             serve_map.source_tier_for("x", "AfriMEOSINT", ""),
             "OSINT analyst / Social-unverified",
         )
+        self.assertEqual(
+            serve_map.source_tier_for("x", "AlArabiya", ""),
+            "Regional broadcaster / Saudi state-aligned",
+        )
+        self.assertEqual(
+            serve_map.source_tier_for("x", "AlArabiya_Eng", "https://english.alarabiya.net/feed/rss2/en.xml"),
+            "Regional broadcaster / Saudi state-aligned",
+        )
+        self.assertEqual(
+            serve_map.source_tier_for("x", "Alhadath_Brk", ""),
+            "Established national / breaking news",
+        )
+        self.assertIn("alarabiya", handles)
+        self.assertIn("alarabiya_eng", handles)
+        self.assertIn("baidoaonline", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "BaidoaOnline", ""), "Local outlet")
+        self.assertTrue(serve_map.keep_x_post("BaidoaOnline", "Hirshabelle election commission meets in Mogadishu"))
+        self.assertFalse(serve_map.keep_x_post("BaidoaOnline", "A gallery opens in Paris"))
         self.assertTrue(serve_map.keep_x_post("AfriMEOSINT", "GPS jamming reported over Ethiopia"))
         self.assertTrue(serve_map.keep_x_post("AmharaWarUpdate", "Clashes in Amhara"))
         self.assertFalse(serve_map.keep_x_post("AmharaWarUpdate", "Market prices in Paris"))

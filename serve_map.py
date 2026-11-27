@@ -91,7 +91,8 @@ RSS_FEEDS = [
     ("Iraqi News", "https://www.iraqinews.com/feed/"),
     ("Iran International", "https://www.iranintl.com/feed/"),
     ("Arab News", "https://www.arabnews.com/rss.xml"),
-    ("Al Arabiya English", "https://english.alarabiya.net/tools/rss"),
+    ("Al Arabiya English", "https://english.alarabiya.net/feed/rss2/en.xml"),
+    ("Al Arabiya Arabic", "https://www.alarabiya.net/feed/rss2/ar.xml"),
     ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/category/world/?outputType=xml"),
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
@@ -225,7 +226,7 @@ _X_HANDLE_GROUPS = [
     [
         "CJFCSpox", "SaudiDCD", "kbsalsaud", "FaisalbinFarhan", "KKIASA", "ksagaca", "Spa_Eng", "SPAregions",
         "SaudiNews50", "saudiexpat", "KSAMOFA", "modgovksa", "MOISaudiArabia", "AlArabiya_Brk",
-        "AlArabiya_Eng", "AsharqNewsBrk", "ArabNews", "Yah_Saree", "MMY1444", "FaresALhemyari",
+        "AlArabiya", "AlArabiya_Eng", "AsharqNewsBrk", "ArabNews", "Yah_Saree", "MMY1444", "FaresALhemyari",
         "abda_sharif", "Yemen_PM",
     ],
     [
@@ -270,7 +271,7 @@ _X_HANDLE_GROUPS = [
         "SUNA_AGENCY_EN", "SUNA_AGENCY",
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
-        "AmharaWarUpdate", "AAA_Amhara",
+        "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -483,6 +484,8 @@ _RSS_DESK = {
     "https://www.iranintl.com/feed/": "Iran",
     "https://www.arabnews.com/rss.xml": "Saudi Arabia",
     "https://english.alarabiya.net/tools/rss": "Saudi Arabia",
+    "https://english.alarabiya.net/feed/rss2/en.xml": "Saudi Arabia",
+    "https://www.alarabiya.net/feed/rss2/ar.xml": "Saudi Arabia",
     "https://www.dabangasudan.org/en/all-news/feed": "Sudan & Chad",
     "https://www.dabangasudan.org/en/feed": "Sudan & Chad",
     "https://sudantribune.com/feed/": "Sudan & Chad",
@@ -611,6 +614,7 @@ COUNTRY_CENTERS = {
     "Strait of Hormuz / Gulf": (26.5667, 56.2667),
     "Other": (26.5, 47.0),
     "Ethiopia": (9.03, 38.74),
+    "Somalia": (2.05, 45.32),
     "South Africa": (-30.56, 22.94),
 }
 _SEA_COUNTRY_NAMES = frozenset({"Red Sea / Maritime", "Strait of Hormuz / Gulf", "Maritime"})
@@ -1323,6 +1327,11 @@ _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
 _ESTABLISHED_BREAKING = {"alhadath_brk"}
 _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
 _OSINT_ANALYST_HANDLES = {"afrimeosint"}
+_LOCAL_OUTLET_X = {"baidoaonline"}
+_ALARABIYA_HANDLES = {"alarabiya", "alarabiya_eng"}
+# Al Arabiya and Al Hadath are one MBC network. They do not corroborate each other.
+_MBC_FAMILY = {"alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk"}
+ALARABIYA_TIER = "Regional broadcaster / Saudi state-aligned"
 _SOHR_PHRASE = "according to SOHR, figures unverified"
 _CASUALTY_WORDS = re.compile(
     r"\b(?:killed|killing|dead|deaths|death toll|wounded|casualt(?:y|ies))\b",
@@ -1337,8 +1346,12 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "Social-unverified / partisan"
     if _token_named(tokens, _OSINT_ANALYST_HANDLES):
         return "OSINT analyst / Social-unverified"
+    if _token_named(tokens, _LOCAL_OUTLET_X) or "baidoaonline.com" in raw:
+        return "Local outlet"
     if _token_named(tokens, _ESTABLISHED_BREAKING):
         return "Established national / breaking news"
+    if _token_named(tokens, _ALARABIYA_HANDLES) or "alarabiya.net" in raw:
+        return ALARABIYA_TIER
     if "news24.com" in raw or "feeds.news24.com" in raw:
         return "Established national"
     if "ahram.org.eg" in raw:
@@ -1812,6 +1825,23 @@ def both_partisan(item: dict, row: sqlite3.Row) -> bool:
     """Two advocacy accounts do not count as independent corroboration."""
     return partisan_source(item.get("source_name"), item.get("source_url"), item.get("source_tier")) and partisan_source(
         row["source_name"]
+    )
+
+
+def _mbc_family(*parts: object) -> bool:
+    tokens = set()
+    for part in parts:
+        tokens.update(re.findall(r"[a-z0-9_]+", str(part or "").lower()))
+    if tokens & _MBC_FAMILY:
+        return True
+    blob = " ".join(str(part or "") for part in parts).lower()
+    return "alarabiya.net" in blob
+
+
+def same_mbc_network(item: dict, row: sqlite3.Row) -> bool:
+    """Al Arabiya and Al Hadath are sister channels, not two independent sources."""
+    return _mbc_family(item.get("source_name"), item.get("source_url"), item.get("source_tier")) and _mbc_family(
+        row["source_name"], row["source_url"] if "source_url" in row.keys() else ""
     )
 
 
@@ -2740,6 +2770,8 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _OSINT_ANALYST_HANDLES and (mentions_ethiopia_region(text) or mentions_horn_or_east_africa(text)):
         return True
+    if lowered in _LOCAL_OUTLET_X and mentions_somalia(text):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
 
 
@@ -2749,6 +2781,16 @@ def mentions_ethiopia_region(text: str) -> bool:
     if any(term in lowered for term in ("ethiopia", "ethiopian", "amhara", "tigray", "tigrayan", "addis", "mekelle", "gondar", "bahir dar")):
         return True
     return any(term in str(text or "") for term in ("ኢትዮጵያ", "አማራ", "ትግራይ"))
+
+
+def mentions_somalia(text: str) -> bool:
+    """Somalia and its federal states. Used for the Baidoa Online account."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "somalia", "somali", "baidoa", "mogadishu", "hirshabelle", "galmudug",
+        "puntland", "jubaland", "jubbaland", "kismayo", "beledweyne", "jowhar",
+        "dhuusamareeb", "south west state", "southwest state",
+    ))
 
 
 def mentions_horn_or_east_africa(text: str) -> bool:
@@ -3441,6 +3483,12 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
     ("الكويت", "Kuwait"),
     ("قطر", "Qatar"),
     ("عمان", "Oman"),
+    ("somalia", "Somalia"),
+    ("somali", "Somalia"),
+    ("baidoa", "Somalia"),
+    ("mogadishu", "Somalia"),
+    ("hirshabelle", "Somalia"),
+    ("galmudug", "Somalia"),
     ("ethiopia", "Ethiopia"),
     ("ethiopian", "Ethiopia"),
     ("amhara", "Ethiopia"),
@@ -4681,7 +4729,7 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:
-                if same_channel(item, match) or both_partisan(item, match):
+                if same_channel(item, match) or both_partisan(item, match) or same_mbc_network(item, match):
                     print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
                 else:
                     bump_corroboration(conn, match["id"])

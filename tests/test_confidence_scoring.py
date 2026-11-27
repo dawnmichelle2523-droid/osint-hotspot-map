@@ -221,6 +221,33 @@ class CorroborationTests(unittest.TestCase):
         self.assertEqual(feature["properties"]["confidence_tier"], "unverified")
         self.assertEqual(feature["properties"]["confidence_score"], 36)
 
+    def test_al_arabiya_does_not_corroborate_al_hadath(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Al Arabiya",
+                source="https://english.alarabiya.net/story",
+                source_tier="Regional broadcaster / Saudi state-aligned",
+                title="Airstrike near the port",
+                summary="Airstrike near the port",
+                country="Yemen",
+                lat=12.8,
+                lng=45.0,
+            ),
+            incident(
+                source_name="Alhadath_Brk",
+                source="https://x.com/Alhadath_Brk/status/9",
+                source_tier="Established national / breaking news",
+                title="Airstrike near the port",
+                summary="Airstrike near the port",
+                country="Yemen",
+                lat=12.8,
+                lng=45.0,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
 
 class ApiOutputTests(unittest.TestCase):
     def setUp(self):

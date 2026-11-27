@@ -17,7 +17,7 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import feedparser
@@ -1848,6 +1848,43 @@ def parse_ashara(feed: dict, content: bytes) -> list[dict]:
     return found
 
 
+def parse_sitemap_news(feed: dict, content: bytes) -> list[dict]:
+    """News URLs from a public sitemap. Article pages are not fetched."""
+    text = content.decode("utf-8", "replace")
+    blocks = re.findall(r"<url>(.*?)</url>", text, flags=re.I | re.S)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=int(feed.get("max_age_days") or 30))
+    found = []
+    for block in blocks:
+        if len(found) >= int(feed.get("limit") or 8):
+            break
+        loc = re.search(r"<loc>(.*?)</loc>", block, flags=re.I | re.S)
+        if not loc:
+            continue
+        url = _strip(loc.group(1))
+        if "/news/" not in url:
+            continue
+        modified = re.search(r"<lastmod>(.*?)</lastmod>", block, flags=re.I | re.S)
+        stamp = _strip(modified.group(1) if modified else "")
+        if stamp:
+            try:
+                moment = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            except ValueError:
+                moment = None
+            if moment is not None and moment < cutoff:
+                continue
+        slug = url.rstrip("/").rsplit("/", 1)[-1]
+        title = _strip(slug.replace("-", " ")).title()
+        if not title or not SECURITY_RE.search(title):
+            continue
+        placed = _place_event(
+            feed, title[:180], title[:500], feed.get("default_country") or "",
+            timestamp=stamp, source=url, id=url,
+        )
+        if placed:
+            found.append(placed)
+    return found
+
+
 def _wire(feed_id: str, name: str, url: str, country: str, tier: str) -> dict:
     return {
         "id": feed_id,
@@ -1980,6 +2017,17 @@ def _catalogue_feeds() -> list[dict]:
          "url": "https://english.ahram.org.eg/UI/Front/Rss.aspx",
          "parser": "security-rss", "default_country": "Egypt", "source_tier": "State Media",
          "limit": 6, "quiet_http": (403,)},
+        # Cloudflare 403 from datacentre IPs. Sister outlet of Al Hadath; not an independent source.
+        {"id": "alarabiya-ar", "name": "Al Arabiya", "region": "Middle East", "category": "Security",
+         "url": "https://www.alarabiya.net/feed/rss2/ar.xml",
+         "parser": "security-rss", "source_tier": "Regional broadcaster / Saudi state-aligned",
+         "note": "Saudi state-aligned editorial line. Same network as Al Hadath.",
+         "limit": 6, "quiet_http": (403,)},
+        {"id": "alarabiya-en", "name": "Al Arabiya English", "region": "Middle East", "category": "Security",
+         "url": "https://english.alarabiya.net/feed/rss2/en.xml",
+         "parser": "security-rss", "source_tier": "Regional broadcaster / Saudi state-aligned",
+         "note": "Saudi state-aligned editorial line. Same network as Al Hadath.",
+         "limit": 6, "quiet_http": (403,)},
         {"id": "imb-prc", "name": "IMB Piracy Reporting Centre", "region": "Maritime", "category": "Security",
          "url": "https://icc-ccs.org/feed/",
          "parser": "security-rss", "default_country": "Maritime", "source_tier": "Official", "limit": 6},
@@ -2000,6 +2048,11 @@ def _catalogue_feeds() -> list[dict]:
              "Personal names are not stored."
          ),
          "limit": 8},
+        # No RSS. The public sitemap is free. On 27 Nov 2026 its newest lastmod was 2026-06-27,
+        # so items older than 30 days are not pinned. The X account is the live source.
+        {"id": "baidoa-sitemap", "name": "Baidoa Online", "region": "Africa", "category": "Security",
+         "url": "https://www.baidoaonline.com/sitemap.xml", "parser": "sitemap-news",
+         "default_country": "Somalia", "source_tier": "Local outlet", "max_age_days": 30, "limit": 6},
     ]
     return feeds
 
@@ -2057,6 +2110,7 @@ PARSERS = {
     "bluesky": parse_bluesky,
     "telegram": parse_telegram_preview,
     "ashara": parse_ashara,
+    "sitemap-news": parse_sitemap_news,
 }
 
 

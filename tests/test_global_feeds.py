@@ -151,6 +151,27 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertIn("Somalia", events[0]["title"])
         self.assertEqual(events[0]["source_tier"], "Official")
+        arab = [item for item in gf._feeds() if item["id"].startswith("alarabiya-")]
+        self.assertEqual(len(arab), 2)
+        self.assertTrue(all(403 in item["quiet_http"] for item in arab))
+        self.assertTrue(all(item["source_tier"] == "Regional broadcaster / Saudi state-aligned" for item in arab))
+
+    def test_baidoa_sitemap_keeps_recent_security_urls_only(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "baidoa-sitemap")
+        self.assertEqual(feed["source_tier"], "Local outlet")
+        self.assertEqual(feed["default_country"], "Somalia")
+        recent = "2026-11-27T08:00:00.000Z"
+        old = "2026-06-27T09:25:46.674Z"
+        xml = f"""<?xml version="1.0"?><urlset>
+          <url><loc>https://www.baidoaonline.com/about</loc><lastmod>{recent}</lastmod></url>
+          <url><loc>https://www.baidoaonline.com/news/clan-fighting-erupts-in-galmudug</loc><lastmod>{recent}</lastmod></url>
+          <url><loc>https://www.baidoaonline.com/news/armed-fighters-attack-a-base</loc><lastmod>{old}</lastmod></url>
+        </urlset>"""
+        events = gf.parse_sitemap_news(feed, xml.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Galmudug", events[0]["title"])
+        self.assertEqual(events[0]["country"], "Somalia")
+        self.assertEqual(events[0]["source_tier"], "Local outlet")
 
 
 if __name__ == "__main__":
