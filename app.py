@@ -3,8 +3,22 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from flask import Flask, Response, abort, request, send_from_directory
+
+def _pin_live_database() -> None:
+    """Keep the live feed database on durable storage before serve_map reads DB_PATH."""
+    if (os.environ.get("DB_PATH") or "").strip():
+        return
+    from analytics_store import resolve_data_dir, uses_durable_volume
+
+    data_dir = resolve_data_dir()
+    if uses_durable_volume(data_dir):
+        os.environ["DB_PATH"] = str(Path(data_dir) / "osint_events.db")
+
+
+_pin_live_database()
 
 import ppv
 import preview_lock
@@ -37,6 +51,22 @@ def _json(payload: dict) -> Response:
     response = Response(body, mimetype="application/json")
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+def _page(filename: str, directory=None) -> Response:
+    """Read HTML into the response body.
+
+    send_from_directory leaves the file in passthrough mode, and the preview
+    lock has to read HTML responses to add the robots tag.
+    """
+    folder = serve_map.ROOT if directory is None else Path(directory)
+    path = (folder / filename).resolve()
+    root = folder.resolve()
+    if path != root and root not in path.parents:
+        abort(404)
+    if not path.is_file():
+        abort(404)
+    return Response(path.read_bytes(), mimetype="text/html; charset=utf-8")
 
 
 @app.after_request
@@ -124,6 +154,28 @@ def api_country_calendar(iso2: str) -> Response:
     return _json(serve_map.country_calendar_payload(iso2))
 
 
+@app.route("/api/analytics", methods=["GET"])
+@app.route("/api/reports", methods=["GET", "POST"])
+@app.route("/api/reports/<path:rest>", methods=["GET", "POST"])
+def historical_api(rest: str = "") -> Response:
+    import report_builder
+
+    result = report_builder.dispatch(
+        request.method,
+        request.path,
+        request.args,
+        request.get_json(silent=True) or {},
+    )
+    body = result["body"]
+    if not isinstance(body, str):
+        body = serve_map.json.dumps(body, ensure_ascii=False)
+    response = Response(body, status=result.get("status", 200), mimetype=result.get("mimetype", "application/json"))
+    for key, value in (result.get("headers") or {}).items():
+        response.headers[key] = value
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.route("/api/<path:endpoint>", methods=["GET", "POST"])
 def api_forward(endpoint: str) -> Response:
     return _forward_api()
@@ -131,42 +183,47 @@ def api_forward(endpoint: str) -> Response:
 
 @app.get("/")
 def index() -> Response:
-    return send_from_directory(serve_map.ROOT, "index.html")
+    return _page("index.html")
 
 
 @app.get("/briefing")
 def briefing_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "briefing.html")
+    return _page("briefing.html")
 
 
 @app.get("/world-risk")
 def world_risk_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "world-risk.html")
+    return _page("world-risk.html")
 
 
 @app.get("/countries")
 def countries_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "countries.html")
+    return _page("countries.html")
 
 
 @app.get("/grok-ops")
 def grok_ops_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "grok-ops.html")
+    return _page("grok-ops.html")
 
 
 @app.get("/risk-assessments")
 def risk_assessments_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "risk-assessments.html")
+    return _page("risk-assessments.html")
 
 
 @app.get("/pricing")
 def pricing_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "pricing.html")
+    return _page("pricing.html")
 
 
 @app.get("/enterprise")
 def enterprise_page() -> Response:
-    return send_from_directory(serve_map.ROOT, "enterprise.html")
+    return _page("enterprise.html")
+
+
+@app.get("/reports")
+def reports_page() -> Response:
+    return _page("reports.html", serve_map.ROOT / "static")
 
 
 @app.get("/manifest.webmanifest")
@@ -232,11 +289,17 @@ def static_file(filename: str) -> Response:
     target = (serve_map.ROOT / filename).resolve()
     if not str(target).startswith(str(serve_map.ROOT)) or not target.is_file():
         abort(404)
+    if filename.endswith(".html"):
+        return _page(filename)
     return send_from_directory(serve_map.ROOT, filename)
 
 
 _enable_basic_auth()
-serve_map.start_background()
+if (os.environ.get("DISABLE_BACKGROUND") or "").strip().lower() not in {"1", "true", "yes"}:
+    serve_map.start_background()
+import report_builder
+
+report_builder.start_background()
 
 
 if __name__ == "__main__":

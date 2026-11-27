@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports &amp; Analytics — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/platform.css">
+  <style>
+    .report-frame { width: 100%; min-height: 820px; border: 1px solid var(--line); border-radius: 12px; background: #e7e5e4; }
+    .status { min-height: 1.2em; }
+    .schedule-table td, .schedule-table th { white-space: nowrap; }
+    .schedule-table td.wrap { white-space: normal; max-width: 240px; }
+    .checks { display: flex; align-items: center; gap: 8px; }
+    .checks input { width: auto; }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">Map</a>
+      <a href="/reports" aria-current="page">Reports</a>
+      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
+  </header>
+  <div class="section-banner">
+    <p class="kicker">Reports &amp; Analytics</p>
+    <h1>Daily, weekly, and monthly intelligence reports</h1>
+    <p>Generate a GeoRiskIntel security assessment for any country or full region. Print to PDF, download HTML, or email it. Delivery settings sit behind the same preview lock as the rest of the admin panel.</p>
+  </div>
+  <main>
+    <section class="panel">
+      <div class="toolbar">
+        <label>Country or region
+          <input id="scope" list="scope-list" value="Syria" autocomplete="off">
+          <datalist id="scope-list"></datalist>
+        </label>
+        <label>Period
+          <select id="period">
+            <option value="daily">Daily</option>
+            <option value="weekly" selected>Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </label>
+        <label id="days-label" hidden>Days
+          <select id="days">
+            <option value="7">7</option>
+            <option value="30">30</option>
+            <option value="90">90</option>
+            <option value="365">365</option>
+          </select>
+        </label>
+        <label>Category
+          <select id="category">
+            <option value="">All categories</option>
+          </select>
+        </label>
+        <button type="button" id="generate">Generate report</button>
+        <button type="button" id="print" class="ghost">Print / PDF</button>
+        <button type="button" id="download" class="ghost">Download HTML</button>
+      </div>
+      <p class="note status" id="generate-status" role="status"></p>
+    </section>
+    <section class="panel">
+      <h2>Send report now</h2>
+      <div class="toolbar">
+        <label>Recipients
+          <input id="send-recipients" type="text" placeholder="ops@client.example, duty@client.example" autocomplete="off">
+        </label>
+        <button type="button" id="send-now">Send Report Now</button>
+      </div>
+      <p class="note">Leave recipients empty to use REPORT_RECIPIENTS. Delivery uses SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS.</p>
+      <p class="note status" id="send-status" role="status"></p>
+    </section>
+    <section class="panel">
+      <h2>Scheduled delivery</h2>
+      <p class="note">Each row is one client subscription. Enabled subscriptions generate and email the current Daily, Weekly, or Monthly report after 07:00 Europe/London, then once each period.</p>
+      <form id="schedule-form" class="toolbar">
+        <label>Client
+          <input id="client-label" required placeholder="Acme desk">
+        </label>
+        <label>Recipients
+          <input id="schedule-recipients" required placeholder="analyst@acme.example">
+        </label>
+        <label>Scope
+          <input id="schedule-scope" list="scope-list" required placeholder="Syria or Middle East">
+        </label>
+        <label>Cadence
+          <select id="schedule-cadence">
+            <option value="daily">Daily</option>
+            <option value="weekly" selected>Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+        <label class="checks">Enabled
+          <input id="schedule-enabled" type="checkbox" checked>
+        </label>
+        <button type="submit" id="save-schedule">Save subscription</button>
+      </form>
+      <p class="note status" id="schedule-status" role="status"></p>
+      <div style="overflow-x:auto">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>Client</th><th>Recipients</th><th>Scope</th><th>Cadence</th><th>Enabled</th><th>Last sent</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="schedule-rows">
+            <tr><td colspan="7">No subscriptions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Report preview</h2>
+      <iframe id="preview" class="report-frame" title="Report preview"></iframe>
+    </section>
+  </main>
+  <footer>GeoRiskIntel · For clients only, not for copy or distribution.</footer>
+  <script src="/static/reports.js"></script>
+</body>
+</html>

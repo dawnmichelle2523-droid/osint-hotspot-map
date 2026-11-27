@@ -13,6 +13,7 @@
     <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
+      <a href="/reports">Reports</a>
       <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
       <a href="/grok-ops">Grok Ops</a>
       <a href="/pricing" aria-current="page">Pricing</a>
@@ -76,19 +77,59 @@
       </div>
       <a class="button" href="/enterprise">Enterprise</a>
     </section>
+    <section class="panel" id="report-addon">
+      <h2>Automated Intelligence Reports (Optional Add-On)</h2>
+      <p class="note">ThreatMapr-style Daily, Weekly, and Monthly PDF and email reports. Available per country or per full region, generated on schedule and emailed automatically to the client's distribution list. Prices follow the GBP / USD toggle and the monthly / annual toggle above.</p>
+      <div class="cards">
+        <article class="card">
+          <h2>Daily</h2>
+          <p class="price" id="report-daily-price">£149<span style="font-size:16px">/scope/mo</span></p>
+          <p class="note">One country or one region</p>
+          <ul>
+            <li>24-hour security assessment</li>
+            <li>Print-to-PDF and HTML email</li>
+            <li>Automatic delivery to the distribution list</li>
+          </ul>
+          <a class="button" href="/enterprise">Request / Add to Plan</a>
+        </article>
+        <article class="card">
+          <h2>Weekly</h2>
+          <p class="price" id="report-weekly-price">£79<span style="font-size:16px">/scope/mo</span></p>
+          <p class="note">One country or one region</p>
+          <ul>
+            <li>Seven-day security assessment</li>
+            <li>Baseline, risk index, and category table</li>
+            <li>Automatic delivery to the distribution list</li>
+          </ul>
+          <a class="button" href="/enterprise">Request / Add to Plan</a>
+        </article>
+        <article class="card">
+          <h2>Monthly</h2>
+          <p class="price" id="report-monthly-price">£39<span style="font-size:16px">/scope/mo</span></p>
+          <p class="note">One country or one region</p>
+          <ul>
+            <li>Thirty-day security assessment</li>
+            <li>Trend against the 3-month average</li>
+            <li>Automatic delivery to the distribution list</li>
+          </ul>
+          <a class="button" href="/enterprise">Request / Add to Plan</a>
+        </article>
+      </div>
+    </section>
     <section class="panel faq">
       <h2>FAQ</h2>
       <details open><summary>What is included in Individual / Pro?</summary><p>The live map, travel-advisory cross-check, six ISO-aligned assessment templates, and Grok drafts that use threat and place context only.</p></details>
       <details><summary>How does annual billing save two months?</summary><p>The annual price is ten times the monthly price. Two months are not billed.</p></details>
       <details><summary>Can schools use the BS 8848 template?</summary><p>Yes. The school and university template covers ratios, safeguarding, medical cover, and emergency contacts. Pupil details stay in the browser.</p></details>
       <details><summary>How does the Enterprise pilot work?</summary><p>A scoped 2–4 week pilot leads to an annual invoice. Personal medical data is not sent to Grok.</p></details>
+      <details><summary>How do Automated Intelligence Reports work?</summary><p>The add-on is priced per country or per full region. Daily, weekly, and monthly assessments are emailed to the addresses on that client's distribution list. Annual billing follows the same two-month saving as the platform plans.</p></details>
     </section>
   </main>
   <footer>GeoRiskIntel</footer>
   <script>
     const prices = {
-      gbp: { proM: 19, proY: 190, pass: "Full global map. A 7-day single-area pass is £6.99.", teamM: 69, teamY: 690, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from £6.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week." },
-      usd: { proM: 25, proY: 250, pass: "Full global map. A 7-day single-area pass is $9.99.", teamM: 89, teamY: 890, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from $9.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week." }
+      gbp: { proM: 19, proY: 190, pass: "Full global map. A 7-day single-area pass is £6.99.", teamM: 69, teamY: 690, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from £6.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week.", dailyM: 149, dailyY: 1490, weeklyM: 79, weeklyY: 790, monthlyM: 39, monthlyY: 390 },
+      usd: { proM: 25, proY: 250, pass: "Full global map. A 7-day single-area pass is $9.99.", teamM: 89, teamY: 890, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from $9.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week.", dailyM: 189, dailyY: 1890, weeklyM: 99, weeklyY: 990, monthlyM: 49, monthlyY: 490 }
     };
     let period = "monthly";
     let currency = "gbp";
@@ -102,6 +143,13 @@
       document.getElementById("team-price").innerHTML = symbol + team + "<span style=\"font-size:16px\">/user" + suffix + "</span>";
       document.getElementById("pro-pass").textContent = "7-day pass " + row.pass;
       document.getElementById("payg").textContent = row.payg;
+      const reportSuffix = period === "monthly" ? "/scope/mo" : "/scope/yr";
+      const daily = period === "monthly" ? row.dailyM : row.dailyY;
+      const weekly = period === "monthly" ? row.weeklyM : row.weeklyY;
+      const monthlyReport = period === "monthly" ? row.monthlyM : row.monthlyY;
+      document.getElementById("report-daily-price").innerHTML = symbol + daily.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
+      document.getElementById("report-weekly-price").innerHTML = symbol + weekly.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
+      document.getElementById("report-monthly-price").innerHTML = symbol + monthlyReport.toLocaleString("en-GB") + "<span style=\"font-size:16px\">" + reportSuffix + "</span>";
       document.getElementById("monthly").setAttribute("aria-pressed", String(period === "monthly"));
       document.getElementById("annual").setAttribute("aria-pressed", String(period === "annual"));
       document.getElementById("gbp").setAttribute("aria-pressed", String(currency === "gbp"));
