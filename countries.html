@@ -24,7 +24,8 @@
     .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; }
     #page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
     #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
-    #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
     #clock-strip { display: flex; align-items: center; }
     #local-time {
@@ -173,9 +174,13 @@
     </div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
       <a href="/briefing">Briefing</a>
       <a href="/world-risk">World Risk</a>
       <a href="/countries" aria-current="page">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
     </nav>
     <div id="header-tools">
       <div id="clock-strip">

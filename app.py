@@ -138,6 +138,76 @@ def countries_page() -> Response:
     return send_from_directory(serve_map.ROOT, "countries.html")
 
 
+@app.get("/grok-ops")
+def grok_ops_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "grok-ops.html")
+
+
+@app.get("/risk-assessments")
+def risk_assessments_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "risk-assessments.html")
+
+
+@app.get("/pricing")
+def pricing_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "pricing.html")
+
+
+@app.get("/enterprise")
+def enterprise_page() -> Response:
+    return send_from_directory(serve_map.ROOT, "enterprise.html")
+
+
+@app.get("/manifest.webmanifest")
+def web_manifest() -> Response:
+    response = send_from_directory(serve_map.ROOT, "manifest.webmanifest")
+    response.headers["Content-Type"] = "application/manifest+json"
+    return response
+
+
+@app.get("/sw.js")
+def service_worker() -> Response:
+    response = send_from_directory(serve_map.ROOT, "sw.js")
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
+
+def _sse(chunks):
+    response = Response(chunks, mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache, no-transform"
+    response.headers["X-Accel-Buffering"] = "no"
+    return response
+
+
+@app.post("/api/grok/summarize-governorate")
+def api_grok_governorate() -> Response:
+    import platform_phase1
+
+    return _sse(platform_phase1.stream_governorate(request.get_json(silent=True) or {}))
+
+
+@app.post("/api/grok/briefing")
+def api_grok_briefing() -> Response:
+    import platform_phase1
+
+    return _sse(platform_phase1.stream_briefing(request.get_json(silent=True) or {}))
+
+
+@app.post("/api/grok/risk-draft")
+def api_grok_risk_draft() -> Response:
+    import platform_phase1
+
+    return _sse(platform_phase1.stream_risk_draft(request.get_json(silent=True) or {}))
+
+
+@app.post("/api/grok/copilot")
+def api_grok_copilot() -> Response:
+    import platform_phase1
+
+    return _sse(platform_phase1.stream_copilot(request.get_json(silent=True) or {}))
+
+
 @app.get("/api/travel-advisories")
 def api_travel_advisories() -> Response:
     return _json(serve_map.travel_advisories_payload())

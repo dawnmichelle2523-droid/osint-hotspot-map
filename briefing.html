@@ -24,7 +24,8 @@
     .risk-pill { color: #D4AF37; border: 1px solid #C5A059; border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; font-weight: 700; }
     #page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
     #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
-    #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
     #clock-strip { display: flex; align-items: center; }
     #local-time {
@@ -68,9 +69,13 @@
     </div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
       <a href="/briefing" aria-current="page">Briefing</a>
       <a href="/world-risk">World Risk</a>
       <a href="/countries">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
     </nav>
     <div id="header-tools">
       <div id="clock-strip">
@@ -94,7 +99,13 @@
   </div>
   <main id="brief-main">
     <h1>Regional Briefings</h1>
-    <p class="lede">This page uses the live incident feed. Regional notes below are ready to customize.</p>
+    <p class="lede">This page uses the live incident feed. Generate a theatre briefing from the incidents already loaded. Personal details are not included.</p>
+    <section class="panel" aria-label="Theater briefing">
+      <h2>Theater briefing</h2>
+      <label>Theatre <select id="theatre"></select></label>
+      <p><button type="button" id="theater-briefing">Generate Theater Briefing</button></p>
+      <pre id="brief-output" class="empty" style="white-space:pre-wrap"></pre>
+    </section>
     <section class="panel" aria-label="Live incidents by country">
       <h2>Live incidents</h2>
       <div id="live-table"><p class="empty">Loading the live incident feed…</p></div>
@@ -191,6 +202,43 @@
       }
     }
     load();
+    const THEATRES = ["Syria", "Iraq", "Iran", "Lebanon", "Israel", "Yemen", "Sudan", "Saudi Arabia", "United States", "Canada", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "Global"];
+    const theatre = document.getElementById("theatre");
+    THEATRES.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      theatre.appendChild(option);
+    });
+    let briefFeatures = [];
+    const previousLoad = load;
+    async function loadBrief() {
+      await previousLoad();
+    }
+    document.getElementById("theater-briefing").addEventListener("click", async () => {
+      const output = document.getElementById("brief-output");
+      output.textContent = "";
+      let features = [];
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        const data = await response.json();
+        features = data.features || [];
+      } catch (err) {
+        features = [];
+      }
+      const name = theatre.value;
+      const incidents = features.filter((feature) => {
+        const props = feature.properties || {};
+        const blob = (props.country || "") + " " + (props.region || "") + " " + (props.theatre || "");
+        return blob.indexOf(name) !== -1;
+      }).slice(0, 20).map((feature) => feature.properties || {});
+      if (!window.GeoRiskStream) return;
+      window.GeoRiskStream.post("/api/grok/briefing", { theatre: name, incidents: incidents }, {
+        onToken: (text) => { output.textContent += text; },
+        onError: (payload) => { output.textContent = payload.message || "Briefing is unavailable."; }
+      });
+    });
   </script>
+  <script src="/static/grok-stream.js"></script>
 </body>
 </html>
