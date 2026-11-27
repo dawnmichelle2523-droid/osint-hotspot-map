@@ -5,18 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Grok Ops — GeoRiskIntel</title>
   <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
-  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GeoRiskIntel">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <script src="/static/pwa-register.js" defer></script>
   <link rel="stylesheet" href="/static/platform.css">
 </head>
 <body>
   <header id="live-bar">
-    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel" style="height:36px;width:auto;display:block"><span class="risk-pill">REGIONAL RISK</span></div>
+    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">Map</a>
       <a href="/reports">Reports</a>
       <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
       <a href="/grok-ops" aria-current="page">Grok Ops</a>
       <a href="/white-label" title="Client-branded embed studio">White-Label</a>
+      <a href="/slack-alerts">Slack Alerts</a>
+      <a href="/sentinel-zones">Sentinel Zones</a>
+      <a href="/route-risk">Route risk</a>
       <a href="/pricing">Pricing</a>
       <a href="/enterprise">Enterprise</a>
     </nav>
@@ -57,6 +67,13 @@
       <label>Viewer <input id="ppv-viewer" type="text" placeholder="desk@example.com or pass id"></label>
       <p><button type="button" id="ppv-issue">Issue 7-day pass</button></p>
       <p id="ppv-result" class="note"></p>
+    </section>
+    <section class="panel strip">
+      <div>
+        <h2>Live Slack alerts</h2>
+        <p class="note">Push matching incidents to an ops-room webhook. Block Kit cards use no Grok tokens. HIGH and Tsunami alerts send immediately.</p>
+      </div>
+      <a class="button" href="/slack-alerts">Open Slack alerts</a>
     </section>
     <section class="panel">
       <h2>Live triage log</h2>

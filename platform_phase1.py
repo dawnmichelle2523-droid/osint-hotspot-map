@@ -62,6 +62,8 @@ FORBIDDEN_KEYS = {
     "email", "phone", "telephone", "mobile", "address", "home_address",
     "next_of_kin", "emergency_contact", "emergency_contacts", "allergy", "allergies",
     "condition", "conditions", "insurance", "insurance_number", "gp", "physician",
+    "names", "contacts", "advisor", "callsign", "roster", "pupil_roster",
+    "parent_contact", "parent_contacts",
 }
 SECTIONS = {"custom_risk", "human_overwatch", "tracking_app", "custom_platform"}
 SECTORS = {
@@ -613,9 +615,15 @@ def stream_briefing(payload: dict):
 
 def stream_risk_draft(payload: dict):
     clean = scrub_payload(payload)
-    template = scrub_text(clean.get("template") or "Security & Travel Risk Assessment", 80)
+    template = scrub_text(clean.get("template") or "Security & Travel Risk Assessment", 120)
+    sector = scrub_text(clean.get("sector") or "", 160)
+    standard = scrub_text(clean.get("compliance_standard") or clean.get("standard") or "", 240)
+    operation = scrub_text(clean.get("operation") or clean.get("purpose") or "", 160)
     country = scrub_text(clean.get("country") or "", 80)
     city = scrub_text(clean.get("city") or "", 80)
+    transport = scrub_text(clean.get("transport") or "", 160)
+    accommodation = scrub_text(clean.get("accommodation") or "", 160)
+    comms = scrub_text(clean.get("comms") or "", 160)
     hazards = clean.get("hazards") if isinstance(clean.get("hazards"), list) else []
     lines = []
     for hazard in hazards[:12]:
@@ -644,26 +652,48 @@ def stream_risk_draft(payload: dict):
                 if part
             )
         )
+    protocols = []
+    if transport:
+        protocols.append(f"Transport: {transport}")
+    if accommodation:
+        protocols.append(f"Accommodation: {accommodation}")
+    if comms:
+        protocols.append(f"Comms: {comms}")
     user = (
-        f"Template: {template}\nDestination: {city + ', ' if city else ''}{country or 'unspecified'}\n"
-        "Write one short mitigation paragraph per hazard. Cite the public 7-day incidents when they support a hazard. "
-        "Destination threat context only.\n"
+        f"Sector: {sector or 'unspecified'}\n"
+        f"Compliance standard: {standard or template}\n"
+        f"Template: {template}\n"
+        f"Operation / assignment: {operation or 'unspecified'}\n"
+        f"Destination: {city + ', ' if city else ''}{country or 'unspecified'}\n"
+        + ("\n".join(protocols) + "\n" if protocols else "")
+        + "Write one short mitigation paragraph per hazard, aligned to this sector and compliance standard. "
+        "Cite the public 7-day incidents when they support a hazard. "
+        "Destination threat context only. Do not mention personal identities, callsigns, pupil rosters, or medical histories.\n"
         + ("\n".join(lines) or "- General travel security")
         + "\nPublic incidents, last 7 days:\n"
         + ("\n".join(incident_lines) or "None logged.")
     )
     system = (
-        "You draft mitigations for an ISO 31000 / ISO 31030 style travel risk assessment. "
+        "You draft mitigations for a travel and operational risk assessment. "
+        "Align the wording to the stated sector and compliance standard. "
         "Discuss places, routes, healthcare access, and security conditions. "
         "Use only the public incidents supplied. If none are listed, say no verified incidents were logged in the last 7 days. "
-        "Never request or repeat traveller names, medical history, or contact details. Plain text."
+        "Never request or repeat traveller names, pupil rosters, callsigns, medical history, blood type, passport numbers, or contact details. Plain text."
     )
     cited = "; ".join(line[2:80] for line in incident_lines[:4]) or "no verified incidents logged in the last 7 days"
-    fallback = "Local mitigation draft (Grok is not configured, so nothing was sent). Recent public incidents: " + cited + "\n" + "\n".join(
-        f"{line} — Confirm the official advisory, assign an owner, and re-score residual risk after the control is in place."
-        for line in (lines or ["- General travel security"])
+    fallback = (
+        f"Local mitigation draft for {sector or 'the selected sector'} under {standard or template}. "
+        "Grok is not configured, so nothing was sent. Recent public incidents: " + cited + "\n"
+        + "\n".join(
+            f"{line} — Confirm the official advisory, assign an owner, and re-score residual risk after the control is in place."
+            for line in (lines or ["- General travel security"])
+        )
     )
-    yield from _stream_model(system, user, fallback, {"kind": "risk-draft", "template": template})
+    yield from _stream_model(system, user, fallback, {
+        "kind": "risk-draft",
+        "template": template,
+        "sector": sector,
+    })
 
 
 def stream_copilot(payload: dict):

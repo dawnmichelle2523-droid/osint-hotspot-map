@@ -1,0 +1,68 @@
+{
+  "name": "GeoRiskIntel — Live OSINT & Travel Risk",
+  "short_name": "GeoRiskIntel",
+  "description": "Live OSINT map, travel risk assessments, sentinel zones, and field reports.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Risk Assessments",
+      "short_name": "Assessments",
+      "description": "ISO-aligned risk assessments and pre-deployment reports",
+      "url": "/risk-assessments",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Sentinel Zones",
+      "short_name": "Zones",
+      "description": "Live radius watches",
+      "url": "/sentinel-zones",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "Scheduled intelligence reports",
+      "url": "/reports",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Grok Ops",
+      "short_name": "Grok Ops",
+      "description": "API health, theatres, and triage",
+      "url": "/grok-ops",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

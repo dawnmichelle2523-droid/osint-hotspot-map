@@ -692,11 +692,15 @@ def _product_home() -> str:
 
 
 def _embed_headers(response: Response) -> Response:
+    """Embed headers for customer intranets. No cookies and no third-party origins."""
     response.headers.pop("X-Frame-Options", None)
     response.headers["Content-Security-Policy"] = WIDGET_CSP
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
+    # A client portal iframe must not receive a tracking or session cookie.
+    if "Set-Cookie" in response.headers:
+        del response.headers["Set-Cookie"]
     return response
 
 

@@ -39,6 +39,33 @@ class WhiteLabelTests(unittest.TestCase):
         self.assertIsNone(widget.headers.get("X-Frame-Options"))
         self.assertEqual(self.client.get("/pricing").status_code, 200)
 
+    def test_embed_sets_no_tracking_cookies_or_third_parties(self):
+        response = self.client.get("/embed/widget?country=Yemen&mode=map&org=Atlas")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.getlist("Set-Cookie"), [])
+        self.assertEqual(response.headers.get("Referrer-Policy"), "no-referrer")
+        body = response.get_data(as_text=True).lower()
+        for needle in (
+            "gtag",
+            "google-analytics",
+            "googletagmanager",
+            "facebook",
+            "hotjar",
+            "doubleclick",
+            "segment.com",
+            "unpkg.com",
+            "fonts.googleapis",
+            "jsdelivr",
+            "cookie",
+            "<script",
+        ):
+            self.assertNotIn(needle, body, needle)
+        self.assertIn("powered by georiskintel", body)
+        tainted = self.client.get("/embed/widget?country=Yemen&pass=not-a-tracker")
+        self.assertEqual(tainted.status_code, 200)
+        self.assertEqual(tainted.headers.getlist("Set-Cookie"), [])
+        self.assertIn(ATTRIBUTION, tainted.get_data(as_text=True))
+
     def test_grok_ops_links_to_the_studio(self):
         page = self.client.get("/grok-ops")
         self.assertEqual(page.status_code, 200)
