@@ -4,7 +4,7 @@
    POST requests and auth responses are never stored.
    The origin marks API responses no-store. That only bypasses the HTTP cache.
    The Cache API below is the explicit field snapshot. */
-const SHELL_CACHE = "georiskintel-shell-v2";
+const SHELL_CACHE = "georiskintel-shell-v3";
 const API_CACHE = "georiskintel-api-v1";
 const SHELL = [
   "/",
@@ -26,6 +26,7 @@ const SHELL = [
   "/static/grok-stream.js",
   "/static/news-stream.js",
   "/static/ra-sectors.js",
+  "/static/geo-split.js",
   "/static/ra-diff-audit.js",
   "/static/reports.js"
 ];

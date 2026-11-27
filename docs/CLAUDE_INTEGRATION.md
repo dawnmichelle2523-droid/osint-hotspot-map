@@ -32,6 +32,8 @@ The buttons live on `/risk-assessments`, `/briefing`, and `/reports`. The report
 
 ## What is sent
 
+Drafts and the local template are written in UK English (British spelling and conventions).
+
 The prompt is rebuilt on the server from a short allowlist:
 
 - country, region, sector, and deployment scope

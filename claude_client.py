@@ -30,6 +30,11 @@ BRIEF_MAX_TOKENS = 900
 RA_EFFORT = "medium"
 BRIEF_EFFORT = "low"
 PROMPT_CHAR_CAP = 8000
+UK_ENGLISH = (
+    "Write in UK English. Use British spelling and conventions, including travelling, "
+    "organisation, defence, licence, centre, programme, labelled, and towards. "
+    "Write dates as day month year. Do not use American spellings."
+)
 
 # Published list prices in USD per million tokens (input, output).
 # Haiku 5.5 uses the higher pair once a prompt exceeds 100,000 tokens.
@@ -359,13 +364,13 @@ def local_risk_narrative(context: dict) -> str:
         hazard_lines.append(
             f"- {hazard.get('threat') or 'Hazard'} "
             f"(likelihood {hazard.get('likelihood')}, impact {hazard.get('impact')}) "
-            "— Confirm the official advisory, name an owner on this device, "
-            "and re-score residual risk after the control is in place."
+            "— Confirm the official travel advice, name an owner on this device, "
+            "and re-score the residual risk once the control is in place."
         )
     if not hazard_lines:
         hazard_lines.append(
-            "- General travel security — Confirm the official advisory, name an owner on this device, "
-            "and re-score residual risk after the control is in place."
+            "- General travel security — Confirm the official travel advice, name an owner on this device, "
+            "and re-score the residual risk once the control is in place."
         )
     lead = (
         f"Local risk-assessment draft for {sector} under {standard}. "
@@ -380,14 +385,14 @@ def local_risk_narrative(context: dict) -> str:
         + cited
         + "\n"
         + "\n".join(hazard_lines)
-        + "\nA qualified person must review this draft before it is issued."
+        + "\nA qualified person must review this draft before it is issued. Written in UK English."
     )
 
 
 def local_briefing_narrative(context: dict) -> str:
     """Deterministic daily, weekly, or monthly area briefing. No network call."""
     cadence = context.get("cadence") or "daily"
-    label = {"daily": "daily", "weekly": "weekly", "monthly": "monthly", "custom": "custom-range"}.get(cadence, "area")
+    label = {"daily": "daily", "weekly": "weekly", "monthly": "monthly", "custom": "custom range"}.get(cadence, "area")
     sector = context.get("sector") or "unspecified sector"
     scope = context.get("deployment_scope") or f"{label.title()} area-of-operations briefing"
     lines = _incident_lines(context)
@@ -406,8 +411,8 @@ def local_briefing_narrative(context: dict) -> str:
         f"Sector: {sector}. Deployment scope: {scope}. "
         "This is the on-server template. Claude was not called. "
         f"{picture} "
-        "Treat unverified claims as claims. Check the official advisory before movement. "
-        "A qualified person must review this draft before it is issued."
+        "Treat unverified claims as claims. Check the official travel advice before any movement. "
+        "A qualified person must review this draft before it is issued. Written in UK English."
     )
 
 
@@ -423,8 +428,9 @@ def _prompt(task: str, context: dict) -> tuple[str, str]:
             "You draft a Daily, Weekly, or Monthly area-of-operations briefing for security and travel-risk officers. "
             "Use only the public context below. Do not invent incidents, casualty figures, or names. "
             "Do not mention private people, staff, phone numbers, emails, or device identifiers. "
-            "If the notes are thin, say what is not known. Plain English, short paragraphs, then up to four watch items. "
-            "This is decision support. A person must review it before issue."
+            "If the notes are thin, say what is not known. Short paragraphs, then up to four watch items. "
+            "This is decision support. A person must review it before issue. "
+            + UK_ENGLISH
         )
     else:
         system = (
@@ -433,7 +439,8 @@ def _prompt(task: str, context: dict) -> tuple[str, str]:
             "Do not invent incidents or name private people. "
             "Do not mention staff names, traveller names, phone numbers, emails, medical details, or device identifiers. "
             "Write one short mitigation note per hazard, then a short overall paragraph. "
-            "If no public incidents are listed, say so. Plain English. A person must review this before issue."
+            "If no public incidents are listed, say so. A person must review this before issue. "
+            + UK_ENGLISH
         )
     user_lines = [
         _area_line(context),
@@ -460,7 +467,10 @@ def _prompt(task: str, context: dict) -> tuple[str, str]:
         else:
             user_lines.append("- General travel security (unscored).")
     if context.get("action") == "refine" and context.get("draft"):
-        user_lines.append("Refine this earlier public draft. Drop anything that is not country, region, sector, scope, or public incident context.")
+        user_lines.append(
+            "Refine this earlier public draft in UK English. "
+            "Drop anything that is not country, region, sector, scope, or public incident context."
+        )
         user_lines.append(context["draft"])
     user = "\n".join(user_lines)[:PROMPT_CHAR_CAP]
     return system, user

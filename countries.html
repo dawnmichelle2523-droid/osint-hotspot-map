@@ -67,6 +67,9 @@
     .sector-bar button[aria-pressed="true"] { color: #0f172a; background: #D4AF37; border-color: #D4AF37; }
     #profile .sector-bar { margin-top: 8px; }
     #country-search { border-radius: 8px; min-width: min(260px, 100%); color: var(--text); cursor: text; }
+    a.ao-pdf { display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 8px; padding: 10px 12px; background: #D4AF37; color: #060A13; font-weight: 800; text-decoration: none; border-radius: 8px; text-align: center; }
+    .ao-pdf-badge { display: inline-flex; align-items: center; min-height: 44px; margin: 6px 6px 0 0; padding: 8px 12px; border: 1px solid #C5A059; border-radius: 999px; color: #D4AF37; font-size: 12px; font-weight: 700; text-decoration: none; }
+    #profile-geo p { margin: 0 0 8px; }
     #grid-status { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
     #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
     .country-card {
@@ -128,7 +131,8 @@
     .pulse { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; }
     .pulse strong { display: block; }
     .pulse span { color: var(--muted); }
-    .card-foot { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .card-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+    .card-foot a.ao-pdf { flex: 1 1 100%; }
     .card-foot button, .card-foot a, .drawer-actions button {
       color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px;
       padding: 6px 8px; font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer;
@@ -227,7 +231,7 @@
   </div>
   <main>
     <h1>Country guides</h1>
-    <p class="lede page-lead">Official US and UK travel advice, plus incidents already on the live map.</p>
+    <p class="lede page-lead">Official US and UK travel advice for the Area of Operations, plus incidents already on the live map. Open a country to read the geopolitical summary and download its risk assessment.</p>
     <div id="sector-bar" class="sector-bar" role="group" aria-label="Operational sector">
       <button type="button" data-sector="all" aria-pressed="true">All / General</button>
       <button type="button" data-sector="media" aria-pressed="false">Media & Broadcast</button>
@@ -270,6 +274,18 @@
       <h4>Comms & Medical Contingency</h4>
       <ul id="protocol-comms"></ul>
     </section>
+    <div id="profile-pdf"></div>
+    <section id="profile-geo" aria-label="Geopolitical summary">
+      <h3>Geopolitical summary</h3>
+      <h4>Stability and political context</h4>
+      <p id="profile-geo-stability"></p>
+      <h4>Key actors and drivers</h4>
+      <p id="profile-geo-actors"></p>
+      <h4>Borders, airspace, and maritime</h4>
+      <p id="profile-geo-borders"></p>
+      <h4>Live OSINT activity</h4>
+      <p id="profile-geo-trend"></p>
+    </section>
     <h3>Executive summary</h3>
     <p id="profile-summary"></p>
     <h3>Official advice</h3>
@@ -300,6 +316,7 @@
   </aside>
   <article id="print-sheet" aria-hidden="true"></article>
   <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <script src="/static/geo-split.js"></script>
   <script>
     const PIN_KEY = "georiskintel.countryPins";
     const TOGGLE_KEY = "georiskintel.pinPriority";
@@ -718,6 +735,25 @@
         return a.name.localeCompare(b.name);
       });
     }
+    function pdfOfferHtml(country) {
+      const name = String(country || "").trim();
+      if (!name) return "";
+      const href = "/risk-assessments?country=" + encodeURIComponent(name) + "&auto=1";
+      return "<a class=\"ao-pdf\" href=\"" + href + "\">Download " + esc(name) + " Risk Assessment (PDF)</a>" +
+        "<span class=\"ao-pdf-badge\">Subscribers: included</span>" +
+        "<a class=\"ao-pdf-badge\" href=\"/pricing#ao-pass\">Single-Country 7-Day Pass £59 ($75)</a>";
+    }
+    function paintGeo(country, incidents) {
+      if (!window.GeoSplit) return;
+      const events = (incidents || []).map((item) => ({ properties: item }));
+      const summary = GeoSplit.composeSummary(events, GeoSplit.regionOf(country), country);
+      const stability = document.getElementById("profile-geo-stability");
+      if (!stability) return;
+      stability.textContent = summary.stability || "";
+      document.getElementById("profile-geo-actors").textContent = summary.actors || "";
+      document.getElementById("profile-geo-borders").textContent = summary.borders || "";
+      document.getElementById("profile-geo-trend").textContent = summary.trend ? summary.trend.sentence : "";
+    }
     function cardHtml(card, pins) {
       const pinned = pins.has(card.key);
       const latest = newestIncident(card.incidents);
@@ -746,7 +782,9 @@
         "<div class=\"advisory-banner\"><span class=\"advisory-pill\">" + esc(card.label) + "</span><span class=\"advisory-updated\">" + esc([card.source, formatUpdated(card.updated) ? "Updated " + formatUpdated(card.updated) : "Updated unavailable"].filter(Boolean).join(" · ")) + "</span>" + calendarBadgeHtml(card) + "</div>" +
         "<div class=\"pillars\">" + pills + "</div><div class=\"pulse\">" + pulse + "</div>" +
         "<div class=\"card-foot\"><button type=\"button\" class=\"profile-btn\">Threat Profile & Protocols</button>" +
-        "<a href=\"/?country=" + encodeURIComponent(card.mapCountry || card.name) + "\">OSINT Map ↗</a></div></article>";
+        "<a href=\"/?country=" + encodeURIComponent(card.mapCountry || card.name) + "\">OSINT Map ↗</a>" +
+        pdfOfferHtml(card.mapCountry || card.name) +
+        "</div></article>";
     }
     function render() {
       const pins = readPins();
@@ -1075,6 +1113,9 @@
       if (!card) return;
       openKey = key;
       const takeFocus = focusClose !== false;
+      const pdfHost = document.getElementById("profile-pdf");
+      if (pdfHost) pdfHost.innerHTML = pdfOfferHtml(card.mapCountry || card.name);
+      paintGeo(card.mapCountry || card.name, card.incidents);
       document.getElementById("profile-name").textContent = card.name;
       document.getElementById("profile-meta").textContent = (card.iso3 || card.iso2 || "No ISO") + " · Score " + card.score + " · " + card.trend.text;
       document.getElementById("profile-summary").textContent = card.summary || "No official summary is available for this country.";

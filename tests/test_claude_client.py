@@ -347,6 +347,29 @@ class ClaudeClientTests(unittest.TestCase):
         self.assertNotIn("send-recipients", handler)
         self.assertNotIn("schedule-recipients", handler)
 
+    def test_prompts_and_fallbacks_use_uk_english(self):
+        context, _ = claude_client.public_context(
+            {"country": "Syria", "region": "Middle East", "sector": "Media", "cadence": "weekly"},
+            task="briefing",
+        )
+        risk_context, _ = claude_client.public_context(
+            {"country": "Syria", "sector": "Media", "compliance_standard": "ISO 31030"},
+            task="risk",
+        )
+        briefing_system, _ = claude_client._prompt("briefing", context)
+        risk_system, _ = claude_client._prompt("risk", risk_context)
+        briefing = claude_client.local_briefing_narrative(context)
+        risk = claude_client.local_risk_narrative(risk_context)
+        for text in (briefing_system, risk_system, briefing, risk):
+            self.assertIn("UK English", text)
+            lowered = text.lower()
+            for american in ("traveling", "organization", "defense", "license ", "labeled", "toward ", "analyze", "behavior"):
+                self.assertNotIn(american, lowered, american)
+        self.assertIn("travelling", briefing_system)
+        self.assertIn("organisation", risk_system)
+        self.assertIn("travel advice", briefing)
+        self.assertIn("travel advice", risk)
+
     def test_prices_follow_the_published_list(self):
         self.assertEqual(claude_client.estimate_usd("claude-sonnet-5-5", 1_000_000, 0), 2.0)
         self.assertEqual(claude_client.estimate_usd("claude-sonnet-5-5", 0, 1_000_000), 10.0)
