@@ -4615,6 +4615,12 @@ def ingest_feeds() -> dict:
             checked = len(telegram)
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
+            try:
+                import global_feeds
+
+                global_feeds.kick()
+            except Exception as exc:
+                print(f"Global feed refresh was not started: {exc.__class__.__name__}.")
             now = datetime.now(timezone.utc)
             backfill_coordinates(now)
             backfill_sudan_rows()
@@ -5940,14 +5946,22 @@ def feed_status_payload() -> dict:
                 "last_error": row.get("last_error") or "",
             }
         )
+    try:
+        import global_feeds
+
+        feeds.extend(global_feeds.status_rows())
+    except Exception as exc:
+        print(f"Global feed status was not added: {exc.__class__.__name__}.")
     active = [item for item in feeds if item["status"] == "active"]
     offline = [item for item in feeds if item["status"] == "offline"]
+    standby = [item for item in feeds if item["status"] == "standby"]
     return {
         "feeds": feeds,
         "active": active,
         "offline": offline,
         "online": len(active),
         "offline_count": len(offline),
+        "standby": standby,
         "total": len(feeds),
         "onlineCount": len(active),
         "totalCount": len(feeds),
@@ -6013,6 +6027,13 @@ def region_escalation(now: datetime | None = None) -> dict[str, dict]:
 def data_payload() -> dict:
     now = datetime.now(timezone.utc)
     features = [feature for feature in combined_features() if within_live_window(feature, now)]
+    try:
+        import global_feeds
+
+        global_feeds.kick()
+        features.extend(global_feeds.features())
+    except Exception as exc:
+        print(f"Global feeds were not added: {exc.__class__.__name__}.")
     events = live_events_from(features)
     with _db_lock:
         conn = db_connect()
@@ -6114,7 +6135,14 @@ def refresh_summary() -> dict:
 
 def blocked_static(name: str) -> bool:
     db_name = Path(DB_PATH).name
-    return name == ".env" or name == db_name or name.endswith(".sqlite") or name.endswith(".db")
+    hidden = {
+        ".env",
+        db_name,
+        "enquiries.jsonl",
+        "advisory_crosscheck_cache.json",
+        "global_feed_cache.json",
+    }
+    return name in hidden or name.endswith(".sqlite") or name.endswith(".db") or name.startswith(".")
 
 
 def thermal_response() -> dict:
@@ -7685,6 +7713,16 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
     if not route.startswith("/api/"):
         return None
     try:
+        import platform_phase1
+
+        routed = platform_phase1.dispatch(verb, path, body)
+        if routed is not None:
+            return routed
+    except Exception as exc:
+        print(f"Platform route failed: {exc.__class__.__name__}.")
+        if route.startswith("/api/grok") or route.startswith("/api/advisories") or route.startswith("/api/enterprise"):
+            return 200, "application/json; charset=utf-8", b'{"ok":false,"message":"That request could not be completed."}'
+    try:
         if verb == "GET" and route == "/api/thermal":
             return 200, "application/json; charset=utf-8", _api_json(thermal_response())
         if verb == "GET" and route == "/api/data":
@@ -7751,6 +7789,12 @@ def start_background() -> None:
         backfill_actor_system()
         drop_excluded_items()
         _threads_started = True
+    try:
+        import global_feeds
+
+        global_feeds.start()
+    except Exception as exc:
+        print(f"Global feeds did not start: {exc.__class__.__name__}.")
     start_translation_pass()
     start_poller()
     start_sweep_daemon()
@@ -7780,6 +7824,19 @@ class MapHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _sse(self, chunks) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+        try:
+            for chunk in chunks:
+                self.wfile.write(chunk.encode("utf-8"))
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+
     def _send(self, status: int, content_type: str, payload: bytes) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -7791,6 +7848,16 @@ class MapHandler(SimpleHTTPRequestHandler):
         if self._blocked():
             self.send_error(404)
             return
+        try:
+            import platform_phase1
+
+            page = platform_phase1.PAGES.get(self._route())
+        except Exception:
+            page = None
+        if page:
+            self.path = "/" + page
+            super().do_GET()
+            return
         handled = handle_api("GET", self.path)
         if handled:
             self._send(*handled)
@@ -7800,6 +7867,14 @@ class MapHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(min(length, 1_000_000)) if length else b""
+        try:
+            import platform_phase1
+
+            if platform_phase1.is_stream_route(self._route()):
+                self._sse(platform_phase1.stream_for(self._route(), raw))
+                return
+        except Exception as exc:
+            print(f"Grok stream failed: {exc.__class__.__name__}.")
         handled = handle_api("POST", self.path, raw)
         if handled:
             self._send(*handled)

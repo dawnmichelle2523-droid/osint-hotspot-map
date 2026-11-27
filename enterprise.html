@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enterprise — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/platform.css">
+  <style>
+    .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .step { background: #060A13; border: 1px solid #1E293B; border-radius: 10px; padding: 10px; }
+    .step strong { color: #D4AF37; display: block; }
+    @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+    @media print { body.printing-capability main > :not(#capability-statement) { display: none !important; } }
+  </style>
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
+      <a href="/briefing">Briefing</a>
+      <a href="/world-risk">World Risk</a>
+      <a href="/countries">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise" aria-current="page">Enterprise</a>
+    </nav>
+  </header>
+  <div class="section-banner">
+    <p class="kicker">Enterprise</p>
+    <h1>A custom-quoted 2–4 week pilot</h1>
+    <p>Enterprise Monitor, white-label ISO, medical, school, and close-protection assessments, a human-staffed operations room, traveller tracking and SOS integration, and custom-built platforms.</p>
+  </div>
+  <main>
+    <section class="panel">
+      <h2>Sectors</h2>
+      <div class="grid">
+        <p>Media &amp; newsrooms</p><p>Corporate &amp; NGO</p><p>UK &amp; US government / public sector</p>
+        <p>Schools &amp; universities (BS 8848 and US study-abroad)</p><p>Close &amp; executive protection</p><p>Private individuals</p>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Five-step client onboarding</h2>
+      <div class="steps">
+        <article class="step"><strong>1. Discovery</strong> Theatres, users, and the decisions the desk needs to make.</article>
+        <article class="step"><strong>2. NDA / DPA</strong> Compliance pack, including a data processing agreement where one is required.</article>
+        <article class="step"><strong>3. Setup</strong> Workspace, regions, and tracking boundaries.</article>
+        <article class="step"><strong>4. Pilot</strong> Two to four weeks on the live feeds and assessment templates.</article>
+        <article class="step"><strong>5. Go-live</strong> Annual terms and a quarterly review.</article>
+      </div>
+    </section>
+    <article class="panel" id="capability-statement">
+      <h2>Capability statement</h2>
+      <p>GeoRiskIntel is a geospatial OSINT and travel-risk platform. It combines a live incident map, government travel-advisory cross-checks, and ISO-aligned risk assessments and pre-deployment reports.</p>
+      <p><strong>Dawn Millyard</strong> is an International Media Safety Advisor with formal Security Risk Management qualifications. Client work covers media safety, corporate and NGO travel, education-sector overseas trips, and close-protection advance.</p>
+      <p>Deliverables can include Enterprise Monitor, white-label assessments, human overwatch, and a tracked traveller workflow with SOS escalation. Personal medical information is kept out of AI prompts.</p>
+      <p class="no-print"><button type="button" id="download-capability">Download PDF</button></p>
+    </article>
+    <section class="panel">
+      <h2>Trust &amp; data compliance</h2>
+      <ul>
+        <li>UK GDPR and the Data Protection Act 2018.</li>
+        <li>US CCPA / CPRA.</li>
+        <li>HIPAA-aware zero-PHI boundary: medical and traveller fields stay in the browser and are not sent to Grok.</li>
+        <li>A data processing agreement is available for enterprise clients.</li>
+        <li>Encryption in transit, access control, and retention limits on server logs.</li>
+        <li>Cyber Essentials and SOC 2 are on the roadmap.</li>
+        <li>ANSI/ASIS alignment for security operations content.</li>
+        <li>Google: Consent Mode v2, minimal-scope Google OAuth SSO, and Play Store Data Safety readiness.</li>
+      </ul>
+    </section>
+    <section class="panel">
+      <h2>Enterprise enquiry</h2>
+      <form id="enquiry">
+        <div class="grid">
+          <label>Organisation or individual
+            <select name="kind"><option value="organisation">Organisation</option><option value="individual">Individual</option></select>
+          </label>
+          <label>Name <input name="organisation" required></label>
+          <label>Sector
+            <select name="sector">
+              <option value="media">Media &amp; newsrooms</option>
+              <option value="corporate_ngo">Corporate &amp; NGO</option>
+              <option value="government">UK &amp; US government</option>
+              <option value="schools">Schools &amp; universities</option>
+              <option value="close_protection">Close protection</option>
+              <option value="private">Private individuals</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Team or screen size
+            <select name="team_size"><option>1–5</option><option>6–20</option><option>20+</option></select>
+          </label>
+          <label>Work email (optional) <input name="contact_email" type="email" autocomplete="email"></label>
+          <label>Regions of interest <input name="regions" placeholder="Theatres or countries"></label>
+        </div>
+        <fieldset>
+          <legend class="note">Interests</legend>
+          <label><input type="checkbox" name="interests" value="custom_risk"> Custom risk assessments</label>
+          <label><input type="checkbox" name="interests" value="human_overwatch"> Human overwatch</label>
+          <label><input type="checkbox" name="interests" value="tracking_app"> Tracking app integration</label>
+          <label><input type="checkbox" name="interests" value="custom_platform"> Custom platform build</label>
+        </fieldset>
+        <input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+        <p><button type="submit">Send enquiry</button></p>
+        <p class="note" id="enquiry-status">This form is stored for follow-up. It is not sent to Grok.</p>
+      </form>
+    </section>
+  </main>
+  <footer>GeoRiskIntel</footer>
+  <script>
+    document.getElementById("download-capability").addEventListener("click", () => {
+      document.body.classList.add("printing-capability");
+      window.print();
+      document.body.classList.remove("printing-capability");
+    });
+    document.getElementById("enquiry").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.target;
+      const interests = Array.from(form.querySelectorAll("input[name=interests]:checked")).map((item) => item.value);
+      const body = {
+        kind: form.kind.value,
+        organisation: form.organisation.value,
+        sector: form.sector.value,
+        team_size: form.team_size.value,
+        regions: form.regions.value,
+        contact_email: form.contact_email.value,
+        interests: interests,
+        website: form.website.value
+      };
+      const status = document.getElementById("enquiry-status");
+      try {
+        const response = await fetch("/api/enterprise/enquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const data = await response.json();
+        status.textContent = (data.message || "Enquiry received.") + (data.reference ? " Reference " + data.reference + "." : "");
+      } catch (err) {
+        status.textContent = "The enquiry could not be saved. Keep a copy of the form.";
+      }
+    });
+  </script>
+</body>
+</html>

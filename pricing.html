@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pricing — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/static/platform.css">
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
+      <a href="/briefing">Briefing</a>
+      <a href="/world-risk">World Risk</a>
+      <a href="/countries">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing" aria-current="page">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+  </header>
+  <div class="section-banner">
+    <p class="kicker">Pricing</p>
+    <h1>Plans for desks, newsrooms, and single travellers</h1>
+    <p>Annual billing saves two months. Prices are shown in GBP or USD.</p>
+  </div>
+  <main>
+    <div class="toggles" role="group" aria-label="Billing period">
+      <button type="button" id="monthly" aria-pressed="true">Monthly</button>
+      <button type="button" id="annual" aria-pressed="false">Annual (Save 2 months)</button>
+    </div>
+    <div class="toggles" role="group" aria-label="Currency">
+      <button type="button" id="gbp" aria-pressed="true">GBP (£)</button>
+      <button type="button" id="usd" aria-pressed="false">USD ($)</button>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <h2>Individual / Pro</h2>
+        <p class="price" id="pro-price">£19<span style="font-size:16px">/mo</span></p>
+        <p class="note" id="pro-pass">7-day pass £6.99</p>
+        <ul>
+          <li>Live OSINT map and advisories</li>
+          <li>ISO risk assessment templates</li>
+          <li>Grok co-pilot on visible incidents</li>
+        </ul>
+      </article>
+      <article class="card popular">
+        <span class="badge">Most Popular</span>
+        <h2>Teams &amp; Desks</h2>
+        <p class="price" id="team-price">£69<span style="font-size:16px">/user/mo</span></p>
+        <p class="note">Minimum 5 seats</p>
+        <ul>
+          <li>Shared theatres and feed status</li>
+          <li>Team risk-assessment workspace</li>
+          <li>Briefing and advisory cross-check</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h2>Enterprise &amp; Government</h2>
+        <p class="price">Custom</p>
+        <p class="note">2–4 week pilot, then an annual invoice</p>
+        <a class="button" href="/enterprise">Talk to us</a>
+      </article>
+    </div>
+    <section class="panel strip">
+      <div>
+        <h2>Pay-as-you-go</h2>
+        <p class="note" id="payg">Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week.</p>
+      </div>
+    </section>
+    <section class="panel strip">
+      <div>
+        <h2>Custom-built &amp; white-label platforms</h2>
+        <p class="note">Enterprise Monitor, white-label assessments, and a client operations room.</p>
+      </div>
+      <a class="button" href="/enterprise">Enterprise</a>
+    </section>
+    <section class="panel faq">
+      <h2>FAQ</h2>
+      <details open><summary>What is included in Individual / Pro?</summary><p>The live map, travel-advisory cross-check, six ISO-aligned assessment templates, and Grok drafts that use threat and place context only.</p></details>
+      <details><summary>How does annual billing save two months?</summary><p>The annual price is ten times the monthly price. Two months are not billed.</p></details>
+      <details><summary>Can schools use the BS 8848 template?</summary><p>Yes. The school and university template covers ratios, safeguarding, medical cover, and emergency contacts. Pupil details stay in the browser.</p></details>
+      <details><summary>How does the Enterprise pilot work?</summary><p>A scoped 2–4 week pilot leads to an annual invoice. Personal medical data is not sent to Grok.</p></details>
+    </section>
+  </main>
+  <footer>GeoRiskIntel</footer>
+  <script>
+    const prices = {
+      gbp: { proM: 19, proY: 190, pass: "£6.99", teamM: 69, teamY: 690, payg: "Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week." },
+      usd: { proM: 25, proY: 250, pass: "$9.99", teamM: 89, teamY: 890, payg: "Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week." }
+    };
+    let period = "monthly";
+    let currency = "gbp";
+    function paint() {
+      const row = prices[currency];
+      const symbol = currency === "gbp" ? "£" : "$";
+      const pro = period === "monthly" ? row.proM : row.proY;
+      const team = period === "monthly" ? row.teamM : row.teamY;
+      const suffix = period === "monthly" ? "/mo" : "/yr";
+      document.getElementById("pro-price").innerHTML = symbol + pro + "<span style=\"font-size:16px\">" + suffix + "</span>";
+      document.getElementById("team-price").innerHTML = symbol + team + "<span style=\"font-size:16px\">/user" + suffix + "</span>";
+      document.getElementById("pro-pass").textContent = "7-day pass " + row.pass;
+      document.getElementById("payg").textContent = row.payg;
+      document.getElementById("monthly").setAttribute("aria-pressed", String(period === "monthly"));
+      document.getElementById("annual").setAttribute("aria-pressed", String(period === "annual"));
+      document.getElementById("gbp").setAttribute("aria-pressed", String(currency === "gbp"));
+      document.getElementById("usd").setAttribute("aria-pressed", String(currency === "usd"));
+    }
+    document.getElementById("monthly").addEventListener("click", () => { period = "monthly"; paint(); });
+    document.getElementById("annual").addEventListener("click", () => { period = "annual"; paint(); });
+    document.getElementById("gbp").addEventListener("click", () => { currency = "gbp"; paint(); });
+    document.getElementById("usd").addEventListener("click", () => { currency = "usd"; paint(); });
+    paint();
+  </script>
+</body>
+</html>

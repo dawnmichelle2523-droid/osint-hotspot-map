@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Risk Assessments — GeoRiskIntel</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#102A63">
+  <link rel="stylesheet" href="/static/platform.css">
+</head>
+<body>
+  <header id="live-bar">
+    <div class="brand-lockup">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <span class="risk-pill">REGIONAL RISK</span>
+    </div>
+    <nav id="page-nav" aria-label="Sections">
+      <a href="/">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis" aria-current="page" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
+      <a href="/briefing">Briefing</a>
+      <a href="/world-risk">World Risk</a>
+      <a href="/countries">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+  </header>
+  <div class="section-banner" id="risk-subhead">
+    <p class="kicker">Risk Assessments</p>
+    <h1>ISO-aligned Risk Assessment &amp; Pre-Deployment Report builder</h1>
+    <p>Choose a template, score the matrix, and export a PDF. Standards covered: ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal traveller and medical details stay in this browser and are never sent to Grok.</p>
+  </div>
+  <main>
+    <section class="panel no-print">
+      <div class="toolbar">
+        <label>Template
+          <select id="template" data-ai="1"></select>
+        </label>
+        <label class="lock">Enterprise PDF
+          <input id="enterprise" type="checkbox">
+        </label>
+        <button type="button" id="download">Download / Export PDF</button>
+        <button type="button" id="autodraft">Auto-Draft mitigations</button>
+        <button type="button" class="ghost" id="reset">Clear local draft</button>
+      </div>
+      <p class="note" id="privacy">Personal and medical fields are marked local-only. Auto-Draft sends destination, template, and hazard scores only.</p>
+      <div id="enterprise-fields" class="grid" hidden>
+        <label>Client organisation <input id="org-name" data-local="1" placeholder="Shown on the PDF only"></label>
+        <label>Logo upload <input id="org-logo" type="file" accept="image/*"></label>
+      </div>
+    </section>
+    <article id="report">
+      <header class="panel" id="print-head">
+        <img id="export-logo" src="/static/logo.png?v=4" alt="" style="height:42px">
+        <p class="kicker" id="org-line">GeoRiskIntel</p>
+        <h2 id="doc-title" style="margin:0">Security &amp; Travel Risk Assessment</h2>
+        <p class="note" id="standards"></p>
+      </header>
+      <section class="panel">
+        <h2>Context</h2>
+        <div class="grid">
+          <label>Destination country
+            <select id="country" data-ai="1"></select>
+          </label>
+          <label>City or area <input id="city" data-ai="1" placeholder="Place name only"></label>
+          <label>Purpose
+            <select id="purpose" data-ai="1">
+              <option>Media</option><option>Corporate</option><option>NGO</option><option>Study</option><option>Close protection</option><option>Private</option><option>Executive</option>
+            </select>
+          </label>
+          <label>Movement window <input id="window" data-local="1" placeholder="Dates stay on this device"></label>
+        </div>
+      </section>
+      <section class="panel" id="extra"></section>
+      <section class="panel" id="pii">
+        <h2 class="lock">Local only — not sent to Grok</h2>
+        <div class="grid">
+          <label>Traveller or party names <textarea id="names" data-local="pii"></textarea></label>
+          <label>Emergency contacts <textarea id="contacts" data-local="pii"></textarea></label>
+          <label>Medical notes, allergies, medication <textarea id="medical" data-local="pii"></textarea></label>
+          <label>Passport or ID reference <input id="passport" data-local="pii" autocomplete="off"></label>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Scored risk matrix</h2>
+        <p class="note">Inherent score = Likelihood (1–5) × Impact (1–5). Low 1–4, Medium 5–9, High 10–16, Extreme 17–25.</p>
+        <div style="overflow-x:auto">
+          <table class="matrix" id="matrix">
+            <thead>
+              <tr><th>Threat / hazard</th><th>L</th><th>I</th><th>Rating</th><th>Mitigation controls</th><th>Owner</th><th>Residual L</th><th>Residual I</th><th>Residual</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="matrix-cards"></div>
+        <p class="no-print"><button type="button" id="add-row" class="ghost">Add hazard</button></p>
+      </section>
+      <section class="panel" id="pdr" hidden>
+        <h2>Pre-deployment report</h2>
+        <div class="grid">
+          <label>Document reference <input id="doc-ref" data-ai="1"></label>
+          <label>Version <input id="doc-version" value="1.0" data-ai="1"></label>
+          <label>Classification
+            <select id="doc-class" data-ai="1"><option>Client confidential</option><option>Official</option><option>Restricted</option></select>
+          </label>
+          <label>Status
+            <select id="doc-status" data-ai="1"><option>Draft</option><option>Issued</option></select>
+          </label>
+        </div>
+        <h3>Healthcare rating</h3>
+        <div id="health-matrix" class="grid"></div>
+        <h3>Security rating</h3>
+        <div id="security-matrix" class="grid"></div>
+        <p class="no-print"><button type="button" id="pull-osint">Pull live OSINT for this city</button></p>
+        <div id="osint-pull" class="note"></div>
+        <label>Medevac hub
+          <select id="medevac" data-ai="1"><option>Amman</option><option>Dubai</option><option>Nairobi</option><option>London</option><option>Other</option></select>
+        </label>
+        <h3>Vetted hospital cards</h3>
+        <div id="hospitals"></div>
+        <button type="button" class="ghost no-print" id="add-hospital">Add hospital</button>
+        <h3>Emergency numbers</h3>
+        <p id="emergency-numbers" class="note"></p>
+        <h3 class="lock">Optional Qualified SRM Advisor sign-off — local only</h3>
+        <div class="grid">
+          <label>Advisor name <input id="advisor" data-local="pii"></label>
+          <label>Decision
+            <select id="advisor-decision" data-local="1"><option>Not used</option><option>Accept</option><option>Return</option></select>
+          </label>
+        </div>
+      </section>
+      <section class="panel" id="ai-panel">
+        <h2>Auto-draft</h2>
+        <pre id="ai-draft" class="note" style="white-space:pre-wrap">Mitigation draft appears here. Personal fields are not included.</pre>
+      </section>
+    </article>
+  </main>
+  <footer id="app-footer">GeoRiskIntel · Personal and medical entries remain on this device.</footer>
+  <script src="/static/grok-stream.js"></script>
+  <script>
+    const TEMPLATES = {
+      security: { title: "Security & Travel Risk Assessment", standards: "ISO 31000 · ISO 31030", hazards: ["Armed conflict / indirect fire", "Terrorism", "Kidnap / detention", "Civil unrest", "Road traffic collision", "Crime"] },
+      medical: { title: "Medical Risk Assessment", standards: "ISO 45001 · ISO 31030", hazards: ["Limited trauma surgery", "Unreliable ambulance", "Endemic disease", "ICU or blood-supply gap", "Medevac delay", "Counterfeit medicine"] },
+      school: { title: "School & University Trip Risk Assessment", standards: "BS 8848 · US study-abroad safeguarding", hazards: ["Supervision ratio", "Medical emergency away from care", "Safeguarding incident", "Transport accident", "Political unrest", "Lost communications"] },
+      cp: { title: "Close Protection / Advance Risk Assessment", standards: "ISO 18788", hazards: ["Attack on the route", "Hostile venue surveillance", "Hospital not viable", "Evac route blocked", "Insider threat", "Communications failure"] },
+      private: { title: "Private Individual Travel Risk Assessment", standards: "ISO 31030", hazards: ["Crime", "Road safety", "Health emergency", "Political unrest", "Natural hazard", "Scam / fraud"] },
+      pdr: { title: "Executive Pre-Deployment Report", standards: "ISO 31000 · ISO 31030 · ISO 22361 · ISO 45001", hazards: ["City threat", "Movement corridor", "Venue access", "Medical escalation", "Communications and tracking", "Strategic kidnap"] }
+    };
+    const COUNTRIES = ["Syria","Iraq","Lebanon","Israel","Palestine","Jordan","Iran","Saudi Arabia","Yemen","Sudan","Chad","Bahrain","Kuwait","Qatar","UAE","Oman","Turkey","Egypt","Libya","Ukraine","Afghanistan","United States","Canada","Other"];
+    const OWNERS = ["Security manager", "Team leader", "Medic", "School lead", "CP advance", "Client"];
+    const RATINGS = ["Excellent", "Good", "Moderate", "Poor", "Very Poor"];
+    const HEALTH_ROWS = ["Public healthcare", "Private healthcare", "Ambulance reliability", "Trauma / hospital access", "Endemic health burden", "Medevac hub access"];
+    const SECURITY_ROWS = ["Overall security", "Terrorism", "Armed conflict", "Crime", "Civil unrest", "Kidnap", "Movement / route"];
+    const EMERGENCY = { Syria: "Local emergency services vary. FCDO and embassy numbers should be confirmed before travel.", default: "Confirm local police, ambulance, and fire numbers plus the relevant embassy before departure." };
+    const templateSelect = document.getElementById("template");
+    const countrySelect = document.getElementById("country");
+    Object.entries(TEMPLATES).forEach(([id, item]) => {
+      const option = document.createElement("option");
+      option.value = id; option.textContent = item.title; templateSelect.appendChild(option);
+    });
+    COUNTRIES.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name; option.textContent = name; countrySelect.appendChild(option);
+    });
+    let rows = [];
+    function band(score) {
+      const n = Number(score) || 0;
+      if (n <= 4) return "Low";
+      if (n <= 9) return "Medium";
+      if (n <= 16) return "High";
+      return "Extreme";
+    }
+    function blankRow(threat) {
+      return { threat: threat, likelihood: 3, impact: 3, control: "", owner: OWNERS[0], residualL: 2, residualI: 2 };
+    }
+    function select(options, value, attr) {
+      return "<select " + attr + ">" + options.map((item) => "<option" + (item === value ? " selected" : "") + ">" + item + "</option>").join("") + "</select>";
+    }
+    function numberSelect(value, attr) {
+      return select(["1","2","3","4","5"], String(value), attr);
+    }
+    function paint() {
+      const body = document.querySelector("#matrix tbody");
+      const cards = document.getElementById("matrix-cards");
+      body.innerHTML = rows.map((row, index) => {
+        const score = row.likelihood * row.impact;
+        const residual = row.residualL * row.residualI;
+        return "<tr data-row=\"" + index + "\"><td><input data-field=\"threat\" value=\"" + escapeAttr(row.threat) + "\"></td><td>" + numberSelect(row.likelihood, "data-field=\"likelihood\"") + "</td><td>" + numberSelect(row.impact, "data-field=\"impact\"") + "</td><td><span class=\"band " + band(score) + "\">" + band(score) + " · " + score + "</span></td><td><textarea data-field=\"control\">" + escapeText(row.control) + "</textarea></td><td>" + select(OWNERS, row.owner, "data-field=\"owner\"") + "</td><td>" + numberSelect(row.residualL, "data-field=\"residualL\"") + "</td><td>" + numberSelect(row.residualI, "data-field=\"residualI\"") + "</td><td><span class=\"band " + band(residual) + "\">" + band(residual) + " · " + residual + "</span></td></tr>";
+      }).join("");
+      cards.innerHTML = rows.map((row, index) => {
+        const score = row.likelihood * row.impact;
+        return "<article class=\"matrix-card\"><strong>" + escapeText(row.threat) + "</strong><p><span class=\"band " + band(score) + "\">" + band(score) + " · " + score + "</span></p><p class=\"note\">Use the table on a wider screen to edit this row.</p></article>";
+      }).join("");
+    }
+    function escapeAttr(value) { return String(value || "").replace(/[&"]/g, (ch) => ch === "&" ? "&amp;" : "&quot;"); }
+    function escapeText(value) { return String(value || "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch])); }
+    function readRows() {
+      document.querySelectorAll("#matrix tbody tr").forEach((tr) => {
+        const index = Number(tr.dataset.row);
+        tr.querySelectorAll("[data-field]").forEach((field) => {
+          const key = field.dataset.field;
+          rows[index][key] = field.tagName === "SELECT" && ["likelihood","impact","residualL","residualI"].includes(key) ? Number(field.value) : field.value;
+        });
+      });
+    }
+    function applyTemplate() {
+      const item = TEMPLATES[templateSelect.value];
+      document.getElementById("doc-title").textContent = item.title;
+      document.getElementById("standards").textContent = item.standards;
+      document.getElementById("pdr").hidden = templateSelect.value !== "pdr";
+      rows = item.hazards.map(blankRow);
+      paintExtra();
+      paint();
+    }
+    function paintExtra() {
+      const host = document.getElementById("extra");
+      const id = templateSelect.value;
+      if (id === "medical" || id === "pdr") {
+        host.innerHTML = "<h2>Destination healthcare context</h2><div class=\"grid\"><label>Healthcare standard <select id=\"care-standard\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label><label>Ambulance reliability <select id=\"ambulance\" data-ai=\"1\"><option>Reliable</option><option>Uneven</option><option>Unreliable</option></select></label><label>Trauma access <select id=\"trauma\" data-ai=\"1\"><option>Major trauma centre</option><option>Limited</option><option>Absent</option></select></label></div>";
+      } else if (id === "school") {
+        host.innerHTML = "<h2>BS 8848 / study-abroad</h2><div class=\"grid\"><label>Age range <select data-ai=\"1\"><option>Under 16</option><option>16–18</option><option>18+</option></select></label><label>Staff to student ratio <select data-ai=\"1\"><option>1:6</option><option>1:8</option><option>1:10</option><option>1:15</option></select></label><label>Safeguarding lead role <input data-ai=\"1\" value=\"School lead\"></label></div><p class=\"note\">Pupil names stay in the local-only section and are not uploaded.</p>";
+      } else if (id === "cp") {
+        host.innerHTML = "<h2>ISO 18788 advance</h2><div class=\"grid\"><label>Route type <select data-ai=\"1\"><option>Road</option><option>Air</option><option>Mixed</option></select></label><label>Venue <select data-ai=\"1\"><option>Hotel</option><option>Residence</option><option>Office</option><option>Event site</option></select></label><label>Evac method <select data-ai=\"1\"><option>Road</option><option>Rotary</option><option>Fixed wing</option><option>Armoured</option></select></label></div>";
+      } else {
+        host.innerHTML = "<h2>Scope</h2><p class=\"note\">" + TEMPLATES[id].standards + ". Score destination threat only. Do not type names or medical history into the hazard controls.</p>";
+      }
+    }
+    function paintRatings() {
+      document.getElementById("health-matrix").innerHTML = HEALTH_ROWS.map((name) => "<label>" + name + "<select data-rating=\"health\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label>").join("");
+      document.getElementById("security-matrix").innerHTML = SECURITY_ROWS.map((name) => "<label>" + name + "<select data-rating=\"security\" data-ai=\"1\">" + RATINGS.map((item) => "<option>" + item + "</option>").join("") + "</select></label>").join("");
+    }
+    function save() {
+      readRows();
+      const state = {
+        template: templateSelect.value,
+        country: countrySelect.value,
+        city: document.getElementById("city").value,
+        purpose: document.getElementById("purpose").value,
+        window: document.getElementById("window").value,
+        names: document.getElementById("names").value,
+        contacts: document.getElementById("contacts").value,
+        medical: document.getElementById("medical").value,
+        passport: document.getElementById("passport").value,
+        enterprise: document.getElementById("enterprise").checked,
+        org: document.getElementById("org-name").value,
+        rows: rows
+      };
+      try { localStorage.setItem("georisk.ra.v1", JSON.stringify(state)); } catch (err) {}
+    }
+    function restore() {
+      let state = null;
+      try { state = JSON.parse(localStorage.getItem("georisk.ra.v1") || "null"); } catch (err) { state = null; }
+      if (!state) { applyTemplate(); return; }
+      templateSelect.value = state.template || "security";
+      applyTemplate();
+      countrySelect.value = state.country || COUNTRIES[0];
+      document.getElementById("city").value = state.city || "";
+      document.getElementById("purpose").value = state.purpose || "Media";
+      document.getElementById("window").value = state.window || "";
+      document.getElementById("names").value = state.names || "";
+      document.getElementById("contacts").value = state.contacts || "";
+      document.getElementById("medical").value = state.medical || "";
+      document.getElementById("passport").value = state.passport || "";
+      document.getElementById("enterprise").checked = !!state.enterprise;
+      document.getElementById("org-name").value = state.org || "";
+      if (Array.isArray(state.rows) && state.rows.length) { rows = state.rows; paint(); }
+      toggleEnterprise();
+    }
+    function toggleEnterprise() {
+      const on = document.getElementById("enterprise").checked;
+      document.getElementById("enterprise-fields").hidden = !on;
+      document.getElementById("org-line").textContent = on && document.getElementById("org-name").value ? document.getElementById("org-name").value : "GeoRiskIntel";
+    }
+    document.getElementById("matrix").addEventListener("input", () => { readRows(); paint(); save(); });
+    document.getElementById("add-row").addEventListener("click", () => { readRows(); rows.push(blankRow("Additional hazard")); paint(); save(); });
+    templateSelect.addEventListener("change", applyTemplate);
+    document.getElementById("enterprise").addEventListener("change", () => { toggleEnterprise(); save(); });
+    document.getElementById("org-name").addEventListener("input", () => { toggleEnterprise(); save(); });
+    document.getElementById("org-logo").addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById("export-logo").src = reader.result; };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById("country").addEventListener("change", () => {
+      const name = countrySelect.value;
+      document.getElementById("emergency-numbers").textContent = EMERGENCY[name] || EMERGENCY.default;
+      save();
+    });
+    document.body.addEventListener("input", (event) => { if (event.target.id !== "matrix") save(); });
+    document.getElementById("reset").addEventListener("click", () => { localStorage.removeItem("georisk.ra.v1"); location.reload(); });
+    document.getElementById("download").addEventListener("click", () => { save(); window.print(); });
+    document.getElementById("add-hospital").addEventListener("click", () => {
+      const wrap = document.createElement("div");
+      wrap.className = "grid";
+      wrap.innerHTML = "<label>Facility <input data-local=\"facility\"></label><label>City <input data-local=\"facility\"></label><label>Capability <input data-local=\"facility\"></label><label>Public phone <input data-local=\"facility\"></label>";
+      document.getElementById("hospitals").appendChild(wrap);
+    });
+    document.getElementById("pull-osint").addEventListener("click", async () => {
+      const host = document.getElementById("osint-pull");
+      host.textContent = "Loading live incidents…";
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        const data = await response.json();
+        const city = document.getElementById("city").value.toLowerCase();
+        const country = countrySelect.value.toLowerCase();
+        const hits = (data.features || []).filter((feature) => {
+          const props = feature.properties || {};
+          const blob = (props.title + " " + props.location_name + " " + props.country + " " + props.region).toLowerCase();
+          return (city && blob.includes(city)) || blob.includes(country);
+        }).slice(0, 8);
+        host.innerHTML = hits.length ? hits.map((feature) => "<p>" + escapeText((feature.properties || {}).title || "Incident") + "</p>").join("") : "<p>No live incidents matched this city yet.</p>";
+      } catch (err) {
+        host.textContent = "Live incidents could not be loaded.";
+      }
+    });
+    document.getElementById("autodraft").addEventListener("click", () => {
+      readRows();
+      const output = document.getElementById("ai-draft");
+      output.textContent = "";
+      const body = {
+        template: TEMPLATES[templateSelect.value].title,
+        country: countrySelect.value,
+        city: document.getElementById("city").value,
+        hazards: rows.map((row) => ({ threat: row.threat, likelihood: row.likelihood, impact: row.impact }))
+      };
+      window.GeoRiskStream.post("/api/grok/risk-draft", body, {
+        onToken: (text) => { output.textContent += text; },
+        onDone: (payload) => { if (payload.message) output.textContent += "\n\n" + payload.message; },
+        onError: (payload) => { output.textContent = payload.message || "Auto-draft is unavailable."; }
+      });
+    });
+    paintRatings();
+    document.getElementById("emergency-numbers").textContent = EMERGENCY.default;
+    document.getElementById("doc-ref").value = "GR-PDR-" + new Date().toISOString().slice(0, 10);
+    restore();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  </script>
+</body>
+</html>

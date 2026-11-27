@@ -6,6 +6,10 @@
   <title>GeoRiskIntel — Live Geospatial Intelligence</title>
   <link rel="icon" type="image/png" href="/static/favicon.png?v=4" />
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=4" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#102A63" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="GeoRiskIntel" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
@@ -36,7 +40,8 @@
       color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px;
       padding: 6px 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
     }
-    #page-nav a[aria-current="page"] { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    #page-nav { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     #live-bar {
       display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
       padding: 8px 12px;
@@ -107,7 +112,8 @@
     .feed-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
     .feed-modal-card h2 { margin: 0; color: #D4AF37; font-size: 16px; }
     #feed-modal-close { color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .feed-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .feed-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .feed-cols .standby h3 { color: #94A3B8; }
     .feed-cols h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
     .feed-cols .active h3 { color: #D4AF37; }
     .feed-cols .offline h3 { color: #F8FAFC; }
@@ -565,6 +571,10 @@
     #header-search { flex: 1 1 160px; width: auto; min-width: 120px; margin: 0; }
     #live-bar #search-input { font-size: 13px; padding: 7px 0; }
     #header-tools { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 0 auto; }
+    @media (max-width: 1100px) {
+      #live-bar { flex-wrap: wrap; }
+      #page-nav { order: 5; flex: 1 1 100%; }
+    }
     #clock-strip { margin-left: 0; flex-wrap: nowrap; gap: 6px; }
 
     #export-pdf, #ops-menu > summary, #fetch-live, #wall-mode {
@@ -756,9 +766,13 @@
     </div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/" aria-current="page">OSINT Map</a>
+      <a href="/risk-assessments" class="nav-emphasis" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
       <a href="/briefing">Briefing</a>
       <a href="/world-risk">World Risk</a>
       <a href="/countries">Countries</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
     </nav>
     <form id="header-search" class="search-row" role="search" autocomplete="off">
       <input id="search-input" type="search" placeholder="Search country, city, crossing, or keyword..." aria-label="Search country, city, crossing, or keyword">
@@ -802,12 +816,13 @@
   <div id="feed-modal" hidden>
     <div class="feed-modal-card" role="dialog" aria-modal="true" aria-labelledby="feed-modal-title">
       <div class="feed-modal-head">
-        <h2 id="feed-modal-title">Feeds</h2>
+        <h2 id="feed-modal-title">Sources &amp; feed status</h2>
         <button type="button" id="feed-modal-close" aria-label="Close">×</button>
       </div>
       <div class="feed-cols">
         <section class="active"><h3>Active</h3><ul id="feed-active"></ul></section>
         <section class="offline"><h3>Offline</h3><ul id="feed-offline"></ul></section>
+        <section class="standby"><h3>Needs a key</h3><ul id="feed-standby"></ul></section>
       </div>
     </div>
   </div>
@@ -835,6 +850,15 @@
           <span class="filter-current"><span class="filter-chevron" aria-hidden="true">▾</span></span>
         </summary>
   <nav id="quick-jump" aria-label="Quick jump">
+    <button type="button" data-jump="global">Global</button>
+    <button type="button" data-jump="middleeast">Middle East</button>
+    <button type="button" data-jump="unitedstates">United States</button>
+    <button type="button" data-jump="canada">Canada</button>
+    <button type="button" data-jump="southamerica">South America</button>
+    <button type="button" data-jump="apac">APAC</button>
+    <button type="button" data-jump="australia">Australia</button>
+    <button type="button" data-jump="afghanistan">Afghanistan</button>
+    <button type="button" data-jump="russiaukraine">Russia &amp; Ukraine</button>
     <button type="button" data-jump="theater" aria-pressed="true">All Theater</button>
     <button type="button" data-jump="bahrain">Bahrain</button>
     <button type="button" data-jump="hormuz">Strait of Hormuz</button>
@@ -850,6 +874,15 @@
       </summary>
       <div class="row">
         <button type="button" class="pill" data-region="all" aria-pressed="true">All Regions <span class="n" data-count="all">0</span></button>
+        <button type="button" class="pill" data-region="Global">Global <span class="n" data-count="Global">0</span></button>
+        <button type="button" class="pill" data-region="Middle East">Middle East <span class="n" data-count="Middle East">0</span></button>
+        <button type="button" class="pill" data-region="United States">United States <span class="n" data-count="United States">0</span></button>
+        <button type="button" class="pill" data-region="Canada">Canada <span class="n" data-count="Canada">0</span></button>
+        <button type="button" class="pill" data-region="South America">South America <span class="n" data-count="South America">0</span></button>
+        <button type="button" class="pill" data-region="APAC">APAC <span class="n" data-count="APAC">0</span></button>
+        <button type="button" class="pill" data-region="Australia">Australia <span class="n" data-count="Australia">0</span></button>
+        <button type="button" class="pill" data-region="Afghanistan">Afghanistan <span class="n" data-count="Afghanistan">0</span></button>
+        <button type="button" class="pill" data-region="Russia & Ukraine">Russia &amp; Ukraine <span class="n" data-count="Russia & Ukraine">0</span></button>
         <button type="button" class="pill" data-region="Syria">Syria <span class="n" data-count="Syria">0</span></button>
         <button type="button" class="pill" data-region="Iraq">Iraq <span class="n" data-count="Iraq">0</span></button>
         <button type="button" class="pill" data-region="Saudi Arabia">Saudi Arabia <span class="n" data-count="Saudi Arabia">0</span></button>
@@ -953,6 +986,26 @@
         <button type="button" class="pill" data-category="10">10 Trauma / Casualty <span class="n" data-cat-count="10">0</span></button>
         <button type="button" class="pill" data-category="11">11 Detention / Arrest (Checkpoints) <span class="n" data-cat-count="11">0</span></button>
         <button type="button" class="pill" data-category="12">12 Miscellaneous <span class="n" data-cat-count="12">0</span></button>
+      </div>
+    </details>
+    <details class="filter-dropdown" id="event-type-filter">
+      <summary>
+        <span class="filter-label">Event type</span>
+        <span class="filter-current"><span data-filter-summary="feedcat">All</span><span class="filter-chevron" aria-hidden="true">▾</span></span>
+      </summary>
+      <div class="row">
+        <button type="button" class="pill" data-feedcat="all" aria-pressed="true">All</button>
+        <button type="button" class="pill" data-feedcat="Conflict">Conflict</button>
+        <button type="button" class="pill" data-feedcat="Security">Security</button>
+        <button type="button" class="pill" data-feedcat="Disaster">Disaster</button>
+        <button type="button" class="pill" data-feedcat="Seismic">Seismic</button>
+        <button type="button" class="pill" data-feedcat="Weather">Weather</button>
+        <button type="button" class="pill" data-feedcat="Volcano">Volcano</button>
+        <button type="button" class="pill" data-feedcat="Cyclone">Cyclone</button>
+        <button type="button" class="pill" data-feedcat="Tsunami">Tsunami</button>
+        <button type="button" class="pill" data-feedcat="Aviation">Aviation</button>
+        <button type="button" class="pill" data-feedcat="Cyber">Cyber</button>
+        <button type="button" class="pill" data-feedcat="Travel Advisory">Travel advisory</button>
       </div>
     </details>
     <label class="rail-select">Actor
@@ -1090,12 +1143,42 @@
     const WINDOWS = { "2h": 2 * 3600 * 1000, "24h": 24 * 3600 * 1000, "7d": 7 * 24 * 3600 * 1000, all: null };
     const HOME = { center: [26.5, 47.0], zoom: 5 };
     const JUMPS = {
+      global: { center: [20, 10], zoom: 2 },
+      middleeast: { center: [26.5, 47.0], zoom: 5 },
+      unitedstates: { center: [39.8, -98.6], zoom: 4 },
+      canada: { center: [56, -96], zoom: 3 },
+      southamerica: { center: [-15, -60], zoom: 3 },
+      apac: { center: [18, 118], zoom: 3 },
+      australia: { center: [-25, 134], zoom: 4 },
+      afghanistan: { center: [33.9, 67.7], zoom: 6 },
+      russiaukraine: { center: [49, 32], zoom: 4 },
       theater: { center: [26.5, 47.0], zoom: 5 },
       bahrain: { center: [26.07, 50.55], zoom: 8 },
       hormuz: { center: [26.56, 56.25], zoom: 7 },
       redsea: { center: [15.3, 42.6], zoom: 6 },
       sudan: { center: [15.5, 30.2], zoom: 6 },
       saudi: { center: [24.5, 44.5], zoom: 5 }
+    };
+    const THEATRE_VIEWS = {
+      "Global": JUMPS.global,
+      "Middle East": JUMPS.middleeast,
+      "United States": JUMPS.unitedstates,
+      "Canada": JUMPS.canada,
+      "South America": JUMPS.southamerica,
+      "APAC": JUMPS.apac,
+      "Australia": JUMPS.australia,
+      "Afghanistan": JUMPS.afghanistan,
+      "Russia & Ukraine": JUMPS.russiaukraine
+    };
+    const THEATRE_COUNTRIES = {
+      "Middle East": ["Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Gulf States", "Maritime", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Red Sea / Maritime", "Strait of Hormuz / Gulf"],
+      "United States": ["United States", "USA"],
+      "Canada": ["Canada"],
+      "South America": ["South America", "Brazil", "Colombia", "Venezuela", "Peru", "Chile", "Argentina", "Ecuador", "Bolivia", "Guyana", "Suriname", "Paraguay", "Uruguay"],
+      "APAC": ["APAC", "Japan", "Taiwan", "China", "Philippines", "South Korea", "North Korea", "Indonesia", "Vietnam", "Thailand", "Malaysia", "Singapore"],
+      "Australia": ["Australia"],
+      "Afghanistan": ["Afghanistan"],
+      "Russia & Ukraine": ["Russia & Ukraine", "Ukraine", "Russia", "Belarus"]
     };
     const BADGES = {
       "Official / Primary": { label: "Official", cls: "badge-official" },
@@ -1207,36 +1290,33 @@
     map.createPane("labels");
     map.getPane("labels").style.zIndex = 350;
     map.getPane("labels").style.pointerEvents = "none";
+    map.createPane("darkbase");
+    map.getPane("darkbase").style.zIndex = "200";
+    /* CARTO's public dark_all tiles currently return an "API key required" watermark.
+       OpenStreetMap tiles in this pane stay dark and are real data through z19. */
+    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.95) contrast(0.9)";
     const esriAttr = 'Tiles &copy; Esri';
-    const tacticalDark = L.layerGroup([
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-        attribution: esriAttr,
-        maxZoom: 16
-      }),
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 16,
-        pane: "labels"
-      })
-    ]);
-    const maritimeDark = L.layerGroup([
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
-        attribution: esriAttr,
+    const osmAttr = '&copy; OpenStreetMap contributors';
+    function darkBase() {
+      return L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: osmAttr,
+        subdomains: "abc",
         maxZoom: 19,
-        maxNativeZoom: 16
-      }),
-      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
-        maxZoom: 19,
-        maxNativeZoom: 16,
-        pane: "labels"
-      })
-    ]);
+        maxNativeZoom: 19,
+        pane: "darkbase"
+      });
+    }
+    const tacticalDark = darkBase();
+    const maritimeDark = darkBase();
     const satellite = L.layerGroup([
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: esriAttr,
-        maxZoom: 19
+        maxZoom: 19,
+        maxNativeZoom: 17
       }),
       L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 19,
+        maxNativeZoom: 17,
         pane: "labels"
       })
     ]);
@@ -1274,6 +1354,7 @@
     let loadedOnce = false;
     let timeWindow = "all";
     let severity = "all";
+    let feedCategory = "all";
     let updatesQuery = "";
     let governorateCounts = {};
     let category = "all";
@@ -1584,13 +1665,29 @@
     function matchesArea(props, area) {
       if (!area || area === "all") return true;
       const country = featureCountry(props);
-      if (area === "Gulf States") return GULF_COUNTRIES.indexOf(country) >= 0;
-      if (area === "Maritime") return country === "Maritime";
-      return country === area || String((props && props.region) || "") === area;
+      const regionName = String((props && props.region) || "");
+      const theatre = String((props && props.theatre) || "");
+      const feedType = String((props && props.feed_category) || "");
+      if (area === "Global") {
+        return theatre === "Global" || regionName === "Global" || feedType === "Travel Advisory" || feedType === "Disaster" || feedType === "Seismic" || feedType === "Cyber";
+      }
+      if (area === "Gulf States") return GULF_COUNTRIES.indexOf(country) >= 0 || theatre === "Gulf States";
+      if (area === "Maritime") return country === "Maritime" || regionName === "Maritime";
+      const members = THEATRE_COUNTRIES[area];
+      if (members) {
+        return members.indexOf(country) >= 0 || members.indexOf(regionName) >= 0 || theatre === area || regionName === area;
+      }
+      return country === area || regionName === area || theatre === area;
     }
 
     function passes(feature, opts) {
       const props = feature.properties || {};
+      if (feedCategory !== "all") {
+        const tagged = String(props.feed_category || "");
+        if (feedCategory === "Conflict") {
+          if (tagged && tagged !== "Conflict" && tagged !== "Security") return false;
+        } else if (tagged !== feedCategory) return false;
+      }
       if (opts.severity !== "all" && String(props.severity || "").toLowerCase() !== opts.severity) return false;
       if (opts.category !== "all" && incidentCode(props) !== opts.category && props.category !== opts.category) return false;
       if (opts.actor !== "all" && String(props.actor || "Unattributed") !== opts.actor) return false;
@@ -1909,6 +2006,11 @@
       document.querySelectorAll("[data-region]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.region === region));
       });
+      document.querySelectorAll("[data-feedcat]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.feedcat === feedCategory));
+      });
+      const feedSummary = document.querySelector('[data-filter-summary="feedcat"]');
+      if (feedSummary) feedSummary.textContent = feedCategory === "all" ? "All" : feedCategory;
       document.querySelectorAll("[data-country]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.country === countryFilter));
       });
@@ -2264,8 +2366,8 @@
       if (!items.length) return "<li>" + empty + "</li>";
       return items.map((item) => (
         "<li><strong>" + esc(item.source_name || "Feed") + "</strong> " +
-        "<span class=\"feed-type\">" + esc(item.type || "") + "</span>" +
-        (item.last_error ? " <span class=\"fail-error\">" + esc(item.last_error) + "</span>" : "") +
+        "<span class=\"feed-type\">" + esc(item.region || item.type || "") + "</span>" +
+        (item.last_error ? " <span class=\"" + (item.status === "active" ? "feed-type" : "fail-error") + "\">" + esc(item.last_error) + "</span>" : "") +
         "</li>"
       )).join("");
     }
@@ -2297,6 +2399,9 @@
       const offlineList = document.getElementById("feed-offline");
       if (activeList) activeList.innerHTML = feedListHtml(active, "No active feeds yet.");
       if (offlineList) offlineList.innerHTML = feedListHtml(offline, "No offline feeds.");
+      const standbyList = document.getElementById("feed-standby");
+      const standby = payload && Array.isArray(payload.standby) ? payload.standby : feeds.filter((item) => item.status === "standby");
+      if (standbyList) standbyList.innerHTML = feedListHtml(standby, "No optional sources.");
     }
 
     async function refreshFeedStatus() {
@@ -2543,8 +2648,15 @@
       if (button.dataset.window) timeWindow = button.dataset.window;
       if (button.dataset.severity) severity = button.dataset.severity;
       if (button.dataset.category) category = button.dataset.category;
+      if (button.dataset.feedcat) {
+        feedCategory = button.dataset.feedcat;
+        render(searchQuery ? "search" : "none");
+        return;
+      }
       if (button.dataset.region) {
         region = button.dataset.region;
+        const view = THEATRE_VIEWS[region];
+        if (view) map.flyTo(view.center, view.zoom, { duration: 0.6 });
         render(searchQuery ? "search" : "region");
         return;
       }
@@ -3026,24 +3138,7 @@
       setThermal(!thermalOn);
     });
     document.getElementById("summarize-governorate").addEventListener("click", () => {
-      if (!selectedGovernorate) {
-        setStatus("Click a Syrian governorate first.");
-        return;
-      }
-      const name = selectedGovernorate;
-      const matches = features.filter((feature) => {
-        const props = feature.properties || {};
-        const place = String(props.governorate || props.location_name || props.title || "");
-        return place.toLowerCase().includes(name.toLowerCase());
-      });
-      const notes = matches.slice(0, 4).map((feature) => {
-        const props = feature.properties || {};
-        return (props.location_name ? props.location_name + ": " : "") + (props.title || props.summary || "Update");
-      });
-      const text = matches.length
-        ? name + " has " + matches.length + " recent update" + (matches.length === 1 ? "" : "s") + " on the live map."
-        : "No live updates are tagged to " + name + " yet.";
-      setStatus(text + (notes.length ? " " + notes.join(" · ") : ""));
+      if (window.GeoRiskPhase1) window.GeoRiskPhase1.summarizeGovernorate();
     });
     document.getElementById("updates-toggle").addEventListener("click", () => {
       const button = document.getElementById("updates-toggle");
@@ -3179,6 +3274,37 @@
       updatesQuery = event.target.value;
       render("none");
     });
+    window.GeoRiskMap = {
+      snapshot: function () {
+        const opts = currentOpts(region);
+        const visible = features.filter((feature) => passes(feature, opts)).slice(0, 24);
+        return {
+          filters: {
+            region: region,
+            country: countryFilter,
+            governorate: governorateFilter,
+            severity: severity,
+            category: category,
+            timeWindow: timeWindow,
+            selectedGovernorate: selectedGovernorate || ""
+          },
+          incidents: visible.map((feature) => {
+            const props = feature.properties || {};
+            return {
+              title: props.title || "",
+              summary: props.summary || "",
+              location_name: props.location_name || "",
+              country: props.country || props.region || "",
+              region: props.region || "",
+              governorate: props.governorate || "",
+              severity: props.severity || "",
+              category: props.category || "",
+              timestamp: props.timestamp || ""
+            };
+          })
+        };
+      }
+    };
     async function loadData() {
       await loadLive();
     }
@@ -3222,5 +3348,7 @@
     showSyriaGovernorates(false);
     setInterval(() => loadData(), 30000);
   </script>
+  <script src="/static/grok-stream.js"></script>
+  <script src="/static/phase1-map.js"></script>
 </body>
 </html>
