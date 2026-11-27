@@ -67,6 +67,45 @@
     label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #94A3B8; font-weight: 700; max-width: 280px; }
     select, input { background: #060A13; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px; padding: 8px 10px; font: inherit; }
     #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
+    .ao-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .ao-grid label { flex: 1 1 220px; max-width: 360px; }
+    .publisher-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .edition-state { display: inline-flex; align-items: center; gap: 8px; margin: 8px 0; font-weight: 800; }
+    .edition-state[data-edition-state="published"] { color: #D4AF37; }
+    .edition-state[data-edition-state="preview"] { color: #94A3B8; }
+    .generator-badge, .threat-badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.06em; border: 1px solid #C5A059; color: #D4AF37;
+    }
+    #ao-briefing { background: #F8FAFC; color: #0F172A; border-radius: 12px; overflow: hidden; margin: 0 0 16px; }
+    .print-header {
+      display: flex; align-items: center; gap: 16px; background: #060A13; color: #F8FAFC;
+      padding: 16px 18px; border-bottom: 3px solid #C5A059;
+    }
+    .print-logo { height: 42px; width: auto; display: block; }
+    .print-kicker { margin: 0; color: #D4AF37; font-size: 11px; letter-spacing: 0.12em; font-weight: 800; }
+    .print-header h2 { margin: 2px 0 0; color: #F8FAFC; font-size: 20px; }
+    .print-header .threat-badge { margin-left: auto; background: #102A63; }
+    .print-meta { margin: 0; padding: 10px 18px; color: #334155; font-size: 12px; border-bottom: 1px solid #E2E8F0; }
+    .print-section { padding: 12px 18px 4px; }
+    .print-section h3 { margin: 0 0 6px; color: #102A63; font-size: 14px; }
+    .print-section p, .print-body { margin: 0 0 10px; white-space: pre-wrap; }
+    .print-footer {
+      display: block; background: #060A13; color: #D4AF37; text-align: center;
+      padding: 10px 12px; font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+    }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      html, body { background: #fff !important; color: #111 !important; }
+      #live-bar, #liveWireTickerBar, #app-footer, .no-print { display: none !important; }
+      #brief-main { max-width: none; padding: 0; }
+      #ao-briefing { display: block !important; border-radius: 0; }
+      .print-header, .print-footer, .threat-badge {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .print-footer { display: block !important; visibility: visible !important; }
+    }
   </style>
   <link rel="stylesheet" href="/static/site-nav.css">
   <script src="/static/site-nav.js" defer></script>
@@ -129,10 +168,80 @@
     </div>
   </div>
   <main id="brief-main">
-    <h1>Regional Briefings</h1>
-    <p class="lede page-lead">Write a theatre briefing from incidents already on the live map. Names and medical details are left out. Draft with Claude runs only when you click it.</p>
-    <section class="panel" aria-label="Theater briefing">
+    <h1>Daily Area of Operations Briefing</h1>
+    <p class="lede page-lead">One cached UK English geopolitical briefing per subscribed country or region each morning. Every client in that Area of Operations reads the same published edition. Export a branded A4 PDF in one click. Opening this page does not call Claude or xAI.</p>
+    <section id="publisher-controls" class="panel no-print" aria-label="Publisher controls">
+      <h2>Publisher controls</h2>
+      <p>Today's published AO count: <strong id="published-ao-count">0</strong></p>
+      <div class="publisher-actions">
+        <button type="button" id="publish-deterministic">Publish Today's Briefing ($0 OSINT)</button>
+        <button type="button" id="publish-claude">Publish with Claude (Haiku 5.5)</button>
+        <span id="publisher-connection" class="claude-pill idle" role="status" data-claude-status>Add ANTHROPIC_API_KEY</span>
+      </div>
+      <p class="note" id="publisher-claude-cost">Estimated cost: about $0.0010 list-price ceiling per Area of Operations with Claude Haiku 5.5 (published list price, not an invoice). Deterministic publish is $0 and makes no API call.</p>
+      <p class="note" id="publisher-status" role="status"></p>
+    </section>
+    <section id="ao-selector" class="panel no-print" aria-label="Area of Operations selector">
+      <h2>Area of Operations</h2>
+      <div class="ao-grid">
+        <label>Region
+          <select id="ao-region">
+            <option value="middle-east">Middle East</option>
+            <option value="east-africa-horn">East Africa / Horn of Africa</option>
+            <option value="sahel">Sahel</option>
+            <option value="eastern-europe">Eastern Europe</option>
+            <option value="indo-pacific">Indo-Pacific</option>
+            <option value="global">Global</option>
+            <option value="europe">Europe</option>
+            <option value="africa">Africa</option>
+            <option value="asia-pacific">Asia-Pacific</option>
+            <option value="americas">Americas</option>
+            <option value="maritime">Maritime</option>
+          </select>
+        </label>
+        <label>Country
+          <select id="ao-country">
+            <option value="">Whole region</option>
+            <option value="syria" selected>Syria</option>
+            <option value="sudan">Sudan</option>
+            <option value="ukraine">Ukraine</option>
+            <option value="lebanon">Lebanon</option>
+            <option value="yemen">Yemen</option>
+            <option value="israel-gaza">Israel/Gaza</option>
+            <option value="nigeria">Nigeria</option>
+            <option value="iraq">Iraq</option>
+            <option value="iran">Iran</option>
+          </select>
+        </label>
+        <button type="button" id="export-pdf" onclick="window.print()">Export branded A4 PDF</button>
+      </div>
+      <p id="edition-state" class="edition-state" data-edition-state="preview">Live $0 Preview</p>
+      <p class="note">A published edition shows <strong>Published</strong> with the GMT timestamp and generator badge. Until the morning edition is stored, this page shows the Live $0 Preview.</p>
+      <p class="note" id="edition-meta"><span id="edition-stamp">GMT</span> · <span id="generator-badge" class="generator-badge">deterministic</span></p>
+    </section>
+    <article id="ao-briefing" class="print-sheet" aria-label="GeoRiskIntel daily briefing">
+      <header class="print-header">
+        <img class="print-logo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+        <div>
+          <p class="print-kicker">GEORISKINTEL</p>
+          <h2 id="print-title">Daily Area of Operations Briefing</h2>
+        </div>
+        <p id="print-threat" class="threat-badge">MODERATE</p>
+      </header>
+      <p id="print-meta" class="print-meta">UK English executive edition</p>
+      <div id="print-sections">
+        <section class="print-section" data-section="executive"><h3>1. Executive Threat Assessment &amp; Overall Posture</h3><p class="print-body">Loading the Area of Operations edition…</p></section>
+        <section class="print-section" data-section="developments"><h3>2. Key Security Developments (Last 24–72 Hours)</h3><p class="print-body"></p></section>
+        <section class="print-section" data-section="flashpoints"><h3>3. Regional / Governorate Flashpoints &amp; Spillover</h3><p class="print-body"></p></section>
+        <section class="print-section" data-section="advisories"><h3>4. Travel, Aviation &amp; Infrastructure Advisories</h3><p class="print-body"></p></section>
+        <section class="print-section" data-section="posture"><h3>5. Operational Impact &amp; Recommended Posture</h3><p class="print-body"></p></section>
+        <section class="print-section" data-section="watchlist"><h3>6. 72-Hour Watchlist &amp; Early-Warning Indicators</h3><p class="print-body"></p></section>
+      </div>
+      <footer class="print-footer">Powered by GeoRiskIntel</footer>
+    </article>
+    <section class="panel no-print" aria-label="Theater briefing">
       <h2>Theater briefing</h2>
+      <p class="note">Write a theatre briefing from incidents already on the live map. Names and medical details are left out. Draft with Claude runs only when you click it.</p>
       <label>Theatre <select id="theatre"></select></label>
       <label>Cadence
         <select id="brief-cadence">
@@ -149,11 +258,11 @@
       <p class="note" id="claude-cost" data-claude-rates role="status"></p>
       <pre id="brief-output" class="empty" style="white-space:pre-wrap"></pre>
     </section>
-    <section class="panel" aria-label="Live incidents by country">
+    <section class="panel no-print" aria-label="Live incidents by country">
       <h2>Live incidents</h2>
       <div id="live-table"><p class="empty">Loading the live incident feed…</p></div>
     </section>
-    <section class="panel" aria-label="Deep-dive table">
+    <section class="panel no-print" aria-label="Deep-dive table">
       <h2>Deep dive</h2>
       <table>
         <thead>
@@ -343,5 +452,156 @@
   </script>
   <script src="/static/grok-stream.js"></script>
   <script src="/static/claude-draft.js"></script>
+  <script>
+    (function () {
+      var regionSelect = document.getElementById("ao-region");
+      var countrySelect = document.getElementById("ao-country");
+      var areas = [];
+
+      function esc(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
+        });
+      }
+
+      function selectedSlug() {
+        if (countrySelect && countrySelect.value) return countrySelect.value;
+        return regionSelect ? regionSelect.value : "syria";
+      }
+
+      function selectedArea() {
+        var slug = selectedSlug();
+        for (var i = 0; i < areas.length; i += 1) {
+          if (areas[i].ao_slug === slug) return areas[i];
+        }
+        return null;
+      }
+
+      function fillCountries() {
+        if (!countrySelect || !areas.length) return;
+        var region = regionSelect ? regionSelect.value : "";
+        var current = countrySelect.value;
+        var countries = areas.filter(function (area) {
+          return area.ao_type === "country" && (!region || region === "global" || (area.regions || []).indexOf(region) !== -1);
+        });
+        var html = '<option value="">Whole region</option>' + countries.map(function (area) {
+          return '<option value="' + esc(area.ao_slug) + '">' + esc(area.ao_name) + "</option>";
+        }).join("");
+        countrySelect.innerHTML = html;
+        var stillThere = Array.prototype.some.call(countrySelect.options, function (option) { return option.value === current; });
+        countrySelect.value = stillThere ? current : "";
+      }
+
+      function renderEdition(edition) {
+        if (!edition) return;
+        var title = document.getElementById("print-title");
+        var threat = document.getElementById("print-threat");
+        var meta = document.getElementById("print-meta");
+        var state = document.getElementById("edition-state");
+        var stamp = document.getElementById("edition-stamp");
+        var badge = document.getElementById("generator-badge");
+        if (title) title.textContent = (edition.ao_name || "Area of Operations") + " — Daily briefing";
+        if (threat) threat.textContent = edition.threat_level || "MODERATE";
+        var published = !!edition.published;
+        if (state) {
+          state.textContent = published ? "Published" : "Live $0 Preview";
+          state.dataset.editionState = published ? "published" : "preview";
+        }
+        if (badge) badge.textContent = edition.generator || "deterministic";
+        var when = published ? (edition.published_at_gmt || "GMT") : "Not yet published today";
+        if (stamp) stamp.textContent = when;
+        if (meta) {
+          meta.textContent = (edition.ao_name || "") + " · " + (edition.ao_type || "") + " · " + when +
+            " · " + (edition.generator || "deterministic");
+        }
+        var host = document.getElementById("print-sections");
+        var sections = Array.isArray(edition.sections) ? edition.sections : [];
+        if (host && sections.length) {
+          host.innerHTML = sections.map(function (section) {
+            return '<section class="print-section"><h3>' + esc(section.title || "") + "</h3><p class=\"print-body\">" +
+              esc(section.body || "") + "</p></section>";
+          }).join("");
+        }
+      }
+
+      function loadEdition() {
+        var slug = selectedSlug();
+        return fetch("/api/briefings/published/" + encodeURIComponent(slug), { cache: "no-store" })
+          .then(function (response) { return response.json(); })
+          .then(renderEdition)
+          .catch(function () {
+            var state = document.getElementById("edition-state");
+            if (state) state.textContent = "Live $0 Preview";
+          });
+      }
+
+      function paintIndex(data) {
+        var count = document.getElementById("published-ao-count");
+        if (count) count.textContent = String(data && data.today_count != null ? data.today_count : (data && data.count) || 0);
+        if (data && Array.isArray(data.areas) && data.areas.length) {
+          areas = data.areas;
+          if (regionSelect) {
+            var regions = areas.filter(function (area) { return area.ao_type === "region"; });
+            var current = regionSelect.value;
+            regionSelect.innerHTML = regions.map(function (area) {
+              return '<option value="' + esc(area.ao_slug) + '">' + esc(area.ao_name) + "</option>";
+            }).join("");
+            if (current) regionSelect.value = current;
+          }
+          fillCountries();
+        }
+        var cost = document.getElementById("publisher-claude-cost");
+        var ceiling = data && data.claude && data.claude.estimated_usd_ceiling;
+        if (cost && ceiling != null && !cost.dataset.locked) {
+          cost.textContent = "Estimated cost: about $" + Number(ceiling).toFixed(4) +
+            " list-price ceiling per Area of Operations with Claude Haiku 5.5 (published list price, not an invoice). Deterministic publish is $0 and makes no API call.";
+        }
+      }
+
+      function publish(useClaude) {
+        var status = document.getElementById("publisher-status");
+        var buttons = [document.getElementById("publish-deterministic"), document.getElementById("publish-claude")];
+        buttons.forEach(function (button) { if (button) button.disabled = true; });
+        if (status) status.textContent = useClaude ? "Publishing with Claude Haiku 5.5…" : "Publishing the $0 OSINT edition…";
+        return fetch("/api/briefings/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ao_slug: selectedSlug(), use_claude: !!useClaude, force: false })
+        }).then(function (response) { return response.json().then(function (body) { return { ok: response.ok, body: body }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.body || result.body.ok === false) {
+              if (status) status.textContent = (result.body && result.body.error) || "The edition was not published.";
+              return;
+            }
+            var edition = (result.body.published || [])[0];
+            if (edition) renderEdition(edition);
+            if (status) {
+              status.textContent = "Published " + ((edition && edition.ao_name) || "the Area of Operations") +
+                " · " + ((edition && edition.generator) || "deterministic") +
+                " · $" + Number((edition && edition.cost_usd) || 0).toFixed(4);
+            }
+            return fetch("/api/briefings/published", { cache: "no-store" }).then(function (response) { return response.json(); }).then(paintIndex);
+          })
+          .catch(function () {
+            if (status) status.textContent = "The publisher could not be reached. No Claude call was confirmed.";
+          })
+          .then(function () {
+            buttons.forEach(function (button) { if (button) button.disabled = false; });
+          });
+      }
+
+      if (regionSelect) regionSelect.addEventListener("change", function () { fillCountries(); loadEdition(); });
+      if (countrySelect) countrySelect.addEventListener("change", loadEdition);
+      var deterministic = document.getElementById("publish-deterministic");
+      var claude = document.getElementById("publish-claude");
+      if (deterministic) deterministic.addEventListener("click", function () { publish(false); });
+      if (claude) claude.addEventListener("click", function () { publish(true); });
+
+      fetch("/api/briefings/published", { cache: "no-store" })
+        .then(function (response) { return response.json(); })
+        .then(function (data) { paintIndex(data); return loadEdition(); })
+        .catch(function () { loadEdition(); });
+    }());
+  </script>
 </body>
 </html>

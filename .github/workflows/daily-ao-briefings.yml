@@ -1,0 +1,37 @@
+name: Daily AO briefings
+
+on:
+  schedule:
+    # 06:00 UTC / GMT. Deterministic $0 mode only.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish today's AO briefings ($0 OSINT)
+        env:
+          GEORISKINTEL_BASE_URL: ${{ secrets.GEORISKINTEL_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PUBLISH_SECRET: ${{ secrets.PUBLISH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GEORISKINTEL_BASE_URL}" ]; then
+            echo "GEORISKINTEL_BASE_URL is not set. Daily AO publisher no-op. No AI credits spent."
+            exit 0
+          fi
+          base="${GEORISKINTEL_BASE_URL%/}"
+          secret="${CRON_SECRET:-${PUBLISH_SECRET:-}}"
+          args=(-sS --fail-with-body --max-time 120 -X POST "${base}/api/briefings/publish")
+          args+=(-H "Content-Type: application/json")
+          if [ -n "${secret}" ]; then
+            args+=(-H "Authorization: Bearer ${secret}")
+          fi
+          args+=(-d '{"all_subscribed":true,"use_claude":false,"force":false}')
+          curl "${args[@]}"
+          echo
+          echo "Published in deterministic \$0 mode. Claude was not requested."
