@@ -12,8 +12,9 @@ from unittest.mock import patch
 from flask import Flask
 
 import checkin_beacon
+import checkins
 import preview_lock
-from checkin_beacon import SCHOOLS_NOTICE, ZERO_PII_NOTICE, utcnow
+from checkin_beacon import SCHOOLS_NOTICE, ZERO_PII_NOTICE, format_utc, utcnow
 
 WEBHOOK = "https://hooks.slack.com/services/T000TEST1/B000TEST1/SECRETTOKENNOTINRESPONSES"
 SECRET = "SECRETTOKENNOTINRESPONSES"
@@ -37,13 +38,14 @@ class CheckinBeaconTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.saved = {}
         for name in (
-            "CHECKIN_DB_PATH", "CHECKIN_SLACK_SYNC", "DISABLE_BACKGROUND",
+            "CHECKIN_DB_PATH", "CHECKIN_SLACK_SYNC", "CHECKIN_RETENTION_DAYS", "DISABLE_BACKGROUND",
             "PREVIEW_PASSWORD", "PREVIEW_USER", "BASIC_AUTH_PASSWORD", "BASIC_AUTH_USERNAME",
         ):
             self.saved[name] = os.environ.get(name)
         os.environ["CHECKIN_DB_PATH"] = str(Path(self.tmp.name) / "checkins.db")
         os.environ["CHECKIN_SLACK_SYNC"] = "1"
         os.environ["DISABLE_BACKGROUND"] = "1"
+        os.environ.pop("CHECKIN_RETENTION_DAYS", None)
         os.environ.pop("PREVIEW_PASSWORD", None)
         os.environ.pop("BASIC_AUTH_PASSWORD", None)
         checkin_beacon.reset_store()
@@ -298,6 +300,12 @@ class CheckinBeaconTests(unittest.TestCase):
         self.assertIn(escape(ZERO_PII_NOTICE).encode(), ops.data)
         self.assertIn(b"Create callsign", ops.data)
         self.assertIn(b"Schools", ops.data)
+        self.assertIn(b"UK/EU GDPR Pseudonymisation Notice", ops.data)
+        self.assertIn(b"Art. 5(1)(e)", ops.data)
+        self.assertIn(b"Art. 17", ops.data)
+        self.assertIn(b"Data Controller", ops.data)
+        self.assertIn(b"after 30 days", ops.data)
+        self.assertIn(b"Purge Event Log", ops.data)
         created = self._create(callsign="LEADER-PARIS-BUS2", sector="schools", schools_ack=True, slack_webhook_url="")
         token = created.get_json()["beacon"]["mobile_path"].rsplit("/", 1)[-1]
         mobile = self.client.get("/c/" + token)
@@ -329,6 +337,9 @@ class CheckinBeaconTests(unittest.TestCase):
         self.assertEqual(api.status_code, 401)
         sweep = self.client.post("/api/checkins/sweep-overdue")
         self.assertEqual(sweep.status_code, 401)
+        purge = self.client.post("/api/checkins/purge-events")
+        self.assertEqual(purge.status_code, 401)
+        self.assertFalse(preview_lock.is_public_checkin_path("/api/checkins/purge-events"))
         self.assertFalse(preview_lock.is_public_checkin_path("/check-in"))
         self.assertFalse(preview_lock.is_public_checkin_path("/pricing"))
         self.assertFalse(preview_lock.is_public_checkin_path("/api/checkins"))
@@ -342,6 +353,102 @@ class CheckinBeaconTests(unittest.TestCase):
         unknown = self.client.get("/c/" + secrets.token_urlsafe(32))
         self.assertEqual(unknown.status_code, 404)
         self.assertNotIn("/login", unknown.headers.get("Location", ""))
+
+    def _restamp(self, note: str, created_at: str, callsign: str | None = None, last_checkin: str | None = None) -> None:
+        store = checkin_beacon.get_store()
+
+        def work():
+            store._conn.execute("UPDATE checkin_events SET created_at = ? WHERE note = ?", (created_at, note))
+            if callsign is not None and last_checkin is not None:
+                store._conn.execute(
+                    "UPDATE beacons SET last_checkin_utc = ?, last_note = ? WHERE callsign = ?",
+                    (last_checkin, note, callsign),
+                )
+
+        store._transaction(work)
+
+    def test_retention_days_default_and_override(self) -> None:
+        os.environ.pop("CHECKIN_RETENTION_DAYS", None)
+        self.assertEqual(checkins.retention_days(), 30)
+        os.environ["CHECKIN_RETENTION_DAYS"] = "14"
+        self.assertEqual(checkins.retention_days(), 14)
+        os.environ["CHECKIN_RETENTION_DAYS"] = "nope"
+        self.assertEqual(checkins.retention_days(), 30)
+        self.assertIn("14 days", checkins.gdpr_notice(14))
+        self.assertIn("Data Controller", checkins.gdpr_notice())
+        self.assertIn("Art. 5(1)(e)", checkins.gdpr_notice())
+        self.assertIn("Art. 17", checkins.gdpr_notice())
+
+    def test_thirty_day_retention_purge_keeps_newer_events(self) -> None:
+        moment = utcnow()
+        created = self._create(slack_webhook_url="")
+        token = created.get_json()["beacon"]["mobile_path"].rsplit("/", 1)[-1]
+        tap = "/api/checkin/tap/" + token
+        self.assertEqual(self.client.post(tap, json={"event": "SAFE", "note": "OLD WINDOW"}).status_code, 200)
+        self.assertEqual(self.client.post(tap, json={"event": "SAFE", "note": "EDGE WINDOW"}).status_code, 200)
+        self.assertEqual(self.client.post(tap, json={"event": "SAFE", "note": "STILL HERE"}).status_code, 200)
+        self._restamp("OLD WINDOW", format_utc(moment - timedelta(days=30, seconds=1)))
+        self._restamp("EDGE WINDOW", format_utc(moment - timedelta(days=30)))
+        removed = checkin_beacon.get_store().purge_expired_events(now=moment)
+        notes = [item["note"] for item in checkin_beacon.get_store().recent_events()]
+        self.assertEqual(removed, 1)
+        self.assertNotIn("OLD WINDOW", notes)
+        self.assertIn("EDGE WINDOW", notes)
+        self.assertIn("STILL HERE", notes)
+        os.environ["CHECKIN_RETENTION_DAYS"] = "7"
+        self._restamp("EDGE WINDOW", format_utc(moment - timedelta(days=8)))
+        self.assertEqual(checkin_beacon.get_store().purge_expired_events(now=moment), 1)
+        notes = [item["note"] for item in checkin_beacon.get_store().recent_events()]
+        self.assertNotIn("EDGE WINDOW", notes)
+        self.assertIn("STILL HERE", notes)
+
+    def test_startup_and_sweep_purge_expired_events(self) -> None:
+        moment = utcnow()
+        created = self._create(callsign="TEAM-ALPHA-01", slack_webhook_url="")
+        beacon_id = created.get_json()["beacon"]["id"]
+        token = created.get_json()["beacon"]["mobile_path"].rsplit("/", 1)[-1]
+        self.client.post("/api/checkin/tap/" + token, json={"event": "SAFE", "note": "AGED NOTE"})
+        old = format_utc(moment - timedelta(days=31))
+        self._restamp("AGED NOTE", old, callsign="TEAM-ALPHA-01", last_checkin=old)
+        checkin_beacon.reset_store()
+        store = checkin_beacon.get_store()
+        self.assertEqual(store.recent_events(), [])
+        beacon = store.get_public(beacon_id)
+        self.assertEqual(beacon["last_note"], "")
+        self.assertEqual(beacon["last_approx_region"], "")
+        self.client.post("/api/checkin/tap/" + token, json={"event": "SAFE", "note": "SWEEP AGED"})
+        self._restamp("SWEEP AGED", old)
+        with patch("checkin_beacon.post_slack"):
+            checkin_beacon.sweep_and_alert(now=moment)
+        self.assertNotIn("SWEEP AGED", [item["note"] for item in checkin_beacon.get_store().recent_events()])
+
+    def test_delete_and_purge_erase_events_immediately(self) -> None:
+        first = self._create(callsign="CREW-BEIRUT-1", slack_webhook_url="")
+        second = self._create(callsign="LEADER-PARIS-BUS2", sector="schools", schools_ack=True, slack_webhook_url="")
+        first_id = first.get_json()["beacon"]["id"]
+        second_id = second.get_json()["beacon"]["id"]
+        first_token = first.get_json()["beacon"]["mobile_path"].rsplit("/", 1)[-1]
+        second_token = second.get_json()["beacon"]["mobile_path"].rsplit("/", 1)[-1]
+        self.client.post("/api/checkin/tap/" + first_token, json={"event": "SAFE", "note": "FIRST LOG"})
+        self.client.post("/api/checkin/tap/" + second_token, json={"event": "SAFE", "note": "SECOND LOG"})
+        self.client.post("/api/checkin/tap/" + second_token, json={"event": "ASSISTANCE", "note": "SECOND HELP"})
+        deleted = self.client.delete(f"/api/checkins/{first_id}")
+        self.assertEqual(deleted.status_code, 200)
+        with sqlite3.connect(os.environ["CHECKIN_DB_PATH"]) as conn:
+            gone = conn.execute("SELECT COUNT(*) FROM checkin_events WHERE beacon_id = ?", (first_id,)).fetchone()[0]
+            kept = conn.execute("SELECT COUNT(*) FROM checkin_events WHERE beacon_id = ?", (second_id,)).fetchone()[0]
+            beacon_gone = conn.execute("SELECT COUNT(*) FROM beacons WHERE id = ?", (first_id,)).fetchone()[0]
+        self.assertEqual(gone, 0)
+        self.assertEqual(beacon_gone, 0)
+        self.assertEqual(kept, 2)
+        self.assertEqual(self.client.get("/c/" + first_token).status_code, 404)
+        wiped = self.client.post("/api/checkins/purge-events")
+        self.assertEqual(wiped.status_code, 200, wiped.get_json())
+        self.assertEqual(wiped.get_json()["deleted"], 2)
+        self.assertEqual(checkin_beacon.get_store().recent_events(), [])
+        listed = self.client.get("/api/checkins").get_json()["beacons"]
+        self.assertEqual([item["callsign"] for item in listed], ["LEADER-PARIS-BUS2"])
+        self.assertEqual(listed[0]["last_note"], "")
 
 
 class ProductionCheckinRouteTests(unittest.TestCase):

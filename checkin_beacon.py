@@ -28,6 +28,8 @@ from pathlib import Path
 
 from flask import Blueprint, Response, redirect, request
 
+import checkins
+
 checkin_bp = Blueprint("checkin", __name__)
 
 SCHOOLS_NOTICE = (
@@ -474,6 +476,7 @@ class CheckinStore:
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.execute("PRAGMA busy_timeout=5000")
         self._migrate()
+        self.purge_expired_events()
 
     def close(self) -> None:
         with self._lock:
@@ -509,6 +512,7 @@ class CheckinStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_beacons_due ON beacons(status, next_due_utc);
                 CREATE INDEX IF NOT EXISTS idx_events_created ON checkin_events(id);
+                CREATE INDEX IF NOT EXISTS idx_events_created_at ON checkin_events(created_at);
                 """
             )
 
@@ -709,6 +713,8 @@ class CheckinStore:
         return public_beacon(self._transaction(work), moment)
 
     def delete(self, beacon_id: int) -> None:
+        """Erase the callsign and every stored event for it (UK/EU GDPR Art. 17)."""
+
         def work():
             row = self._conn.execute("SELECT id FROM beacons WHERE id = ?", (int(beacon_id),)).fetchone()
             if row is None:
@@ -717,6 +723,35 @@ class CheckinStore:
             self._conn.execute("DELETE FROM beacons WHERE id = ?", (row["id"],))
 
         self._transaction(work)
+
+    def purge_expired_events(self, now: datetime | None = None) -> int:
+        """Delete check-in events older than the retention window (Art. 5(1)(e))."""
+        moment = now or utcnow()
+        cutoff = format_utc(moment - timedelta(days=checkins.retention_days()))
+
+        def work():
+            cursor = self._conn.execute("DELETE FROM checkin_events WHERE created_at < ?", (cutoff,))
+            self._conn.execute(
+                """
+                UPDATE beacons
+                SET last_note = '', last_approx_region = ''
+                WHERE last_checkin_utc IS NOT NULL AND last_checkin_utc < ?
+                """,
+                (cutoff,),
+            )
+            return max(int(cursor.rowcount), 0)
+
+        return self._transaction(work)
+
+    def purge_event_log(self) -> int:
+        """Erase the whole event log immediately. Callsigns stay (Art. 17)."""
+
+        def work():
+            cursor = self._conn.execute("DELETE FROM checkin_events")
+            self._conn.execute("UPDATE beacons SET last_note = '', last_approx_region = ''")
+            return max(int(cursor.rowcount), 0)
+
+        return self._transaction(work)
 
     def expire_window(self, beacon_id: int, now: datetime | None = None) -> None:
         """Move next_due_utc into the past without changing status. Used by overdue tests."""
@@ -801,7 +836,9 @@ def reset_store() -> None:
 
 
 def sweep_and_alert(now: datetime | None = None) -> int:
-    alerts = get_store().sweep(now=now)
+    store = get_store()
+    store.purge_expired_events(now=now)
+    alerts = store.sweep(now=now)
     for alert in alerts:
         deliver_slack(
             alert.webhook,
@@ -889,7 +926,8 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 36px); }
     h2 { margin: 0 0 10px; font-size: 18px; }
     .kicker { margin: 0 0 4px; color: var(--gold); letter-spacing: 0.12em; font-size: 12px; font-weight: 800; }
-    .compliance, .zero-pii { border: 1px solid var(--gold-border); background: #14100a; border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+    .compliance, .zero-pii, .gdpr { border: 1px solid var(--gold-border); background: #14100a; border-radius: 12px; padding: 12px 14px; margin: 10px 0; }
+    .gdpr { font-size: 14px; }
     .compliance { font-weight: 700; }
     .zero-pii, .note { color: var(--muted); }
     .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 14px 0; }
@@ -938,6 +976,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     <p class="note">Issue a mobile link. Field staff tap once to confirm safe, or use the second tap only for panic. Overdue windows alert this board and Slack.</p>
     <p class="compliance" id="compliance-schools" role="note">__SCHOOLS_NOTICE__</p>
     <p class="zero-pii" role="note">__ZERO_PII__</p>
+    <p class="gdpr" id="gdpr-notice" role="note">__GDPR_NOTICE__</p>
     __BANNERS__
     <section class="panel">
       <h2>Create callsign</h2>
@@ -988,6 +1027,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     <section class="panel">
       <div class="actions">
         <h2 style="margin-right:auto">Live board</h2>
+        <button type="button" class="ghost" id="purge-log">Purge Event Log</button>
         <button type="button" class="ghost" id="sweep">Check for overdue now</button>
       </div>
       <p id="sweep-status" class="note" role="status"></p>
@@ -1009,6 +1049,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
       var board = document.getElementById("board");
       var log = document.getElementById("log");
       var sweepButton = document.getElementById("sweep");
+      var purgeButton = document.getElementById("purge-log");
       var sweepStatus = document.getElementById("sweep-status");
       var capturedAt = Date.now();
       var labels = { SAFE: "Safe", ASSISTANCE: "Assistance", PANIC: "Panic", OVERDUE_ALERT: "Overdue alert" };
@@ -1238,6 +1279,21 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
           });
         });
       }
+      if (purgeButton) {
+        purgeButton.addEventListener("click", function () {
+          if (!window.confirm("Erase the check-in event log now? Callsigns stay. This cannot be undone.")) return;
+          purgeButton.disabled = true;
+          fetch("/api/checkins/purge-events", { method: "POST", headers: { "Accept": "application/json" } })
+            .then(function (response) { return readJson(response).then(function (data) { return { response: response, data: data }; }); })
+            .then(function (result) {
+              var deleted = result.data && typeof result.data.deleted === "number" ? result.data.deleted : 0;
+              setStatus(sweepStatus, result.response.ok ? ("Erased " + deleted + " check-in event" + (deleted === 1 ? "" : "s") + ".") : ((result.data && result.data.message) || "Could not erase the event log."), !result.response.ok);
+              return refresh();
+            })
+            .catch(function () { setStatus(sweepStatus, "Could not erase the event log.", true); })
+            .then(function () { purgeButton.disabled = false; });
+        });
+      }
       if (sweepButton) {
         sweepButton.addEventListener("click", function () {
           sweepButton.disabled = true;
@@ -1276,6 +1332,7 @@ def ops_page(error: str = "", created: bool = False, callsign: str = "") -> str:
     page = _OPS_TEMPLATE
     page = page.replace("__SCHOOLS_NOTICE__", escape(SCHOOLS_NOTICE))
     page = page.replace("__ZERO_PII__", escape(ZERO_PII_NOTICE))
+    page = page.replace("__GDPR_NOTICE__", escape(checkins.gdpr_notice(checkins.retention_days())))
     page = page.replace("__ADULT_ONLY__", escape(ADULT_ONLY_NOTICE))
     page = page.replace("__BANNERS__", "".join(banners))
     page = page.replace("__CALLSIGN_VALUE__", escape(_safe_callsign_echo(callsign), quote=True))
@@ -1735,6 +1792,15 @@ def sweep_route() -> Response:
     except CheckinError as exc:
         return _json({"ok": False, "message": str(exc)}, exc.status)
     return _json({"ok": True, "alerts": count})
+
+
+@checkin_bp.post("/api/checkins/purge-events")
+def purge_events_route() -> Response:
+    try:
+        deleted = get_store().purge_event_log()
+    except CheckinError as exc:
+        return _json({"ok": False, "message": str(exc)}, exc.status)
+    return _json({"ok": True, "deleted": deleted, "retention_days": checkins.retention_days()})
 
 
 @checkin_bp.post("/api/checkins/<int:beacon_id>/pause")
