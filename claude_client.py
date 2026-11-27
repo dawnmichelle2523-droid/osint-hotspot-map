@@ -25,8 +25,8 @@ ANTHROPIC_VERSION = "2026-10-21"
 
 RA_MODEL_DEFAULT = "claude-sonnet-5-5"
 BRIEF_MODEL_DEFAULT = "claude-haiku-5-5"
-RA_MAX_TOKENS = 1600
-BRIEF_MAX_TOKENS = 900
+RA_MAX_TOKENS = 2400
+BRIEF_MAX_TOKENS = 1200
 RA_EFFORT = "medium"
 BRIEF_EFFORT = "low"
 PROMPT_CHAR_CAP = 8000
@@ -351,6 +351,29 @@ def _incident_lines(context: dict) -> list[str]:
     return lines
 
 
+def _product_band(likelihood: object, impact: object) -> str:
+    """Same 1–25 bands as the on-screen matrix. Unscored if either axis is missing."""
+    try:
+        left = int(likelihood)
+        right = int(impact)
+    except (TypeError, ValueError):
+        return "unscored"
+    if left < 1 or left > 5 or right < 1 or right > 5:
+        return "unscored"
+    score = left * right
+    if score <= 4:
+        name = "Low"
+    elif score <= 9:
+        name = "Moderate"
+    elif score <= 14:
+        name = "High"
+    elif score <= 19:
+        name = "Very High"
+    else:
+        name = "Severe"
+    return f"{left} × {right} = {score} ({name})"
+
+
 def local_risk_narrative(context: dict) -> str:
     """Deterministic country and sector draft. No network call."""
     sector = context.get("sector") or "the selected sector"
@@ -361,16 +384,18 @@ def local_risk_narrative(context: dict) -> str:
     hazards = context.get("hazards") or []
     hazard_lines = []
     for hazard in hazards:
+        rating = _product_band(hazard.get("likelihood"), hazard.get("impact"))
         hazard_lines.append(
-            f"- {hazard.get('threat') or 'Hazard'} "
-            f"(likelihood {hazard.get('likelihood')}, impact {hazard.get('impact')}) "
-            "— Confirm the official travel advice, name an owner on this device, "
-            "and re-score the residual risk once the control is in place."
+            f"- {hazard.get('threat') or 'Hazard'} — inherent {rating}. "
+            "Threat-actor capability and intent are not stated beyond this public line. "
+            "Confirm the official travel advice, name an action owner by role on this device, "
+            "and re-score the residual risk once the mitigation is in place."
         )
     if not hazard_lines:
         hazard_lines.append(
-            "- General travel security — Confirm the official travel advice, name an owner on this device, "
-            "and re-score the residual risk once the control is in place."
+            "- General travel security — inherent unscored. "
+            "Confirm the official travel advice, name an action owner by role on this device, "
+            "and re-score the residual risk once the mitigation is in place."
         )
     lead = (
         f"Local risk-assessment draft for {sector} under {standard}. "
@@ -381,10 +406,23 @@ def local_risk_narrative(context: dict) -> str:
         lead += " The previous draft was kept on the server only as scrubbed public text and was not sent."
     return (
         lead
-        + " Public incidents considered: "
+        + " Aligned with ISO 31000, ISO 31030 (travel risk management), and ISO 45001 (field health and safety). "
+        + "Apply BS 8848 for an education or school trip, ISO 18788 for close protection, and ISO 22361 for crisis management, "
+        + "alongside the selected frame. "
+        + "The organisation should prioritise mitigation before the traveller deploys: a medevac centre, "
+        + "a stand-off from checkpoints, and hostile environment controls. "
+        + "Public incidents considered: "
         + cited
         + "\n"
         + "\n".join(hazard_lines)
+        + "\nRoutes and checkpoints: use the agreed route only, and treat an unplanned checkpoint as a stop."
+        + "\nAirspace: read the current NOTAM and any EASA Conflict Zone Information Bulletin (CZIB) before ticketing. Do not invent a closure."
+        + "\nMedevac: in a hostile environment the golden hour is often spent reaching a trauma centre that can accept the patient. Name the hospital and the hub before departure."
+        + "\n2-tap check-in ladder: overdue at +30 minutes the ops desk calls; at +60 minutes switch to the alternate channel; at +120 minutes start the missing-person protocol."
+        + "\nShelter-in-place on indirect fire or a crowd at the only exit. Hibernate if the corridor closes or a severe weather warning covers the route."
+        + "\nGo when residual risk is Low or Moderate and the controls, medevac, and check-in ladder are confirmed. "
+        + "Conditional-Go when residual risk is High and the named conditions are met before movement. "
+        + "No-Go when residual risk is Very High or Severe, or a depended-on control is absent."
         + "\nA qualified person must review this draft before it is issued. Written in UK English."
     )
 
@@ -409,10 +447,23 @@ def local_briefing_narrative(context: dict) -> str:
     return (
         f"Local {label} area briefing. {_area_line(context)} "
         f"Sector: {sector}. Deployment scope: {scope}. "
-        "This is the on-server template. Claude was not called. "
-        f"{picture} "
-        "Treat unverified claims as claims. Check the official travel advice before any movement. "
-        "A qualified person must review this draft before it is issued. Written in UK English."
+        "This is the on-server template. Claude was not called. Written in UK English.\n"
+        f"BLUF: {picture} Check the official travel advice before any movement. "
+        "The organisation should prioritise the traveller's duty of care. "
+        "This template does not authorise a Go, a Conditional-Go, or a No-Go.\n"
+        f"Verified Security Incidents: {picture} Treat unverified claims as claims.\n"
+        "Sub-Regional/Governorate Status: No governorate picture is invented beyond the public incidents supplied. "
+        "Confirm the control lines before movement.\n"
+        "Aviation/Routes/Infrastructure: Read the current NOTAM and any EASA CZIB for the flight information region. "
+        "Do not treat a quiet feed as an open airspace or an open road.\n"
+        "24h Operational Advice: Keep a stand-off from checkpoints and gatherings. "
+        "Confirm the medevac centre and the trauma route. "
+        "Run the 2-tap check-in ladder if a check-in is overdue: +30 minutes call, +60 minutes alternate channel, "
+        "+120 minutes missing-person protocol. Shelter in place if the only exit is blocked. "
+        "Hibernate if the corridor closes.\n"
+        "24–72h Outlook: Re-read the official travel advice and the live feed before the next movement window. "
+        "What is not in the public incidents above is not known.\n"
+        "A qualified person must review this draft before it is issued."
     )
 
 
@@ -425,21 +476,57 @@ def _local_narrative(task: str, context: dict) -> str:
 def _prompt(task: str, context: dict) -> tuple[str, str]:
     if task == "briefing":
         system = (
-            "You draft a Daily, Weekly, or Monthly area-of-operations briefing for security and travel-risk officers. "
-            "Use only the public context below. Do not invent incidents, casualty figures, or names. "
-            "Do not mention private people, staff, phone numbers, emails, or device identifiers. "
-            "If the notes are thin, say what is not known. Short paragraphs, then up to four watch items. "
-            "This is decision support. A person must review it before issue. "
+            "You are a senior international security-risk adviser drafting a daily, weekly, or monthly "
+            "area-of-operations briefing for a security director. Write with institutional authority, in strict UK English, "
+            "using British spelling and dates as day month year. "
+            "Use only the public context below. Do not invent incidents, casualty figures, threat-actor names, or private people. "
+            "Do not mention staff names, traveller names, phone numbers, emails, medical records, passport details, or device identifiers. "
+            "If the notes are thin, say what is not known. This is decision support. A qualified person must review it before issue.\n"
+            "Use exactly these six sections, in this order, with these headings:\n"
+            "1. BLUF\n"
+            "2. Verified Security Incidents\n"
+            "3. Sub-Regional/Governorate Status\n"
+            "4. Aviation/Routes/Infrastructure\n"
+            "5. 24h Operational Advice\n"
+            "6. 24–72h Outlook\n"
+            "BLUF is the judgement in a few lines, including whether the public picture leans Go, Conditional-Go, or No-Go, and the single priority. "
+            "Verified Security Incidents lists only items supplied in the public context. "
+            "Sub-Regional/Governorate Status covers the named area and does not invent a governorate picture. "
+            "Aviation/Routes/Infrastructure covers airspace, NOTAM and EASA Conflict Zone Information Bulletin (CZIB) context, routes, and checkpoints only from the public context. "
+            "24h Operational Advice must prioritise movement, accommodation, communications, medevac, and the 2-tap check-in ladder "
+            "(overdue at +30 minutes, +60 minutes, and +120 minutes), plus shelter-in-place and hibernation triggers. "
+            "Keep the ops centre on that ladder. 24–72h Outlook states what to watch and what is not known. "
+            "Refer to the organisation and the traveller. Hold a stand-off from unverified claims. "
             + UK_ENGLISH
         )
     else:
         system = (
-            "You draft a country and sector risk-assessment narrative for security and travel-risk officers. "
-            "Use only the public context below. Align the wording to the sector and compliance frame. "
-            "Do not invent incidents or name private people. "
-            "Do not mention staff names, traveller names, phone numbers, emails, medical details, or device identifiers. "
-            "Write one short mitigation note per hazard, then a short overall paragraph. "
-            "If no public incidents are listed, say so. A person must review this before issue. "
+            "You are a senior international security-risk adviser drafting a country and sector risk assessment "
+            "for a security director. Write with institutional authority, in strict UK English. "
+            "This is decision support. A qualified person must review it before it is issued.\n"
+            "Align the assessment with ISO 31000 (risk management), ISO 31030 (travel risk management), "
+            "and ISO 45001 (occupational health and safety in the field). Apply the sector frame that fits: "
+            "BS 8848 for education and school trips, ISO 18788 for close protection and private security operations, "
+            "and ISO 22361 for crisis management. Use the compliance frame supplied when it names one of these.\n"
+            "Use only the public context below. Do not invent incidents, casualty figures, threat-actor names, or private people. "
+            "Do not mention staff names, traveller names, phone numbers, emails, medical records, passport details, or device identifiers. "
+            "If the notes are thin, say what is not known.\n"
+            "Score with a 5×5 Likelihood × Impact matrix. Likelihood runs from 1 Rare to 5 Almost Certain. "
+            "Impact runs from 1 Negligible to 5 Catastrophic. Score = Likelihood × Impact (1–25). "
+            "Bands: Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, Severe 20–25. "
+            "State each inherent and residual rating as L × I = Score and name the band.\n"
+            "For each hazard cover, in UK English: threat-actor capability and intent only where the public context supports it; "
+            "route and checkpoint considerations; airspace and aviation context, including NOTAM and EASA CZIB; "
+            "trauma and medevac realities, including the golden hour in a hostile environment and the named trauma centre; "
+            "a 2-tap check-in escalation ladder (overdue at +30 minutes, +60 minutes, and +120 minutes); "
+            "shelter-in-place and hibernation triggers; and mandatory mitigation for pre-deployment, movement, accommodation, "
+            "communications, and contingency. Prioritise the controls that reduce residual risk before the traveller deploys. "
+            "Name an action owner by role (Security Advisor, Team Leader, Driver/Fixer, or Ops Desk), never by personal name. "
+            "Hold a stand-off from clashes and from a crowd.\n"
+            "Close with sign-off criteria. Go when residual risk is Low or Moderate and the controls, medevac, and check-in ladder are in place. "
+            "Conditional-Go when residual risk is High and named conditions must be met before movement. "
+            "No-Go when residual risk is Very High or Severe, or a depended-on control is absent. "
+            "The organisation remains responsible for acceptance of the residual risk. "
             + UK_ENGLISH
         )
     user_lines = [
@@ -449,8 +536,23 @@ def _prompt(task: str, context: dict) -> tuple[str, str]:
     ]
     if task == "briefing":
         user_lines.append(f"Cadence: {context.get('cadence') or 'daily'}.")
+        user_lines.append(
+            "Write the six sections in order: BLUF; Verified Security Incidents; "
+            "Sub-Regional/Governorate Status; Aviation/Routes/Infrastructure; "
+            "24h Operational Advice; 24–72h Outlook. Use UK English."
+        )
     if context.get("compliance_standard"):
         user_lines.append(f"Compliance frame: {context['compliance_standard']}.")
+    if task == "risk":
+        user_lines.append(
+            "Apply ISO 31000, ISO 31030, and ISO 45001. Apply BS 8848, ISO 18788, or ISO 22361 when the sector calls for it. "
+            "For each hazard give the inherent rating as L × I = Score with the band "
+            "(Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, Severe 20–25), "
+            "the country and operational context, the mandatory mitigation, a residual rating, and an action owner by role. "
+            "Cover threat-actor capability and intent, routes and checkpoints, NOTAM and EASA CZIB, "
+            "medevac and the golden hour, the 2-tap ladder (+30 / +60 / +120 minutes), "
+            "shelter-in-place and hibernation, and Go / Conditional-Go / No-Go. Write in UK English."
+        )
     user_lines.append("Public incidents:")
     incident_lines = _incident_lines(context)
     user_lines.extend(f"- {line}" for line in incident_lines)

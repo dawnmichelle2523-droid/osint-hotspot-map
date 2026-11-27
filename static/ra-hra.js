@@ -60,8 +60,9 @@
   }
   function band(score) {
     if (score <= 4) return "LOW";
-    if (score <= 9) return "MEDIUM";
-    if (score <= 16) return "HIGH";
+    if (score <= 9) return "MODERATE";
+    if (score <= 14) return "HIGH";
+    if (score <= 19) return "VERY HIGH";
     return "SEVERE";
   }
   function paintRating() {

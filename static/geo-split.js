@@ -300,7 +300,7 @@
     return {
       ok: true, xai_credits: 0, country: name, region: region, baseline: true,
       title: name + " baseline template", branding: "GeoRiskIntel",
-      rating: { band: "MEDIUM", score: 6, scale: "1-25" }, risk_tags: ["Baseline"],
+      rating: { band: "MODERATE", score: 6, scale: "1-25" }, risk_tags: ["Baseline"],
       stability: name + " uses the GeoRiskIntel " + region + " baseline. " + copy.stability,
       actors: copy.actors, borders: copy.borders,
       situation: name + " uses the GeoRiskIntel " + region + " baseline. " + copy.stability + " " + copy.actors + " " + copy.borders,

@@ -353,22 +353,51 @@ class ClaudeClientTests(unittest.TestCase):
             task="briefing",
         )
         risk_context, _ = claude_client.public_context(
-            {"country": "Syria", "sector": "Media", "compliance_standard": "ISO 31030"},
+            {
+                "country": "Syria",
+                "sector": "Media",
+                "compliance_standard": "ISO 31030",
+                "hazards": [{"threat": "Indirect fire", "likelihood": 4, "impact": 3}],
+            },
             task="risk",
         )
         briefing_system, _ = claude_client._prompt("briefing", context)
-        risk_system, _ = claude_client._prompt("risk", risk_context)
+        risk_system, risk_user = claude_client._prompt("risk", risk_context)
         briefing = claude_client.local_briefing_narrative(context)
         risk = claude_client.local_risk_narrative(risk_context)
-        for text in (briefing_system, risk_system, briefing, risk):
+        for text in (briefing_system, risk_system, briefing, risk, risk_user):
             self.assertIn("UK English", text)
             lowered = text.lower()
-            for american in ("traveling", "organization", "defense", "license ", "labeled", "toward ", "analyze", "behavior"):
+            for american in ("traveling", "organization", "defense", "license ", "labeled", "toward ", "analyze", "behavior", "prioritize", "center"):
                 self.assertNotIn(american, lowered, american)
-        self.assertIn("travelling", briefing_system)
-        self.assertIn("organisation", risk_system)
+        self.assertIn("travelling", briefing_system.lower())
+        risk_lower = risk_system.lower()
+        self.assertIn("organisation", risk_lower)
+        self.assertIn("prioritise", risk_lower)
+        self.assertIn("centre", risk_lower)
+        self.assertIn("traveller", risk_lower)
+        self.assertIn("mitigation", risk_lower)
+        self.assertIn("stand-off", risk_lower)
+        self.assertIn("medevac", risk_lower)
+        self.assertIn("hostile environment", risk_lower)
+        for standard in ("ISO 31000", "ISO 31030", "ISO 45001", "BS 8848", "ISO 18788", "ISO 22361"):
+            self.assertIn(standard, risk_system, standard)
+            self.assertIn(standard, risk, standard)
+        for phrase in ("NOTAM", "EASA", "golden hour", "+30", "+60", "+120", "hibernation", "Conditional-Go", "No-Go", "5×5"):
+            self.assertIn(phrase, risk_system, phrase)
+        for heading in (
+            "BLUF",
+            "Verified Security Incidents",
+            "Sub-Regional/Governorate Status",
+            "Aviation/Routes/Infrastructure",
+            "24h Operational Advice",
+            "24–72h Outlook",
+        ):
+            self.assertIn(heading, briefing_system, heading)
+            self.assertIn(heading, briefing, heading)
         self.assertIn("travel advice", briefing)
         self.assertIn("travel advice", risk)
+        self.assertIn("Indirect fire", risk)
 
     def test_prices_follow_the_published_list(self):
         self.assertEqual(claude_client.estimate_usd("claude-sonnet-5-5", 1_000_000, 0), 2.0)

@@ -728,19 +728,28 @@ def risk_tags(hazards: list[dict]) -> list[str]:
     return tags or ["Baseline"]
 
 
+def score_band(score: object) -> str:
+    """5×5 product bands: Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, Severe 20–25."""
+    try:
+        number = int(score)
+    except (TypeError, ValueError):
+        number = 0
+    if number <= 4:
+        return "LOW"
+    if number <= 9:
+        return "MODERATE"
+    if number <= 14:
+        return "HIGH"
+    if number <= 19:
+        return "VERY HIGH"
+    return "SEVERE"
+
+
 def overall_rating(hazards: list[dict]) -> dict:
     score = 0
     for row in hazards:
         score = max(score, int(row["likelihood"]) * int(row["impact"]))
-    if score <= 4:
-        band = "LOW"
-    elif score <= 9:
-        band = "MEDIUM"
-    elif score <= 16:
-        band = "HIGH"
-    else:
-        band = "SEVERE"
-    return {"band": band, "score": score, "scale": "1-25"}
+    return {"band": score_band(score), "score": score, "scale": "1-25"}
 
 
 def country_template(country: object) -> dict:

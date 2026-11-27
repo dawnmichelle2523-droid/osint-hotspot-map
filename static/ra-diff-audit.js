@@ -127,7 +127,7 @@
   }
 
   function inherentLevel() {
-    const rank = { Low: 1, Medium: 2, High: 3, Extreme: 4 };
+    const rank = { Low: 1, Moderate: 2, Medium: 2, High: 3, "Very High": 4, Severe: 5, Extreme: 5 };
     let best = "Low";
     document.querySelectorAll("#matrix tbody tr").forEach((tr) => {
       const band = tr.querySelector(".band");
@@ -195,6 +195,7 @@
         const key = field.dataset.field;
         if (row[key] == null) return;
         field.value = String(row[key]);
+        if (key === "context" && field.value) field.dataset.edited = "1";
       });
     });
     const matrix = $("matrix");

@@ -32,7 +32,11 @@ The buttons live on `/risk-assessments`, `/briefing`, and `/reports`. The report
 
 ## What is sent
 
-Drafts and the local template are written in UK English (British spelling and conventions).
+Drafts and the local template are written in UK English (British spelling, day-month-year dates, and terms such as organisation, traveller, prioritise, and medevac).
+
+A risk draft is written as a security-director assessment. It uses the 5×5 Likelihood × Impact scale (Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, Severe 20–25) and aligns the wording with ISO 31000, ISO 31030, and ISO 45001, plus BS 8848, ISO 18788, or ISO 22361 when the sector calls for that frame. It asks for threat-actor capability and intent only from the public context, route and checkpoint notes, NOTAM and EASA CZIB context, medevac and golden-hour constraints, the 2-tap check-in ladder (+30 / +60 / +120 minutes), shelter-in-place and hibernation triggers, and Go / Conditional-Go / No-Go criteria.
+
+A briefing draft uses six headings, in order: BLUF, Verified Security Incidents, Sub-Regional/Governorate Status, Aviation/Routes/Infrastructure, 24h Operational Advice, and 24–72h Outlook.
 
 The prompt is rebuilt on the server from a short allowlist:
 
@@ -51,4 +55,4 @@ Emails, phone numbers, IMEIs, passport-like IDs, and labeled staff names are str
 
 The response is still a finished draft: the local template, with `source: "local"`, a plain-English `status`, and `usage.estimated_usd` of `0`. The list-price ceiling in `estimate` is what a call would have cost. It is not a bill. Published rates used for that ceiling are Sonnet 5.5 at $2 / $10 per million input / output tokens, and Haiku 5.5 at $0.10 / $0.50 per million tokens for prompts up to 100,000 tokens ($0.50 / $2.50 above that).
 
-Each click makes at most one Messages API request. There is no retry. Risk drafts use effort `medium` and an output cap of 1600 tokens. Briefings use effort `low` and a cap of 900 tokens. Thinking tokens, when the API bills them, count toward that cap and toward the output price.
+Each click makes at most one Messages API request. There is no retry. Risk drafts use effort `medium` and an output cap of 2400 tokens. Briefings use effort `low` and a cap of 1200 tokens. Thinking tokens, when the API bills them, count toward that cap and toward the output price.

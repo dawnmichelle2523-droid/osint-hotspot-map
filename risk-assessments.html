@@ -147,11 +147,12 @@
       <header class="panel" id="print-head">
         <img id="export-logo" src="/static/logo.png?v=4" alt="" style="height:42px">
         <p class="kicker" id="org-line">GeoRiskIntel</p>
+        <p class="note" id="powered-by">Powered by GeoRiskIntel</p>
         <h2 id="doc-title" style="margin:0">Security &amp; Travel Risk Assessment</h2>
         <p class="note" id="standards"></p>
         <p class="note" id="template-badge">Country template: — · Sector template: —</p>
         <p class="note" id="ao-print-line">Area of Operations: —</p>
-        <p id="hra-rating"><strong id="hra-band">MEDIUM</strong> <span id="hra-score">6</span>/25</p>
+        <p id="hra-rating"><strong id="hra-band">MODERATE</strong> <span id="hra-score">6</span>/25</p>
         <p id="hra-tags">Primary areas of risk: Baseline</p>
         <div class="grid">
           <label>Deployment dates <input id="hra-dates" data-hra="1" autocomplete="off" placeholder="Dates stay on this device"></label>
@@ -192,8 +193,8 @@
         <h4>Live OSINT activity</h4>
         <p id="geo-trend"></p>
         <div id="hra-incident-slot"></div>
-        <h3>2.2 Residual risk matrix</h3>
-        <p class="note">Conflict/War, Terrorism, Crime, Civil Unrest, Kidnap/Detention, Road/Airspace, Digital/InfoSec, and Health/Environmental are pre-filled from the country template. You can edit every row. Edits stay on this device.</p>
+        <h3>2.2 Likelihood × impact matrix and mitigation table</h3>
+        <p class="note">The 5×5 matrix scores Likelihood (1 Rare to 5 Almost Certain) against Impact (1 Negligible to 5 Catastrophic). Bands are Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, and Severe 20–25. The mitigation table is pre-filled for the Area of Operations and the live 7-day OSINT feed. Edits stay on this device.</p>
         <div id="hra-matrix-slot"></div>
         <h3>2.3 Task-specific risk assessment</h3>
         <label>Task-specific hazards <textarea id="hra-task" data-hra="1" placeholder="Hazards that belong to this assignment, not the country baseline."></textarea></label>
@@ -212,7 +213,7 @@
         <label>PPE, comms, and medical kit <textarea id="hra-kit" data-hra="1" placeholder="What the team carries."></textarea></label>
         <h3>3.5 Daily activities and check-in</h3>
         <label>Check-in plan <textarea id="hra-checkins" data-hra="1" placeholder="Cadence and missed-check-in actions."></textarea></label>
-        <p class="note">Field staff use the GeoRiskIntel <a href="/check-in">2-tap check-in beacon</a>. The ops room sees a callsign, not a traveller profile.</p>
+        <p class="note">Field staff use the GeoRiskIntel <a href="/check-in">2-tap check-in beacon</a>. The ops desk sees a callsign, not a traveller profile. Overdue escalation: +30 minutes the ops desk calls, +60 minutes the alternate channel, +120 minutes the missing-person protocol. Shelter-in-place and hibernation triggers sit in the mitigation table.</p>
       </section>
       <section class="panel" id="hra-4">
         <h2>4. Medical and evacuation</h2>
@@ -365,9 +366,10 @@
           <label><span id="caption-passport">Passport or ID reference (Local-Only)</span><input id="passport" data-local="pii" autocomplete="off"></label>
         </div>
       </section>
-      <section class="panel">
-        <h2>Scored risk matrix</h2>
-        <p class="note">Inherent score = Likelihood (1–5) × Impact (1–5). Low 1–4, Medium 5–9, High 10–16, Extreme 17–25. Pick a sector control to fill the control measures and the residual score. You can edit the text, or type a hazard that is not listed.</p>
+      <section class="panel" id="risk-matrix-panel">
+        <h2>Risk matrix</h2>
+        <p class="note">Likelihood runs from 1 Rare to 5 Almost Certain. Impact runs from 1 Negligible to 5 Catastrophic. Score = Likelihood × Impact. Low 1–4, Moderate 5–9, High 10–14, Very High 15–19, Severe 20–25. The gold mark is the overall inherent score. The light mark is the overall residual score. Pick a sector control to fill the mitigation and the residual score, or type a hazard that is not listed.</p>
+        <div id="risk-grid" class="risk-grid" aria-label="5 by 5 likelihood and impact matrix"></div>
         <div class="grid no-print">
           <label>Primary threat and hazard categories
             <select id="threat-pick"></select>
@@ -384,15 +386,12 @@
           <table class="matrix" id="matrix">
             <thead>
               <tr>
-                <th>Threat / hazard</th>
-                <th>L</th>
-                <th>I</th>
-                <th>Rating</th>
-                <th>Control measures</th>
-                <th>Owner</th>
-                <th>Residual L</th>
-                <th>Residual I</th>
-                <th>Residual</th>
+                <th>Threat Category</th>
+                <th>Inherent Rating</th>
+                <th>Country / Operational Context</th>
+                <th>Mandatory Mitigation Controls</th>
+                <th>Residual Rating</th>
+                <th>Action Owner</th>
                 <th class="no-print"></th>
               </tr>
             </thead>
@@ -400,6 +399,13 @@
           </table>
         </div>
         <datalist id="owner-list"></datalist>
+        <datalist id="threat-categories"></datalist>
+        <h3>Go / Conditional-Go / No-Go</h3>
+        <ul class="decision-criteria">
+          <li><strong>Go.</strong> Residual risk is Low or Moderate, every control has an action owner, the medevac route and the 2-tap ladder are confirmed, and the authorising manager accepts the residual risk.</li>
+          <li><strong>Conditional-Go.</strong> Residual risk is High. Movement waits until the named conditions — route, checkpoint, airspace, shelter, and communications — are met and recorded.</li>
+          <li><strong>No-Go.</strong> Residual risk is Very High or Severe, or a control the deployment depends on is missing. That includes closed airspace, a medevac that cannot meet the golden hour, or a check-in ladder that has not been agreed.</li>
+        </ul>
       </section>
       <section class="panel" id="pdr" hidden>
         <h2>Pre-deployment report</h2>
@@ -441,11 +447,12 @@
       </section>
     </article>
   </main>
-  <footer id="app-footer">GeoRiskIntel · Local-only entries remain on this device and are never sent to Grok.</footer>
+  <footer id="app-footer">Powered by GeoRiskIntel · Local-only entries remain on this device and are never sent to Grok.</footer>
   <script src="/static/grok-stream.js"></script>
   <script src="/static/claude-draft.js"></script>
   <script src="/static/geo-split.js"></script>
   <script src="/static/ra-sectors.js"></script>
+  <script src="/static/risk-matrix.js"></script>
   <script>
     const RA_SECTORS = Array.isArray(window.RA_SECTORS) ? window.RA_SECTORS : [];
     const STORAGE_KEY = "georisk.ra.v2";
@@ -473,16 +480,18 @@
       (sector.comms || []).forEach((item) => known.comms.add(item));
     });
 
-    function band(score) {
+    function bandInfo(score) {
+      if (window.GeoRiskMatrix) return GeoRiskMatrix.band(score);
       const n = Number(score) || 0;
-      if (n <= 4) return "Low";
-      if (n <= 9) return "Medium";
-      if (n <= 16) return "High";
-      return "Extreme";
+      if (n <= 4) return { name: "Low", css: "Low" };
+      if (n <= 9) return { name: "Moderate", css: "Moderate" };
+      if (n <= 14) return { name: "High", css: "High" };
+      if (n <= 19) return { name: "Very High", css: "VeryHigh" };
+      return { name: "Severe", css: "Severe" };
     }
     function bandHtml(score) {
-      const name = band(score);
-      return "<span class=\"band " + name + "\">" + name + " · " + score + "</span>";
+      const info = bandInfo(score);
+      return "<span class=\"band " + info.css + "\">" + info.name + "</span>";
     }
     function escapeAttr(value) {
       return String(value || "").replace(/[&"<>]/g, (ch) => ({ "&": "&amp;", "\"": "&quot;", "<": "&lt;", ">": "&gt;" }[ch]));
@@ -510,17 +519,28 @@
       const controls = (sector && sector.controls) || [];
       return controls.find((item) => (item.appliesTo || []).indexOf(threat) !== -1) || null;
     }
+    function areaRegion() {
+      const node = document.getElementById("ao-region");
+      return node && node.value && node.value !== "all" ? node.value : "";
+    }
+    function liveIncidents() {
+      return (countryReport && countryReport.incidents) || [];
+    }
     function blankRow(threat) {
       const sector = currentSector();
-      const owners = (sector && sector.owners) || ["Team leader"];
+      const owners = (sector && sector.owners) || ["Team Leader"];
       const match = suggestedControl(threat);
+      const spec = window.GeoRiskMatrix ? GeoRiskMatrix.categoryByLabel(threat) : null;
       return {
         threat: threat || "Additional hazard",
         likelihood: 3,
         impact: 3,
-        control: match ? match.text : "",
+        control: match ? match.text : (spec ? spec.controls : ""),
         controlId: match ? match.id : "",
-        owner: owners[0] || "Team leader",
+        context: spec && window.GeoRiskMatrix ? GeoRiskMatrix.contextLine(spec, countrySelect.value, areaRegion(), liveIncidents(), "") : "",
+        baselineNote: "",
+        contextEdited: false,
+        owner: spec ? spec.owner : (owners[0] || "Team Leader"),
         residualL: match ? Number(match.residualL) || 2 : 2,
         residualI: match ? Number(match.residualI) || 2 : 2
       };
@@ -533,6 +553,9 @@
       next.impact = Number(source.impact) || 3;
       next.control = source.control != null ? source.control : next.control;
       next.controlId = source.controlId || "";
+      next.context = source.context != null ? source.context : next.context;
+      next.baselineNote = source.baselineNote != null ? source.baselineNote : next.baselineNote;
+      next.contextEdited = !!source.contextEdited;
       next.owner = source.owner || next.owner;
       next.residualL = Number(source.residualL) || next.residualL;
       next.residualI = Number(source.residualI) || next.residualI;
@@ -561,9 +584,41 @@
         if (key === "controlPick") return;
         if (key === "likelihood" || key === "impact" || key === "residualL" || key === "residualI") row[key] = Number(field.value) || 1;
         else row[key] = field.value;
+        if (key === "context" && field.dataset.edited === "1") row.contextEdited = true;
       });
-      paintBand(tr.querySelector("[data-score=\"inherent\"]"), row.likelihood * row.impact);
-      paintBand(tr.querySelector("[data-score=\"residual\"]"), row.residualL * row.residualI);
+      paintRatingCell(tr.querySelector("[data-score=\"inherent\"]"), row.likelihood, row.impact, "inherent");
+      paintRatingCell(tr.querySelector("[data-score=\"residual\"]"), row.residualL, row.residualI, "residual");
+      paintGrid();
+    }
+    function ratingMarkup(likelihood, impact, kind) {
+      const score = (Number(likelihood) || 1) * (Number(impact) || 1);
+      const lName = kind === "residual" ? "residualL" : "likelihood";
+      const iName = kind === "residual" ? "residualI" : "impact";
+      return "<p class=\"score-formula\">" + likelihood + " × " + impact + " = " + score + "</p>" +
+        bandHtml(score) +
+        "<span class=\"no-print score-edit\">" +
+          "<label>L " + numberSelect(likelihood, "data-field=\"" + lName + "\"") + "</label>" +
+          "<label>I " + numberSelect(impact, "data-field=\"" + iName + "\"") + "</label>" +
+        "</span>";
+    }
+    function paintRatingCell(cell, likelihood, impact, kind) {
+      if (!cell) return;
+      const score = (Number(likelihood) || 1) * (Number(impact) || 1);
+      const formula = cell.querySelector(".score-formula");
+      if (formula) formula.textContent = likelihood + " × " + impact + " = " + score;
+      const badge = cell.querySelector(".band");
+      if (badge) {
+        const info = bandInfo(score);
+        badge.className = "band " + info.css;
+        badge.textContent = info.name;
+      } else {
+        cell.innerHTML = ratingMarkup(likelihood, impact, kind);
+      }
+    }
+    function paintGrid() {
+      const host = document.getElementById("risk-grid");
+      if (!host || !window.GeoRiskMatrix) return;
+      host.innerHTML = GeoRiskMatrix.renderGrid(rows);
     }
     function readRowsFromDom() {
       document.querySelectorAll("#matrix tbody tr").forEach(syncRow);
@@ -578,10 +633,25 @@
       row.residualI = Number(item.residual_impact || item.residualI) || 2;
       return row;
     }
+    function situationText(profile) {
+      if (!profile) return "";
+      return [profile.stability, profile.borders, profile.actors].filter(Boolean).join(" ");
+    }
+    function rowsForHazards(list, profile) {
+      if (!window.GeoRiskMatrix) return (list || []).map(hazardRow);
+      return GeoRiskMatrix.rowsFromHazards(list, {
+        country: countrySelect.value,
+        region: areaRegion() || (profile && profile.region) || "",
+        incidents: liveIncidents(),
+        situation: situationText(profile)
+      });
+    }
     function layerCountryHazards() {
       const profile = window.GeoSplit ? GeoSplit.countryTemplate(countrySelect.value) : null;
-      const seeded = profile && profile.hazards ? profile.hazards.map(hazardRow) : [];
-      rows = seeded.length ? seeded : (currentSector() && currentSector().threats || []).slice(0, 6).map(blankRow);
+      const seeded = profile && profile.hazards ? profile.hazards : [];
+      rows = (seeded.length || window.GeoRiskMatrix)
+        ? rowsForHazards(seeded, profile)
+        : (currentSector() && currentSector().threats || []).slice(0, 6).map(blankRow);
       rowsDirty = false;
       paint();
       document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
@@ -590,29 +660,41 @@
       dirty: function () { return rowsDirty; },
       replace: function (list) {
         if (rowsDirty) return false;
-        rows = (list || []).map(hazardRow);
+        const profile = window.GeoSplit ? GeoSplit.countryTemplate(countrySelect.value) : null;
+        rows = rowsForHazards(list, profile);
         paint();
         return true;
       }
     };
+    function refreshContexts() {
+      if (!window.GeoRiskMatrix) return;
+      let changed = false;
+      rows.forEach((row) => {
+        if (row.contextEdited) return;
+        const spec = GeoRiskMatrix.categoryByLabel(row.threat);
+        if (!spec) return;
+        const next = GeoRiskMatrix.contextLine(spec, countrySelect.value, areaRegion(), liveIncidents(), row.baselineNote || "");
+        if (next && next !== row.context) {
+          row.context = next;
+          changed = true;
+        }
+      });
+      if (changed) paint();
+    }
     function paint() {
       const body = document.querySelector("#matrix tbody");
       body.innerHTML = rows.map((row, index) => {
-        const score = row.likelihood * row.impact;
-        const residual = row.residualL * row.residualI;
         return "<tr data-row=\"" + index + "\">" +
-          "<td><input data-field=\"threat\" value=\"" + escapeAttr(row.threat) + "\" autocomplete=\"off\"></td>" +
-          "<td>" + numberSelect(row.likelihood, "data-field=\"likelihood\"") + "</td>" +
-          "<td>" + numberSelect(row.impact, "data-field=\"impact\"") + "</td>" +
-          "<td data-score=\"inherent\">" + bandHtml(score) + "</td>" +
+          "<td><input data-field=\"threat\" list=\"threat-categories\" value=\"" + escapeAttr(row.threat) + "\" autocomplete=\"off\"></td>" +
+          "<td data-score=\"inherent\">" + ratingMarkup(row.likelihood, row.impact, "inherent") + "</td>" +
+          "<td><textarea data-field=\"context\">" + escapeText(row.context) + "</textarea></td>" +
           "<td><select class=\"no-print\" data-field=\"controlPick\" aria-label=\"Pre-built control\">" + controlOptions(row.controlId) + "</select><textarea data-field=\"control\">" + escapeText(row.control) + "</textarea></td>" +
+          "<td data-score=\"residual\">" + ratingMarkup(row.residualL, row.residualI, "residual") + "</td>" +
           "<td><input data-field=\"owner\" list=\"owner-list\" value=\"" + escapeAttr(row.owner) + "\" autocomplete=\"off\"></td>" +
-          "<td>" + numberSelect(row.residualL, "data-field=\"residualL\"") + "</td>" +
-          "<td>" + numberSelect(row.residualI, "data-field=\"residualI\"") + "</td>" +
-          "<td data-score=\"residual\">" + bandHtml(residual) + "</td>" +
           "<td class=\"no-print\"><button type=\"button\" class=\"ghost\" data-remove=\"1\">Remove</button></td>" +
           "</tr>";
       }).join("");
+      paintGrid();
     }
     function fillDataList(id, items) {
       const list = document.getElementById(id);
@@ -746,7 +828,9 @@
       fillDataList("accommodation-list", sector.accommodation);
       fillDataList("comms-list", sector.comms);
       fillSelectValues("threat-pick", sector.threats);
-      fillDataList("owner-list", sector.owners);
+      const owners = (sector.owners || []).concat(window.GeoRiskMatrix ? GeoRiskMatrix.OWNERS : []);
+      fillDataList("owner-list", owners.filter((item, index) => owners.indexOf(item) === index));
+      fillDataList("threat-categories", window.GeoRiskMatrix ? GeoRiskMatrix.CATEGORIES.map((item) => item.label) : []);
       setLocalLabels(sector);
       if (!flags.keepProtocols) {
         adoptField("purpose", sector.operations, known.operations);
@@ -986,8 +1070,13 @@
 
     document.getElementById("matrix").addEventListener("input", (event) => {
       rowsDirty = true;
-      const tr = event.target.closest("tr");
+      const tr = event.target.closest ? event.target.closest("tr") : null;
       if (tr) syncRow(tr);
+      else readRowsFromDom();
+      if (tr && event.target.dataset && event.target.dataset.field === "context") {
+        const index = Number(tr.dataset.row);
+        if (rows[index]) rows[index].contextEdited = true;
+      }
       save();
       document.dispatchEvent(new CustomEvent("georisk-hra-refresh"));
     });
@@ -1093,6 +1182,7 @@
         const item = sources[key] || {};
         return "<article><h3>" + escapeText(item.agency || key.toUpperCase()) + "</h3><p><strong>" + escapeText(item.label || "Unavailable") + "</strong></p><p class=\"note\">" + escapeText(item.summary || item.message || "") + "</p></article>";
       }).join("");
+      refreshContexts();
       list.innerHTML = (report.incidents || []).map((item) => {
         const place = item.area ? escapeText(item.area) : "Area not named";
         const link = item.source ? ' · <a href="' + escapeText(item.source) + '" target="_blank" rel="noopener noreferrer">' + escapeText(item.source_name || "Source") + "</a>" : " · " + escapeText(item.source_name || "");
