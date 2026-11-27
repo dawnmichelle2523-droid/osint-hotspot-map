@@ -3,7 +3,8 @@
 The widget reads the local live feed (hotspots and stored rows) and the same
 risk index the reports use. It never calls xAI. The "Powered by GeoRiskIntel"
 bar is rendered by the server for every mode and is not controlled by query
-parameters.
+parameters. The official mark at /static/logo.png sits in that bar. A client
+logo, accent, theme, or hide flag cannot replace or remove it.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ whitelabel_bp = Blueprint("whitelabel", __name__)
 ROOT = Path(__file__).resolve().parent
 STUDIO_PAGE = ROOT / "static" / "white-label.html"
 ATTRIBUTION = "Powered by GeoRiskIntel"
+PRODUCT_LOGO_PATH = "/static/logo.png"
 DEFAULT_ACCENT = "#D4AF37"
 DEFAULT_COUNTRY = "Yemen"
 MODES = {"badge", "ticker", "map"}
@@ -77,16 +79,50 @@ CENTROIDS = {
     "Maritime": (14.00, 48.00),
     "Global": (15.00, 10.00),
 }
-WIDGET_CSP = (
-    "frame-ancestors *; "
-    "default-src 'none'; "
-    "img-src https:; "
-    "style-src 'unsafe-inline'; "
-    "script-src 'none'; "
-    "base-uri 'none'; "
-    "form-action 'none'; "
-    "object-src 'none'"
-)
+
+
+def _page_origin() -> str:
+    """Scheme and host of this widget response. Paths and header junk are dropped."""
+    try:
+        root = request.url_root or ""
+    except RuntimeError:
+        return ""
+    parts = urlsplit(root)
+    scheme = (parts.scheme or "").lower()
+    netloc = parts.netloc or ""
+    if scheme not in {"http", "https"} or not netloc:
+        return ""
+    if any(ch in netloc for ch in " ;\"'<>\\,") or any(ord(ch) < 33 for ch in netloc):
+        return ""
+    return f"{scheme}://{netloc}"
+
+
+def _product_logo_src() -> str:
+    """Official GeoRiskIntel mark. Never read from the query string or client logo."""
+    origin = _page_origin()
+    if not origin:
+        return PRODUCT_LOGO_PATH
+    return origin + PRODUCT_LOGO_PATH
+
+
+def _widget_csp() -> str:
+    """Allow the same-origin mark and https client logos. Block everything else."""
+    origin = _page_origin()
+    img_src = "img-src 'self' https:"
+    if origin:
+        # Sandboxed embeds have an opaque origin, so 'self' does not match the
+        # host that served the document. Name that host explicitly.
+        img_src += " " + origin
+    return (
+        "frame-ancestors *; "
+        "default-src 'none'; "
+        f"{img_src}; "
+        "style-src 'unsafe-inline'; "
+        "script-src 'none'; "
+        "base-uri 'none'; "
+        "form-action 'none'; "
+        "object-src 'none'"
+    )
 
 
 def _esc(value: object) -> str:
@@ -561,9 +597,12 @@ def _map_svg(facts: dict, accent: str, theme: str) -> str:
 
 
 def _powered(home: str) -> str:
+    """Fixed attribution bar. The logo source is the product file, not brand input."""
     return (
         f'<a class="powered" data-attribution="required" href="{_esc(home)}" '
-        'target="_blank" rel="noopener noreferrer">Powered by GeoRiskIntel</a>'
+        'target="_blank" rel="noopener noreferrer">'
+        f'<img class="powered-logo" src="{_esc(_product_logo_src())}" alt="GeoRiskIntel" '
+        f'decoding="async">{ATTRIBUTION}</a>'
     )
 
 
@@ -665,12 +704,20 @@ def render_widget(facts: dict, brand: dict, home: str) -> str:
     @media (prefers-reduced-motion: reduce) {{ .track {{ animation: none; }} }}
     a.powered {{
       display: flex !important; visibility: visible !important; opacity: 1 !important;
-      align-items: center; justify-content: center; flex: 0 0 auto;
+      align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto;
       min-height: 28px; margin: 0; padding: 4px 10px;
       background: #102A63; color: #D4AF37 !important;
       font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
       text-decoration: none; position: relative !important;
     }}
+    a.powered .powered-logo {{
+      display: block !important; visibility: visible !important; opacity: 1 !important;
+      height: 18px !important; width: auto !important; max-width: none !important;
+      object-fit: contain !important; border-radius: 3px; flex: 0 0 auto;
+      margin: 0; background: transparent; pointer-events: none;
+    }}
+    body[data-theme="light"] a.powered {{ background: #102A63; color: #D4AF37 !important; }}
+    body[data-theme="light"] a.powered .powered-logo {{ filter: none !important; }}
     body[data-mode="ticker"] {{ flex-direction: row; align-items: stretch; }}
     body[data-mode="ticker"] main {{ display: flex; align-items: center; padding: 0 8px; }}
     body[data-mode="ticker"] a.powered {{ border-radius: 0; white-space: nowrap; }}
@@ -694,7 +741,7 @@ def _product_home() -> str:
 def _embed_headers(response: Response) -> Response:
     """Embed headers for customer intranets. No cookies and no third-party origins."""
     response.headers.pop("X-Frame-Options", None)
-    response.headers["Content-Security-Policy"] = WIDGET_CSP
+    response.headers["Content-Security-Policy"] = _widget_csp()
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"

@@ -1,5 +1,6 @@
 import html
 import os
+import re
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -26,6 +27,7 @@ class WhiteLabelTests(unittest.TestCase):
         page = studio.get_data(as_text=True)
         self.assertIn("White-Label Studio", page)
         self.assertIn(ATTRIBUTION, page)
+        self.assertIn('class="powered-logo" src="/static/logo.png" alt="GeoRiskIntel"', page)
         self.assertIn('id="iframe-snippet"', page)
         self.assertIn('id="script-snippet"', page)
         self.assertEqual(studio.headers.get("X-Frame-Options"), "SAMEORIGIN")
@@ -35,6 +37,7 @@ class WhiteLabelTests(unittest.TestCase):
         self.assertIn(ATTRIBUTION, widget.get_data(as_text=True))
         policy = widget.headers.get("Content-Security-Policy", "")
         self.assertIn("frame-ancestors *", policy)
+        self.assertIn("img-src 'self' https:", policy)
         self.assertIn("script-src 'none'", policy)
         self.assertIsNone(widget.headers.get("X-Frame-Options"))
         self.assertEqual(self.client.get("/pricing").status_code, 200)
@@ -121,7 +124,23 @@ class WhiteLabelTests(unittest.TestCase):
         self.assertIn(ATTRIBUTION, hosted_body)
 
     def test_every_mode_keeps_the_attribution_bar(self):
-        hides = ("", "attribution=0", "powered=0", "footer=0", "hide=1", "branding=off")
+        hides = (
+            "",
+            "attribution=0",
+            "powered=0",
+            "footer=0",
+            "hide=1",
+            "branding=off",
+            "logo=0",
+            "logo=",
+            "logo=https://cdn.example.com/other-logo.png",
+            "theme=light",
+            "theme=dark",
+            "accent=%23ffffff",
+        )
+        logo_tag = re.compile(
+            r'<img class="powered-logo" src="([^"]+)" alt="GeoRiskIntel"'
+        )
         for mode in ("badge", "ticker", "map"):
             for extra in hides:
                 query = f"mode={mode}&country=Yemen&org=Atlas"
@@ -132,7 +151,27 @@ class WhiteLabelTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200, query)
                 self.assertIn(ATTRIBUTION, body, query)
                 self.assertIn('data-attribution="required"', body, query)
-                self.assertIn("frame-ancestors *", response.headers.get("Content-Security-Policy", ""))
+                bar = re.search(
+                    r'<a class="powered" data-attribution="required".*?</a>',
+                    body,
+                    flags=re.DOTALL,
+                )
+                self.assertIsNotNone(bar, query)
+                mark = logo_tag.search(bar.group(0))
+                self.assertIsNotNone(mark, query)
+                src = mark.group(1)
+                self.assertTrue(src.endswith("/static/logo.png"), query + " " + src)
+                self.assertNotIn("other-logo.png", src, query)
+                self.assertNotIn("cdn.example.com", bar.group(0), query)
+                self.assertLess(bar.group(0).find('class="powered-logo"'), bar.group(0).find(ATTRIBUTION), query)
+                policy = response.headers.get("Content-Security-Policy", "")
+                self.assertIn("frame-ancestors *", policy, query)
+                self.assertIn("img-src 'self' https:", policy, query)
+                if src.startswith(("http://", "https://")):
+                    origin = src[: -len("/static/logo.png")]
+                    self.assertIn(origin, policy, query)
+                self.assertIn("height: 18px", body, query)
+                self.assertIn("object-fit: contain", body, query)
 
     def test_live_country_data_binding(self):
         stamp = (datetime.now(timezone.utc) - timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%SZ")

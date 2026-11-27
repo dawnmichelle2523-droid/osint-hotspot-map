@@ -23,7 +23,9 @@
     textarea.snippet { min-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .copy-row { display: flex; gap: 8px; align-items: center; margin: 6px 0 12px; }
     #copy-status { min-height: 1.2em; }
-    .rule { border: 1px solid var(--gold-border); border-radius: 10px; padding: 8px 10px; color: var(--gold); font-size: 12px; font-weight: 700; }
+    .rule { display: flex; align-items: center; gap: 8px; border: 1px solid var(--gold-border); border-radius: 10px; padding: 8px 10px; color: var(--gold); font-size: 12px; font-weight: 700; }
+    img.powered-logo { height: 18px; width: auto; object-fit: contain; border-radius: 3px; flex: 0 0 auto; display: block; }
+    footer.studio-footer { display: flex; align-items: center; gap: 8px; }
     @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -111,7 +113,7 @@
           </div>
         </fieldset>
         <p><button type="submit">Update preview</button></p>
-        <p class="rule">Powered by GeoRiskIntel is rendered on every embed. It cannot be removed with a query parameter, theme, or brand colour.</p>
+        <p class="rule"><img class="powered-logo" src="/static/logo.png" alt="GeoRiskIntel">Powered by GeoRiskIntel is rendered on every embed. It cannot be removed with a query parameter, theme, or brand colour.</p>
       </form>
       <section class="preview-card" aria-label="Live widget preview">
         <div class="preview-head">
@@ -130,7 +132,7 @@
       </section>
     </div>
   </main>
-  <footer>GeoRiskIntel · white-label embeds keep the Powered by GeoRiskIntel badge</footer>
+  <footer class="studio-footer"><img class="powered-logo" src="/static/logo.png" alt="GeoRiskIntel"><span>GeoRiskIntel · white-label embeds keep the Powered by GeoRiskIntel badge</span></footer>
   <script>
     "use strict";
     (function () {
