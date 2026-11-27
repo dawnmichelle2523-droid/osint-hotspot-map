@@ -281,6 +281,10 @@ def api_travel_advisories() -> Response:
     return _json(serve_map.travel_advisories_payload())
 
 
+from white_label import whitelabel_bp
+app.register_blueprint(whitelabel_bp)
+
+
 @app.get("/<path:filename>")
 def static_file(filename: str) -> Response:
     name = filename.rsplit("/", 1)[-1]
