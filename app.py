@@ -27,6 +27,8 @@ import serve_map
 app = Flask(__name__)
 preview_lock.install(app)
 ppv.install(app)
+import checkin_beacon
+app.register_blueprint(checkin_beacon.checkin_bp)
 
 
 def _enable_basic_auth() -> None:
