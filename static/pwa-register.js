@@ -1,4 +1,4 @@
-/* Registers the GeoRiskIntel service worker and offers Install App when the browser asks. */
+/* Registers the GeoRiskGlobal service worker and offers Install App when the browser asks. */
 (function () {
   var deferred = null;
 
@@ -30,7 +30,7 @@
     button.id = "pwa-install";
     button.type = "button";
     button.textContent = "Install App";
-    button.setAttribute("aria-label", "Install GeoRiskIntel");
+    button.setAttribute("aria-label", "Install GeoRiskGlobal");
     button.addEventListener("click", function () {
       if (!deferred || typeof deferred.prompt !== "function") return;
       var promptEvent = deferred;

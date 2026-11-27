@@ -576,7 +576,7 @@ def _incidents_block(items) -> str:
 
 
 ANALYST_SYSTEM = (
-    "You are the GeoRiskIntel map analyst. Write for security, media, and travel-risk officers. "
+    "You are the GeoRiskGlobal map analyst. Write for security, media, and travel-risk officers. "
     "Use only the public incident notes provided. Do not invent casualty figures or name private people. "
     "Do not give medical advice, and do not ask for or repeat personal or medical information. "
     "If the notes are thin, say what is not known. Plain text, short paragraphs, then up to four mitigations."
@@ -707,7 +707,7 @@ def stream_copilot(payload: dict):
     notes = _incidents_block(clean.get("incidents"))
     user = f"Active theatre/filters: {json.dumps({k: scrub_text(v, 60) for k, v in filters.items()})}\nQuestion: {question}\nVisible incidents:\n{notes}"
     system = (
-        "You are the GeoRiskIntel map co-pilot. Answer only from the visible public incidents and filters. "
+        "You are the GeoRiskGlobal map co-pilot. Answer only from the visible public incidents and filters. "
         "If they do not answer the question, say so. Refuse requests for personal data, medical detail, "
         "or help targeting a person. Situational awareness and travel-risk context only."
     )

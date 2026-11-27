@@ -188,8 +188,10 @@ def _login_shell(body: str, extra_css: str = "") -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   {ROBOTS_META}
-  <title>Private Preview Access — GeoRiskIntel</title>
+  <title>Private Preview Access — GeoRiskGlobal</title>
   <style>
     :root {{ color-scheme: dark; }}
     * {{ box-sizing: border-box; }}
@@ -232,9 +234,9 @@ def _login_shell(body: str, extra_css: str = "") -> str:
 def _login_page_okta_only(markup: str, error: str) -> str:
     message = f'<p class="error">{html.escape(error)}</p>' if error else ""
     body = f"""<div class="panel-login">
-    <p class="kicker">GEORISKINTEL</p>
+    <p class="kicker">GEORISKGLOBAL</p>
     <h1>Sign in</h1>
-    <p class="note">Sign in with your organization's Okta account. The dashboard tile uses this same sign-in.</p>
+    <p class="note">Sign in with your organisation's Okta account. The dashboard tile uses this same sign-in.</p>
     {message}
     {markup}
     <p class="setup"><a href="/sso-setup">Okta setup sheet</a></p>
@@ -245,7 +247,7 @@ def _login_page_okta_only(markup: str, error: str) -> str:
 def _login_page_okta_and_password(markup: str, error: str, nxt: str) -> str:
     message = f'<p class="error">{html.escape(error)}</p>' if error else ""
     body = f"""<form method="post" action="/login" autocomplete="off">
-    <p class="kicker">GEORISKINTEL</p>
+    <p class="kicker">GEORISKGLOBAL</p>
     <h1>Private Preview Access</h1>
     <p class="note">This preview is locked. Sign in with Okta, or enter the preview password.</p>
     {message}
@@ -272,8 +274,10 @@ def login_page(error: str = "", nxt: str = "/") -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   {ROBOTS_META}
-  <title>Private Preview Access — GeoRiskIntel</title>
+  <title>Private Preview Access — GeoRiskGlobal</title>
   <style>
     :root {{ color-scheme: dark; }}
     * {{ box-sizing: border-box; }}
@@ -303,7 +307,7 @@ def login_page(error: str = "", nxt: str = "/") -> str:
 </head>
 <body>
   <form method="post" action="/login" autocomplete="off">
-    <p class="kicker">GEORISKINTEL</p>
+    <p class="kicker">GEORISKGLOBAL</p>
     <h1>Private Preview Access</h1>
     <p class="note">This preview is locked. Enter the preview password to continue.</p>
     {message}
@@ -372,7 +376,7 @@ def install(app: Flask) -> None:
         if path.startswith("/api/"):
             body = '{"ok":false,"message":"Preview authentication is required."}\n'
             response = Response(body, status=401, mimetype="application/json")
-            response.headers["WWW-Authenticate"] = 'Basic realm="GeoRiskIntel Preview"'
+            response.headers["WWW-Authenticate"] = 'Basic realm="GeoRiskGlobal Preview"'
             return response
         target = path
         if request.query_string:

@@ -1,4 +1,4 @@
-"""Live Slack ops-room alerts for GeoRiskIntel.
+"""Live Slack ops-room alerts for GeoRiskGlobal.
 
 Channels live in their own SQLite file so they never lock the incidents
 database. Matching incidents are pushed as Slack Block Kit cards. The
@@ -556,7 +556,7 @@ def build_block_kit(incident: dict, base_url: str | None = None) -> dict:
     section = f"*{slack_escape(item['title'])}*"
     if summary:
         section += "\n" + slack_escape(summary)
-    fallback = f"GeoRiskIntel {item['severity']} · {item['country']} · {item['title']}"[:300]
+    fallback = f"GeoRiskGlobal {item['severity']} · {item['country']} · {item['title']}"[:300]
     context = f"Source: *{slack_escape(_source_label(item))}* · {display_stamp(item['timestamp'])}"
     elements = [{"type": "mrkdwn", "text": context[:300]}]
     badge = confidence_badge_text(item)
@@ -594,7 +594,7 @@ def build_digest_payload(incidents: list[dict], base_url: str | None = None) -> 
     blocks = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f"GeoRiskIntel digest · {len(items)} incidents"[:150], "emoji": True},
+            "text": {"type": "plain_text", "text": f"GeoRiskGlobal digest · {len(items)} incidents"[:150], "emoji": True},
         }
     ]
     for item in items[:8]:
@@ -614,7 +614,7 @@ def build_digest_payload(incidents: list[dict], base_url: str | None = None) -> 
         }
     )
     blocks.append({"type": "actions", "elements": [_button(top.get("country"), base_url)]})
-    fallback = f"GeoRiskIntel digest · {len(items)} incidents"
+    fallback = f"GeoRiskGlobal digest · {len(items)} incidents"
     return {"text": fallback, "attachments": [{"color": color, "fallback": fallback, "blocks": blocks}]}
 
 
@@ -629,8 +629,8 @@ def sample_incident() -> dict:
         "region": "Middle East",
         "category": "ACT",
         "severity": "HIGH",
-        "source_name": "GeoRiskIntel desk",
-        "source": "https://georiskintel.example/sources/sample",
+        "source_name": "GeoRiskGlobal desk",
+        "source": "https://georiskglobal.example/sources/sample",
         "timestamp": utc_stamp(),
     }
 
@@ -651,7 +651,7 @@ def preview_incident(overrides: dict | None = None) -> dict:
             "region": raw.get("region") or raw.get("theatre") or "Middle East",
             "category": category,
             "severity": raw.get("severity") or ("HIGH" if category == "TSUNAMI" else "HIGH"),
-            "source_name": raw.get("source_name") or "GeoRiskIntel desk",
+            "source_name": raw.get("source_name") or "GeoRiskGlobal desk",
             "timestamp": raw.get("timestamp") or utc_stamp(),
         }
     )
@@ -1125,7 +1125,7 @@ def post_webhook(url: str, payload: dict, timeout: float = WEBHOOK_TIMEOUT) -> t
             json=payload,
             timeout=timeout,
             allow_redirects=False,
-            headers={"Content-Type": "application/json", "User-Agent": "GeoRiskIntel-SlackAlerts/1.0"},
+            headers={"Content-Type": "application/json", "User-Agent": "GeoRiskGlobal-SlackAlerts/1.0"},
         )
         return int(response.status_code), (response.text or "")[:500]
     except requests.Timeout:

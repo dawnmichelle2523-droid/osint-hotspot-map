@@ -31,9 +31,9 @@ READ_TIMEOUT = 8
 GDACS_TIMEOUT = 18
 MAX_BYTES = 1_500_000
 USER_AGENT = (
-    "GeoRiskIntel/1.0 (osint-hotspot-map; public OSINT ingest; +https://www.gov.uk/foreign-travel-advice)"
+    "GeoRiskGlobal/1.0 (osint-hotspot-map; public OSINT ingest; +https://www.gov.uk/foreign-travel-advice)"
 )
-NWS_USER_AGENT = "GeoRiskIntel/1.0 (server-side weather ingest)"
+NWS_USER_AGENT = "GeoRiskGlobal/1.0 (server-side weather ingest)"
 
 _lock = threading.Lock()
 _refreshing = False
@@ -272,7 +272,7 @@ def _feeds() -> list[dict]:
          "url": "https://www.seismicportal.eu/fdsnws/event/1/query?limit=50&format=json&orderby=time", "parser": "emsc"},
         {"id": "met-norway", "name": "MET Norway Alerts", "region": "UK & Europe", "category": "Weather",
          "url": "https://api.met.no/weatherapi/metalerts/2.0/current.json", "parser": "geojson",
-         "default_country": "Norway", "user_agent": "GeoRiskIntel/1.0 (osint-hotspot-map; public weather ingest)"},
+         "default_country": "Norway", "user_agent": "GeoRiskGlobal/1.0 (osint-hotspot-map; public weather ingest)"},
         {"id": "bbc-europe", "name": "BBC News Europe", "region": "UK & Europe", "category": "Security",
          "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml", "parser": "placed-rss", "limit": 8},
         {"id": "balkan", "name": "Balkan Insight", "region": "UK & Europe", "category": "Security",

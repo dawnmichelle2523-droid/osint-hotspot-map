@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Slack Alerts — GeoRiskIntel</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <title>Slack Alerts — GeoRiskGlobal</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/static/platform.css">
   <style>
@@ -40,7 +41,7 @@
   <div class="nav-backdrop"></div>
   <div class="nav-row">
     <a class="brand-lockup" href="/">
-      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
     </a>
     <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
       <span class="nav-toggle-bars" aria-hidden="true"></span>
@@ -171,7 +172,7 @@
       </div>
     </section>
   </main>
-  <footer>GeoRiskIntel · Slack alerts stay on the server · no model tokens</footer>
+  <footer>GeoRiskGlobal · Slack alerts stay on the server · no model tokens</footer>
   <script>
     const REGIONS = ["ALL", "Middle East", "United States", "Canada", "South America", "APAC", "Australia", "Afghanistan", "Russia & Ukraine", "Europe", "Africa", "Global", "Gulf States"];
     const COUNTRIES = ["ALL", "Syria", "Iraq", "Saudi Arabia", "Iran", "Lebanon", "Israel", "Palestine", "Jordan", "Yemen", "Sudan", "Chad", "Bahrain", "Kuwait", "Qatar", "UAE", "Oman", "Maritime", "Gulf States", "United States", "Canada", "Brazil", "Japan", "Australia", "Afghanistan", "Ukraine", "Russia", "United Kingdom", "Egypt", "Turkey"];
@@ -260,7 +261,7 @@
       const button = (((blocks.find((block) => block.type === "actions") || {}).elements || [])[0] || {});
       document.getElementById("preview").innerHTML =
         '<div class="slack-card"><div class="slack-bar" style="background:' + esc(attachment.color || "#3b82f6") + '"></div><div class="slack-body">' +
-        "<h3>" + esc(header.text || "GeoRiskIntel") + "</h3>" +
+        "<h3>" + esc(header.text || "GeoRiskGlobal") + "</h3>" +
         "<p>" + mrkdwn(section.text || "") + "</p>" +
         '<p class="meta">' + mrkdwn(context) + "</p>" +
         '<a class="slack-btn" href="' + esc(button.url || "/") + '" target="_blank" rel="noopener">' + esc((button.text && button.text.text) || "View on Live Map") + "</a>" +

@@ -1,6 +1,6 @@
 {
-  "name": "GeoRiskIntel — Live OSINT & Travel Risk",
-  "short_name": "GeoRiskIntel",
+  "name": "GeoRiskGlobal — Live OSINT & Travel Risk",
+  "short_name": "GeoRiskGlobal",
   "description": "Live OSINT map, travel risk assessments, sentinel zones, and field reports.",
   "id": "/",
   "start_url": "/",

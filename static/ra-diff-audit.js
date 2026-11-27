@@ -720,7 +720,7 @@
   }
 
   function clearLocalBrowserData() {
-    const confirmed = window.confirm("Clear GeoRiskIntel baselines, the reviewer name and qualification, and the pasted corridor brief from this browser?");
+    const confirmed = window.confirm("Clear GeoRiskGlobal baselines, the reviewer name and qualification, and the pasted corridor brief from this browser?");
     if (!confirmed) return;
     ["georisk.ra.baselines.v1", "georisk.ra.baseline-active.v1", "georisk.corridor.v1"].forEach((key) => {
       try { localStorage.removeItem(key); } catch (err) {}

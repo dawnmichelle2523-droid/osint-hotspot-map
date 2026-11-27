@@ -181,7 +181,7 @@ def post_form(url: str, form: Mapping[str, str]) -> dict:
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "GeoRiskIntel-OktaSSO/1",
+        "User-Agent": "GeoRiskGlobal-OktaSSO/1",
     }
     secret = form.get("client_secret") or ""
     ident = form.get("client_id") or ""
@@ -203,7 +203,7 @@ def fetch_json(url: str) -> dict:
         raise TokenExchangeError("scheme")
     req = urllib.request.Request(
         url,
-        headers={"Accept": "application/json", "User-Agent": "GeoRiskIntel-OktaSSO/1"},
+        headers={"Accept": "application/json", "User-Agent": "GeoRiskGlobal-OktaSSO/1"},
         method="GET",
     )
     try:
@@ -670,8 +670,10 @@ def _message_page(message: str) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <meta name="robots" content="noindex, nofollow">
-  <title>Okta sign-in — GeoRiskIntel</title>
+  <title>Okta sign-in — GeoRiskGlobal</title>
   <style>
     body {{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:#060A13; color:#E2E8F0; font:15px/1.45 "Segoe UI", system-ui, sans-serif; padding:24px; }}
     main {{ width:min(460px, 100%); background:#0D1424; border:1px solid #C5A059; border-radius:14px; padding:28px 24px; }}
@@ -696,8 +698,10 @@ _SETUP_PAGE = """<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <meta name="robots" content="noindex, nofollow">
-  <title>Okta SSO Setup — GeoRiskIntel</title>
+  <title>Okta SSO Setup — GeoRiskGlobal</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -751,7 +755,7 @@ _SETUP_PAGE = """<!DOCTYPE html>
 </head>
 <body>
   <header id="live-bar">
-    <div class="brand-lockup"><span>GeoRiskIntel</span><span class="risk-pill">REGIONAL RISK</span></div>
+    <div class="brand-lockup"><span>GeoRiskGlobal</span><span class="risk-pill">REGIONAL RISK</span></div>
     <nav id="page-nav" aria-label="Sections">
       <a href="/">Live map</a>
       <a href="/risk-assessments">Risk Assessments</a>
@@ -779,7 +783,7 @@ _SETUP_PAGE = """<!DOCTYPE html>
   <div class="section-banner">
     <p class="kicker">Enterprise admin</p>
     <h1>Okta SSO and dashboard tile</h1>
-    <p>Add GeoRiskIntel to an Okta dashboard, then sign in with OpenID Connect. Authorization Code and PKCE (S256). The client secret stays in the host environment and is never printed on this page.</p>
+    <p>Add GeoRiskGlobal to an Okta dashboard, then sign in with OpenID Connect. Authorization Code and PKCE (S256). The client secret stays in the host environment and is never printed on this page.</p>
   </div>
   <main>
     <section class="panel">
@@ -814,8 +818,8 @@ _SETUP_PAGE = """<!DOCTYPE html>
       <h2>Five-minute Okta Dashboard tile setup</h2>
       <ol class="guide">
         <li>In the Okta Admin Console, open Applications → Applications → Create App Integration. Choose <strong>OIDC - OpenID Connect</strong> and <strong>Web Application</strong>.</li>
-        <li>Grant type: <strong>Authorization Code</strong>. Keep PKCE available — GeoRiskIntel always sends a S256 <code>code_challenge</code>. Set <strong>Login initiated by</strong> to <strong>Either Okta or App</strong> so the dashboard tile and the Sign in with Okta button both work. Client authentication: <strong>Client secret</strong>.</li>
-        <li>Paste the Sign-in redirect URI, Sign-out redirect URI, and Initiate login URI from this page. Assign the people or groups who should see the GeoRiskIntel tile.</li>
+        <li>Grant type: <strong>Authorization Code</strong>. Keep PKCE available — GeoRiskGlobal always sends a S256 <code>code_challenge</code>. Set <strong>Login initiated by</strong> to <strong>Either Okta or App</strong> so the dashboard tile and the Sign in with Okta button both work. Client authentication: <strong>Client secret</strong>.</li>
+        <li>Paste the Sign-in redirect URI, Sign-out redirect URI, and Initiate login URI from this page. Assign the people or groups who should see the GeoRiskGlobal tile.</li>
         <li>On the authorization server (usually <code>default</code>), confirm the scopes <code>openid</code>, <code>profile</code>, <code>email</code>, and <code>groups</code>. Add a claim named <code>groups</code> that is included in the <strong>ID token</strong>, value type Groups, so the optional allow-list can be checked. Save.</li>
         <li>Copy the issuer, Client ID, and Client secret into the host environment, then redeploy. Railway: service → Variables → add the names below → Deploy. Google Cloud: Cloud Run → Edit &amp; deploy new revision → Variables &amp; Secrets (or the Cloud Run / App Engine environment block) using the same names. Open the new Okta tile, or use Sign in with Okta on <a href="/login">/login</a>.</li>
       </ol>
@@ -838,7 +842,7 @@ _SETUP_PAGE = """<!DOCTYPE html>
       <p class="no-print"><button type="button" id="print-spec">Print spec sheet</button></p>
       <table class="spec-table">
         <tbody>
-          <tr><th>Application</th><td>GeoRiskIntel</td></tr>
+          <tr><th>Application</th><td>GeoRiskGlobal</td></tr>
           <tr><th>Sign-in method</th><td>OIDC - OpenID Connect</td></tr>
           <tr><th>Application type</th><td>Web Application</td></tr>
           <tr><th>Grant type</th><td>Authorization Code + PKCE (S256)</td></tr>
@@ -859,7 +863,7 @@ _SETUP_PAGE = """<!DOCTYPE html>
       </table>
     </section>
   </main>
-  <footer>GeoRiskIntel · Okta SSO setup · client secret stays on the server</footer>
+  <footer>GeoRiskGlobal · Okta SSO setup · client secret stays on the server</footer>
   <script>
     (function () {
       var buttons = document.querySelectorAll("[data-copy]");

@@ -46,9 +46,9 @@
 
 #live-bar.site-shell .brand-lockup img,
 #live-bar.site-shell #brandLogo {
-  height: 40px;
+  height: 46px;
   width: auto;
-  max-width: min(210px, 42vw);
+  max-width: min(240px, 56vw);
   object-fit: contain;
   display: block;
 }
@@ -443,6 +443,12 @@ button[aria-pressed="true"]:focus-visible {
 }
 
 @media (max-width: 720px) {
+  #live-bar.site-shell #brandLogo,
+  #live-bar.site-shell .brand-lockup img {
+    height: 40px;
+    max-width: min(210px, 58vw);
+  }
+
   button,
   .button,
   .nav-cta,

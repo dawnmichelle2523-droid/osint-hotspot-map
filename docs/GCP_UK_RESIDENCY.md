@@ -1,6 +1,6 @@
 # Google Cloud data residency — London and Virginia
 
-GeoRiskIntel can run as a Cloud Run service so a government or public-sector tenant keeps the application in-country. The application does not copy its SQLite database to another region. You choose the region at deploy time.
+GeoRiskGlobal can run as a Cloud Run service so a government or public-sector tenant keeps the application in-country. The application does not copy its SQLite database to another region. You choose the region at deploy time.
 
 | Tenant | Cloud Run region | Place |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ printf '%s' 'replace-me' | gcloud secrets create PREVIEW_PASSWORD --data-file=- 
 From the repository root. Replace `https://YOUR_DOMAIN` with the public origin. That value is the `Canonical` URL in `security.txt`.
 
 ```bash
-gcloud run deploy georiskintel \
+gcloud run deploy georiskglobal \
   --source . \
   --project "${PROJECT_ID}" \
   --region "${REGION}" \
@@ -70,7 +70,7 @@ To deploy only one of the regions, run the command once with that region. A seco
 ## 4. Confirm it landed in-country
 
 ```bash
-gcloud run services describe georiskintel \
+gcloud run services describe georiskglobal \
   --project "${PROJECT_ID}" \
   --region "${REGION}" \
   --format='yaml(metadata.name,status.url,status.traffic)'
@@ -95,7 +95,7 @@ Cloud Run's own disk is ephemeral. A new revision can drop a SQLite file written
 3. Mount it at `/data` and set `DATA_DIR=/data`.
 
 ```bash
-gcloud run services update georiskintel \
+gcloud run services update georiskglobal \
   --project "${PROJECT_ID}" \
   --region "${REGION}" \
   --vpc-connector "PROJECT_NUMBER-connector" \
@@ -111,7 +111,7 @@ Confirm the flags against `gcloud run services update --help` if the CLI on your
 A public-sector tenant that must not expose the service on the internet can front it with Identity-Aware Proxy or restrict ingress:
 
 ```bash
-gcloud run services update georiskintel \
+gcloud run services update georiskglobal \
   --project "${PROJECT_ID}" \
   --region "${REGION}" \
   --ingress internal-and-cloud-load-balancing

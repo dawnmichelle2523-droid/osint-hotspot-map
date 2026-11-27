@@ -72,7 +72,7 @@ class MatrixPageTests(unittest.TestCase):
         css = (ROOT / "static" / "platform.css").read_text(encoding="utf-8")
         self.assertIn("/static/risk-matrix.js", page)
         self.assertIn('id="risk-grid"', page)
-        self.assertIn("Powered by GeoRiskIntel", page)
+        self.assertIn("Powered by GeoRiskGlobal", page)
         self.assertIn("Go / Conditional-Go / No-Go", page)
         for column in COLUMNS:
             self.assertIn(column, page, column)

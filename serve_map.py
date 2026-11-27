@@ -103,7 +103,7 @@ RSS_FEEDS = [
     ("Darfur24", "https://darfur24.com/en/feed/"),
     ("Al Taghyeer", "https://www.altaghyeer.info/en/feed"),
     ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
-    ("ReliefWeb Sudan JSON", "https://api.reliefweb.int/v1/reports?appname=georiskintel&filter[field]=country.name&filter[value]=Sudan&limit=20"),
+    ("ReliefWeb Sudan JSON", "https://api.reliefweb.int/v1/reports?appname=georiskglobal&filter[field]=country.name&filter[value]=Sudan&limit=20"),
     ("Middle East Monitor", "https://www.middleeastmonitor.com/feed/"),
     ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
     ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
@@ -465,7 +465,7 @@ _RSS_DESK = {
     "https://darfur24.com/en/feed/": "Sudan & Chad",
     "https://www.altaghyeer.info/en/feed": "Sudan & Chad",
     "https://reliefweb.int/updates/rss.xml?primary_country=220": "Sudan & Chad",
-    "https://api.reliefweb.int/v1/reports?appname=georiskintel&filter[field]=country.name&filter[value]=Sudan&limit=20": "Sudan & Chad",
+    "https://api.reliefweb.int/v1/reports?appname=georiskglobal&filter[field]=country.name&filter[value]=Sudan&limit=20": "Sudan & Chad",
     "https://khartoumerr.org/feed/": "Sudan & Chad",
     "https://khartoumerr.org/": "Sudan & Chad",
     "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
@@ -8756,20 +8756,20 @@ def briefing_banner() -> str:
         return (
             "<div style=\"background:#000000;text-align:center;padding:16px 12px;"
             "border-bottom:1px solid #0F4C4C;\">"
-            "<img src=\"cid:georisk_logo\" alt=\"GeoRiskIntel\" height=\"36\" "
-            "style=\"height:36px;width:auto;display:block;margin:0 auto;border:0;\" />"
+            "<img src=\"cid:georisk_logo\" alt=\"GeoRiskGlobal\" height=\"52\" "
+            "style=\"height:52px;width:auto;display:block;margin:0 auto;border:0;\" />"
             "</div>"
         )
     return (
         "<div style=\"background:#000000;text-align:center;padding:16px 12px;"
         "border-bottom:1px solid #0F4C4C;color:#18D4C0;font-size:22px;"
-        "font-weight:700;letter-spacing:0.04em;\">GeoRiskIntel</div>"
+        "font-weight:700;letter-spacing:0.04em;\">GeoRiskGlobal</div>"
     )
 
 
 def briefing_subject(report_type: str, start: datetime, end: datetime) -> str:
     label = {"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly"}[report_type]
-    return f"[GeoRiskIntel] {label} Geopolitical & OSINT Briefing — {format_briefing_window(start, end)}"
+    return f"[GeoRiskGlobal] {label} Geopolitical & OSINT Briefing — {format_briefing_window(start, end)}"
 
 
 def send_briefing_message(subject: str, body: str, png: bytes, settings: dict, chart_png: bytes = b"") -> bool:

@@ -771,7 +771,7 @@ def country_template(country: object) -> dict:
         comms = profile["comms"]
         legal = profile["legal"]
     else:
-        stability = f"{label} uses the GeoRiskIntel {region} baseline. Confirm the current travel advice before movement. {region_copy['stability']}"
+        stability = f"{label} uses the GeoRiskGlobal {region} baseline. Confirm the current travel advice before movement. {region_copy['stability']}"
         actors = region_copy["actors"]
         borders = region_copy["borders"]
         medical = f"Name a hospital and a medevac hub for {label} before departure. Do not rely on this baseline alone."
@@ -785,7 +785,7 @@ def country_template(country: object) -> dict:
         "region": region,
         "baseline": not specific,
         "title": f"{label} country template" if specific else f"{label} baseline template",
-        "branding": "GeoRiskIntel",
+        "branding": "GeoRiskGlobal",
         "rating": rating,
         "risk_tags": risk_tags(hazards),
         "stability": stability,
@@ -805,7 +805,7 @@ def country_template(country: object) -> dict:
         "references": [
             f"UK FCDO foreign travel advice for {label}",
             f"US State Department travel advisory for {label}",
-            "GeoRiskIntel live 7-day OSINT feed for this country",
+            "GeoRiskGlobal live 7-day OSINT feed for this country",
             "Current NOTAMs and conflict-zone bulletins for the flight information region",
         ],
         "local_only_fields": ["roster", "phone", "email", "imei", "poc_contact", "staff_details", "passport", "medical_notes"],

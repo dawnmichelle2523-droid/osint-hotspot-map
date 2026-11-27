@@ -11,7 +11,7 @@ os.environ["DISABLE_HISTORICAL_SYNC"] = "1"
 import white_label
 from app import app
 
-ATTRIBUTION = "Powered by GeoRiskIntel"
+ATTRIBUTION = "Powered by GeoRiskGlobal"
 
 
 class WhiteLabelTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class WhiteLabelTests(unittest.TestCase):
         page = studio.get_data(as_text=True)
         self.assertIn("White-Label Studio", page)
         self.assertIn(ATTRIBUTION, page)
-        self.assertIn('class="powered-logo" src="/static/logo.png" alt="GeoRiskIntel"', page)
+        self.assertIn('class="powered-logo" src="/static/logo.png" alt="GeoRiskGlobal"', page)
         self.assertIn('id="iframe-snippet"', page)
         self.assertIn('id="script-snippet"', page)
         self.assertEqual(studio.headers.get("X-Frame-Options"), "SAMEORIGIN")
@@ -63,7 +63,7 @@ class WhiteLabelTests(unittest.TestCase):
             "<script",
         ):
             self.assertNotIn(needle, body, needle)
-        self.assertIn("powered by georiskintel", body)
+        self.assertIn("powered by georiskglobal", body)
         tainted = self.client.get("/embed/widget?country=Yemen&pass=not-a-tracker")
         self.assertEqual(tainted.status_code, 200)
         self.assertEqual(tainted.headers.getlist("Set-Cookie"), [])
@@ -139,7 +139,7 @@ class WhiteLabelTests(unittest.TestCase):
             "accent=%23ffffff",
         )
         logo_tag = re.compile(
-            r'<img class="powered-logo" src="([^"]+)" alt="GeoRiskIntel"'
+            r'<img class="powered-logo" src="([^"]+)" alt="GeoRiskGlobal"'
         )
         for mode in ("badge", "ticker", "map"):
             for extra in hides:
@@ -170,7 +170,7 @@ class WhiteLabelTests(unittest.TestCase):
                 if src.startswith(("http://", "https://")):
                     origin = src[: -len("/static/logo.png")]
                     self.assertIn(origin, policy, query)
-                self.assertIn("height: 18px", body, query)
+                self.assertIn("height: 22px !important", body, query)
                 self.assertIn("object-fit: contain", body, query)
 
     def test_live_country_data_binding(self):

@@ -141,9 +141,9 @@ class HeaderTests(_EnvCase):
 
     def test_hsts_follows_the_request_scheme(self) -> None:
         client = _api_app().test_client()
-        secure = client.get("/page", base_url="https://georiskintel.test")
+        secure = client.get("/page", base_url="https://georiskglobal.test")
         self.assertIn("Strict-Transport-Security", secure.headers)
-        downgraded = client.get("/page", base_url="https://georiskintel.test", headers={"X-Forwarded-Proto": "http"})
+        downgraded = client.get("/page", base_url="https://georiskglobal.test", headers={"X-Forwarded-Proto": "http"})
         self.assertNotIn("Strict-Transport-Security", downgraded.headers)
 
     def test_embed_paths_can_be_framed_and_lookalikes_cannot(self) -> None:
@@ -178,7 +178,7 @@ class HeaderTests(_EnvCase):
         self.assertIn("HttpOnly", cookie)
         self.assertIn("SameSite=Lax", cookie)
         self.assertNotIn("Secure", cookie)
-        secure = client.get("/session", base_url="https://georiskintel.test")
+        secure = client.get("/session", base_url="https://georiskglobal.test")
         https_cookie = _cookie(secure, "session")
         self.assertIn("Secure", https_cookie)
         self.assertIn("HttpOnly", https_cookie)
@@ -284,17 +284,17 @@ class RateLimitTests(_EnvCase):
 
 class DisclosureTests(_EnvCase):
     def test_security_txt_is_rfc9116(self) -> None:
-        os.environ["PUBLIC_BASE_URL"] = "https://georiskintel.example"
-        os.environ["SECURITY_CONTACT"] = "security@georiskintel.example"
+        os.environ["PUBLIC_BASE_URL"] = "https://georiskglobal.example"
+        os.environ["SECURITY_CONTACT"] = "security@georiskglobal.example"
         client = _api_app().test_client()
         response = client.get("/.well-known/security.txt")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.mimetype.startswith("text/plain"))
         text = response.get_data(as_text=True)
-        self.assertIn("Contact: mailto:security@georiskintel.example", text)
+        self.assertIn("Contact: mailto:security@georiskglobal.example", text)
         self.assertIn(f"Expires: {security_compliance.SECURITY_TXT_EXPIRES}", text)
-        self.assertIn("Canonical: https://georiskintel.example/.well-known/security.txt", text)
-        self.assertIn("Policy: https://georiskintel.example/trust", text)
+        self.assertIn("Canonical: https://georiskglobal.example/.well-known/security.txt", text)
+        self.assertIn("Policy: https://georiskglobal.example/trust", text)
         self.assertIn("Preferred-Languages: en", text)
         self.assertNotIn("<html", text.lower())
         expires = security_compliance.SECURITY_TXT_EXPIRES
@@ -316,7 +316,7 @@ class DisclosureTests(_EnvCase):
             "Screen readers",
             "Skip to content",
             "partially compliant",
-            "security@georiskintel.com",
+            "security@georiskglobal.com",
         ):
             self.assertIn(phrase, text)
         self.assertIn('href="#main"', text)
@@ -379,7 +379,7 @@ class DisclosureTests(_EnvCase):
         text = response.get_data(as_text=True)
         for phrase in (
             "Data Controller",
-            "GeoRiskIntel is the Processor",
+            "GeoRiskGlobal is the Processor",
             "localStorage",
             "georisk.ra.v1",
             "passport",
@@ -406,7 +406,7 @@ class DisclosureTests(_EnvCase):
             "72 hours",
             "ICO",
             "DSAR",
-            "privacy@georiskintel.com",
+            "privacy@georiskglobal.com",
             'href="/trust"',
         ):
             self.assertIn(phrase, text)
@@ -463,7 +463,7 @@ class DisclosureTests(_EnvCase):
         blocked = client.get("/pricing")
         self.assertEqual(blocked.status_code, 302)
         self.assertTrue(blocked.headers["Location"].startswith("/login"))
-        accepted = client.post("/login", data={"password": "correct-horse", "next": "/pricing"}, base_url="https://georiskintel.test")
+        accepted = client.post("/login", data={"password": "correct-horse", "next": "/pricing"}, base_url="https://georiskglobal.test")
         cookie = ",".join(accepted.headers.getlist("Set-Cookie"))
         self.assertEqual(cookie.lower().count("httponly"), 1)
         self.assertEqual(cookie.lower().count("samesite=lax"), 1)

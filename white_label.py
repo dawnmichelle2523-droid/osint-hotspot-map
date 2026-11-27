@@ -1,7 +1,7 @@
 """Client-branded white-label studio and embeddable country-risk widget.
 
 The widget reads the local live feed (hotspots and stored rows) and the same
-risk index the reports use. It never calls xAI. The "Powered by GeoRiskIntel"
+risk index the reports use. It never calls xAI. The "Powered by GeoRiskGlobal"
 bar is rendered by the server for every mode and is not controlled by query
 parameters. The official mark at /static/logo.png sits in that bar. A client
 logo, accent, theme, or hide flag cannot replace or remove it.
@@ -25,7 +25,7 @@ whitelabel_bp = Blueprint("whitelabel", __name__)
 
 ROOT = Path(__file__).resolve().parent
 STUDIO_PAGE = ROOT / "static" / "white-label.html"
-ATTRIBUTION = "Powered by GeoRiskIntel"
+ATTRIBUTION = "Powered by GeoRiskGlobal"
 PRODUCT_LOGO_PATH = "/static/logo.png"
 DEFAULT_ACCENT = "#D4AF37"
 DEFAULT_COUNTRY = "Yemen"
@@ -98,7 +98,7 @@ def _page_origin() -> str:
 
 
 def _product_logo_src() -> str:
-    """Official GeoRiskIntel mark. Never read from the query string or client logo."""
+    """Official GeoRiskGlobal mark. Never read from the query string or client logo."""
     origin = _page_origin()
     if not origin:
         return PRODUCT_LOGO_PATH
@@ -130,7 +130,7 @@ def _esc(value: object) -> str:
 
 
 def sanitize_org(value: object) -> str:
-    """Plain organization name. Tags and scriptable schemes are removed."""
+    """Plain organisation name. Tags and scriptable schemes are removed."""
     text = str(value or "")
     text = re.sub(r"(?i)javascript\s*:", "", text)
     text = re.sub(r"(?i)vbscript\s*:", "", text)
@@ -606,7 +606,7 @@ def _powered(home: str) -> str:
     return (
         f'<a class="powered" data-attribution="required" href="{_esc(home)}" '
         'target="_blank" rel="noopener noreferrer">'
-        f'<img class="powered-logo" src="{_esc(_product_logo_src())}" alt="GeoRiskIntel" '
+        f'<img class="powered-logo" src="{_esc(_product_logo_src())}" alt="GeoRiskGlobal" '
         f'decoding="async">{ATTRIBUTION}</a>'
     )
 
@@ -666,8 +666,9 @@ def render_widget(facts: dict, brand: dict, home: str) -> str:
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <link rel="icon" href="/static/favicon.png">
-  <title>{_esc(org or "GeoRiskIntel")} country risk</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
+  <title>{_esc(org or "GeoRiskGlobal")} country risk</title>
   <style>
     :root {{ color-scheme: {theme}; }}
     * {{ box-sizing: border-box; }}
@@ -718,7 +719,7 @@ def render_widget(facts: dict, brand: dict, home: str) -> str:
     }}
     a.powered .powered-logo {{
       display: block !important; visibility: visible !important; opacity: 1 !important;
-      height: 18px !important; width: auto !important; max-width: none !important;
+      height: 22px !important; width: auto !important; max-width: none !important;
       object-fit: contain !important; border-radius: 3px; flex: 0 0 auto;
       margin: 0; background: transparent; pointer-events: none;
     }}

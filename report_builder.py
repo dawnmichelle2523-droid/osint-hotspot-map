@@ -1,4 +1,4 @@
-"""ThreatMapr-style GeoRiskIntel reports, HTML, email, and the delivery scheduler.
+"""ThreatMapr-style GeoRiskGlobal reports, HTML, email, and the delivery scheduler.
 
 Grok is used only while building the executive summary, key developments, and
 outlook. A 403, quota error, missing XAI_API_KEY, or any other failure falls
@@ -72,7 +72,7 @@ WATCH = {
     "OD": "Watch for airport, border, port, and airspace notices before the next movement.",
 }
 METHODOLOGY = (
-    "GeoRiskIntel counts each stored open-source incident once. Categories are "
+    "GeoRiskGlobal counts each stored open-source incident once. Categories are "
     "Armed Conflict & Terrorism (ACT), Security Force Activity (SFA), Violent Crime (VC), "
     "Civil Unrest (CU), Hazards & Safety (HS), and Operational Disruption (OD). "
     "Severity is HIGH, MED, LOW, or INFO. The rolling baseline is the 30-day average "
@@ -165,7 +165,7 @@ def fallback_narrative(analytics: dict) -> dict:
     top_name = leaders[0]["name"] if leaders and leaders[0]["total"] else "the monitored area"
     top_code = _leading_category(leaders[0]) if leaders and leaders[0]["total"] else "OD"
     summary = (
-        f"During this {period}, GeoRiskIntel logged {totals['current']} incidents in {scope}, "
+        f"During this {period}, GeoRiskGlobal logged {totals['current']} incidents in {scope}, "
         f"{delta} against the {totals['baseline_label']} of {totals['baseline']}. "
         f"The Risk Index is {risk['index']:.1f} / 10 ({risk['level']}), {risk['direction']} "
         f"versus the prior {period}. Significant incidents (MED and HIGH) total "
@@ -271,7 +271,7 @@ def synthesize(analytics: dict) -> dict | None:
         ],
     }
     system = (
-        "You write a security assessment for GeoRiskIntel. Use only the counts provided. "
+        "You write a security assessment for GeoRiskGlobal. Use only the counts provided. "
         "Do not invent incidents, casualties, or places. Return JSON with keys "
         "executive_summary (string), outlook (string), and key_developments (array). "
         "Each key development has title, badge, summary, implications, what_to_watch. "
@@ -393,7 +393,7 @@ def build_document(analytics: dict, narrative: dict, source: str) -> dict:
     cadence = CADENCE_TITLE.get(analytics["period"], "WEEKLY")
     risk = analytics["risk"]
     return {
-        "brand": "GeoRiskIntel",
+        "brand": "GeoRiskGlobal",
         "scope": analytics["scope"],
         "scope_type": analytics["scope_type"],
         "cadence": analytics["period"],
@@ -479,7 +479,7 @@ def _table(analytics: dict) -> str:
 def _header(document: dict) -> str:
     return (
         '<header class="run">'
-        f"<span>GeoRiskIntel</span><span>{_esc(document['scope'])}</span>"
+        f"<span>GeoRiskGlobal</span><span>{_esc(document['scope'])}</span>"
         f"<span>{_esc(document['cadence_title'].split('·')[-1].strip())}</span>"
         f"<span>{_esc(document['date_range'])}</span></header>"
     )
@@ -488,7 +488,9 @@ def _header(document: dict) -> str:
 def _footer(document: dict, page: str) -> str:
     return (
         '<footer class="run">'
-        f"<span>{_esc(document['confidentiality'])}</span><span>{_esc(page)}</span></footer>"
+        "<span>Powered by GeoRiskGlobal</span>"
+        f"<span>{_esc(document['confidentiality'])}</span>"
+        f"<span>{_esc(page)}</span></footer>"
     )
 
 
@@ -572,6 +574,7 @@ def render_html(document: dict) -> str:
     .dev { border-top: 1px solid #e7e5e4; padding: 8px 0; page-break-inside: avoid; }
     .dev-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
     .badge { font: 700 11px/1 "Segoe UI", sans-serif; color: #102A63; border: 1px solid #D4AF37; padding: 3px 6px; white-space: nowrap; }
+    .brand-mark { height: 56px; width: auto; display: block; margin: 0 0 18px; }
     .note { font: 12px/1.4 "Segoe UI", sans-serif; color: #57534e; }
     @media print {
       body { background: white; }
@@ -582,8 +585,9 @@ def render_html(document: dict) -> str:
     cover = f"""
     <section class="sheet cover">
       <div>
-        <p class="eyebrow">GeoRiskIntel | {_esc(document['scope'])}</p>
-        <h1>GeoRiskIntel | {_esc(document['scope'])}</h1>
+        <img class="brand-mark" src="/static/logo-pdf.png?v=5" alt="GeoRiskGlobal">
+        <p class="eyebrow">GeoRiskGlobal | {_esc(document['scope'])}</p>
+        <h1>GeoRiskGlobal | {_esc(document['scope'])}</h1>
         <h2>{_esc(document['cadence_title'])}</h2>
         <p class="sub">{_esc(document['date_range'])}</p>
         <div class="gold"></div>
@@ -596,7 +600,7 @@ def render_html(document: dict) -> str:
           <div class="stat"><b>{document['events_logged']}</b><span>Events logged</span></div>
         </div>
       </div>
-      <footer class="run"><span>{_esc(document['confidentiality'])}</span><span>Cover</span></footer>
+      {_footer(document, "Cover")}
     </section>
     """
     contents = f"""
@@ -685,7 +689,9 @@ def render_html(document: dict) -> str:
     """
     return (
         "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        f"<title>GeoRiskIntel | {_esc(document['scope'])}</title><style>{css}</style></head>"
+        "<link rel=\"icon\" href=\"/static/favicon.ico?v=5\" sizes=\"any\">"
+        "<link rel=\"icon\" type=\"image/png\" href=\"/static/favicon.png?v=5\">"
+        f"<title>GeoRiskGlobal | {_esc(document['scope'])}</title><style>{css}</style></head>"
         f"<body>{cover}{contents}{dashboard}{narrative}{script}</body></html>"
     )
 
@@ -733,7 +739,7 @@ def generate(
 
 def plain_summary(document: dict) -> str:
     lines = [
-        f"GeoRiskIntel | {document['scope']}",
+        f"GeoRiskGlobal | {document['scope']}",
         document["cadence_title"],
         document["date_range"],
         document["subtitle"],
@@ -750,7 +756,7 @@ def from_address() -> str:
     return (
         (os.environ.get("SMTP_FROM") or "").strip()
         or (os.environ.get("SMTP_USER") or "").strip()
-        or "reports@georiskintel.local"
+        or "reports@georiskglobal.local"
     )
 
 
@@ -759,7 +765,7 @@ def build_message(document: dict, recipients: list[str], client_label: str = "")
     label = " ".join(str(client_label or "").split())
     prefix = f"{label} — " if label else ""
     message["Subject"] = (
-        f"{prefix}GeoRiskIntel {document['cadence_title'].split('·')[-1].strip().title()} "
+        f"{prefix}GeoRiskGlobal {document['cadence_title'].split('·')[-1].strip().title()} "
         f"Security Assessment — {document['scope']} ({document['date_range']})"
     )
     message["From"] = from_address()
@@ -1011,7 +1017,7 @@ def dispatch(method: str, path: str, query, body: dict | None) -> dict:
                 return _json({"ok": False, "error": "Report not found."}, 404)
             headers = {}
             if _query_value(query, "download") == "1":
-                headers["Content-Disposition"] = f'attachment; filename="georiskintel-report-{match.group(1)}.html"'
+                headers["Content-Disposition"] = f'attachment; filename="georiskglobal-report-{match.group(1)}.html"'
             return {
                 "status": 200,
                 "mimetype": "text/html; charset=utf-8",
