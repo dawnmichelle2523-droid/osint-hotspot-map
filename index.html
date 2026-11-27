@@ -531,6 +531,18 @@
     .confidence-corroborated { background: #14261f; color: #2dd4bf; border: 1px solid #d4a017; }
     .confidence-unverified { background: #1e293b; color: #94a3b8; border: 1px solid #475569; }
     .confidence-sources { margin: 4px 0 0; color: #94a3b8; font-size: 11px; line-height: 1.35; }
+    .quality-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+    .quality-badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 7px;
+      font-size: 10px; font-weight: 750; letter-spacing: 0.01em; line-height: 1.45; max-width: 100%;
+    }
+    .quality-corr-official { background: #102A63; color: #4ade80; border: 1px solid #38bdf8; }
+    .quality-corr-corroborated { background: #14261f; color: #2dd4bf; border: 1px solid #d4a017; }
+    .quality-corr-single { background: #1e293b; color: #cbd5e1; border: 1px solid #64748b; }
+    .quality-prec-exact { background: #102A63; color: #D4AF37; border: 1px solid #C5A059; }
+    .quality-prec-city { background: #0c1e33; color: #7dd3fc; border: 1px solid #38bdf8; }
+    .quality-prec-regional { background: #1c1408; color: #fbbf24; border: 1px solid #b45309; }
+    .quality-notes { margin: 2px 0 6px; color: #94a3b8; font-size: 11px; line-height: 1.35; }
     #confidence-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .update-place { margin: 0; color: var(--muted); font-size: 12px; }
     #headlines.drawer { border-top: 1px solid #6E5825; }
@@ -966,6 +978,21 @@
       <button type="button" data-confidence="official">Official</button>
       <button type="button" data-confidence="corroborated">Corroborated+</button>
     </div>
+    <label>Corroboration
+      <select id="slim-corroboration" aria-label="Corroboration">
+        <option value="all">All sources</option>
+        <option value="supported">Official &amp; corroborated</option>
+        <option value="single">Single source</option>
+      </select>
+    </label>
+    <label>Precision
+      <select id="slim-precision" aria-label="Location precision">
+        <option value="all">All precision</option>
+        <option value="exact">Exact / Site</option>
+        <option value="city">City / District</option>
+        <option value="regional">Regional / Country</option>
+      </select>
+    </label>
     <button type="button" id="all-events" aria-pressed="false">All Events</button>
     <button type="button" id="toggle-news" aria-expanded="false" aria-controls="news-stream">News</button>
     <button type="button" id="toggle-analyst">Analyst</button>
@@ -1551,6 +1578,8 @@
     let timeWindow = "48h";
     let severity = "signal";
     let confidenceFilter = "all";
+    let corroborationFilter = "all";
+    let precisionFilter = "all";
     let feedCategory = "all";
     let areaFilter = "all";
     let updatesQuery = "";
@@ -1791,6 +1820,48 @@
       return true;
     }
 
+    function qualityRecord(value, allowed) {
+      if (!value || typeof value !== "object") return null;
+      const level = String(value.level || "");
+      const label = String(value.label || "").trim();
+      const rationale = String(value.rationale || "").trim();
+      if (!allowed[level] || !label) return null;
+      return { level: level, label: label, rationale: rationale };
+    }
+
+    function qualityMarkup(props) {
+      const corr = qualityRecord(props && props.corroboration, { official: 1, corroborated: 1, single: 1 });
+      const prec = qualityRecord(props && props.location_precision, { exact: 1, city: 1, regional: 1 });
+      const pills = [];
+      const notes = [];
+      if (corr) {
+        pills.push('<span class="quality-badge quality-corr quality-corr-' + corr.level + '" title="' + esc(corr.rationale) + '">' + esc(corr.label) + "</span>");
+        if (corr.rationale) notes.push(corr.rationale);
+      }
+      if (prec) {
+        pills.push('<span class="quality-badge quality-prec quality-prec-' + prec.level + '" title="' + esc(prec.rationale) + '">' + esc(prec.label) + "</span>");
+        if (prec.rationale) notes.push(prec.rationale);
+      }
+      if (!pills.length) return { badges: "", notes: "" };
+      return {
+        badges: '<div class="quality-row">' + pills.join("") + "</div>",
+        notes: notes.length ? '<p class="quality-notes">' + esc(notes.join(" ")) + "</p>" : ""
+      };
+    }
+
+    function passesCorroboration(props) {
+      if (corroborationFilter === "all") return true;
+      const level = String((props && props.corroboration && props.corroboration.level) || "");
+      if (corroborationFilter === "single") return level === "single";
+      if (corroborationFilter === "supported") return level === "official" || level === "corroborated";
+      return true;
+    }
+
+    function passesPrecision(props) {
+      if (precisionFilter === "all") return true;
+      return String((props && props.location_precision && props.location_precision.level) || "") === precisionFilter;
+    }
+
     function trustBadge(props) {
       const labels = {
         "Official": ["Official", "badge-tier-official"],
@@ -1961,6 +2032,8 @@
       }
       if (!passesTime(props.timestamp, opts.timeWindow)) return false;
       if (!passesConfidence(props)) return false;
+      if (!passesCorroboration(props)) return false;
+      if (!passesPrecision(props)) return false;
       if (!matchesUpdates(props, updatesQuery)) return false;
       return matchesQuery(props, opts.query || "");
     }
@@ -2156,7 +2229,8 @@
     }
 
     function analystTags(props) {
-      const tags = ['<span class="badge badge-precision">' + esc(precisionLabel(props)) + "</span>"];
+      const structured = props && props.location_precision && props.location_precision.label;
+      const tags = structured ? [] : ['<span class="badge badge-precision">' + esc(precisionLabel(props)) + "</span>"];
       if (props.actor) tags.push('<span class="badge badge-actor">' + esc(props.actor) + "</span>");
       if (props.system_type) tags.push('<span class="badge badge-system">' + esc(props.system_type) + "</span>");
       return '<div class="popup-tags">' + tags.join("") + "</div>";
@@ -2165,6 +2239,7 @@
     function popupHtml(props, id) {
       const badge = severityBadge(props);
       const confidence = confidenceMarkup(props);
+      const quality = qualityMarkup(props);
       const surface = englishSurface(props);
       const headline = surface.title;
       const link = originalPostLink(props);
@@ -2191,6 +2266,8 @@
             threatPill(props) +
             placePill(props) +
           "</div>" +
+          quality.badges +
+          quality.notes +
           confidence.detail +
           "<h3>" + esc(headline) + "</h3>" +
           analystTags(props) +
@@ -2299,6 +2376,10 @@
       document.querySelectorAll("[data-confidence]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.confidence === confidenceFilter));
       });
+      const slimCorroboration = document.getElementById("slim-corroboration");
+      const slimPrecision = document.getElementById("slim-precision");
+      if (slimCorroboration) slimCorroboration.value = corroborationFilter;
+      if (slimPrecision) slimPrecision.value = precisionFilter;
       const feedSummary = document.querySelector('[data-filter-summary="feedcat"]');
       if (feedSummary) feedSummary.textContent = feedCategory === "all" ? "All" : feedCategory;
       const slimRegion = document.getElementById("slim-region");
@@ -2785,6 +2866,7 @@
         const surface = englishSurface(props);
         const href = safeUrl(props.source_url || props.source || "");
         const confidence = confidenceMarkup(props);
+        const quality = qualityMarkup(props);
         const source = href
           ? '<a class="headline-source original-post" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">↗ View Original Post</a>'
           : "";
@@ -2798,6 +2880,7 @@
               '<span class="badge ' + severityBadge(props).cls + '">' + esc(severityBadge(props).label) + "</span>" +
               trustBadge(props) +
               confidence.badge +
+              quality.badges +
               '<span class="region-tag">' + esc(props.region || "") + "</span>" +
               threatPill(props) +
               placePill(props) +
@@ -3290,6 +3373,14 @@
       if (!button) return;
       confidenceFilter = button.dataset.confidence || "all";
       document.dispatchEvent(new CustomEvent("georisk-confidence", { detail: confidenceFilter }));
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("slim-corroboration").addEventListener("change", (event) => {
+      corroborationFilter = event.target.value || "all";
+      render(searchQuery ? "search" : "none");
+    });
+    document.getElementById("slim-precision").addEventListener("change", (event) => {
+      precisionFilter = event.target.value || "all";
       render(searchQuery ? "search" : "none");
     });
     document.getElementById("all-events").addEventListener("click", () => {

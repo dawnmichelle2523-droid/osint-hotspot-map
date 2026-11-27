@@ -78,11 +78,13 @@ def _score_incident_payload(payload: dict) -> dict:
         return payload
     try:
         import confidence_scoring
+        import incident_badges
     except Exception as exc:
         print(f"Confidence scoring was not applied: {exc.__class__.__name__}.")
         return payload
     try:
-        return confidence_scoring.apply_to_payload(payload, confidence_scoring.score_incidents)
+        scored = confidence_scoring.apply_to_payload(payload, incident_badges.score_with_stored_count)
+        return incident_badges.apply_to_payload(scored)
     except Exception as exc:
         print(f"Confidence scoring was not applied: {exc.__class__.__name__}.")
         return payload
@@ -243,6 +245,7 @@ def api_forward(endpoint: str) -> Response:
 
 
 @app.get("/")
+@app.get("/map")
 def index() -> Response:
     if serve_map.home_url_opens_the_map(request.full_path):
         location = "/map"

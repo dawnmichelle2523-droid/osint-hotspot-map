@@ -465,6 +465,14 @@ def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra
     if severity not in {"low", "medium", "high"}:
         severity = "medium"
     source = _clip(extra.get("source") or feed.get("url") or feed["id"], 300)
+    try:
+        import incident_badges
+
+        origin = _clip(extra.get("coord_origin") or incident_badges.default_coord_origin(feed), 40)
+        precision = _clip(extra.get("geo_precision") or incident_badges.precision_for_origin(origin), 80)
+    except Exception:
+        origin = _clip(extra.get("coord_origin") or "", 40)
+        precision = _clip(extra.get("geo_precision") or "", 80)
     return {
         "id": _clip(extra.get("id") or source or title, 180),
         "title": _clip(title, 180) or feed["name"],
@@ -479,6 +487,9 @@ def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra
         "timestamp": _stamp(extra.get("timestamp")),
         "source": source,
         "source_name": feed["name"],
+        "geo_precision": precision,
+        "coord_origin": origin,
+        "location_name": _clip(extra.get("location_name") or extra.get("area") or "", 120),
     }
 
 
@@ -791,7 +802,9 @@ def parse_nws(feed: dict, content: bytes) -> list[dict]:
     found = []
     for feature in (payload.get("features") or [])[:25]:
         props = feature.get("properties") or {}
-        point = _ring_point(feature.get("geometry") or {})
+        geometry = feature.get("geometry") or {}
+        point = _ring_point(geometry)
+        origin = "feed-point" if geometry.get("type") == "Point" else "place"
         area = str(props.get("areaDesc") or "")
         if point is None:
             state_point = None
@@ -803,6 +816,7 @@ def parse_nws(feed: dict, content: bytes) -> list[dict]:
             if state_point is None:
                 state_point = CENTROIDS["united states"]
             point = _jitter(state_point[0], state_point[1], str(props.get("id") or area or props.get("headline") or ""))
+            origin = "centroid"
         severity = "high" if str(props.get("severity") or "").lower() == "extreme" else "medium"
         found.append(_event(
             feed, props.get("event") or props.get("headline") or "US weather alert",
@@ -810,6 +824,7 @@ def parse_nws(feed: dict, content: bytes) -> list[dict]:
             country="United States", theatre="United States", severity=severity,
             timestamp=props.get("sent") or props.get("effective"),
             source=props.get("id") or feed["url"], id=str(props.get("id") or props.get("headline") or area),
+            coord_origin=origin, location_name=area,
         ))
     return found
 
@@ -874,6 +889,7 @@ def parse_atom_point(feed: dict, content: bytes) -> list[dict]:
         if any(phrase in lowered for phrase in ("no tsunami", "no warning", "no current", "there is no")):
             continue
         point = None
+        origin = "feed-point"
         for key in ("georss_point", "where"):
             raw = entry.get(key)
             if isinstance(raw, str):
@@ -883,6 +899,7 @@ def parse_atom_point(feed: dict, content: bytes) -> list[dict]:
         if point is None:
             point = _coord_in_text(blob)
         if point is None:
+            origin = "centroid"
             point = _centroid_name(feed["region"]) or _centroid_name("united states")
             if point:
                 point = _jitter(point[0], point[1], title)
@@ -896,6 +913,7 @@ def parse_atom_point(feed: dict, content: bytes) -> list[dict]:
             country=feed["region"] if feed["region"] != "Global" else "",
             severity=severity, timestamp=entry.get("updated") or entry.get("published"),
             source=entry.get("link") or feed["url"], id=entry.get("id") or title,
+            coord_origin=origin,
         ))
     return found
 
@@ -912,13 +930,15 @@ def parse_nhc(feed: dict, content: bytes) -> list[dict]:
         if not any(word in lowered for word in ("hurricane", "tropical", "storm", "cyclone", "depression")):
             continue
         anchor = feed.get("anchor") or (25.0, -70.0)
-        point = _coord_in_text(blob) or _jitter(anchor[0], anchor[1], title)
+        text_point = _coord_in_text(blob)
+        point = text_point or _jitter(anchor[0], anchor[1], title)
         found.append(_event(
             feed, title or "Tropical cyclone", summary or title, point[0], point[1],
             country="United States" if feed.get("region") == "United States" else _nearest_country(point[0], point[1]),
             theatre=feed.get("region") or "United States", severity="high",
             timestamp=entry.get("published") or entry.get("updated"),
             source=entry.get("link") or feed["url"], id=entry.get("id") or title,
+            coord_origin="feed-point" if text_point else "centroid",
         ))
     return found
 
@@ -1038,12 +1058,14 @@ def parse_jma(feed: dict, content: bytes) -> list[dict]:
     for entry in _entries(content)[:12]:
         title = _strip(entry.get("title")) or "JMA earthquake or volcano notice"
         summary = _strip(entry.get("summary") or "")
-        point = _coord_in_text(title + " " + summary) or _jitter(base[0], base[1], title)
+        text_point = _coord_in_text(title + " " + summary)
+        point = text_point or _jitter(base[0], base[1], title)
         found.append(_event(
             feed, title, summary or title, point[0], point[1],
             country="Japan", theatre="APAC", severity="high" if "津波" in title or "緊急" in title else "medium",
             timestamp=entry.get("updated") or entry.get("published"),
             source=entry.get("link") or feed["url"], id=entry.get("id") or title,
+            coord_origin="feed-point" if text_point else "centroid",
         ))
     return found
 
@@ -1059,7 +1081,7 @@ def parse_jma_typhoon(feed: dict, content: bytes) -> list[dict]:
             point = _walk_point(item)
             name = str(item.get("name") or item.get("id") or "Typhoon")
             if point:
-                found.append(_event(feed, f"JMA typhoon {name}", name, point[0], point[1], country="Japan", theatre="APAC", severity="high", source=feed["url"], id=name))
+                found.append(_event(feed, f"JMA typhoon {name}", name, point[0], point[1], country="Japan", theatre="APAC", severity="high", source=feed["url"], id=name, coord_origin="feed-point"))
             continue
         typhoon_id = str(item).strip()
         if not typhoon_id:
@@ -1070,12 +1092,15 @@ def parse_jma_typhoon(feed: dict, content: bytes) -> list[dict]:
             point = _walk_point(_loads(detail))
         except Exception:
             point = None
+        origin = "feed-point"
         if point is None:
             point = _jitter(22.0, 135.0, typhoon_id)
+            origin = "centroid"
         found.append(_event(
             feed, f"JMA active typhoon {typhoon_id}", f"Japan Meteorological Agency lists {typhoon_id} as an active tropical cyclone.",
             point[0], point[1], country="Japan", theatre="APAC", severity="high",
-            source=detail_url if point else feed["url"], id=typhoon_id,
+            source=detail_url if origin == "feed-point" else feed["url"], id=typhoon_id,
+            coord_origin=origin,
         ))
     return found
 
@@ -1212,6 +1237,8 @@ def _place_event(feed: dict, title: str, summary: str, country: str = "", **extr
         geo = {"lat": None, "lng": None, "country": country}
     if geo.get("lat") is None:
         return None
+    precision = str(geo.get("geo_precision") or "")
+    origin = {"Exact": "feed-point", "City / Area": "place", "Country": "centroid"}.get(precision, "")
     return _event(
         feed, title, summary or title, geo["lat"], geo["lng"],
         country=geo.get("country") or country or feed.get("default_country") or "",
@@ -1219,6 +1246,9 @@ def _place_event(feed: dict, title: str, summary: str, country: str = "", **extr
         timestamp=extra.get("timestamp"),
         source=extra.get("source") or feed.get("url"),
         id=extra.get("id") or title,
+        geo_precision=precision,
+        coord_origin=origin,
+        location_name=geo.get("area") or "",
     )
 
 
@@ -1238,6 +1268,7 @@ def parse_cap(feed: dict, content: bytes) -> list[dict]:
     if feed.get("category") == "Tsunami" and "tsunami" not in event.lower():
         event = "Tsunami alert: " + event
     point = None
+    origin = "place"
     circle = re.search(r"<circle>\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)", text, re.I)
     if circle:
         point = _pair(circle.group(1), circle.group(2))
@@ -1248,13 +1279,18 @@ def parse_cap(feed: dict, content: bytes) -> list[dict]:
             if pair:
                 point = _pair(pair.group(1), pair.group(2))
     if point is None:
-        point = _coord_in_text(summary) or _jitter(*(_centroid_name("united states") or (39.8, -98.6)), event)
+        point = _coord_in_text(summary)
+        origin = "feed-point" if point else "centroid"
+    if point is None:
+        point = _jitter(*(_centroid_name("united states") or (39.8, -98.6)), event)
+        origin = "centroid"
     severity = "high" if "warning" in lowered else "medium"
     return [_event(
         feed, event, summary, point[0], point[1],
         country=_nearest_country(point[0], point[1]) or "United States",
         severity=severity, timestamp=_tag("sent"),
         source=feed.get("url"), id=_tag("identifier") or event,
+        coord_origin=origin,
     )]
 
 
@@ -1747,7 +1783,7 @@ def features() -> list[dict]:
     with _lock:
         _load_memory()
         feeds = dict(_memory.get("feeds") or {})
-    catalog = {feed["id"] for feed in _feeds()}
+    catalog = {feed["id"]: feed for feed in _feeds()}
     seen = set()
     rows = []
     for feed_id, row in feeds.items():
@@ -1767,6 +1803,14 @@ def features() -> list[dict]:
                 seen.add(key)
             if title_key:
                 seen.add(title_key)
+            origin = event.get("coord_origin") or ""
+            if not origin:
+                try:
+                    import incident_badges
+
+                    origin = incident_badges.default_coord_origin(catalog[feed_id])
+                except Exception:
+                    origin = ""
             rows.append({
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [point[1], point[0]]},
@@ -1789,6 +1833,7 @@ def features() -> list[dict]:
                     "lng": event.get("lng"),
                     "original_text": event.get("original_text") or "",
                     "geo_precision": event.get("geo_precision") or "",
+                    "coord_origin": origin,
                     "category": event.get("feed_category") or row.get("category") or "OSINT",
                     "feed_category": event.get("feed_category") or row.get("category") or "",
                     "feed_id": feed_id,
