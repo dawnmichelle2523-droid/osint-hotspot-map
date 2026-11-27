@@ -7880,7 +7880,7 @@ def country_calendar_payload(iso2: str, today: date | None = None) -> dict:
         return _empty_calendar(code, day)
 
 
-def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, bytes] | None:
+def handle_api(method: str, path: str, body: bytes = b"", authorization: str = "") -> tuple[int, str, bytes] | None:
     """Shared API dispatch for the built-in server and the Flask/Gunicorn entry."""
     route = path.split("?", 1)[0]
     query = path.split("?", 1)[1] if "?" in path else ""
@@ -7905,6 +7905,16 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
         pass
     if not route.startswith("/api/"):
         return None
+    if route == "/api/briefings/publish" or route.startswith("/api/briefings/published"):
+        try:
+            import daily_ao_publisher
+
+            routed = daily_ao_publisher.dispatch(verb, path, body, authorization=authorization)
+        except Exception as exc:
+            print(f"Daily AO publisher failed: {exc.__class__.__name__}.")
+            routed = None
+        if routed is not None:
+            return routed
     if route in {"/api/ai/claude-status", "/api/risk-assessments/ai-draft", "/api/briefings/ai-draft"}:
         try:
             import claude_client
@@ -8178,7 +8188,7 @@ class MapHandler(SimpleHTTPRequestHandler):
                 return
         except Exception as exc:
             print(f"Grok stream failed: {exc.__class__.__name__}.")
-        handled = handle_api("POST", self.path, raw)
+        handled = handle_api("POST", self.path, raw, authorization=self.headers.get("Authorization") or "")
         if handled:
             self._send(*handled)
             return
