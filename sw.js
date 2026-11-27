@@ -1,5 +1,5 @@
-const CACHE = "georisk-shell-v2";
-const SHELL = ["/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops", "/briefing", "/reports", "/static/platform.css", "/static/reports.js", "/static/logo.png", "/manifest.webmanifest"];
+const CACHE = "georisk-shell-v3";
+const SHELL = ["/", "/pricing", "/enterprise", "/risk-assessments", "/grok-ops", "/briefing", "/reports", "/static/platform.css", "/static/reports.js", "/static/ra-diff-audit.js", "/static/logo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
