@@ -84,6 +84,70 @@
     generate().catch(function (error) { text(generateStatus, friendly(error), "bad"); });
   });
 
+  function publicIncident(props) {
+    return {
+      title: props.title || "",
+      summary: props.summary || "",
+      severity: props.severity || "",
+      category: props.category || "",
+      country: props.country || "",
+      region: props.region || "",
+      area: props.location_name || props.governorate || "",
+      timestamp: props.timestamp || "",
+      source_name: props.source_name || ""
+    };
+  }
+
+  document.getElementById("claude-draft").addEventListener("click", function () {
+    const output = document.getElementById("claude-narrative");
+    const cost = document.getElementById("claude-cost");
+    const button = document.getElementById("claude-draft");
+    if (!window.GeoRiskClaude) {
+      if (output) output.textContent = "Draft with Claude is unavailable in this browser.";
+      return;
+    }
+    const scope = scopeInput.value.trim();
+    const period = periodInput.value;
+    button.disabled = true;
+    fetch("/api/data", { cache: "no-store" })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        const features = Array.isArray(data.features) ? data.features : [];
+        return features.filter(function (feature) {
+          const props = feature.properties || {};
+          const blob = [props.country, props.region, props.theatre, props.location_name].join(" ");
+          return scope && blob.toLowerCase().indexOf(scope.toLowerCase()) !== -1;
+        }).slice(0, 12).map(function (feature) {
+          return publicIncident(feature.properties || {});
+        });
+      })
+      .catch(function () { return []; })
+      .then(function (incidents) {
+        const existing = output && output.textContent.trim();
+        return window.GeoRiskClaude.draft("/api/briefings/ai-draft", {
+          cadence: period === "custom" ? "custom" : period,
+          days: period === "custom" ? Number(daysInput.value) : undefined,
+          country: scope,
+          region: scope,
+          sector: categoryInput.value,
+          incidents: incidents,
+          action: existing ? "refine" : "draft",
+          draft: existing || ""
+        });
+      })
+      .then(function (payload) {
+        if (output) output.textContent = payload.narrative || payload.status || "";
+        if (cost) {
+          cost.dataset.claudeLocked = "1";
+          cost.textContent = window.GeoRiskClaude.costLine(payload);
+        }
+      })
+      .catch(function () {
+        if (cost) cost.textContent = "Draft with Claude did not complete. The scheduled report was not changed.";
+      })
+      .then(function () { button.disabled = false; });
+  });
+
   document.getElementById("print").addEventListener("click", function () {
     if (!preview.contentWindow) return;
     preview.contentWindow.focus();

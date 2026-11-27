@@ -59,6 +59,13 @@
     th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #1E293B; vertical-align: top; }
     th { color: #D4AF37; font-weight: 700; }
     .empty { color: #94A3B8; margin: 0; }
+    #brief-main button { color: #D4AF37; background: #102A63; border: 1px solid #C5A059; border-radius: 8px; padding: 8px 12px; font: inherit; font-weight: 700; cursor: pointer; }
+    .claude-pill { display: inline-flex; align-items: center; margin-left: 8px; border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 700; border: 1px solid #1E293B; color: #94A3B8; }
+    .claude-pill.ready { color: #ccfbf1; border-color: #0f766e; }
+    .claude-pill.idle { color: #D4AF37; border-color: #C5A059; }
+    .note { color: #94A3B8; font-size: 13px; }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #94A3B8; font-weight: 700; max-width: 280px; }
+    select, input { background: #060A13; color: #E2E8F0; border: 1px solid #1E293B; border-radius: 8px; padding: 8px 10px; font: inherit; }
     #app-footer { padding: 8px 12px; background: #0D1424; border-top: 1px solid #6E5825; color: #94A3B8; font-size: 10px; }
   </style>
   <link rel="stylesheet" href="/static/site-nav.css">
@@ -123,11 +130,23 @@
   </div>
   <main id="brief-main">
     <h1>Regional Briefings</h1>
-    <p class="lede page-lead">Write a theatre briefing from incidents already on the live map. Names and medical details are left out.</p>
+    <p class="lede page-lead">Write a theatre briefing from incidents already on the live map. Names and medical details are left out. Draft with Claude runs only when you click it.</p>
     <section class="panel" aria-label="Theater briefing">
       <h2>Theater briefing</h2>
       <label>Theatre <select id="theatre"></select></label>
-      <p><button type="button" id="theater-briefing">Generate Theater Briefing</button></p>
+      <label>Cadence
+        <select id="brief-cadence">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </label>
+      <p>
+        <button type="button" id="theater-briefing">Generate Theater Briefing</button>
+        <button type="button" id="claude-draft" aria-describedby="claude-cost">Draft with Claude</button>
+        <span id="claude-status" class="claude-pill idle" role="status" data-claude-status>Add ANTHROPIC_API_KEY</span>
+      </p>
+      <p class="note" id="claude-cost" data-claude-rates role="status"></p>
       <pre id="brief-output" class="empty" style="white-space:pre-wrap"></pre>
     </section>
     <section class="panel" aria-label="Live incidents by country">
@@ -262,7 +281,67 @@
         onError: (payload) => { output.textContent = payload.message || "Briefing is unavailable."; }
       });
     });
+    function publicIncident(props) {
+      return {
+        title: props.title || "",
+        summary: props.summary || "",
+        severity: props.severity || "",
+        category: props.category || "",
+        country: props.country || "",
+        region: props.region || "",
+        area: props.location_name || props.governorate || "",
+        timestamp: props.timestamp || "",
+        source_name: props.source_name || ""
+      };
+    }
+    document.getElementById("claude-draft").addEventListener("click", async () => {
+      const output = document.getElementById("brief-output");
+      const cost = document.getElementById("claude-cost");
+      const button = document.getElementById("claude-draft");
+      if (!window.GeoRiskClaude) {
+        output.textContent = "Draft with Claude is unavailable in this browser.";
+        return;
+      }
+      button.disabled = true;
+      let features = [];
+      try {
+        const response = await fetch("/api/data", { cache: "no-store" });
+        const data = await response.json();
+        features = data.features || [];
+      } catch (err) {
+        features = [];
+      }
+      const name = theatre.value;
+      const cadence = document.getElementById("brief-cadence").value || "daily";
+      const incidents = features.filter((feature) => {
+        const props = feature.properties || {};
+        const blob = (props.country || "") + " " + (props.region || "") + " " + (props.theatre || "");
+        return blob.indexOf(name) !== -1;
+      }).slice(0, 12).map((feature) => publicIncident(feature.properties || {}));
+      const existing = output.textContent.trim();
+      try {
+        const payload = await window.GeoRiskClaude.draft("/api/briefings/ai-draft", {
+          cadence: cadence,
+          country: name,
+          region: name,
+          deployment_scope: cadence.charAt(0).toUpperCase() + cadence.slice(1) + " area-of-operations briefing",
+          incidents: incidents,
+          action: existing ? "refine" : "draft",
+          draft: existing
+        });
+        output.textContent = payload.narrative || payload.status || "The local template is unavailable.";
+        if (cost) {
+          cost.dataset.claudeLocked = "1";
+          cost.textContent = window.GeoRiskClaude.costLine(payload);
+        }
+      } catch (err) {
+        if (cost) cost.textContent = "Draft with Claude did not complete. Nothing further was sent.";
+      } finally {
+        button.disabled = false;
+      }
+    });
   </script>
   <script src="/static/grok-stream.js"></script>
+  <script src="/static/claude-draft.js"></script>
 </body>
 </html>

@@ -119,6 +119,8 @@
         </label>
         <button type="button" id="download">Download / Export PDF</button>
         <button type="button" id="autodraft">Auto-Draft mitigations</button>
+        <button type="button" id="claude-draft" aria-describedby="claude-cost">Draft with Claude</button>
+        <span id="claude-status" class="claude-pill idle" role="status" data-claude-status>Add ANTHROPIC_API_KEY</span>
         <button type="button" class="ghost" id="reset">Clear local draft</button>
         <button type="button" id="ra-check-changed">Check What Changed</button>
       </div>
@@ -133,7 +135,8 @@
         <button type="button" class="ghost" id="ra-clear-browser">Clear Local Browser Data</button>
       </div>
       <p class="note" id="ra-snapshot-note">Snapshots stay in this browser. Check What Changed sends only the country, region, baseline time, incident ids, and original risk level.</p>
-      <p class="note" id="privacy">Fields marked local-only never leave this browser. Auto-Draft sends the sector, compliance standard, operation type, destination, transport, accommodation and comms protocols, and hazard scores only.</p>
+      <p class="note" id="privacy">Fields marked local-only never leave this browser. Auto-Draft sends the sector, compliance standard, operation type, destination, transport, accommodation and comms protocols, and hazard scores only. Draft with Claude sends only the country, region, sector, deployment scope, compliance frame, hazard labels and scores, and public incident context. Emails, phone numbers, IMEIs, and staff names are stripped first. It runs only when you click the button.</p>
+      <p class="note" id="claude-cost" data-claude-rates role="status"></p>
       <p class="note" id="ra-hygiene-note">Personal and reviewer details stay strictly in this browser and are never sent to GeoRiskIntel servers.</p>
       <div id="enterprise-fields" class="grid" hidden>
         <label>Client organisation <input id="org-name" data-local="1" autocomplete="off" placeholder="Shown on the PDF only"></label>
@@ -440,6 +443,7 @@
   </main>
   <footer id="app-footer">GeoRiskIntel · Local-only entries remain on this device and are never sent to Grok.</footer>
   <script src="/static/grok-stream.js"></script>
+  <script src="/static/claude-draft.js"></script>
   <script src="/static/geo-split.js"></script>
   <script src="/static/ra-sectors.js"></script>
   <script>
@@ -1170,6 +1174,36 @@
         onDone: (payload) => { if (payload.message) output.textContent += "\n\n" + payload.message; },
         onError: (payload) => { output.textContent = payload.message || "Auto-draft is unavailable."; }
       });
+    });
+    document.getElementById("claude-draft").addEventListener("click", async () => {
+      const output = document.getElementById("ai-draft");
+      const cost = document.getElementById("claude-cost");
+      const button = document.getElementById("claude-draft");
+      if (!window.GeoRiskClaude) {
+        output.textContent = "Draft with Claude is unavailable in this browser.";
+        return;
+      }
+      const existing = output.textContent.trim();
+      const placeholder = existing.indexOf("Mitigation draft appears here") === 0;
+      const body = draftPayload();
+      const aoRegion = document.getElementById("ao-region");
+      body.deployment_scope = body.operation || "";
+      body.region = aoRegion && aoRegion.value && aoRegion.value !== "all" ? aoRegion.value : "";
+      body.action = !placeholder && existing ? "refine" : "draft";
+      body.draft = body.action === "refine" ? existing : "";
+      button.disabled = true;
+      try {
+        const payload = await window.GeoRiskClaude.draft("/api/risk-assessments/ai-draft", body);
+        output.textContent = payload.narrative || payload.status || "The local template is unavailable.";
+        if (cost) {
+          cost.dataset.claudeLocked = "1";
+          cost.textContent = window.GeoRiskClaude.costLine(payload);
+        }
+      } catch (err) {
+        if (cost) cost.textContent = "Draft with Claude did not complete. Nothing further was sent.";
+      } finally {
+        button.disabled = false;
+      }
     });
 
     restore();

@@ -7881,6 +7881,16 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
         pass
     if not route.startswith("/api/"):
         return None
+    if route in {"/api/ai/claude-status", "/api/risk-assessments/ai-draft", "/api/briefings/ai-draft"}:
+        try:
+            import claude_client
+
+            routed = claude_client.dispatch(verb, path, body)
+        except Exception as exc:
+            print(f"Claude draft route failed: {exc.__class__.__name__}.")
+            routed = None
+        if routed is not None:
+            return routed
     try:
         import platform_phase1
 

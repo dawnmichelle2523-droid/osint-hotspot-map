@@ -81,7 +81,7 @@ METHODOLOGY = (
     "HIGH, or EXTREME. Background collection does not call a language model. "
     "When a narrative says it was prepared with Grok, the figures themselves still come "
     "from the stored counts. Casualty figures are pattern-extracted from the source text "
-    "and are not a verified toll."
+    "and are not a verified toll. Narratives are written in UK English."
 )
 _start_lock = threading.Lock()
 _started = False
@@ -275,7 +275,8 @@ def synthesize(analytics: dict) -> dict | None:
         "Do not invent incidents, casualties, or places. Return JSON with keys "
         "executive_summary (string), outlook (string), and key_developments (array). "
         "Each key development has title, badge, summary, implications, what_to_watch. "
-        "badge must be one of: ↑ RISING, • NEW, ↔ STABLE, ↓ FALLING."
+        "badge must be one of: ↑ RISING, • NEW, ↔ STABLE, ↓ FALLING. "
+        "Write every string in UK English, using British spelling and conventions."
     )
     try:
         response = requests.post(
@@ -518,7 +519,11 @@ def render_html(document: dict) -> str:
     significant = analytics["significant"]
     risk = analytics["risk"]
     casualties = analytics["casualties"]
-    source_note = "Narrative prepared with Grok from these counts." if document["narrative_source"] == "grok" else "Narrative prepared from the stored counts. Grok was not used."
+    source_note = (
+        "Narrative prepared with Grok from these counts, in UK English."
+        if document["narrative_source"] == "grok"
+        else "Narrative prepared in UK English from the stored counts. Grok was not used."
+    )
     css = """
     @page { size: A4; margin: 12mm; }
     * { box-sizing: border-box; }
