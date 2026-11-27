@@ -44,9 +44,33 @@ def _enable_basic_auth() -> None:
     BasicAuth(app)
 
 
+_INCIDENT_API_PATHS = {
+    "/api/data",
+    "/api/news-stream",
+    "/api/risk-assessments/country-incidents",
+}
+
+
+def _score_incident_payload(payload: dict) -> dict:
+    """Attach deterministic confidence fields without touching the cached snapshot."""
+    if not isinstance(payload, dict) or request.path not in _INCIDENT_API_PATHS:
+        return payload
+    try:
+        import confidence_scoring
+    except Exception as exc:
+        print(f"Confidence scoring was not applied: {exc.__class__.__name__}.")
+        return payload
+    try:
+        return confidence_scoring.apply_to_payload(payload, confidence_scoring.score_incidents)
+    except Exception as exc:
+        print(f"Confidence scoring was not applied: {exc.__class__.__name__}.")
+        return payload
+
+
 def _json(payload: dict) -> Response:
     if ppv.is_sensitive(request.path):
         payload = ppv.restrict(payload)
+    payload = _score_incident_payload(payload)
     body = serve_map.json.dumps(payload, ensure_ascii=False)
     response = Response(body, mimetype="application/json")
     response.headers["Cache-Control"] = "no-store"
@@ -110,6 +134,14 @@ def _forward_api() -> Response:
     if handled is None:
         abort(404)
     status, content_type, payload = handled
+    if request.path in _INCIDENT_API_PATHS and "json" in content_type.lower():
+        try:
+            decoded = serve_map.json.loads(payload)
+        except Exception:
+            decoded = None
+        if isinstance(decoded, dict):
+            decoded = _score_incident_payload(decoded)
+            payload = serve_map.json.dumps(decoded, ensure_ascii=False).encode("utf-8")
     response = Response(payload, status=status)
     response.headers["Content-Type"] = content_type
     response.headers["Cache-Control"] = "no-store"
