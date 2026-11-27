@@ -89,7 +89,7 @@ def _fetch_feed(name: str, url: str, region: str) -> list[dict]:
             "timestamp": _stamp(entry),
             "region": region,
             "id": link or title,
-        }, live_translation=True)
+        }, live_translation=True, ingest=True)
         if enriched is None:
             continue
         enriched["region"] = enriched.get("region") if enriched.get("region") not in ("", "Global") else region
@@ -189,9 +189,16 @@ def payload(region: str = "") -> dict:
         items = [item for item in items if str(item.get("region") or "") == wanted or str(item.get("country") or "") == wanted]
     public = []
     for item in items[:40]:
+        title = item.get("title") or ""
+        summary = item.get("summary") or ""
+        try:
+            title = feed_quality.translate_text(title, live=True, ingest=True) or title
+            summary = feed_quality.translate_text(summary, live=True, ingest=True) if summary else ""
+        except Exception:
+            pass
         public.append({
-            "title": item.get("title") or "",
-            "summary": item.get("summary") or "",
+            "title": title,
+            "summary": summary,
             "source_name": item.get("source_name") or "",
             "source": item.get("source") or "",
             "timestamp": item.get("timestamp") or "",
