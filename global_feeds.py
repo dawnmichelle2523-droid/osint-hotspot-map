@@ -1068,6 +1068,17 @@ def _fetch_feed(feed: dict, previous: list[dict]) -> dict:
         if feed["parser"] in {"gdacs", "wa", "geojson", "usgs", "nws"} and content.lstrip().startswith(b"<"):
             raise FeedError("Source returned a web page instead of feed data")
         events = PARSERS[feed["parser"]](feed, content)
+        try:
+            import feed_quality
+
+            cleaned = []
+            for event in events:
+                item = feed_quality.enrich_event(event, live_translation=True)
+                if item is not None and item.get("lat") is not None:
+                    cleaned.append(item)
+            events = feed_quality.dedupe(cleaned)
+        except Exception:
+            events = [event for event in events if event.get("lat") is not None]
         if feed.get("id") == "uk-fcdo-atom":
             seen = {str(item.get("id")) for item in events}
             for extra in _uk_watched(feed):
@@ -1228,10 +1239,15 @@ def features() -> list[dict]:
                     "region": event.get("region") or row.get("region") or "Global",
                     "theatre": event.get("theatre") or event.get("region") or row.get("region") or "Global",
                     "country": event.get("country") or "",
+                    "area": event.get("area") or "",
+                    "location_name": event.get("location_name") or event.get("area") or event.get("country") or "",
+                    "lat": event.get("lat"),
+                    "lng": event.get("lng"),
+                    "original_text": event.get("original_text") or "",
+                    "geo_precision": event.get("geo_precision") or "",
                     "category": event.get("feed_category") or row.get("category") or "OSINT",
                     "feed_category": event.get("feed_category") or row.get("category") or "",
                     "feed_id": feed_id,
-                    "location_name": event.get("country") or event.get("region") or "",
                 },
             })
     grouped: dict[str, list] = {}

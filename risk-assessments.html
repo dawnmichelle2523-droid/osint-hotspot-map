@@ -16,15 +16,13 @@
       <span class="risk-pill">REGIONAL RISK</span>
     </div>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">OSINT Map</a>
-      <a href="/risk-assessments" class="nav-emphasis" aria-current="page" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
-      <a href="/briefing">Briefing</a>
-      <a href="/world-risk">World Risk</a>
-      <a href="/countries">Countries</a>
+      <a href="/">Map</a>
+      <a href="/risk-assessments" class="nav-emphasis" aria-current="page">Risk Assessments</a>
       <a href="/grok-ops">Grok Ops</a>
       <a href="/pricing">Pricing</a>
       <a href="/enterprise">Enterprise</a>
     </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
   </header>
   <div class="section-banner" id="risk-subhead">
     <p class="kicker">Risk Assessments</p>
@@ -336,6 +334,21 @@
     document.getElementById("emergency-numbers").textContent = EMERGENCY.default;
     document.getElementById("doc-ref").value = "GR-PDR-" + new Date().toISOString().slice(0, 10);
     restore();
+    const prefill = new URLSearchParams(window.location.search);
+    if (prefill.get("country")) {
+      const named = prefill.get("country");
+      if (![...countrySelect.options].some((option) => option.value === named)) {
+        const extra = document.createElement("option");
+        extra.value = named;
+        extra.textContent = named;
+        countrySelect.appendChild(extra);
+      }
+      countrySelect.value = named;
+    }
+    if (prefill.get("area") || prefill.get("city")) {
+      document.getElementById("city").value = prefill.get("area") || prefill.get("city");
+    }
+    save();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   </script>
 </body>

@@ -27,6 +27,7 @@
     #page-nav { display: flex; flex-wrap: wrap; gap: 6px; }
     #page-nav a { color: #94A3B8; text-decoration: none; border: 1px solid #1E293B; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
     #page-nav a[aria-current="page"], #page-nav a.nav-emphasis { color: #D4AF37; background: #102A63; border-color: #C5A059; }
+    a.nav-cta { margin-left: auto; color: #060A13; background: #D4AF37; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 800; text-decoration: none; }
     #page-nav { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
     #header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
     #local-time {
@@ -87,15 +88,13 @@
       <span class="risk-pill">REGIONAL RISK</span>
     </div>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">OSINT Map</a>
-      <a href="/risk-assessments" class="nav-emphasis" title="ISO-aligned risk assessments and pre-deployment reports">Risk Assessments</a>
-      <a href="/briefing">Briefing</a>
-      <a href="/world-risk" aria-current="page">World Risk</a>
-      <a href="/countries">Countries</a>
+      <a href="/">Map</a>
+      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
       <a href="/grok-ops">Grok Ops</a>
       <a href="/pricing">Pricing</a>
       <a href="/enterprise">Enterprise</a>
     </nav>
+    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
     <div id="header-tools">
       <div id="clock-strip">
         <div id="local-time">
@@ -182,12 +181,11 @@
     const map = L.map("risk-map", { worldCopyJump: true, minZoom: 2, maxZoom: 19 }).setView([20, 15], 2);
     map.createPane("darkbase");
     map.getPane("darkbase").style.zIndex = "200";
-    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.95) contrast(0.9)";
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-      subdomains: "abc",
+    map.getPane("darkbase").style.filter = "invert(100%) hue-rotate(180deg) brightness(0.92) contrast(0.92)";
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      attribution: "Tiles &copy; Esri",
+      maxNativeZoom: 16,
       maxZoom: 19,
-      maxNativeZoom: 19,
       pane: "darkbase"
     }).addTo(map);
     spikeLayer.addTo(map);
