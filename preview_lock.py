@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import html
 import os
+import re
 from urllib.parse import quote
 
 from flask import Flask, Response, redirect, request
@@ -20,6 +21,11 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 COOKIE = "georisk_preview"
 COOKIE_MAX_AGE = 14 * 24 * 60 * 60
 EXEMPT = {"/robots.txt", "/healthz", "/login"}
+# Field check-in only. Tokens are url-safe and at least 32 characters.
+# The ops dashboard (/check-in) and every other /api/checkins route stay locked.
+_PUBLIC_CHECKIN = re.compile(
+    r"^/(?:c/[A-Za-z0-9_-]{32,128}|api/checkin/tap/[A-Za-z0-9_-]{32,128})/?$"
+)
 ROBOTS_OFF = "User-agent: *\nDisallow: /\n"
 ROBOTS_ON = "User-agent: *\nAllow: /\n"
 ROBOTS_META = '<meta name="robots" content="noindex, nofollow">'
@@ -50,6 +56,11 @@ def preview_user() -> str:
 
 def lock_enabled() -> bool:
     return bool(preview_password())
+
+
+def is_public_checkin_path(path: str) -> bool:
+    """True for a mobile check-in link or its tap. Nothing else is public."""
+    return bool(_PUBLIC_CHECKIN.match(path or ""))
 
 
 def _signing_key() -> str:
@@ -210,7 +221,7 @@ def install(app: Flask) -> None:
     @app.before_request
     def _preview_gate():
         path = request.path or "/"
-        if path in EXEMPT:
+        if path in EXEMPT or is_public_checkin_path(path):
             return None
         if not lock_enabled():
             return None

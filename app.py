@@ -35,6 +35,8 @@ from route_risk import route_bp
 app.register_blueprint(route_bp)
 preview_lock.install(app)
 ppv.install(app)
+import checkin_beacon
+app.register_blueprint(checkin_beacon.checkin_bp)
 import ra_diff
 app.register_blueprint(ra_diff.ra_diff_bp)
 
