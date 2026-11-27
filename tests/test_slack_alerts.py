@@ -544,10 +544,12 @@ class SlackAlertTests(unittest.TestCase):
         self.assertNotIn("slack", (root / "preview_lock.py").read_text(encoding="utf-8").lower())
         self.assertIn('href="/slack-alerts"', (root / "grok-ops.html").read_text(encoding="utf-8"))
         pricing = (root / "pricing.html").read_text(encoding="utf-8")
-        self.assertIn("Live Slack Ops-Room Alerts (Optional Add-On)", pricing)
-        self.assertIn("id=\"slack-price\"", pricing)
-        self.assertIn("slackM", pricing)
-        self.assertIn("slackY", pricing)
+        self.assertIn("Live Slack Ops-Room Alerts", pricing)
+        self.assertIn('id="addon-slack"', pricing)
+        self.assertIn('data-price="slack"', pricing)
+        self.assertIn('data-gbp-monthly="£29"', pricing)
+        self.assertIn('data-usd-monthly="$39"', pricing)
+        self.assertIn("1 Live Slack Ops-Room channel included", pricing)
 
 
 if __name__ == "__main__":
