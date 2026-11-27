@@ -249,6 +249,8 @@
         contacts: document.getElementById("contacts").value,
         medical: document.getElementById("medical").value,
         passport: document.getElementById("passport").value,
+        advisor: document.getElementById("advisor").value,
+        advisorDecision: document.getElementById("advisor-decision").value,
         enterprise: document.getElementById("enterprise").checked,
         org: document.getElementById("org-name").value,
         rows: rows
@@ -269,6 +271,8 @@
       document.getElementById("contacts").value = state.contacts || "";
       document.getElementById("medical").value = state.medical || "";
       document.getElementById("passport").value = state.passport || "";
+      document.getElementById("advisor").value = state.advisor || "";
+      if (state.advisorDecision) document.getElementById("advisor-decision").value = state.advisorDecision;
       document.getElementById("enterprise").checked = !!state.enterprise;
       document.getElementById("org-name").value = state.org || "";
       if (Array.isArray(state.rows) && state.rows.length) { rows = state.rows; paint(); }

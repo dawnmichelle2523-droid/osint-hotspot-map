@@ -22,9 +22,12 @@ _pin_live_database()
 
 import ppv
 import preview_lock
+import security_compliance
 import serve_map
 
 app = Flask(__name__)
+# Registered first so cookie hardening runs after preview and pass cookies are written.
+security_compliance.install(app)
 preview_lock.install(app)
 ppv.install(app)
 
