@@ -355,7 +355,11 @@ class SentinelZoneTests(unittest.TestCase):
         self.assertIn("Sentinel zone evaluation failed", source)
         self.assertIn("Sentinel zone evaluation was not scheduled", source)
         self.assertIn('href="/sentinel-zones"', (ROOT / "grok-ops.html").read_text(encoding="utf-8"))
-        self.assertNotIn("sentinel", (ROOT / "pricing.html").read_text(encoding="utf-8").lower())
+        pricing = (ROOT / "pricing.html").read_text(encoding="utf-8")
+        # Shared navigation links to the tool. Pricing copy and figures do not describe it.
+        self.assertEqual(pricing.lower().count("sentinel"), 2)
+        self.assertIn('href="/sentinel-zones"', pricing)
+        self.assertIn('data-gbp-monthly="£29"', pricing)
         self.assertNotIn("sentinel", (ROOT / "preview_lock.py").read_text(encoding="utf-8").lower())
         os.environ["DISABLE_BACKGROUND"] = "1"
         os.environ["DISABLE_HISTORICAL_SYNC"] = "1"

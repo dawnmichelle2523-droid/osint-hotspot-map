@@ -14,29 +14,62 @@
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="/static/pwa-register.js" defer></script>
   <link rel="stylesheet" href="/static/platform.css">
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup">
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
       <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
-      <span class="risk-pill">REGIONAL RISK</span>
-    </div>
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis" aria-current="page">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments" aria-current="page">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner" id="risk-subhead">
     <p class="kicker">Risk Assessments</p>
     <h1>ISO-aligned Risk Assessment &amp; Pre-Deployment Report builder</h1>
-    <p>Choose a sector. Templates, assignment types, hazards, controls, and transport, accommodation and comms protocols follow that sector. You can still type a custom entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Local-only personal and medical details stay in this browser and are never sent to Grok.</p>
+    <p class="page-lead">Build a pre-travel risk report for a team, school trip, or client, then export it as a PDF.</p>
+    <p>Templates, hazards, and controls follow the sector you pick. You can still type your own entry. Standards covered include ISO 31000, ISO 31030, BS 8848, ISO 18788, ISO 22361, and ISO 45001. Personal and medical details stay in this browser and are never sent to the assistant.</p>
   </div>
   <main>
+    <section class="how-it-works" data-how="risk-assessments">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Choose a sector.</strong> Media, a school trip, and a close-protection job each start from a different template.</li>
+        <li><strong>2. Name the trip.</strong> Example: leave Media &amp; Journalism selected and title it “Beirut bureau — November”.</li>
+        <li><strong>3. Export the PDF.</strong> Save a baseline first if you want a later “what changed” check.</li>
+      </ol>
+    </section>
     <section class="panel no-print" id="sector-panel">
       <div class="sector-picker">
         <label>Sector

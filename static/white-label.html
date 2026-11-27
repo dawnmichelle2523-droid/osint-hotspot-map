@@ -26,24 +26,62 @@
     .rule { border: 1px solid var(--gold-border); border-radius: 10px; padding: 8px 10px; color: var(--gold); font-size: 12px; font-weight: 700; }
     @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">WHITE-LABEL</span></div>
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/white-label" aria-current="page">White-Label</a>
-      <a href="/enterprise">Enterprise</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/pricing">Pricing</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label" aria-current="page">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner">
-    <p class="kicker">Client portal embeds</p>
+    <p class="kicker">Client portal panels</p>
     <h1>White-Label Studio</h1>
-    <p>TMCs, insurers, private security companies, and universities can place a live country-risk badge, ticker, or mini-map on their own intranet. Their logo and accent travel with the embed. The Powered by GeoRiskIntel badge stays on every widget.</p>
+    <p class="page-lead">Put a live country-risk panel on your intranet, in your colours, with your logo.</p>
+    <p>Travel managers, insurers, security firms, and universities can show a badge, a short ticker, or a small map. The Powered by GeoRiskIntel badge stays on every panel.</p>
   </div>
   <main>
+    <section class="how-it-works" data-how="white-label">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Name the organisation.</strong> The example is Atlas Secure Travel, watching Yemen.</li>
+        <li><strong>2. Pick the panel.</strong> A country badge, a live ticker, or a small map.</li>
+        <li><strong>3. Copy it onto your site.</strong> The preview updates as you change the brand.</li>
+      </ol>
+    </section>
     <div class="studio">
       <form id="studio-form" class="panel" action="/embed/widget" method="get" target="preview">
         <h2>Brand</h2>
@@ -122,11 +160,11 @@
           </div>
         </div>
         <iframe id="preview" name="preview" title="Branded country risk widget preview" src="/embed/widget?mode=badge&amp;country=Yemen&amp;region=Middle%20East&amp;org=Atlas%20Secure%20Travel&amp;accent=%231B4F8A&amp;theme=dark" style="height:260px" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
-        <h2>Embed snippets</h2>
-        <label><span>iframe</span><textarea id="iframe-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
-        <p class="copy-row"><button type="button" id="copy-iframe">Copy iframe</button></p>
-        <label><span>script</span><textarea id="script-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
-        <p class="copy-row"><button type="button" id="copy-script">Copy script</button><span id="copy-status" class="note" role="status"></span></p>
+        <h2>Copy this onto your site</h2>
+        <label><span>Page snippet</span><textarea id="iframe-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-iframe">Copy page snippet</button></p>
+        <label><span>Short script</span><textarea id="script-snippet" class="snippet" readonly spellcheck="false"></textarea></label>
+        <p class="copy-row"><button type="button" id="copy-script">Copy script snippet</button><span id="copy-status" class="note" role="status"></span></p>
       </section>
     </div>
   </main>
@@ -315,12 +353,14 @@
       function copyFrom(id) {
         var node = document.getElementById(id);
         var text = node ? node.value : "";
-        function done(message) {
+        function done(message, copied) {
           copyStatus.textContent = message;
+          copyStatus.className = copied ? "note banner ok" : "note banner bad";
+          if (copied && window.georiskToast) window.georiskToast("Copied!");
         }
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard.writeText(text).then(function () {
-            done("Copied.");
+            done("Copied!", true);
           }).catch(function () {
             if (node) {
               node.focus();

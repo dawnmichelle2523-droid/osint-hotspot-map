@@ -11,14 +11,22 @@
   let reportId = null;
   let reportHtml = "";
 
-  function text(node, value) {
+  function text(node, value, tone) {
     node.textContent = value || "";
+    node.classList.remove("banner", "ok", "bad");
+    if (tone) node.classList.add("banner", tone);
+  }
+
+  function friendly(error) {
+    const message = error && error.message ? error.message : "That did not go through. Please try again.";
+    if (/traceback|sqlite|exception/i.test(message)) return "That did not go through. Please try again.";
+    return message;
   }
 
   async function readJson(response) {
     const payload = await response.json();
     if (!response.ok || payload.ok === false) {
-      throw new Error(payload.error || "Request failed");
+      throw new Error(payload.error || "That did not go through. Please try again.");
     }
     return payload;
   }
@@ -53,7 +61,10 @@
   }
 
   async function generate() {
+    const button = document.getElementById("generate");
     text(generateStatus, "Generating…");
+    if (button) button.classList.add("is-busy");
+    try {
     const response = await fetch("/api/reports/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,11 +74,14 @@
     reportId = body.id;
     reportHtml = body.html || "";
     preview.srcdoc = reportHtml;
-    text(generateStatus, body.scope + " · " + body.cadence_title + " · Risk " + body.risk_index_label + " · " + body.narrative_source);
+    text(generateStatus, body.scope + " · " + body.cadence_title + " · Risk " + body.risk_index_label + " · " + body.narrative_source, "ok");
+    } finally {
+      if (button) button.classList.remove("is-busy");
+    }
   }
 
   document.getElementById("generate").addEventListener("click", function () {
-    generate().catch(function (error) { text(generateStatus, error.message); });
+    generate().catch(function (error) { text(generateStatus, friendly(error), "bad"); });
   });
 
   document.getElementById("print").addEventListener("click", function () {
@@ -95,13 +109,16 @@
     body.recipients = document.getElementById("send-recipients").value;
     if (reportId) body.report_id = reportId;
     text(sendStatus, "Sending…");
+    const sendButton = document.getElementById("send-now");
+    if (sendButton) sendButton.classList.add("is-busy");
     fetch("/api/reports/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     }).then(readJson).then(function (result) {
-      text(sendStatus, "Sent to " + (result.recipients || []).join(", "));
-    }).catch(function (error) { text(sendStatus, error.message); });
+      text(sendStatus, "Sent to " + (result.recipients || []).join(", "), "ok");
+    }).catch(function (error) { text(sendStatus, friendly(error), "bad"); })
+      .then(function () { if (sendButton) sendButton.classList.remove("is-busy"); });
   });
 
   function scheduleBody() {

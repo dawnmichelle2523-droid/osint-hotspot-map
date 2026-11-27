@@ -50,27 +50,62 @@
       .gauge-hole { background: #fff; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body class="route-page">
-  <header id="live-bar" class="no-print">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+  <header id="live-bar" class="site-shell no-print">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/reports">Reports</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
       <a href="/route-risk" aria-current="page">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner">
     <p class="kicker">Route risk</p>
     <h1>One-click route and corridor risk</h1>
-    <p>Enter an origin, destination, and any waypoints. The corridor is scored against live OSINT inside the buffer, with curated trauma guidance and official crossing notes. No Grok credits are used, and no traveller details are sent.</p>
+    <p class="page-lead">Enter a start and a finish, and see how risky the road between them looks right now.</p>
+    <p>Add stops if the journey is not direct. You get nearby incidents, trauma guidance, and official crossing notes. No traveller names are sent, and this page does not call the assistant.</p>
   </div>
   <main>
+    <section class="how-it-works no-print" data-how="route-risk">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Pick an example.</strong> Choose a saved route, or click the map for a start and a finish.</li>
+        <li><strong>2. Set the width.</strong> The shaded band is how far either side of the road is checked.</li>
+        <li><strong>3. Score the road.</strong> Copy the result into a risk assessment when you are ready.</li>
+      </ol>
+    </section>
     <div class="workspace">
       <section class="panel" aria-label="Corridor map">
         <div id="corridor-map" role="application" aria-label="Corridor map. Click to add a stop."></div>
@@ -307,8 +342,10 @@
       if (inflight) inflight.abort();
       const controller = new AbortController();
       inflight = controller;
-      setStatus("Scoring corridor…");
-      document.getElementById("analyze").disabled = true;
+      setStatus("Scoring the road…");
+      const analyzeButton = document.getElementById("analyze");
+      analyzeButton.disabled = true;
+      analyzeButton.classList.add("is-busy");
       try {
         const response = await fetch("/api/route-risk/analyze", {
           method: "POST",
@@ -325,7 +362,8 @@
         const payload = await response.json();
         if (!response.ok || !payload.ok) {
           setStatus("");
-          setError(payload.error || "Corridor analysis failed.");
+          const detail = payload.error || "";
+          setError(/traceback|sqlite|exception|osrm/i.test(detail) ? "The route could not be scored. Check the stops and try again." : (detail || "The route could not be scored. Check the stops and try again."));
           return;
         }
         paintResult(payload);
@@ -333,11 +371,12 @@
       } catch (err) {
         if (err && err.name === "AbortError") return;
         setStatus("");
-        setError("Corridor analysis could not be reached.");
+        setError("The route could not be scored. Check the connection and try again.");
       } finally {
         if (inflight === controller) {
           inflight = null;
-          document.getElementById("analyze").disabled = false;
+          analyzeButton.disabled = false;
+          analyzeButton.classList.remove("is-busy");
         }
       }
     }
@@ -364,6 +403,7 @@
         return;
       }
       document.getElementById("copy-note").innerHTML = "Saved on this browser. <a href=\"/risk-assessments\">Open Risk Assessments</a> and choose Paste into assessment. The brief is included in the PDF.";
+      if (window.georiskToast) window.georiskToast("Saved for the assessment");
     }
     function applyPreset(preset) {
       stops.splice(0, stops.length);

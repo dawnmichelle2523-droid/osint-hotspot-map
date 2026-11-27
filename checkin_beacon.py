@@ -917,11 +917,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     :root { color-scheme: dark; --bg: #060A13; --panel: #0D1424; --line: #1E293B; --text: #E2E8F0; --muted: #94A3B8; --gold: #D4AF37; --navy: #102A63; --gold-border: #C5A059; }
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
-    header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--gold-border); background: #060A13; }
-    header img { height: 36px; width: auto; }
-    nav { display: flex; gap: 6px; flex-wrap: wrap; }
-    nav a { color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
-    nav a[aria-current="page"] { color: var(--gold); background: var(--navy); border-color: var(--gold-border); }
+    input:not([type="checkbox"]), select { min-height: 44px; }
     main { max-width: 1100px; margin: 0 auto; padding: 16px 14px 48px; }
     h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 36px); }
     h2 { margin: 0 0 10px; font-size: 18px; }
@@ -961,19 +957,59 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     [hidden] { display: none !important; }
     @media (max-width: 640px) { .link-row, .actions { align-items: stretch; } button, .btn { min-height: 44px; } }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header>
-    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
-    <nav aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/check-in" aria-current="page">Check-In</a>
-    </nav>
+  <header id="live-bar" class="site-shell">
+    <div class="nav-backdrop"></div>
+    <div class="nav-row">
+      <a class="brand-lockup" href="/">
+        <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      </a>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav id="page-nav" aria-label="Sections">
+        <a href="/">Live map</a>
+        <a href="/risk-assessments">Risk Assessments</a>
+        <a href="/route-risk">Route risk</a>
+        <a href="/check-in" aria-current="page">Check-in</a>
+        <a href="/pricing">Pricing</a>
+        <details class="nav-more">
+          <summary>Tools</summary>
+          <div class="nav-menu">
+            <a href="/reports">Reports</a>
+            <a href="/sentinel-zones">Sentinel zones</a>
+            <a href="/slack-alerts">Slack alerts</a>
+            <a href="/white-label">White-label</a>
+            <a href="/grok-ops">Grok Ops</a>
+            <a href="/briefing">Daily briefing</a>
+            <a href="/world-risk">World risk</a>
+            <a href="/countries">Country guides</a>
+            <a href="/enterprise">Enterprise</a>
+          </div>
+        </details>
+        <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+      </nav>
+      <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+    </div>
   </header>
   <main>
     <p class="kicker">OPS ROOM</p>
     <h1>2-Tap Mobile Check-In</h1>
-    <p class="note">Issue a mobile link. Field staff tap once to confirm safe, or use the second tap only for panic. Overdue windows alert this board and Slack.</p>
+    <p class="page-lead">Give field staff a private link. They tap once to say they are safe, or twice only if they need urgent help.</p>
+    <section class="how-it-works" data-how="check-in">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Create a callsign.</strong> Use something like CREW-BEIRUT-1. Do not use a real name.</li>
+        <li><strong>2. Copy the link.</strong> Send that link to the adult staff member. It is the only way in.</li>
+        <li><strong>3. Watch this board.</strong> Safe, assistance, and overdue updates appear here.</li>
+      </ol>
+    </section>
     <p class="compliance" id="compliance-schools" role="note">__SCHOOLS_NOTICE__</p>
     <p class="zero-pii" role="note">__ZERO_PII__</p>
     <p class="gdpr" id="gdpr-notice" role="note">__GDPR_NOTICE__</p>
@@ -982,7 +1018,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
       <h2>Create callsign</h2>
       <form id="create-form" method="post" action="/api/checkins" autocomplete="off">
         <div class="grid">
-          <label>Opaque callsign
+          <label>Callsign — no real names
             <input id="callsign" name="callsign" maxlength="48" required autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="CREW-BEIRUT-1" value="__CALLSIGN_VALUE__">
           </label>
           <label>Sector
@@ -1007,7 +1043,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
               <option value="1440">Every 24 hours</option>
             </select>
           </label>
-          <label>Slack webhook (optional)
+          <label>Slack channel address (optional)
             <input id="webhook" name="slack_webhook_url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://hooks.slack.com/services/…">
           </label>
         </div>
@@ -1020,7 +1056,10 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
           <input id="adult-ack" name="adult_staff_only" type="checkbox" value="true" required>
           <span>__ADULT_ONLY__</span>
         </label>
-        <p><button type="submit" id="create-submit">Create check-in link</button></p>
+        <p>
+          <button type="button" class="ghost" id="use-example">Use example</button>
+          <button type="submit" id="create-submit">Create check-in link</button>
+        </p>
         <p id="form-status" class="note" role="status"></p>
       </form>
     </section>
@@ -1147,7 +1186,9 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
           field.focus();
           field.select();
           copyText(url).then(function (ok) {
-            copy.textContent = ok ? "Copied" : "Copy link";
+            copy.textContent = ok ? "Copied!" : "Copy link";
+            if (ok && window.georiskToast) window.georiskToast("Copied!");
+            if (ok) window.setTimeout(function () { copy.textContent = "Copy link"; }, 1600);
           });
         });
         row.appendChild(field);
@@ -1231,6 +1272,15 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
           });
         });
       }
+      var example = document.getElementById("use-example");
+      if (example) example.addEventListener("click", function () {
+        var callsign = document.getElementById("callsign");
+        if (callsign && !callsign.value) callsign.value = "CREW-BEIRUT-1";
+        if (sector && !sector.value) sector.value = "media";
+        var cadence = document.getElementById("cadence");
+        if (cadence && !cadence.value) cadence.value = "120";
+        toggleSchools();
+      });
       if (sector) sector.addEventListener("change", toggleSchools);
       toggleSchools();
       if (form) {
@@ -1255,7 +1305,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
             schools_ack: !!(schoolsAck && schoolsAck.checked)
           };
           var submit = document.getElementById("create-submit");
-          if (submit) submit.disabled = true;
+          if (submit) { submit.disabled = true; submit.classList.add("is-busy"); }
           fetch("/api/checkins", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -1269,13 +1319,13 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
               document.getElementById("webhook").value = "";
               document.getElementById("callsign").value = "";
               if (schoolsAck) schoolsAck.checked = false;
-              setStatus(formStatus, "Link created. Copy it from the board. The webhook is stored and is not shown again.", false);
+              setStatus(formStatus, "Link created. Copy it from the board. The Slack address is stored and is not shown again.", false);
               return refresh();
             });
           }).catch(function () {
             setStatus(formStatus, "Could not create that callsign.", true);
           }).then(function () {
-            if (submit) submit.disabled = false;
+            if (submit) { submit.disabled = false; submit.classList.remove("is-busy"); }
           });
         });
       }
@@ -1328,7 +1378,7 @@ def ops_page(error: str = "", created: bool = False, callsign: str = "") -> str:
     if error:
         banners.append(f'<p class="error" role="alert">{escape(error)}</p>')
     if created:
-        banners.append('<p class="success" role="status">Callsign created. Copy the mobile link from the board. It is the only credential.</p>')
+        banners.append('<p class="success" role="status">Callsign created. Copy the mobile link from the board. That link is the only way in.</p>')
     page = _OPS_TEMPLATE
     page = page.replace("__SCHOOLS_NOTICE__", escape(SCHOOLS_NOTICE))
     page = page.replace("__ZERO_PII__", escape(ZERO_PII_NOTICE))

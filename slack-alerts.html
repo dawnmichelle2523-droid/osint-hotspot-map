@@ -32,40 +32,76 @@
       .span-2 { grid-column: auto; }
     }
   </style>
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
 </head>
 <body>
-  <header id="live-bar">
-    <div class="brand-lockup"><img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel"><span class="risk-pill">REGIONAL RISK</span></div>
+  <header id="live-bar" class="site-shell">
+  <div class="nav-backdrop"></div>
+  <div class="nav-row">
+    <a class="brand-lockup" href="/">
+      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    </a>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+      <span class="nav-toggle-bars" aria-hidden="true"></span>
+    </button>
     <nav id="page-nav" aria-label="Sections">
-      <a href="/">Map</a>
-      <a href="/risk-assessments" class="nav-emphasis">Risk Assessments</a>
-      <a href="/grok-ops">Grok Ops</a>
-      <a href="/slack-alerts" aria-current="page">Slack Alerts</a>
+      <a href="/">Live map</a>
+      <a href="/risk-assessments">Risk Assessments</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
       <a href="/pricing">Pricing</a>
-      <a href="/enterprise">Enterprise</a>
+      <details class="nav-more">
+        <summary>Tools</summary>
+        <div class="nav-menu">
+          <a href="/reports">Reports</a>
+          <a href="/sentinel-zones">Sentinel zones</a>
+          <a href="/slack-alerts" aria-current="page">Slack alerts</a>
+          <a href="/white-label">White-label</a>
+          <a href="/grok-ops">Grok Ops</a>
+          <a href="/briefing">Daily briefing</a>
+          <a href="/world-risk">World risk</a>
+          <a href="/countries">Country guides</a>
+          <a href="/enterprise">Enterprise</a>
+        </div>
+      </details>
+      <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
     </nav>
-    <a class="nav-cta" href="/enterprise">Book a Pilot / Subscribe</a>
-  </header>
+    <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
+  </div>
+</header>
   <div class="section-banner">
     <p class="kicker">Live Slack alerts</p>
-    <h1>Ops-room Block Kit cards</h1>
-    <p>Matching incidents post to a Slack webhook with no Grok or xAI tokens. HIGH and Tsunami alerts send immediately. MED and LOW can wait for a digest. The same incident is never posted twice to the same channel.</p>
+    <h1>Alerts in your ops-room channel</h1>
+    <p class="page-lead">Send matching incidents into a Slack channel as they come in.</p>
+    <p>Urgent and tsunami alerts go immediately. Lower severity can wait for a digest. The same incident is not posted twice to the same channel, and this page does not call the assistant.</p>
   </div>
   <main>
+    <section class="how-it-works" data-how="slack-alerts">
+      <div class="how-top">
+        <p class="kicker">How it works</p>
+        <button type="button" class="how-dismiss ghost">Hide</button>
+      </div>
+      <ol>
+        <li><strong>1. Name the channel.</strong> Example: #security-ops.</li>
+        <li><strong>2. Paste the Slack address.</strong> In Slack, create an incoming webhook and paste that address here. It stays on the server.</li>
+        <li><strong>3. Send a test.</strong> Confirm the card arrives before you rely on it.</li>
+      </ol>
+    </section>
     <p id="status" class="note" role="status"></p>
     <div class="layout">
       <section class="panel">
-        <h2 id="form-title">Add a webhook</h2>
+        <h2 id="form-title">Add a Slack channel</h2>
         <form id="channel-form">
           <input type="hidden" id="channel-id">
           <div class="form-grid">
             <label class="span-2">Channel label
               <input id="label" name="label" required maxlength="80" placeholder="#security-ops" autocomplete="off">
             </label>
-            <label class="span-2">Slack webhook URL
+            <label class="span-2">Slack channel address
               <input id="webhook" name="webhook_url" type="url" inputmode="url" placeholder="https://hooks.slack.com/services/…" autocomplete="off" spellcheck="false">
             </label>
-            <p class="note span-2" id="webhook-hint">The full URL stays on the server. The list below shows only a masked copy.</p>
+            <p class="note span-2" id="webhook-hint">Paste the address Slack gives you for this channel. The full address stays on the server. The list below shows only a masked copy.</p>
             <label>Minimum severity
               <select id="severity">
                 <option value="ALL">ALL</option>
@@ -98,7 +134,7 @@
             </label>
           </div>
           <p class="row-actions">
-            <button type="submit" id="save">Save webhook</button>
+            <button type="submit" id="save">Save channel</button>
             <button type="button" class="ghost" id="clear-form">Clear</button>
           </p>
         </form>
@@ -115,7 +151,7 @@
         </label>
         <div id="preview" style="margin-top:12px"></div>
         <details style="margin-top:10px">
-          <summary>Block Kit JSON</summary>
+          <summary>Message Slack will post</summary>
           <pre id="preview-json" class="json-block note"></pre>
         </details>
       </section>
@@ -260,10 +296,10 @@
     function resetForm() {
       HTMLFormElement.prototype.reset.call(document.getElementById("channel-form"));
       document.getElementById("channel-id").value = "";
-      document.getElementById("form-title").textContent = "Add a webhook";
-      document.getElementById("save").textContent = "Save webhook";
+      document.getElementById("form-title").textContent = "Add a Slack channel";
+      document.getElementById("save").textContent = "Save channel";
       document.getElementById("webhook").required = true;
-      document.getElementById("webhook-hint").textContent = "The full URL stays on the server. The list below shows only a masked copy.";
+      document.getElementById("webhook-hint").textContent = "Paste the address Slack gives you for this channel. The full address stays on the server. The list below shows only a masked copy.";
       setChecks("regions", ["ALL"], true);
       setChecks("countries", ["ALL"], true);
       setChecks("categories", ["ALL"], true);
@@ -277,7 +313,7 @@
       document.getElementById("label").value = channel.label || "";
       document.getElementById("webhook").value = "";
       document.getElementById("webhook").required = false;
-      document.getElementById("webhook-hint").textContent = "Saved webhook " + (channel.webhook_url_masked || "") + ". Leave the field blank to keep it.";
+      document.getElementById("webhook-hint").textContent = "Saved address " + (channel.webhook_url_masked || "") + ". Leave the field blank to keep it.";
       document.getElementById("severity").value = channel.min_severity || "ALL";
       document.getElementById("rate").value = channel.rate_limit_per_hour || 20;
       document.getElementById("digest").value = channel.digest_minutes || 0;
@@ -286,14 +322,14 @@
       setChecks("countries", channel.countries, true);
       setChecks("categories", channel.categories, true);
       document.getElementById("form-title").textContent = "Edit " + (channel.label || "channel");
-      document.getElementById("save").textContent = "Update webhook";
+      document.getElementById("save").textContent = "Update channel";
       document.getElementById("channel-form").scrollIntoView({ behavior: "smooth", block: "start" });
       schedulePreview();
     }
     function renderChannels(channels) {
       const root = document.getElementById("channels");
       if (!channels.length) {
-        root.innerHTML = '<p class="note">No webhooks yet.</p>';
+        root.innerHTML = '<p class="note">No Slack channels yet. Add one above, then send a test.</p>';
         return;
       }
       root.innerHTML = channels.map((channel) => {
@@ -397,9 +433,11 @@
       say("Sending test alert…");
       const response = await fetch("/api/slack/channels/" + channel.id + "/test", { method: "POST" });
       const data = await response.json();
+      const detail = (data.error || data.slack || "");
+      const safeDetail = /traceback|sqlite|exception/i.test(detail) ? "Please try again." : detail;
       const text = data.ok
-        ? "Test accepted · HTTP " + data.status + " · " + (data.slack || "ok")
-        : "Test failed · HTTP " + (data.status || 0) + " · " + (data.error || data.slack || "");
+        ? "Test alert sent to Slack."
+        : "The test alert did not go through. " + (safeDetail || "Check the Slack address and try again.");
       testNotes[String(channel.id)] = { text: text, ok: !!data.ok };
       say(text, !data.ok);
       await load();
@@ -408,23 +446,32 @@
       event.preventDefault();
       const creating = !document.getElementById("channel-id").value;
       if (creating && !document.getElementById("webhook").value.trim()) {
-        say("A Slack webhook URL is required.", true);
+        say("Paste the Slack channel address to continue.", true);
         return;
       }
       say("Saving…");
-      const response = await fetch("/api/slack/channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formPayload())
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        say(data.error || "The channel was not saved.", true);
-        return;
+      const saveButton = document.getElementById("save");
+      if (saveButton) saveButton.classList.add("is-busy");
+      try {
+        const response = await fetch("/api/slack/channels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formPayload())
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          const detail = data.error || "";
+          say(/traceback|sqlite|exception/i.test(detail) ? "The channel was not saved. Please try again." : (detail || "The channel was not saved."), true);
+          return;
+        }
+        say("Saved " + (data.channel && data.channel.label) + ".");
+        resetForm();
+        load();
+      } catch (err) {
+        say("The channel was not saved. Please try again.", true);
+      } finally {
+        if (saveButton) saveButton.classList.remove("is-busy");
       }
-      say("Saved " + (data.channel && data.channel.label) + ".");
-      resetForm();
-      load();
     });
     document.getElementById("clear-form").addEventListener("click", resetForm);
     document.getElementById("preview-tone").addEventListener("change", schedulePreview);
