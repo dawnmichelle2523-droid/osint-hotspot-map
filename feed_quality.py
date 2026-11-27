@@ -552,14 +552,28 @@ def enrich_event(event: dict, live_translation: bool = True, ingest: bool = Fals
         item.get("lng"),
         item.get("id") or item.get("source") or original_title,
     )
+    stored_origin = " ".join(str(item.get("coord_origin") or "").split()).lower()
+    stored_precision = " ".join(str(item.get("geo_precision") or "").split())
     item["lat"] = geo["lat"]
     item["lng"] = geo["lng"]
     if geo.get("country"):
         item["country"] = geo["country"]
-    if geo.get("area"):
+    if geo.get("area") and stored_origin not in {"centroid", "country", "region", "admin", "sea", "fallback"}:
         item["area"] = geo["area"]
         item["location_name"] = geo["area"]
-    if geo.get("geo_precision"):
+    # A country centroid already carries coordinates. Do not relabel it as an exact site.
+    if stored_origin in {"centroid", "country", "region", "admin", "sea", "fallback"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "Country"
+    elif stored_origin in {"place", "city", "district", "geocode", "locality", "area"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "City / Area"
+    elif stored_origin in {"feed-point", "site", "facility", "event", "epicentre", "epicenter"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or geo.get("geo_precision") or "Exact"
+    elif stored_precision:
+        item["geo_precision"] = stored_precision
+    elif geo.get("geo_precision"):
         item["geo_precision"] = geo["geo_precision"]
     if not item.get("region") or item.get("region") == "Global":
         item["region"] = theatre_for(item.get("country"))
@@ -592,6 +606,7 @@ def annotate_feature(feature: dict) -> dict | None:
         "area": enriched.get("area") or props.get("area") or "",
         "location_name": enriched.get("location_name") or props.get("location_name") or enriched.get("area") or "",
         "geo_precision": enriched.get("geo_precision") or props.get("geo_precision") or "",
+        "coord_origin": enriched.get("coord_origin") or props.get("coord_origin") or "",
         "original_text": enriched.get("original_text") or props.get("original_text") or "",
     })
     if enriched.get("lat") is not None and enriched.get("lng") is not None:

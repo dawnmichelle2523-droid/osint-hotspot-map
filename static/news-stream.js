@@ -44,6 +44,18 @@
       : "";
     return '<p class="confidence-badge confidence-' + tier + '">' + esc(label) + scoreText + "</p>" + detail;
   }
+  function qualityBadges(item) {
+    const parts = [];
+    const corr = item && item.corroboration;
+    const prec = item && item.location_precision;
+    if (corr && (corr.level === "official" || corr.level === "corroborated" || corr.level === "single") && corr.label) {
+      parts.push('<span class="quality-badge quality-corr quality-corr-' + corr.level + '" title="' + esc(corr.rationale || "") + '">' + esc(corr.label) + "</span>");
+    }
+    if (prec && (prec.level === "exact" || prec.level === "city" || prec.level === "regional") && prec.label) {
+      parts.push('<span class="quality-badge quality-prec quality-prec-' + prec.level + '" title="' + esc(prec.rationale || "") + '">' + esc(prec.label) + "</span>");
+    }
+    return parts.length ? '<div class="quality-row">' + parts.join("") + "</div>" : "";
+  }
   function passesConfidence(item) {
     const tier = String(item.confidence_tier || "");
     if (confidence === "official") return tier === "official";
@@ -71,6 +83,7 @@
       return '<article class="headline-card"' + focus + ' style="cursor:' + (focus ? "pointer" : "default") + '">' +
         '<p class="source-pill">' + esc(item.source_name || "Wire") + "</p>" +
         confidenceBadge(item) +
+        qualityBadges(item) +
         "<h3>" + esc(item.title || "Update") + "</h3>" +
         (item.summary && item.summary !== item.title ? '<p class="summary">' + esc(item.summary) + "</p>" : "") +
         '<p class="update-place">' + esc(place) + (place ? " · " : "") + esc(relative(item.timestamp)) +
