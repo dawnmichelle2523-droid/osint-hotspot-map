@@ -7902,6 +7902,39 @@ def handle_api(method: str, path: str, body: bytes = b"") -> tuple[int, str, byt
             return 200, "application/json; charset=utf-8", _api_json(feed_status_payload())
         if verb == "GET" and route == "/api/travel-advisories":
             return 200, "application/json; charset=utf-8", _api_json(travel_advisories_payload())
+        if verb == "GET" and route in {"/api/geo/catalog", "/api/geo/template", "/api/geo/summary", "/api/pricing/ao"}:
+            import geo_split
+
+            params = parse_qs(query, keep_blank_values=True)
+            if route == "/api/geo/catalog":
+                return 200, "application/json; charset=utf-8", _api_json(geo_split.catalog())
+            if route == "/api/geo/template":
+                country = (params.get("country") or [""])[0]
+                return 200, "application/json; charset=utf-8", _api_json(geo_split.country_template(country))
+            if route == "/api/pricing/ao":
+                return 200, "application/json; charset=utf-8", _api_json(geo_split.quote_ao(
+                    (params.get("mode") or ["country"])[0],
+                    (params.get("count") or ["1"])[0],
+                    (params.get("briefing") or ["none"])[0],
+                    (params.get("currency") or ["gbp"])[0],
+                    (params.get("billing") or ["monthly"])[0],
+                ))
+            region = (params.get("region") or [""])[0]
+            country = (params.get("country") or [""])[0]
+            features = []
+            try:
+                features = list((data_response().get("features") or []))
+            except Exception as exc:
+                print(f"Geopolitical summary could not read the map snapshot: {exc.__class__.__name__}.")
+            try:
+                import ppv
+
+                grant = ppv.current()
+                if grant:
+                    features = [feature for feature in features if ppv.matches((feature.get("properties") if isinstance(feature, dict) else {}) or feature, grant)]
+            except Exception:
+                pass
+            return 200, "application/json; charset=utf-8", _api_json(geo_split.compose_summary(features, region, country))
         if verb == "GET" and route == "/api/risk-assessments/country-incidents":
             params = parse_qs(query, keep_blank_values=True)
             country = (params.get("country") or [""])[0]

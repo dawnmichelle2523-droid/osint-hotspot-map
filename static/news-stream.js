@@ -3,6 +3,7 @@
   let region = "All";
   let confidence = "all";
   let items = [];
+  let ao = { region: "all", country: "all" };
 
   function esc(value) {
     return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
@@ -52,9 +53,14 @@
   function paint() {
     const host = document.getElementById("news-list");
     if (!host) return;
-    const rows = items.filter((item) => (region === "All" || item.region === region || item.country === region) && passesConfidence(item));
+    const rows = items.filter((item) => {
+      if (window.GeoSplit && ((ao.region && ao.region !== "all") || (ao.country && ao.country !== "all"))) {
+        if (!GeoSplit.eventMatches(item, ao.region, ao.country)) return false;
+      }
+      return (region === "All" || item.region === region || item.country === region) && passesConfidence(item);
+    });
     if (!rows.length) {
-      host.innerHTML = '<p class="headline-empty">No headlines for this region yet.</p>';
+      host.innerHTML = '<p class="headline-empty">' + (ao.region !== "all" || ao.country !== "all" ? "No headlines for this Area of Operations yet." : "No headlines for this region yet.") + "</p>";
       return;
     }
     host.innerHTML = rows.map((item) => {
@@ -90,6 +96,10 @@
     if (window.GeoRiskMap && window.GeoRiskMap.focus) {
       window.GeoRiskMap.focus(card.dataset.newsLat, card.dataset.newsLng);
     }
+  });
+  document.addEventListener("georisk-ao", (event) => {
+    ao = event.detail || { region: "all", country: "all" };
+    paint();
   });
   document.addEventListener("georisk-confidence", (event) => {
     confidence = event.detail || "all";

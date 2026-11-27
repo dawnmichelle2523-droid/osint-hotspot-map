@@ -137,6 +137,7 @@
         '<label><i class="disruption-swatch air" aria-hidden="true"></i><input type="checkbox" data-layer="airspace" checked> Airspace advisories <span class="disruption-count" data-count="airspace"></span></label>',
         '<label><i class="disruption-swatch gps" aria-hidden="true"></i><input type="checkbox" data-layer="gps" checked> GPS jamming <span class="disruption-count" data-count="gps"></span></label>',
         '<label><i class="disruption-swatch sea" aria-hidden="true"></i><input type="checkbox" data-layer="maritime" checked> Maritime chokepoints <span class="disruption-count" data-count="maritime"></span></label>',
+        '<p class="disruption-status" id="disruption-ao"></p>',
         '<p class="disruption-status" id="disruption-status" role="status"></p>',
         '<p class="disruption-note">Public advisories only. Verify NOTAMs and maritime warnings before dispatch.</p>',
         "</div>"
@@ -187,12 +188,42 @@
       group.addLayer(marker);
     }
 
+    function aoState() {
+      if (window.GeoRiskAO) return window.GeoRiskAO;
+      return { region: "all", country: "all" };
+    }
+
+    function scoped(items, ao) {
+      if (!window.GeoSplit) return { items: items, fallback: false };
+      if ((!ao.country || ao.country === "all") && (!ao.region || ao.region === "all")) return { items: items, fallback: false };
+      const matched = items.filter((item) => GeoSplit.advisoryMatches(item, ao));
+      if (ao.country && ao.country !== "all" && !matched.length) {
+        const region = ao.region && ao.region !== "all" ? ao.region : GeoSplit.regionOf(ao.country);
+        return { items: items.filter((item) => GeoSplit.advisoryMatches(item, { region: region, country: "all" })), fallback: true };
+      }
+      return { items: matched, fallback: false };
+    }
+
     function paint() {
       hideAll();
       if (!master || !current) return;
-      const air = current.airspace || [];
-      const gps = current.gps_jamming || [];
-      const sea = current.maritime || [];
+      const ao = aoState();
+      const airScope = scoped(current.airspace || [], ao);
+      const gpsScope = scoped(current.gps_jamming || [], ao);
+      const seaScope = scoped(current.maritime || [], ao);
+      const air = airScope.items;
+      const gps = gpsScope.items;
+      const sea = seaScope.items;
+      const aoLine = document.getElementById("disruption-ao");
+      if (aoLine && window.GeoSplit) {
+        const label = GeoSplit.aoLabel(ao);
+        const fallback = airScope.fallback || gpsScope.fallback || seaScope.fallback;
+        aoLine.textContent = (!ao.region || ao.region === "all") && (!ao.country || ao.country === "all")
+          ? "All areas. Pin an Area of Operations to focus this panel."
+          : (fallback
+            ? "Area of Operations: " + label + ". No country-specific note, so the region is shown."
+            : "Area of Operations: " + label + ".");
+      }
       panel.querySelector('[data-count="airspace"]').textContent = String(air.length);
       panel.querySelector('[data-count="gps"]').textContent = String(gps.length);
       panel.querySelector('[data-count="maritime"]').textContent = String(sea.length);
@@ -275,6 +306,7 @@
       }
     }
 
+    document.addEventListener("georisk-ao", () => { if (master) paint(); });
     button.addEventListener("click", () => { setMaster(!master); });
     panel.addEventListener("change", () => { if (master) paint(); });
     window.setInterval(() => {
