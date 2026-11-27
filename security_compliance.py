@@ -788,15 +788,16 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
         <span class="nav-toggle-bars" aria-hidden="true"></span>
       </button>
       <nav id="page-nav" aria-label="Sections">
-        {nav}
-        <details class="nav-more">
-          <summary>Tools</summary>
-          <div class="nav-menu">{menu}</div>
-        </details>
-        <a class="nav-cta nav-cta-drawer" href="/enterprise">Book a Pilot / Subscribe</a>
+        <a href="/">Home</a>
+        <a href="/map">Live Map</a>
+        <a href="/briefing">Daily Briefings</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/contact">Contact</a>
+        <a class="nav-cta nav-cta-drawer" href="/map">Open Live Map</a>
       </nav>
-      <a class="nav-cta nav-cta-bar" href="/enterprise">Book a Pilot / Subscribe</a>
-    </div>
+      <a class="nav-cta nav-cta-bar" href="/map">Open Live Map</a>
+</div>
   </header>
   <div class="section-banner">
     <p class="kicker">{html.escape(kicker)}</p>
@@ -810,6 +811,50 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
     <p>GeoRiskGlobal · <a href="/trust">Trust</a> · <a href="/privacy">Privacy</a> · <a href="/accessibility">Accessibility</a> · <a href="/.well-known/security.txt">security.txt</a></p>
     <p>Vulnerability reports: {security}. Data-subject requests: {privacy}. Accessibility barriers: {accessibility}.</p>
   </footer>
+<footer class="site-footer">
+  <div class="site-footer-grid">
+    <div>
+      <p class="site-footer-label">GeoRiskGlobal</p>
+      <p>Worldwide geopolitical intelligence for organisations that move people.</p>
+    </div>
+    <nav aria-label="Explore">
+      <p class="site-footer-label">Explore</p>
+      <a href="/">Home</a>
+      <a href="/map">Live Map</a>
+      <a href="/map?country=Syria">Syria on the Risk Map</a>
+      <a href="/briefing">Daily Briefings</a>
+      <a href="/briefing#export-pdf">Briefing PDF</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/risk-assessments">Risk assessments</a>
+      <a href="/methodology">Methodology</a>
+      <a href="/contact">Contact</a>
+    </nav>
+    <nav aria-label="Platform">
+      <p class="site-footer-label">Platform</p>
+      <a href="/countries">Country guides</a>
+      <a href="/world-risk">World risk</a>
+      <a href="/route-risk">Route risk</a>
+      <a href="/check-in">Check-in</a>
+      <a href="/reports">Reports</a>
+      <a href="/sentinel-zones">Sentinel zones</a>
+      <a href="/slack-alerts">Slack alerts</a>
+      <a href="/white-label">White-label</a>
+      <a href="/grok-ops">Grok Ops</a>
+      <a href="/sso-setup">Okta SSO</a>
+      <a href="/enterprise">Book a Pilot / Subscribe</a>
+      <a href="/trust">Trust</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/accessibility">Accessibility</a>
+    </nav>
+    <div>
+      <p class="site-footer-label">Standards</p>
+      <p>ISO 31000 · ISO 31030 · BS 8848 · ISO 18788</p>
+      <p>Zero-PII. No third-party tracking. UK GDPR and EU GDPR.</p>
+    </div>
+  </div>
+  <p class="site-footer-powered">Powered by GeoRiskGlobal</p>
+</footer>
+
 </body>
 </html>
 """

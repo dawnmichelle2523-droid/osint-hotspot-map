@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Methodology — GeoRiskGlobal</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
+  <link rel="stylesheet" href="/static/site-nav.css">
+  <script src="/static/site-nav.js" defer></script>
+  <style>
+    body { margin: 0; background: #071120; color: #F8FAFC; font: 17px/1.55 "Segoe UI", system-ui, sans-serif; }
+    .wrap { width: min(800px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 64px; }
+    .kicker { margin: 0 0 8px; color: #D4AF37; font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    h1 { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 2.8rem); letter-spacing: -0.03em; line-height: 1.1; }
+    .page-lead { margin: 0 0 22px; color: #D5DEE8; }
+    h2 { margin: 28px 0 8px; font-size: 1.25rem; }
+    p, li { color: #D5DEE8; }
+    a { color: #D4AF37; }
+    ul { padding-left: 1.2rem; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header id="live-bar" class="site-shell">
+    <div class="nav-backdrop"></div>
+    <div class="nav-row">
+      <a class="brand-lockup" href="/">
+        <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
+      </a>
+      <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+      <nav id="page-nav" aria-label="Sections">
+        <a href="/">Home</a>
+        <a href="/map">Live Map</a>
+        <a href="/briefing">Daily Briefings</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/methodology" aria-current="page">Methodology</a>
+        <a href="/contact">Contact</a>
+        <a class="nav-cta nav-cta-drawer" href="/map">Open Live Map</a>
+      </nav>
+      <a class="nav-cta nav-cta-bar" href="/map">Open Live Map</a>
+</div>
+  </header>
+  <main id="main">
+    <div class="wrap">
+      <p class="kicker">Methodology and standards</p>
+      <h1>How GeoRiskGlobal reads risk</h1>
+      <p class="page-lead">Public pages are static. They do not call a language model, they do not set tracking cookies, and they do not store personal data. This note is the method. It is not a certificate.</p>
+      <h2>Live map</h2>
+      <p>The Risk Map plots open-source incidents the desk has already collected. Analysts filter by country, severity, and time. A country such as Syria opens directly from the homepage.</p>
+      <h2>Daily briefings</h2>
+      <p>Each Area of Operations gets one published edition. Clients in that area read the same UK English briefing. The branded A4 PDF is exported from the briefing page itself.</p>
+      <h2>Country risk assessments</h2>
+      <p>Assessments are tailored for security and defence directors. They use a colour-coded 5×5 Likelihood × Impact matrix and follow the structure of these standards:</p>
+      <ul>
+        <li>ISO 31000 — risk management principles</li>
+        <li>ISO 31030 — travel risk management for organisations</li>
+        <li>BS 8848 — visits, fieldwork, and expeditions outside the United Kingdom</li>
+        <li>ISO 18788 — private security operations</li>
+      </ul>
+      <p>We analyse the open sources already on the map. We do not invent incidents. Alignment describes the workflow. It is not a claim that a certificate has been issued.</p>
+      <h2>Privacy</h2>
+      <p>UK GDPR and EU GDPR. Zero-PII on the public site. Names, medical notes, and pupil details, when a client uses an assessment, stay in that browser. See <a href="/privacy">Privacy</a> and <a href="/trust">Trust</a>.</p>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="site-footer-grid">
+      <div>
+        <p class="site-footer-label">GeoRiskGlobal</p>
+        <p>Worldwide geopolitical intelligence for organisations that move people.</p>
+      </div>
+      <nav aria-label="Explore">
+        <p class="site-footer-label">Explore</p>
+        <a href="/">Home</a>
+        <a href="/map">Live Map</a>
+        <a href="/map?country=Syria">Syria on the Risk Map</a>
+        <a href="/briefing">Daily Briefings</a>
+        <a href="/briefing#export-pdf">Briefing PDF</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/risk-assessments">Risk assessments</a>
+        <a href="/methodology">Methodology</a>
+        <a href="/contact">Contact</a>
+      </nav>
+      <nav aria-label="Platform">
+        <p class="site-footer-label">Platform</p>
+        <a href="/check-in">Check-in</a>
+        <a href="/white-label">White-label</a>
+        <a href="/sso-setup">Okta SSO</a>
+        <a href="/enterprise">Book a Pilot / Subscribe</a>
+      </nav>
+      <div>
+        <p class="site-footer-label">Standards</p>
+        <p>ISO 31000 · ISO 31030 · BS 8848 · ISO 18788</p>
+        <p>Zero-PII. UK GDPR and EU GDPR.</p>
+      </div>
+    </div>
+    <p class="site-footer-powered">Powered by GeoRiskGlobal</p>
+  </footer>
+</body>
+</html>
