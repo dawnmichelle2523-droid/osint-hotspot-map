@@ -63,6 +63,19 @@
         <a class="button" href="/enterprise">Talk to us</a>
       </article>
     </div>
+    <article class="card popular" id="slack-addon" style="margin-top:14px">
+      <span class="badge">Optional add-on</span>
+      <h2>Live Slack Ops-Room Alerts (Optional Add-On)</h2>
+      <p class="price" id="slack-price">£39<span style="font-size:16px">/mo</span></p>
+      <p class="note">For Teams and Enterprise desks. HIGH and Tsunami alerts stay instant.</p>
+      <ul>
+        <li>Real-time Block Kit alert cards in the ops channel</li>
+        <li>Country, region, and Tsunami filtering</li>
+        <li>Deduplicated delivery — the same incident is never posted twice</li>
+        <li>Hourly rate limits and MED/LOW digests</li>
+      </ul>
+      <a class="button" href="/enterprise">Add Slack alerts</a>
+    </article>
     <section class="panel strip">
       <div>
         <h2>Pay-as-you-go</h2>
@@ -87,8 +100,8 @@
   <footer>GeoRiskIntel</footer>
   <script>
     const prices = {
-      gbp: { proM: 19, proY: 190, pass: "Full global map. A 7-day single-area pass is £6.99.", teamM: 69, teamY: 690, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from £6.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week." },
-      usd: { proM: 25, proY: 250, pass: "Full global map. A 7-day single-area pass is $9.99.", teamM: 89, teamY: 890, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from $9.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week." }
+      gbp: { proM: 19, proY: 190, pass: "Full global map. A 7-day single-area pass is £6.99.", teamM: 69, teamY: 690, slackM: 39, slackY: 390, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from £6.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from £29. School trip pack from £99. Human-verified brief from £400. Short-term overwatch from £75 per week." },
+      usd: { proM: 25, proY: 250, pass: "Full global map. A 7-day single-area pass is $9.99.", teamM: 89, teamY: 890, slackM: 49, slackY: 490, payg: "Single-Region or Single-Country Pay-per-View Pass: 7 days of live OSINT for one area, with a dynamic viewer watermark and a region lock, from $9.99. Upgrade to Individual / Pro for the full global map. Single risk assessment from $39. School trip pack from $129. Human-verified brief from $500. Short-term overwatch from $99 per week." }
     };
     let period = "monthly";
     let currency = "gbp";
@@ -102,6 +115,8 @@
       document.getElementById("team-price").innerHTML = symbol + team + "<span style=\"font-size:16px\">/user" + suffix + "</span>";
       document.getElementById("pro-pass").textContent = "7-day pass " + row.pass;
       document.getElementById("payg").textContent = row.payg;
+      const slack = period === "monthly" ? row.slackM : row.slackY;
+      document.getElementById("slack-price").innerHTML = symbol + slack + "<span style=\"font-size:16px\">" + suffix + "</span>";
       document.getElementById("monthly").setAttribute("aria-pressed", String(period === "monthly"));
       document.getElementById("annual").setAttribute("aria-pressed", String(period === "annual"));
       document.getElementById("gbp").setAttribute("aria-pressed", String(currency === "gbp"));
