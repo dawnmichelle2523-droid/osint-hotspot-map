@@ -315,7 +315,7 @@ class HistoryStoreTests(unittest.TestCase):
         post.assert_not_called()
         self.assertEqual(document["narrative_source"], "fallback")
         html = document["html"]
-        self.assertIn("GeoRiskIntel | Syria", html)
+        self.assertIn("GeoRiskGlobal | Syria", html)
         self.assertIn("SECURITY ASSESSMENT · WEEKLY", html)
         self.assertIn("What changed, why it matters, and what to watch next.", html)
         self.assertIn("For clients only, not for copy or distribution.", html)
@@ -384,7 +384,7 @@ class HistoryStoreTests(unittest.TestCase):
         with patch("report_builder.requests.post", return_value=Denied()):
             denied = report_builder.generate("Syria", "daily", now=NOW)
         self.assertEqual(denied["narrative_source"], "fallback")
-        self.assertIn("GeoRiskIntel logged", denied["executive_summary"])
+        self.assertIn("GeoRiskGlobal logged", denied["executive_summary"])
 
         class Quota:
             status_code = 200

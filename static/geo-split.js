@@ -299,15 +299,15 @@
     });
     return {
       ok: true, xai_credits: 0, country: name, region: region, baseline: true,
-      title: name + " baseline template", branding: "GeoRiskIntel",
+      title: name + " baseline template", branding: "GeoRiskGlobal",
       rating: { band: "MODERATE", score: 6, scale: "1-25" }, risk_tags: ["Baseline"],
-      stability: name + " uses the GeoRiskIntel " + region + " baseline. " + copy.stability,
+      stability: name + " uses the GeoRiskGlobal " + region + " baseline. " + copy.stability,
       actors: copy.actors, borders: copy.borders,
-      situation: name + " uses the GeoRiskIntel " + region + " baseline. " + copy.stability + " " + copy.actors + " " + copy.borders,
+      situation: name + " uses the GeoRiskGlobal " + region + " baseline. " + copy.stability + " " + copy.actors + " " + copy.borders,
       sections: { threat: copy.stability, security: copy.actors, airspace: copy.borders, medical: "Name a hospital and a medevac hub for " + name + " before departure.", comms: "Agree an encrypted channel and a check-in cadence. Keep staff detail on this device only.", legal: "Confirm visa and local rules for " + name + "." },
       hazards: hazards,
       facilities: [{ name: "Confirm a receiving hospital", city: name, note: "Add the facility your assistance provider accepts. Do not enter a private mobile number here." }],
-      references: ["UK FCDO foreign travel advice for " + name, "US State Department travel advisory for " + name, "GeoRiskIntel live 7-day OSINT feed for this country"],
+      references: ["UK FCDO foreign travel advice for " + name, "US State Department travel advisory for " + name, "GeoRiskGlobal live 7-day OSINT feed for this country"],
       local_only_fields: ["roster", "phone", "email", "imei", "poc_contact", "staff_details", "passport", "medical_notes"],
       hra_sections: ["Header banner", "1. Purpose and outline plan", "2. Risk assessment", "3. Itinerary and logistics", "4. Medical and evacuation", "5. Contacts", "6. Consultation and sign-off", "7. Travelling staff details", "8. References, support and data protection"]
     };

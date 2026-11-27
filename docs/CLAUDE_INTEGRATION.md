@@ -11,11 +11,12 @@ Set these on the server process. Do not put them in HTML or JavaScript, and do n
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | Preferred server key for the Messages API. | unset |
-| `GeoRiskIntel` | Fallback key, used only when `ANTHROPIC_API_KEY` is unset or blank. The name is case-sensitive. `GEORISKINTEL` is not read. | unset |
+| `GeoRiskGlobal` | Fallback key, used only when `ANTHROPIC_API_KEY` is unset or blank. The name is case-sensitive. `GEORISKGLOBAL` is not read. | unset |
+| `GeoRiskIntel` | Legacy fallback, used only when both names above are unset or blank. Kept so the existing Vercel Production secret still works. The name is case-sensitive. `GEORISKINTEL` is not read. | unset |
 | `CLAUDE_RA_MODEL` | Model for country and sector risk-assessment drafts. | `claude-sonnet-5-5` |
 | `CLAUDE_BRIEF_MODEL` | Model for daily, weekly, and monthly area briefings. | `claude-haiku-5-5` |
 
-Claude stays off when both key values are unset or blank. The module reads the process environment. A local `.env` file is loaded only when `python-dotenv` is installed, and it does not override variables that are already set. The key is never written into a response or a log line.
+Claude stays off when all three key values are unset or blank. The module reads the process environment. A local `.env` file is loaded only when `python-dotenv` is installed, and it does not override variables that are already set. The key is never written into a response or a log line.
 
 ## Endpoints
 
@@ -50,7 +51,7 @@ Emails, phone numbers, IMEIs, passport-like IDs, and labeled staff names are str
 
 ## When Claude is not called
 
-- `ANTHROPIC_API_KEY` and `GeoRiskIntel` are both missing or blank
+- `ANTHROPIC_API_KEY`, `GeoRiskGlobal`, and legacy `GeoRiskIntel` are all missing or blank
 - Anthropic returns an error, a rate limit, or an empty draft
 - any page load, health check, ingest poll, or scheduled report
 

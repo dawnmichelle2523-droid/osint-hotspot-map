@@ -40,7 +40,7 @@ SECTOR_BOOST = 1.15
 DETOUR_RATIO = 1.85
 DETOUR_EXTRA_KM = 80.0
 WATER_SAMPLE_KM = 15.0
-HEADERS = {"User-Agent": "GeoRiskIntel-route-risk/1.0", "Accept": "application/json"}
+HEADERS = {"User-Agent": "GeoRiskGlobal-route-risk/1.0", "Accept": "application/json"}
 
 route_bp = Blueprint("route_risk", __name__)
 

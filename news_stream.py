@@ -68,7 +68,7 @@ def _fetch_feed(name: str, url: str, region: str) -> list[dict]:
     try:
         response = requests.get(
             url,
-            headers={"User-Agent": "GeoRiskIntel/1.0", "Accept": "application/rss+xml, application/xml, */*"},
+            headers={"User-Agent": "GeoRiskGlobal/1.0", "Accept": "application/rss+xml, application/xml, */*"},
             timeout=(4, 8),
         )
         response.raise_for_status()

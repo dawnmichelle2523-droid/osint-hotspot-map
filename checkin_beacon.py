@@ -374,7 +374,7 @@ def post_slack(url: str, payload: dict) -> None:
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "User-Agent": "GeoRiskIntel-Checkin/1.0",
+            "User-Agent": "GeoRiskGlobal-Checkin/1.0",
         },
         method="POST",
     )
@@ -913,8 +913,9 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>Check-In — GeoRiskIntel</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <title>Check-In — GeoRiskGlobal</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <style>
     :root { color-scheme: dark; --bg: #060A13; --panel: #0D1424; --line: #1E293B; --text: #E2E8F0; --muted: #94A3B8; --gold: #D4AF37; --navy: #102A63; --gold-border: #C5A059; }
     * { box-sizing: border-box; }
@@ -967,7 +968,7 @@ _OPS_TEMPLATE = """<!DOCTYPE html>
     <div class="nav-backdrop"></div>
     <div class="nav-row">
       <a class="brand-lockup" href="/">
-        <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+        <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
       </a>
       <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
         <span class="nav-toggle-bars" aria-hidden="true"></span>
@@ -1401,14 +1402,15 @@ _MOBILE_TEMPLATE = """<!DOCTYPE html>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Check in — __CALLSIGN__</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <style>
     :root { color-scheme: dark; --bg: #060A13; --text: #F8FAFC; --muted: #94A3B8; --gold: #D4AF37; }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
     body { font: 16px/1.4 "Segoe UI", system-ui, sans-serif; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
     main { width: min(480px, 100%); margin: 0 auto; padding: 16px 16px 32px; display: grid; gap: 12px; }
-    img { height: 32px; width: auto; }
+    img { height: 40px; width: auto; max-width: 70vw; object-fit: contain; }
     .kicker { margin: 0; color: var(--gold); letter-spacing: 0.14em; font-size: 12px; font-weight: 800; }
     h1 { margin: 0; font-size: clamp(28px, 8vw, 40px); letter-spacing: 0.02em; overflow-wrap: anywhere; }
     .meta, .note { margin: 0; color: var(--muted); }
@@ -1445,7 +1447,7 @@ _MOBILE_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body data-due="__DUE__" data-paused="__PAUSED__" data-status="__STATUS__">
   <main>
-    <img src="/static/logo.png?v=4" alt="GeoRiskIntel">
+    <img src="/static/logo.png?v=5" alt="GeoRiskGlobal">
     <p class="kicker">CHECK-IN</p>
     <h1>__CALLSIGN__</h1>
     <p class="meta">__SECTOR__ · __CADENCE__</p>
@@ -1660,6 +1662,8 @@ _SIMPLE_TEMPLATE = """<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>__TITLE__</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #060A13; color: #E2E8F0; font: 16px/1.45 "Segoe UI", system-ui, sans-serif; padding: 24px; }

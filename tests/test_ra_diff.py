@@ -244,7 +244,7 @@ class RaDiffTests(unittest.TestCase):
         self.assertIn(b"Check What Changed", page.data)
         self.assertIn(b"Approved with Conditions", page.data)
         self.assertIn(b"Clear Local Browser Data", page.data)
-        self.assertIn(b"never sent to GeoRiskIntel servers", page.data)
+        self.assertIn(b"never sent to GeoRiskGlobal servers", page.data)
         self.assertIn(b"ISO 31030", page.data)
         self.assertIn(b"BS 8848", page.data)
         script = self.client.get("/static/ra-diff-audit.js")
@@ -256,7 +256,7 @@ class RaDiffTests(unittest.TestCase):
         self.assertIn(b"Human Reviewer Signed Off", script.data)
         self.assertIn(b"georisk.ra.baselines.v1", script.data)
         self.assertIn(b"georisk.corridor.v1", script.data)
-        self.assertIn(b"Clear GeoRiskIntel baselines", script.data)
+        self.assertIn(b"Clear GeoRiskGlobal baselines", script.data)
         source = script.get_data(as_text=True)
         body = source[source.index("function diffRequestBody"):source.index("async function postDiff")]
         for key in ("country:", "region:", "since_iso:", "original_incident_ids:", "original_risk_level:"):

@@ -1,11 +1,11 @@
-/* GeoRiskIntel offline shell.
+/* GeoRiskGlobal offline shell.
    GET /api/* is network-first, then the last cached snapshot.
    Static CSS, JS, and icons are cache-first.
    POST requests and auth responses are never stored.
    The origin marks API responses no-store. That only bypasses the HTTP cache.
    The Cache API below is the explicit field snapshot. */
-const SHELL_CACHE = "georiskintel-shell-v3";
-const API_CACHE = "georiskintel-api-v1";
+const SHELL_CACHE = "georiskglobal-shell-v4";
+const API_CACHE = "georiskglobal-api-v2";
 const SHELL = [
   "/",
   "/risk-assessments",
@@ -21,7 +21,10 @@ const SHELL = [
   "/static/icons/icon-512.png",
   "/static/icons/apple-touch-icon.png",
   "/static/logo.png",
+  "/static/logo-horizontal.png",
+  "/static/logo-pdf.png",
   "/static/favicon.png",
+  "/static/favicon.ico",
   "/static/phase1-map.js",
   "/static/grok-stream.js",
   "/static/news-stream.js",

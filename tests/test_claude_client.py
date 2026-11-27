@@ -10,7 +10,9 @@ from unittest.mock import patch
 os.environ["DISABLE_BACKGROUND"] = "1"
 os.environ["DISABLE_HISTORICAL_SYNC"] = "1"
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ.pop("GeoRiskGlobal", None)
 os.environ.pop("GeoRiskIntel", None)
+os.environ.pop("GEORISKGLOBAL", None)
 os.environ.pop("GEORISKINTEL", None)
 os.environ.pop("CLAUDE_RA_MODEL", None)
 os.environ.pop("CLAUDE_BRIEF_MODEL", None)
@@ -33,13 +35,14 @@ from app import app
 ROOT = Path(__file__).resolve().parents[1]
 KEY = "sk-ant-test-secret-value"
 PRIMARY_KEY = "sk-ant-primary-test-value"
-FALLBACK_KEY = "sk-ant-georiskintel-test-value"
+FALLBACK_KEY = "sk-ant-georiskglobal-test-value"
+LEGACY_KEY = "sk-ant-georiskintel-legacy-test"
 
 
 def _clear_anthropic_keys():
     os.environ["ANTHROPIC_API_KEY"] = ""
-    os.environ.pop("GeoRiskIntel", None)
-    os.environ.pop("GEORISKINTEL", None)
+    for name in ("GeoRiskGlobal", "GeoRiskIntel", "GEORISKGLOBAL", "GEORISKINTEL"):
+        os.environ.pop(name, None)
 STAFF = "Jane Doe"
 EMAIL = "jane.doe@news.example"
 PHONE = "+44 7700 900123"
@@ -423,9 +426,42 @@ class ClaudeClientTests(unittest.TestCase):
 
         return capture
 
-    def test_anthropic_api_key_takes_precedence_over_georiskintel(self):
+    def test_get_anthropic_api_key_supports_primary_global_and_legacy(self):
         os.environ["ANTHROPIC_API_KEY"] = PRIMARY_KEY
-        os.environ["GeoRiskIntel"] = FALLBACK_KEY
+        os.environ["GeoRiskGlobal"] = FALLBACK_KEY
+        os.environ["GeoRiskIntel"] = LEGACY_KEY
+        self.assertEqual(claude_client.get_anthropic_api_key(), PRIMARY_KEY)
+
+        os.environ["ANTHROPIC_API_KEY"] = " \n"
+        self.assertEqual(claude_client.get_anthropic_api_key(), FALLBACK_KEY)
+
+        os.environ["GeoRiskGlobal"] = "  "
+        self.assertEqual(claude_client.get_anthropic_api_key(), LEGACY_KEY)
+
+        os.environ.pop("GeoRiskIntel", None)
+        os.environ["GEORISKGLOBAL"] = FALLBACK_KEY
+        os.environ["GEORISKINTEL"] = LEGACY_KEY
+        self.assertEqual(claude_client.get_anthropic_api_key(), "")
+
+        os.environ.pop("GEORISKGLOBAL", None)
+        os.environ.pop("GEORISKINTEL", None)
+        os.environ["ANTHROPIC_API_KEY"] = ""
+        os.environ["GeoRiskIntel"] = f"  {LEGACY_KEY}  "
+        seen = []
+        with patch("claude_client.requests.post", side_effect=self._capture_draft(seen)):
+            risk = self.client.post("/api/risk-assessments/ai-draft", json={"country": "Iraq", "sector": "Media"})
+        self.assertEqual(claude_client.get_anthropic_api_key(), LEGACY_KEY)
+        self.assertEqual(seen[0]["headers"]["x-api-key"], LEGACY_KEY)
+        self.assertEqual(risk.get_json()["source"], "claude")
+        published = json.dumps(risk.get_json())
+        self.assertNotIn(LEGACY_KEY, published)
+        self.assertNotIn("GeoRiskIntel", published)
+        self.assertNotIn("GeoRiskGlobal", published)
+
+    def test_anthropic_api_key_takes_precedence_over_georiskglobal(self):
+        os.environ["ANTHROPIC_API_KEY"] = PRIMARY_KEY
+        os.environ["GeoRiskGlobal"] = FALLBACK_KEY
+        os.environ["GeoRiskIntel"] = LEGACY_KEY
         seen = []
         with patch("claude_client.requests.post", side_effect=self._capture_draft(seen)):
             risk = self.client.post("/api/risk-assessments/ai-draft", json={"country": "Iraq", "sector": "Media"})
@@ -439,9 +475,11 @@ class ClaudeClientTests(unittest.TestCase):
         published = json.dumps(risk.get_json()) + json.dumps(brief) + status.get_data(as_text=True)
         self.assertNotIn(PRIMARY_KEY, published)
         self.assertNotIn(FALLBACK_KEY, published)
+        self.assertNotIn(LEGACY_KEY, published)
+        self.assertNotIn("GeoRiskGlobal", published)
         self.assertNotIn("GeoRiskIntel", published)
 
-    def test_georiskintel_fallback_configures_claude_and_drafts(self):
+    def test_georiskglobal_fallback_configures_claude_and_drafts(self):
         blanks = (None, "", "   ", "\n\t")
         for blank in blanks:
             claude_client.reset_call_count()
@@ -449,7 +487,7 @@ class ClaudeClientTests(unittest.TestCase):
                 os.environ.pop("ANTHROPIC_API_KEY", None)
             else:
                 os.environ["ANTHROPIC_API_KEY"] = blank
-            os.environ["GeoRiskIntel"] = f"  {FALLBACK_KEY}  "
+            os.environ["GeoRiskGlobal"] = f"  {FALLBACK_KEY}  "
             seen = []
             with patch("claude_client.requests.post", side_effect=self._capture_draft(seen)):
                 status = self.client.get("/api/ai/claude-status")
@@ -486,8 +524,10 @@ class ClaudeClientTests(unittest.TestCase):
             self.assertIn("Iraq", prompt)
 
         os.environ.pop("ANTHROPIC_API_KEY", None)
+        os.environ.pop("GeoRiskGlobal", None)
         os.environ.pop("GeoRiskIntel", None)
-        os.environ["GEORISKINTEL"] = FALLBACK_KEY
+        os.environ["GEORISKGLOBAL"] = FALLBACK_KEY
+        os.environ["GEORISKINTEL"] = LEGACY_KEY
         with patch("claude_client.requests.post", side_effect=AssertionError("wrong-case name must not call Anthropic")):
             wrong_case = self.client.get("/api/ai/claude-status").get_json()
         self.assertEqual(claude_client.get_anthropic_api_key(), "")
@@ -496,11 +536,11 @@ class ClaudeClientTests(unittest.TestCase):
 
     def test_status_unconfigured_when_both_keys_are_blank(self):
         cases = (
-            {"ANTHROPIC_API_KEY": None, "GeoRiskIntel": None},
-            {"ANTHROPIC_API_KEY": "", "GeoRiskIntel": ""},
-            {"ANTHROPIC_API_KEY": " \t\n", "GeoRiskIntel": "   "},
-            {"ANTHROPIC_API_KEY": None, "GeoRiskIntel": "  "},
-            {"ANTHROPIC_API_KEY": "", "GeoRiskIntel": None},
+            {"ANTHROPIC_API_KEY": None, "GeoRiskGlobal": None, "GeoRiskIntel": None},
+            {"ANTHROPIC_API_KEY": "", "GeoRiskGlobal": "", "GeoRiskIntel": ""},
+            {"ANTHROPIC_API_KEY": " \t\n", "GeoRiskGlobal": "   ", "GeoRiskIntel": " \n"},
+            {"ANTHROPIC_API_KEY": None, "GeoRiskGlobal": "  ", "GeoRiskIntel": None},
+            {"ANTHROPIC_API_KEY": "", "GeoRiskGlobal": None, "GeoRiskIntel": "  "},
         )
 
         def explode(*args, **kwargs):

@@ -1,4 +1,4 @@
-"""Technical and cyber-compliance controls for GeoRiskIntel.
+"""Technical and cyber-compliance controls for GeoRiskGlobal.
 
 The module is intentionally standalone. ``app.py`` only calls ``install``.
 Preview-lock behaviour is unchanged: public compliance documents are added to
@@ -92,15 +92,15 @@ def clock() -> float:
 
 
 def public_base_url() -> str:
-    raw = _single_line(os.environ.get("PUBLIC_BASE_URL") or "") or "https://georiskintel.com"
+    raw = _single_line(os.environ.get("PUBLIC_BASE_URL") or "") or "https://georiskglobal.com"
     lowered = raw.lower()
     if not lowered.startswith(("https://", "http://")) or any(char in raw for char in " \t\\"):
-        return "https://georiskintel.com"
+        return "https://georiskglobal.com"
     return raw.rstrip("/")
 
 
 def security_contact() -> str:
-    return _single_line(os.environ.get("SECURITY_CONTACT") or "") or "security@georiskintel.com"
+    return _single_line(os.environ.get("SECURITY_CONTACT") or "") or "security@georiskglobal.com"
 
 
 def accessibility_contact() -> str:
@@ -108,7 +108,7 @@ def accessibility_contact() -> str:
 
 
 def privacy_contact() -> str:
-    return _single_line(os.environ.get("PRIVACY_CONTACT") or "") or "privacy@georiskintel.com"
+    return _single_line(os.environ.get("PRIVACY_CONTACT") or "") or "privacy@georiskglobal.com"
 
 
 def request_is_https() -> bool:
@@ -227,7 +227,7 @@ def security_posture(app: Flask | None = None) -> dict:
 def security_txt() -> str:
     base = public_base_url()
     lines = [
-        "# GeoRiskIntel vulnerability disclosure",
+        "# GeoRiskGlobal vulnerability disclosure",
         "# Do not include personal, medical, or pupil data in a report.",
         f"Contact: {_mailto(security_contact())}",
         f"Expires: {SECURITY_TXT_EXPIRES}",
@@ -768,7 +768,8 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/static/platform.css">
   <link rel="stylesheet" href="/static/site-nav.css">
@@ -781,7 +782,7 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
     <div class="nav-backdrop"></div>
     <div class="nav-row">
       <a class="brand-lockup" href="/">
-        <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+        <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
       </a>
       <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
         <span class="nav-toggle-bars" aria-hidden="true"></span>
@@ -806,7 +807,7 @@ def _shell(*, title: str, kicker: str, heading: str, lede: str, body: str, curre
     {body}
   </main>
   <footer>
-    <p>GeoRiskIntel · <a href="/trust">Trust</a> · <a href="/privacy">Privacy</a> · <a href="/accessibility">Accessibility</a> · <a href="/.well-known/security.txt">security.txt</a></p>
+    <p>GeoRiskGlobal · <a href="/trust">Trust</a> · <a href="/privacy">Privacy</a> · <a href="/accessibility">Accessibility</a> · <a href="/.well-known/security.txt">security.txt</a></p>
     <p>Vulnerability reports: {security}. Data-subject requests: {privacy}. Accessibility barriers: {accessibility}.</p>
   </footer>
 </body>
@@ -871,7 +872,7 @@ _FRAMEWORK_ROWS = (
     (
         "UK GDPR and EU GDPR",
         "In place",
-        "The client organisation is the data controller. GeoRiskIntel is the processor. Assessment identity data stays in the browser. Roles, retention, subprocessors, the Children's Code, and breach notice are set out on the privacy page.",
+        "The client organisation is the data controller. GeoRiskGlobal is the processor. Assessment identity data stays in the browser. Roles, retention, subprocessors, the Children's Code, and breach notice are set out on the privacy page.",
     ),
 )
 
@@ -905,7 +906,7 @@ def _trust_document() -> str:
     </nav>
     <section class="panel" id="zero-pii">
       <h2>Zero-PII client-side architecture</h2>
-      <p>Personal, medical, and pupil data never has to reach a GeoRiskIntel server for an assessment to be written.</p>
+      <p>Personal, medical, and pupil data never has to reach a GeoRiskGlobal server for an assessment to be written.</p>
       <ol class="steps">
         <li><strong>On the device.</strong> Traveller or party names, emergency contacts, medical notes, allergies, medication, passport or ID references, and pupil details are local-only fields on the risk-assessment page. The browser keeps that draft. Auto-Draft does not put those fields in the request.</li>
         <li><strong>What is sent.</strong> A mitigation draft sends the destination, the template name, and the hazard scores the analyst entered, plus incident titles already on the map. It does not send the local-only fields.</li>
@@ -916,11 +917,11 @@ def _trust_document() -> str:
     </section>
     <section class="panel" id="gdpr">
       <h2>UK GDPR and EU GDPR</h2>
-      <p>For traveller, medical, pupil, and risk-assessment data, the <strong>client organisation is the Data Controller</strong>. <strong>GeoRiskIntel is the Processor.</strong> The architecture is zero-PII and local-first. Traveller names, passport and medical details, and reviewer sign-offs stay in the user's browser <code>localStorage</code> (draft key <code>georisk.ra.v1</code>) and are not transmitted to GeoRiskIntel servers.</p>
+      <p>For traveller, medical, pupil, and risk-assessment data, the <strong>client organisation is the Data Controller</strong>. <strong>GeoRiskGlobal is the Processor.</strong> The architecture is zero-PII and local-first. Traveller names, passport and medical details, and reviewer sign-offs stay in the user's browser <code>localStorage</code> (draft key <code>georisk.ra.v1</code>) and are not transmitted to GeoRiskGlobal servers.</p>
       <p><strong>Pseudonymised operations.</strong> UK and EU GDPR Article 4(5), Article 5(1)(e), and Article 17: an operational check-in is an opaque callsign and a location rounded to one decimal degree. Those records auto-purge after 30 days. An administrator can erase them immediately. There is no analytics cookie. The only cookies are strictly necessary session and preview cookies, <code>HttpOnly</code> and <code>SameSite=Lax</code>.</p>
       <p><strong>Subprocessors.</strong> Hosting is Railway by default, or Google Cloud London <code>europe-west2</code> when a UK or EU tenant needs in-country residency. xAI Grok is called only when someone clicks an AI draft, and that call does not include personal data. Public OSRM is used only for anonymous route coordinates on <code>/route-risk</code>. Slack webhooks and Okta OIDC are optional and customer-configured. If they are not configured, they are not called.</p>
       <p><strong>ICO Children's Code.</strong> School and university features are for adult Trip Leaders and staff only. They are never for pupils or minors. Do not make a pupil an account holder.</p>
-      <p><strong>Rights and breaches.</strong> Data-subject requests, including access and erasure, go to the privacy contact on the <a href="/privacy">privacy page</a>. GeoRiskIntel will tell the controller without undue delay, and within the time the controller needs to notify the UK ICO or the relevant EU supervisory authority inside 72 hours of becoming aware of a notifiable breach.</p>
+      <p><strong>Rights and breaches.</strong> Data-subject requests, including access and erasure, go to the privacy contact on the <a href="/privacy">privacy page</a>. GeoRiskGlobal will tell the controller without undue delay, and within the time the controller needs to notify the UK ICO or the relevant EU supervisory authority inside 72 hours of becoming aware of a notifiable breach.</p>
     </section>
     <section class="panel" id="controls">
       <h2>Technical controls live today</h2>
@@ -957,15 +958,15 @@ def _trust_document() -> str:
     </section>
     <section class="panel disclaimer" id="disclaimer">
       <h2>Decision-support and non-medical-device disclaimer</h2>
-      <p>GeoRiskIntel is decision-support software for security and travel-risk planning. It is not a medical device. It does not provide a diagnosis, a treatment, or a clinical measurement, and it is not a substitute for a qualified medic, clinical judgement, or a government travel advisory.</p>
+      <p>GeoRiskGlobal is decision-support software for security and travel-risk planning. It is not a medical device. It does not provide a diagnosis, a treatment, or a clinical measurement, and it is not a substitute for a qualified medic, clinical judgement, or a government travel advisory.</p>
       <p>Risk scores and Grok drafts are inputs to a human decision. A person chooses the score, reads the draft, and decides what to do. The service does not make an automated decision with legal or similarly significant effect, and it does not carry a medical-device conformity claim under the UK Medical Devices Regulations or the EU Medical Devices Regulation.</p>
       <p>Open-source incident reports can be incomplete, contested, or duplicated. Confirm conditions with the responsible authority before travel or deployment.</p>
     </section>
     """
     return _shell(
-        title="Trust & Cyber Compliance — GeoRiskIntel",
+        title="Trust & Cyber Compliance — GeoRiskGlobal",
         kicker="Trust",
-        heading="GeoRiskIntel Trust & Cyber Compliance Center",
+        heading="GeoRiskGlobal Trust & Cyber Compliance Center",
         lede="How the service handles data, which controls are on today, and what the product is not.",
         body=body,
         current="/trust",
@@ -987,13 +988,13 @@ def _privacy_document() -> str:
     <section class="panel" id="roles">
       <h2>UK GDPR and EU GDPR roles</h2>
       <p>This notice covers the United Kingdom General Data Protection Regulation and the EU General Data Protection Regulation.</p>
-      <p>For staff, traveller, pupil, and risk-assessment information, the <strong>client organisation is the Data Controller</strong>. It decides why that information is needed and how long the organisation keeps its own copy. <strong>GeoRiskIntel is the Processor.</strong> It hosts the map and the assessment builder for the controller and does not decide the purpose of a client's travel-risk file.</p>
-      <p>GeoRiskIntel is the controller only for the small amount of information it collects for its own operations: an enterprise enquiry the sender chooses to submit, and short-lived abuse-protection counters. Those are described below. They are not the assessment file.</p>
+      <p>For staff, traveller, pupil, and risk-assessment information, the <strong>client organisation is the Data Controller</strong>. It decides why that information is needed and how long the organisation keeps its own copy. <strong>GeoRiskGlobal is the Processor.</strong> It hosts the map and the assessment builder for the controller and does not decide the purpose of a client's travel-risk file.</p>
+      <p>GeoRiskGlobal is the controller only for the small amount of information it collects for its own operations: an enterprise enquiry the sender chooses to submit, and short-lived abuse-protection counters. Those are described below. They are not the assessment file.</p>
     </section>
     <section class="panel" id="local">
       <h2>Zero-PII local-first architecture</h2>
-      <p>Traveller names, passport and medical details, emergency contacts, and risk-assessment reviewer sign-offs stay strictly in the user's browser. The assessment draft is stored in <code>localStorage</code> under the key <code>georisk.ra.v1</code>. Those fields are marked local-only. They are not included in Auto-Draft, and they are not written to the GeoRiskIntel server.</p>
-      <p>Clearing the local draft in the browser deletes that copy. GeoRiskIntel cannot retrieve it, because it was never sent.</p>
+      <p>Traveller names, passport and medical details, emergency contacts, and risk-assessment reviewer sign-offs stay strictly in the user's browser. The assessment draft is stored in <code>localStorage</code> under the key <code>georisk.ra.v1</code>. Those fields are marked local-only. They are not included in Auto-Draft, and they are not written to the GeoRiskGlobal server.</p>
+      <p>Clearing the local draft in the browser deletes that copy. GeoRiskGlobal cannot retrieve it, because it was never sent.</p>
     </section>
     <section class="panel" id="pseudonymous">
       <h2>Pseudonymised data and storage limitation</h2>
@@ -1003,7 +1004,7 @@ def _privacy_document() -> str:
     </section>
     <section class="panel" id="cookies">
       <h2>Cookies</h2>
-      <p>GeoRiskIntel does not use analytics or advertising cookies. The only cookies are strictly necessary:</p>
+      <p>GeoRiskGlobal does not use analytics or advertising cookies. The only cookies are strictly necessary:</p>
       <ul class="clean">
         <li><code>georisk_preview</code> keeps a preview sign-in.</li>
         <li><code>georisk_pass</code> keeps a single-area pass the viewer opened.</li>
@@ -1025,7 +1026,7 @@ def _privacy_document() -> str:
             <tr><th scope="row">Google Cloud, Northern Virginia (<code>us-east4</code>)</th><td>US tenants only.</td><td>The same application data, in that US region. This is not the UK or EU default.</td></tr>
             <tr><th scope="row">xAI Grok API</th><td>Only when a person clicks an AI draft or asks Grok.</td><td>Destination, template, and hazard scores, plus incident titles already on the map. No traveller name, passport, medical detail, or sign-off.</td></tr>
             <tr><th scope="row">Public OSRM</th><td>Only for <code>/route-risk</code>.</td><td>Anonymous route coordinates. No callsign, name, or device identity.</td></tr>
-            <tr><th scope="row">Slack</th><td>Only if the customer configures a webhook.</td><td>The operational message the customer set up. GeoRiskIntel does not run the Slack workspace. Nothing is sent when no webhook is set.</td></tr>
+            <tr><th scope="row">Slack</th><td>Only if the customer configures a webhook.</td><td>The operational message the customer set up. GeoRiskGlobal does not run the Slack workspace. Nothing is sent when no webhook is set.</td></tr>
             <tr><th scope="row">Okta</th><td>Only if the customer connects Okta OIDC single sign-on.</td><td>The customer's own authentication. Directory passwords are not copied. Nothing is sent to Okta when it is not connected.</td></tr>
           </tbody>
         </table>
@@ -1034,19 +1035,19 @@ def _privacy_document() -> str:
     </section>
     <section class="panel" id="children">
       <h2>ICO Children's Code</h2>
-      <p>The Age Appropriate Design Code (the ICO Children's Code) applies to services likely to be accessed by children. GeoRiskIntel is not offered to children.</p>
+      <p>The Age Appropriate Design Code (the ICO Children's Code) applies to services likely to be accessed by children. GeoRiskGlobal is not offered to children.</p>
       <p>Schools and universities features are strictly for adult Trip Leaders and staff. They are never for pupils or minors. Do not create an account for a pupil. Do not type a pupil's name, medical note, or contact into a field that is sent to the server. Those details belong in the local-only part of the assessment and stay on the trip leader's device.</p>
     </section>
     <section class="panel" id="rights">
       <h2>Data-subject rights and breach notification</h2>
-      <p>People whose information is in a client's assessment can ask the controller for access, correction, erasure, restriction, portability, and to object. Because that assessment copy is in the browser, the controller and the user can do this on the device. Where GeoRiskIntel holds something itself, send a data-subject access request (DSAR) to {privacy}. Say which right you are using. Do not include passport or medical details in the email if you can avoid it.</p>
+      <p>People whose information is in a client's assessment can ask the controller for access, correction, erasure, restriction, portability, and to object. Because that assessment copy is in the browser, the controller and the user can do this on the device. Where GeoRiskGlobal holds something itself, send a data-subject access request (DSAR) to {privacy}. Say which right you are using. Do not include passport or medical details in the email if you can avoid it.</p>
       <p>You can complain to the UK Information Commissioner's Office (ICO), or to the EU supervisory authority in your country, if you think the rules have not been followed.</p>
-      <p><strong>72-hour breach notification.</strong> If GeoRiskIntel becomes aware of a breach of data it processes for a client, it will tell that controller without undue delay and in time for the controller to notify the UK ICO or the relevant EU supervisory authority within 72 hours, where Article 33 requires notification. Where GeoRiskIntel is itself the controller, it will make that notification within 72 hours of becoming aware of a notifiable breach.</p>
+      <p><strong>72-hour breach notification.</strong> If GeoRiskGlobal becomes aware of a breach of data it processes for a client, it will tell that controller without undue delay and in time for the controller to notify the UK ICO or the relevant EU supervisory authority within 72 hours, where Article 33 requires notification. Where GeoRiskGlobal is itself the controller, it will make that notification within 72 hours of becoming aware of a notifiable breach.</p>
       <p>This notice was prepared on {STATEMENT_DATE}. The privacy contact above is the mailbox for requests. A deployment can point it at another address with <code>PRIVACY_CONTACT</code>.</p>
     </section>
     """
     return _shell(
-        title="Privacy notice — GeoRiskIntel",
+        title="Privacy notice — GeoRiskGlobal",
         kicker="Privacy",
         heading="Privacy notice",
         lede="UK GDPR and EU GDPR roles, what stays in the browser, what is pseudonymous, who is called, and how to use your rights.",
@@ -1060,7 +1061,7 @@ def _accessibility_document() -> str:
     body = f"""
     <section class="panel">
       <h2>How accessible this website is</h2>
-      <p>GeoRiskIntel wants people to be able to use the map, the risk assessments, and these information pages with a keyboard, a screen reader, and without relying on colour alone. We aim to meet <strong>WCAG 2.2 Level AA</strong>. That is the bar named by the UK Public Sector Bodies Accessibility Regulations and the standard we use for US public-sector customers under <strong>ADA Title II</strong>.</p>
+      <p>GeoRiskGlobal wants people to be able to use the map, the risk assessments, and these information pages with a keyboard, a screen reader, and without relying on colour alone. We aim to meet <strong>WCAG 2.2 Level AA</strong>. That is the bar named by the UK Public Sector Bodies Accessibility Regulations and the standard we use for US public-sector customers under <strong>ADA Title II</strong>.</p>
       <p>The information pages and the assessment forms are designed to that bar. The live map is partially there: it is a visual canvas and some of its controls come from the map library. This statement says what works, what does not, and how to ask for an alternative.</p>
     </section>
     <section class="panel" id="keyboard">
@@ -1115,7 +1116,7 @@ def _accessibility_document() -> str:
     </section>
     <section class="panel">
       <h2>Technical information</h2>
-      <p>This website is GeoRiskIntel. The pages are HTML and CSS, with JavaScript for the map and the assessment builder. Map tiles are loaded from Esri. The assessment builder is designed so personal fields stay in the browser.</p>
+      <p>This website is GeoRiskGlobal. The pages are HTML and CSS, with JavaScript for the map and the assessment builder. Map tiles are loaded from Esri. The assessment builder is designed so personal fields stay in the browser.</p>
       <p>We test against WCAG 2.2 Level AA success criteria, including the 2.2 additions we rely on here: focus not obscured, target size, and accessible authentication for the preview password (a visible label, no cognitive puzzle, paste allowed).</p>
     </section>
     <section class="panel">
@@ -1128,10 +1129,10 @@ def _accessibility_document() -> str:
     </section>
     """
     return _shell(
-        title="Accessibility statement — GeoRiskIntel",
+        title="Accessibility statement — GeoRiskGlobal",
         kicker="Accessibility",
         heading="Accessibility statement",
-        lede="WCAG 2.2 Level AA commitment for GeoRiskIntel, including keyboard use, contrast, screen readers, and how to report a barrier.",
+        lede="WCAG 2.2 Level AA commitment for GeoRiskGlobal, including keyboard use, contrast, screen readers, and how to report a barrier.",
         body=body,
         current="/accessibility",
     )

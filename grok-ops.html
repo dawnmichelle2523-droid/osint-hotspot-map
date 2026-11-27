@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Grok Ops — GeoRiskIntel</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4">
+  <title>Grok Ops — GeoRiskGlobal</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#0b1120">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="GeoRiskIntel">
+  <meta name="apple-mobile-web-app-title" content="GeoRiskGlobal">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <script src="/static/pwa-register.js" defer></script>
@@ -22,7 +23,7 @@
   <div class="nav-backdrop"></div>
   <div class="nav-row">
     <a class="brand-lockup" href="/">
-      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
     </a>
     <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
       <span class="nav-toggle-bars" aria-hidden="true"></span>
@@ -100,7 +101,7 @@
     <section class="panel strip" id="okta-sso">
       <div>
         <h2>Okta SSO and dashboard tile</h2>
-        <p class="note">Enterprise and Government clients can add GeoRiskIntel to the Okta dashboard and sign in with OIDC. The setup sheet lists the redirect URIs and the Railway / Google Cloud variable names.</p>
+        <p class="note">Enterprise and Government clients can add GeoRiskGlobal to the Okta dashboard and sign in with OIDC. The setup sheet lists the redirect URIs and the Railway / Google Cloud variable names.</p>
       </div>
       <a class="button" href="/sso-setup">Open Okta SSO setup</a>
     </section>
@@ -114,7 +115,7 @@
     <h2>Grok quick view</h2>
     <div id="drawer-body" class="note"></div>
   </aside>
-  <footer>GeoRiskIntel · server-side Grok only</footer>
+  <footer>GeoRiskGlobal · server-side Grok only</footer>
   <script>
     function esc(value) { return String(value ?? "").replace(/[&<>]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[ch])); }
     async function load() {

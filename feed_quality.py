@@ -758,7 +758,7 @@ def _google_translate(text: str) -> str:
             "https://translate.googleapis.com/translate_a/single",
             params={"client": "gtx", "sl": "auto", "tl": "en", "dt": "t", "q": text[:800]},
             timeout=(4, 8),
-            headers={"User-Agent": "GeoRiskIntel/1.0"},
+            headers={"User-Agent": "GeoRiskGlobal/1.0"},
         )
         if not response.ok:
             return ""
@@ -775,7 +775,7 @@ def _mymemory_translate(text: str) -> str:
             "https://api.mymemory.translated.net/get",
             params={"q": text[:400], "langpair": "autodetect|en"},
             timeout=(4, 8),
-            headers={"User-Agent": "GeoRiskIntel/1.0"},
+            headers={"User-Agent": "GeoRiskGlobal/1.0"},
         )
         if not response.ok:
             return ""

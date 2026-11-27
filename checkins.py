@@ -33,7 +33,7 @@ def retention_days() -> int:
 def gdpr_notice(days: int | None = None) -> str:
     window = DEFAULT_RETENTION_DAYS if days is None else days
     return (
-        "UK/EU GDPR Pseudonymisation Notice: GeoRiskIntel stores no names, emails, or phone numbers. "
+        "UK/EU GDPR Pseudonymisation Notice: GeoRiskGlobal stores no names, emails, or phone numbers. "
         "An opaque callsign can still be pseudonymised personal data under UK/EU GDPR if your organisation "
         "holds a separate lookup key. You remain the Data Controller. Check-in events are deleted automatically "
         f"after {window} days (Art. 5(1)(e) storage limitation) and can be erased immediately (Art. 17)."

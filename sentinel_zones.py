@@ -792,7 +792,7 @@ def slack_payload(zone: dict, hit: dict) -> dict:
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": "GeoRiskIntel Sentinel Zones · place watch only · no personal data",
+                        "text": "GeoRiskGlobal Sentinel Zones · place watch only · no personal data",
                     }
                 ],
             },

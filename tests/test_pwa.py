@@ -36,8 +36,8 @@ class PwaTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("application/manifest+json", response.content_type)
         payload = json.loads(response.data)
-        self.assertEqual(payload["name"], "GeoRiskIntel — Live OSINT & Travel Risk")
-        self.assertEqual(payload["short_name"], "GeoRiskIntel")
+        self.assertEqual(payload["name"], "GeoRiskGlobal — Live OSINT & Travel Risk")
+        self.assertEqual(payload["short_name"], "GeoRiskGlobal")
         self.assertEqual(payload["start_url"], "/")
         self.assertEqual(payload["display"], "standalone")
         self.assertEqual(payload["background_color"], "#0b1120")
@@ -97,6 +97,29 @@ class PwaTests(unittest.TestCase):
             self.assertIn('href="/static/icons/apple-touch-icon.png"', html, path)
             self.assertIn('src="/static/pwa-register.js"', html, path)
             page.close()
+
+    def test_brand_mark_favicon_and_home_screen_icon(self) -> None:
+        with Image.open(ROOT / "static" / "logo.png") as logo:
+            self.assertEqual(logo.mode, "RGBA")
+            self.assertGreater(logo.width, logo.height * 2)
+            self.assertEqual(logo.getchannel("A").getextrema()[0], 0)
+        with Image.open(ROOT / "static" / "favicon.png") as favicon:
+            self.assertEqual(favicon.size, (64, 64))
+        with Image.open(ROOT / "static" / "icons" / "apple-touch-icon.png") as touch:
+            self.assertEqual(touch.size, (180, 180))
+        ico = ROOT / "static" / "favicon.ico"
+        self.assertTrue(ico.is_file())
+        self.assertGreater(ico.stat().st_size, 100)
+        page = self.client.get("/")
+        try:
+            self.assertEqual(page.status_code, 200)
+            html = page.get_data(as_text=True)
+        finally:
+            page.close()
+        self.assertIn('href="/static/favicon.ico?v=5"', html)
+        self.assertIn('href="/static/favicon.png?v=5"', html)
+        self.assertIn("GeoRiskGlobal", html)
+        self.assertNotIn("GeoRiskIntel", html)
 
     def test_pricing_and_preview_lock_are_unchanged_by_the_pwa(self) -> None:
         pricing = (ROOT / "pricing.html").read_text(encoding="utf-8")

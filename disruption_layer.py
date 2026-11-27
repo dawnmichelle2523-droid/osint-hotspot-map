@@ -29,7 +29,7 @@ CACHE_TTL_SECONDS = 15 * 60
 FETCH_TIMEOUT = (3, 6)
 REVIEWED = "2026-11-27T00:00:00Z"
 HEADERS = {
-    "User-Agent": "GeoRiskIntel/1.0 (public disruption layer)",
+    "User-Agent": "GeoRiskGlobal/1.0 (public disruption layer)",
     "Accept": "application/rss+xml, application/xml, application/json, text/html;q=0.8, */*;q=0.5",
 }
 DISCLAIMER = (
@@ -71,7 +71,7 @@ FAA_URL = "https://www.faa.gov/air_traffic/publications/us_restrictions"
 MARAD_URL = "https://www.maritime.dot.gov/msci-advisories"
 UKMTO_URL = "https://www.ukmto.org/"
 RELIEF_URL = (
-    "https://api.reliefweb.int/v1/reports?appname=georiskintel&preset=latest&limit=12"
+    "https://api.reliefweb.int/v1/reports?appname=georiskglobal&preset=latest&limit=12"
     "&query[value]=airspace%20OR%20%22conflict%20zone%22%20OR%20piracy%20OR%20%22maritime%20security%22"
     "&fields[include][]=title&fields[include][]=url&fields[include][]=date.created"
 )
@@ -1059,7 +1059,7 @@ def _apply_incidents(airspace: list, gps: list, maritime: list, incidents: list[
             center=[incident["lat"], incident["lng"]],
             radius_km=50,
             updated_at=incident["timestamp"] or REVIEWED,
-            source=incident["source"] or "GeoRiskIntel OSINT classification",
+            source=incident["source"] or "GeoRiskGlobal OSINT classification",
             source_url=incident["source"] if str(incident["source"]).startswith("http") else GPS_URL,
             summary=incident["summary"] or incident["title"] or "Local OSINT incident tagged as GNSS interference.",
             operational_impact=GPS_IMPACT,

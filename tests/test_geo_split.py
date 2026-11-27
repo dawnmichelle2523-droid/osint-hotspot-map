@@ -71,7 +71,7 @@ class SummaryTests(unittest.TestCase):
         self.assertGreaterEqual(war["likelihood"] * war["impact"], 17)
         self.assertIn("Port Sudan", " ".join(item["city"] for item in template["facilities"]))
         self.assertIn("roster", template["local_only_fields"])
-        self.assertEqual(template["branding"], "GeoRiskIntel")
+        self.assertEqual(template["branding"], "GeoRiskGlobal")
 
     def test_legacy_theatre_still_matches_a_country(self):
         self.assertTrue(geo_split.event_matches(self.events[2], "UK & Europe", "France"))

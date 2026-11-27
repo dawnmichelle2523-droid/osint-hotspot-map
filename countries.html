@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GeoRiskIntel — Countries</title>
-  <link rel="icon" type="image/png" href="/static/favicon.png?v=4" />
+  <title>GeoRiskGlobal — Countries</title>
+  <link rel="icon" href="/static/favicon.ico?v=5" sizes="any">
+  <link rel="icon" type="image/png" href="/static/favicon.png?v=5">
   <style>
     :root {
       color-scheme: dark;
@@ -165,7 +166,8 @@
       body { background: #fff; color: #111; }
       #live-bar, #liveWireTickerBar, main, #profile, #profile-overlay, #app-footer { display: none !important; }
       #print-sheet { display: block; max-width: 180mm; margin: 0 auto; font: 12px/1.4 "Segoe UI", system-ui, sans-serif; color: #111; }
-      #print-sheet h1 { color: #102A63; font-size: 20px; margin: 0 0 4px; }
+      #print-sheet img { height: 52px; width: auto; display: block; }
+      #print-sheet h1 { color: #102A63; font-size: 20px; margin: 8px 0 4px; }
       #print-sheet h2 { color: #102A63; font-size: 14px; margin: 14px 0 4px; }
       #print-sheet a { color: #102A63; }
     }
@@ -178,7 +180,7 @@
   <div class="nav-backdrop"></div>
   <div class="nav-row">
     <a class="brand-lockup" href="/">
-      <img id="brandLogo" src="/static/logo.png?v=4" alt="GeoRiskIntel">
+      <img id="brandLogo" src="/static/logo.png?v=5" alt="GeoRiskGlobal">
     </a>
     <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="page-nav" aria-label="Open menu">
       <span class="nav-toggle-bars" aria-hidden="true"></span>
@@ -315,7 +317,7 @@
     <p id="copy-note"></p>
   </aside>
   <article id="print-sheet" aria-hidden="true"></article>
-  <footer id="app-footer">GeoRiskIntel · Proprietary Client Intelligence — For Authorized Recipients Only.</footer>
+  <footer id="app-footer">GeoRiskGlobal · Proprietary Client Intelligence — For Authorised Recipients Only.</footer>
   <script src="/static/geo-split.js"></script>
   <script>
     const PIN_KEY = "georiskintel.countryPins";
@@ -1100,13 +1102,15 @@
           "<h2>Comms & Medical Contingency</h2><ul>" + protocols.comms.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>"
         : "<h2>Duty of care</h2><ul>" + careFor(card.level).map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>";
       document.getElementById("print-sheet").innerHTML =
+        '<img src="/static/logo-pdf.png?v=5" alt="GeoRiskGlobal">' +
         "<h1>" + esc(card.name) + " travel risk brief</h1><p>Composite " + card.score + " · " + esc(card.trend.text) + " · " + esc(card.label) + "</p>" +
         "<h2>Official advice</h2><p>" + esc(card.summary || "No official summary is available.") + "</p>" +
         (card.regions.length ? "<h2>Regional notes</h2><ul>" + card.regions.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>" : "") +
         protocolHtml +
         assetPrintHtml(card) +
         calendarPrintHtml(card) +
-        "<h2>Live incidents</h2>" + incidents;
+        "<h2>Live incidents</h2>" + incidents +
+        "<p>Powered by GeoRiskGlobal</p>";
     }
     function openProfile(key, focusClose) {
       const card = cards.find((item) => item.key === key);

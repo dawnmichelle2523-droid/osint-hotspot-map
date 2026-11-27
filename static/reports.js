@@ -163,7 +163,7 @@
     const link = document.createElement("a");
     const name = (scopeInput.value || "report").replace(/[^\w.& -]+/g, "").trim() || "report";
     link.href = URL.createObjectURL(blob);
-    link.download = "GeoRiskIntel-" + name + "-" + periodInput.value + ".html";
+    link.download = "GeoRiskGlobal-" + name + "-" + periodInput.value + ".html";
     link.click();
     URL.revokeObjectURL(link.href);
   });

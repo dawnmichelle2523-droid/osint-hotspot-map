@@ -1,4 +1,4 @@
-/* GeoRiskIntel risk-assessment sector taxonomy.
+/* GeoRiskGlobal risk-assessment sector taxonomy.
 
    /risk-assessments reads window.RA_SECTORS and rebuilds every dropdown
    when the sector changes. Lists are suggestions: the page still accepts
