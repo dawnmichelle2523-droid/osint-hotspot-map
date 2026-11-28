@@ -1356,6 +1356,8 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "Established national"
     if "ahram.org.eg" in raw:
         return "State Media"
+    if "nashaniva.com" in raw:
+        return "National outlet"
     if _token_named(tokens, _CAUTION_HANDLES):
         return "Single-Source / Opposition Caution"
     if _token_named(tokens, _CLAIM_HANDLES):

@@ -354,6 +354,7 @@ COUNTRIES = {
     "nigeria": (9.08, 8.68, "Nigeria"),
     "kenya": (0.02, 37.91, "Kenya"),
     "ethiopia": (9.15, 40.49, "Ethiopia"),
+    "belarus": (53.71, 27.95, "Belarus"),
     "south africa": (-30.56, 22.94, "South Africa"),
     "mali": (17.57, -4.0, "Mali"),
     "ghana": (7.95, -1.02, "Ghana"),

@@ -173,6 +173,27 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["country"], "Somalia")
         self.assertEqual(events[0]["source_tier"], "Local outlet")
 
+    def test_nasha_niva_sections_are_rss_and_tagged_belarus(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        for section_id in ("611", "584", "615", "706"):
+            feed = feeds["nashaniva-" + section_id]
+            self.assertEqual(feed["source_tier"], "National outlet")
+            self.assertEqual(feed["default_country"], "Belarus")
+            self.assertEqual(feed["language"], "be")
+            self.assertTrue(feed["url"].endswith("/rss-ca/" + section_id + "/"))
+        empty = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel>
+          <title>Nasha Niva</title><link>https://nashaniva.com/</link><language>be</language>
+        </channel></rss>"""
+        self.assertEqual(gf.parse_placed_rss(feeds["nashaniva-706"], empty), [])
+        item = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel>
+          <item><title>Explosion in Minsk</title><description>A blast was reported.</description>
+          <link>https://nashaniva.com/example</link></item>
+        </channel></rss>"""
+        events = gf.parse_placed_rss(feeds["nashaniva-611"], item)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Belarus")
+        self.assertEqual(events[0]["source_tier"], "National outlet")
+
 
 if __name__ == "__main__":
     unittest.main()

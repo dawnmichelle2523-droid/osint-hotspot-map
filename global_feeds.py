@@ -2054,6 +2054,26 @@ def _catalogue_feeds() -> list[dict]:
          "url": "https://www.baidoaonline.com/sitemap.xml", "parser": "sitemap-news",
          "default_country": "Somalia", "source_tier": "Local outlet", "max_age_days": 30, "limit": 6},
     ]
+    # Nasha Niva section feeds are RSS 2.0 (not Atom). On 28 Nov 2026 each channel
+    # element was empty, so they add no incidents until items appear.
+    for section_id, section_name in (
+        ("611", "Nasha Niva incidents"),
+        ("584", "Nasha Niva world"),
+        ("615", "Nasha Niva society"),
+        ("706", "Nasha Niva war"),
+    ):
+        feeds.append({
+            "id": "nashaniva-" + section_id,
+            "name": section_name,
+            "region": "Russia & Ukraine",
+            "category": "Security",
+            "url": "https://nashaniva.com/rss-ca/" + section_id + "/",
+            "parser": "placed-rss",
+            "default_country": "Belarus",
+            "language": "be",
+            "source_tier": "National outlet",
+            "limit": 6,
+        })
     return feeds
 
 
