@@ -271,7 +271,7 @@ _X_HANDLE_GROUPS = [
         "SUNA_AGENCY_EN", "SUNA_AGENCY",
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
-        "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline",
+        "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -467,6 +467,7 @@ _HANDLE_COUNTRY = {
     "qudsnen": "Palestine",
     "iomchad": "Chad",
     "usainksa": "Saudi Arabia",
+    "nhmpofficial": "Pakistan",
 }
 _RSS_DESK = {
     "https://english.enabbaladi.net/feed/": "Syria",
@@ -614,6 +615,7 @@ COUNTRY_CENTERS = {
     "Strait of Hormuz / Gulf": (26.5667, 56.2667),
     "Other": (26.5, 47.0),
     "Ethiopia": (9.03, 38.74),
+    "Pakistan": (30.38, 69.35),
     "Somalia": (2.05, 45.32),
     "South Africa": (-30.56, 22.94),
 }
@@ -1328,6 +1330,7 @@ _ESTABLISHED_BREAKING = {"alhadath_brk"}
 _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
 _OSINT_ANALYST_HANDLES = {"afrimeosint"}
 _LOCAL_OUTLET_X = {"baidoaonline"}
+_NHMP_HANDLES = {"nhmpofficial"}
 _ALARABIYA_HANDLES = {"alarabiya", "alarabiya_eng"}
 # Al Arabiya and Al Hadath are one MBC network. They do not corroborate each other.
 _MBC_FAMILY = {"alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk"}
@@ -1342,6 +1345,8 @@ _CASUALTY_WORDS = re.compile(
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _NHMP_HANDLES):
+        return osint.NHMP_TIER
     if _token_named(tokens, _PARTISAN_HANDLES):
         return "Social-unverified / partisan"
     if _token_named(tokens, _OSINT_ANALYST_HANDLES):
@@ -2774,6 +2779,8 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _LOCAL_OUTLET_X and mentions_somalia(text):
         return True
+    if lowered in _NHMP_HANDLES:
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
 
 
@@ -3485,6 +3492,13 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
     ("الكويت", "Kuwait"),
     ("قطر", "Qatar"),
     ("عمان", "Oman"),
+    ("pakistan", "Pakistan"),
+    ("lahore", "Pakistan"),
+    ("islamabad", "Pakistan"),
+    ("peshawar", "Pakistan"),
+    ("faisalabad", "Pakistan"),
+    ("multan", "Pakistan"),
+    ("sialkot", "Pakistan"),
     ("somalia", "Somalia"),
     ("somali", "Somalia"),
     ("baidoa", "Somalia"),
@@ -3774,6 +3788,23 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
 
     The third value is a geo_precision label when GEO_FALLBACKS assigned the point.
     """
+    raw_blob_early = " ".join(
+        str(part or "")
+        for part in (
+            placed.get("location_name"),
+            item.get("title"),
+            item.get("summary"),
+            item.get("original_text"),
+        )
+    )
+    if channel_handle(item).lower() in _NHMP_HANDLES:
+        road = osint.pakistan_motorway(raw_blob_early)
+        if road:
+            label, lat, lng = road
+            placed["location_name"] = label
+            placed["country"] = "Pakistan"
+            placed["coord_origin"] = "region"
+            return lat, lng, "Regional / Country"
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
     raw_blob = " ".join(
         str(part or "")
@@ -4636,7 +4667,7 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         print(f"Dropped spam before insert: {str(item.get('title') or '')[:80]}")
         return False
     threat_code, threat_label = assigned_threat(blob, item.get("category") or placed.get("category"))
-    placed["category"] = threat_label
+    placed["category"] = osint.NHMP_CATEGORY if channel_handle(item).lower() in _NHMP_HANDLES else threat_label
     placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({

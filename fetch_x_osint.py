@@ -177,6 +177,7 @@ OUTLET_LABELS = {
     "aaa_amhara": "Amhara Association of America",
     "afrimeosint": "AfriMEOSINT",
     "baidoaonline": "Baidoa Online",
+    "nhmpofficial": "National Highways and Motorway Police",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1054,6 +1055,25 @@ LOCAL_OUTLET_X = {"baidoaonline"}
 LOCAL_OUTLET_TIER = "Local outlet"
 ALARABIYA_X = {"alarabiya", "alarabiya_eng"}
 ALARABIYA_TIER = "Regional broadcaster / Saudi state-aligned"
+NHMP_HANDLE = "nhmpofficial"
+NHMP_TIER = "Official Source"
+NHMP_CATEGORY = "Travel / transport disruption"
+# Corridor midpoints, not interchanges. M-11 is listed before M-1.
+PAKISTAN_MOTORWAYS = (
+    (re.compile(r"\bM[\s-]*11\b", re.I), "M-11 Lahore–Sialkot", 32.05, 74.35),
+    (re.compile(r"\bM[\s-]*1\b", re.I), "M-1 Islamabad–Peshawar", 33.85, 72.30),
+    (re.compile(r"\bM[\s-]*2\b", re.I), "M-2 Lahore–Islamabad", 32.60, 73.05),
+    (re.compile(r"\bM[\s-]*4\b", re.I), "M-4 Faisalabad–Multan", 30.85, 72.25),
+)
+
+
+def pakistan_motorway(text: object) -> tuple[str, float, float] | None:
+    """Regional road segment for a Pakistan motorway code, or None."""
+    sample = str(text or "")
+    for pattern, label, lat, lng in PAKISTAN_MOTORWAYS:
+        if pattern.search(sample):
+            return label, lat, lng
+    return None
 
 
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
@@ -1066,6 +1086,8 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
         return LOCAL_OUTLET_TIER
     if key in ALARABIYA_X:
         return ALARABIYA_TIER
+    if key == NHMP_HANDLE:
+        return NHMP_TIER
     if key in ESTABLISHED_BREAKING:
         return ESTABLISHED_BREAKING_TIER
     if batch == AGGREGATOR_BATCH or key in AGGREGATOR_HANDLES:
@@ -1227,9 +1249,15 @@ def prepare_incidents(
         if require_recent and (moment < window_start or moment > window_end + timedelta(minutes=15)):
             continue
         region = normalize_region(placed.get("region")) or normalize_region(item.get("region"))
+        road = pakistan_motorway(f"{title} {summary}") if handle.lower() == NHMP_HANDLE else None
+        if road:
+            label, lat, lng = road
+            coords = (lng, lat)
+            placed["location_name"] = label
+            region = "Pakistan"
         if region is None:
             continue
-        category = normalize_category(item.get("category"), batch)
+        category = NHMP_CATEGORY if handle.lower() == NHMP_HANDLE else normalize_category(item.get("category"), batch)
         cited = clean_handle(item.get("cited_handle"))
         if cited.lower() in excluded:
             continue

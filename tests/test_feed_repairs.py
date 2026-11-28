@@ -62,6 +62,33 @@ class XGateTests(unittest.TestCase):
         self.assertEqual(serve_map.source_tier_for("x", "BaidoaOnline", ""), "Local outlet")
         self.assertTrue(serve_map.keep_x_post("BaidoaOnline", "Hirshabelle election commission meets in Mogadishu"))
         self.assertFalse(serve_map.keep_x_post("BaidoaOnline", "A gallery opens in Paris"))
+        self.assertIn("nhmpofficial", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "NHMPofficial", ""), "Official Source")
+        self.assertTrue(serve_map.keep_x_post("NHMPofficial", "M-2 بند ہے"))
+
+    def test_pakistan_motorways_stay_regional(self):
+        cases = {
+            "M-1 closed for fog": ("M-1 Islamabad–Peshawar", 33.85),
+            "Protest on M-2": ("M-2 Lahore–Islamabad", 32.60),
+            "M-4 security incident": ("M-4 Faisalabad–Multan", 30.85),
+            "M-11 closure": ("M-11 Lahore–Sialkot", 32.05),
+        }
+        for title, (label, lat_expected) in cases.items():
+            placed = {}
+            lat, _lng, precision = serve_map.placed_coordinates(
+                {"source_name": "NHMPofficial", "source_kind": "x", "title": title, "summary": "", "original_text": ""},
+                placed,
+            )
+            self.assertEqual(precision, "Regional / Country", title)
+            self.assertEqual(placed["location_name"], label)
+            self.assertEqual(placed["coord_origin"], "region")
+            self.assertAlmostEqual(lat, lat_expected, places=2)
+        eleven = {}
+        serve_map.placed_coordinates(
+            {"source_name": "NHMPofficial", "source_kind": "x", "title": "M-11", "summary": "", "original_text": ""},
+            eleven,
+        )
+        self.assertNotIn("Peshawar", eleven["location_name"])
         self.assertTrue(serve_map.keep_x_post("AfriMEOSINT", "GPS jamming reported over Ethiopia"))
         self.assertTrue(serve_map.keep_x_post("AmharaWarUpdate", "Clashes in Amhara"))
         self.assertFalse(serve_map.keep_x_post("AmharaWarUpdate", "Market prices in Paris"))
