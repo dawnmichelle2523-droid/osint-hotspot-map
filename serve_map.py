@@ -274,7 +274,7 @@ _X_HANDLE_GROUPS = [
         "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
         "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
         "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
-        "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps",
+        "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps", "ALJADEEDNEWS",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1335,6 +1335,7 @@ _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
 _ESTABLISHED_BREAKING = {"alhadath_brk"}
 _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
 _GAZA_PARTISAN = {"qudsn", "yaffa_ps"}
+_ALJADEED = {"aljadeednews"}
 # Pro-Ukrainian advocacy accounts. The trailing underscore is part of the X handle.
 _PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
 # Left out on purpose. They repost other accounts' video and are not sources.
@@ -1393,6 +1394,8 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "partisan (Hamas-leaning)"
     if _token_named(tokens, {"yaffa_ps"}):
         return "Social-unverified/partisan"
+    if _token_named(tokens, _ALJADEED) or "aljadeed.tv" in raw:
+        return "National outlet"
     if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
         return "National/regional outlet / pro-government (post-2024)"
     if _token_named(tokens, _RUDAW_ARABIC):
@@ -2895,6 +2898,8 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _GAZA_PARTISAN and mentions_palestine(text):
         return True
+    if lowered in _ALJADEED and (mentions_syria_or_middle_east(text) or mentions_lebanon(text)):
+        return True
     if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
         return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
@@ -2910,6 +2915,32 @@ def mentions_pakistan(text: str) -> bool:
         "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
         "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
     )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_lebanon(text: str) -> bool:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("lebanon", "lebanese", "beirut", "al jadeed")):
+        return True
+    return any(term in str(text or "") for term in ("لبنان", "بيروت"))
+
+
+def governorate_media_citation(text: object) -> str:
+    """Official body named as the source. A person's name is not stored."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    hasakah = "hasakah" in lowered or "الحسكة" in sample or "الحسكه" in sample
+    media = any(term in lowered for term in ("governorate media", "media directorate")) or "إعلام" in sample
+    if hasakah and media:
+        return "Hasakah Governorate Media Directorate"
+    return ""
+
+
+def suicide_attack_text(text: object) -> bool:
+    sample = str(text or "")
+    lowered = sample.lower()
+    if any(term in lowered for term in ("suicide", "blew themselves", "blew himself", "blew herself")):
+        return True
+    return any(term in sample for term in ("انتحار", "أنفسهم", "انفسهم"))
 
 
 def mentions_palestine(text: str) -> bool:
@@ -4035,6 +4066,11 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
                 placed["country"] = "Pakistan"
                 placed["coord_origin"] = "region"
                 return lat, lng, "Regional / Country"
+    if handle in _ALJADEED and any(term in road_text for term in ("mushayrifa", "مشيرفة", "المشيرفة")):
+        placed["location_name"] = "Mushayrifa district, Hasakah"
+        placed["country"] = "Syria"
+        placed["coord_origin"] = "admin"
+        return 36.48, 40.76, "District"
     if handle in _SARGODHA_POLICE and ("dhori" in road_text or "mandi bahauddin" in road_text):
         placed["location_name"] = "Sargodha–Mandi Bahauddin road at Dhori"
         placed["country"] = "Pakistan"
@@ -4928,8 +4964,16 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         placed["category"] = "Travel / transport disruption"
     elif channel_handle(item).lower() in _SHAHERYAR_HANDLES and relays_named_source(blob, "nhmpofficial"):
         placed["category"] = "Repost"
+    elif channel_handle(item).lower() in _ALJADEED and suicide_attack_text(blob):
+        placed["category"] = "Suicide attack"
     else:
         placed["category"] = threat_label
+    if channel_handle(item).lower() in _ALJADEED:
+        cited = governorate_media_citation(blob)
+        if cited:
+            note = "Cited source: " + cited + "."
+            if note not in item["summary"]:
+                item["summary"] = (str(item.get("summary") or "") + " " + note).strip()
     placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({

@@ -367,6 +367,15 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["location_name"], "Kyiv")
         self.assertNotIn("rss.xml", events[0]["source"])
 
+    def test_aljadeed_has_no_rss(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "aljadeed")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["language"], "ar")
+        self.assertEqual(feed["default_country"], "Lebanon")
+        self.assertEqual(feed["source_tier"], "National outlet")
+        self.assertEqual(feed["parser"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

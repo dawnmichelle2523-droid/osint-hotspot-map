@@ -2240,6 +2240,11 @@ def _catalogue_feeds() -> list[dict]:
          "url": "https://dailyqudrat.pk/feed/", "parser": "security-rss",
          "default_country": "Pakistan", "language": "ur", "source_tier": "National/regional outlet",
          "keyword_profile": "qudrat", "limit": 6},
+        # /rss and /rss/ar return HTML. /feed and /rss.xml are 404. No XML feed was found.
+        {"id": "aljadeed", "name": "Al Jadeed", "region": "Middle East", "category": "Security",
+         "url": "https://www.aljadeed.tv/", "parser": "", "default_country": "Lebanon",
+         "language": "ar", "source_tier": "National outlet", "disabled": True,
+         "reason": "no RSS available"},
         {"id": "transparency-news", "name": "Transparency News", "region": "Middle East", "category": "Security",
          "url": "https://transparency.news/", "parser": "", "default_country": "Lebanon",
          "language": "ar", "source_tier": "Local outlet", "disabled": True,

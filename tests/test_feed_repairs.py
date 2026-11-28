@@ -135,6 +135,20 @@ class XGateTests(unittest.TestCase):
         self.assertTrue(serve_map.keep_x_post("qudsn", "غارة على مخيم الشاطئ"))
         self.assertTrue(serve_map.partisan_source("qudsn", "partisan (Hamas-leaning)"))
         self.assertTrue(serve_map.partisan_source("yaffa_ps", "Social-unverified/partisan"))
+        self.assertIn("aljadeednews", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "ALJADEEDNEWS", "https://www.aljadeed.tv/"), "National outlet")
+        sample = "According to the Hasakah Governorate Media Directorate, 3 militants blew themselves up at an Internal Security checkpoint in Mushayrifa, Hasakah."
+        self.assertTrue(serve_map.keep_x_post("ALJADEEDNEWS", sample))
+        self.assertEqual(serve_map.governorate_media_citation(sample), "Hasakah Governorate Media Directorate")
+        self.assertTrue(serve_map.suicide_attack_text(sample))
+        placed = {}
+        _lat, _lng, precision = serve_map.placed_coordinates(
+            {"source_name": "ALJADEEDNEWS", "source_kind": "x", "title": sample, "summary": "", "original_text": ""},
+            placed,
+        )
+        self.assertEqual(precision, "District")
+        self.assertEqual(placed["location_name"], "Mushayrifa district, Hasakah")
+        self.assertEqual(placed["coord_origin"], "admin")
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {
