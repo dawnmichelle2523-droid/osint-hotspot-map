@@ -551,6 +551,40 @@ class ApiOutputTests(unittest.TestCase):
         self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
         self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
 
+    def test_sawt_beirut_needs_an_independent_source(self):
+        shelling = dict(
+            title="Israeli shelling in Hadatha",
+            summary="Israeli shelling hit Hadatha in south Lebanon",
+            country="Lebanon",
+            lat=33.17,
+            lng=35.38,
+            timestamp="2026-11-26T12:00:00Z",
+        )
+        alone = scoring.score_incidents([
+            incident(source_name="Sawt Beirut International", source_tier="partisan (sovereigntist/anti-Hezbollah lean)", **shelling),
+            incident(
+                source_name="yaffa_ps",
+                source_tier="Social-unverified/partisan",
+                source="https://x.com/yaffa_ps/status/9",
+                timestamp="2026-11-26T12:05:00Z",
+                **{k: v for k, v in shelling.items() if k != "timestamp"},
+            ),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in alone))
+        paired = scoring.score_incidents([
+            incident(source_name="Sawt Beirut International", source_tier="partisan (sovereigntist/anti-Hezbollah lean)", **shelling),
+            incident(
+                source_name="Reuters",
+                source="https://www.reuters.com/world/hadatha",
+                source_tier="Wire / Outlet",
+                timestamp="2026-11-26T13:00:00Z",
+                **{k: v for k, v in shelling.items() if k != "timestamp"},
+            ),
+        ])
+        reuters = next(item for item in paired if item["source_name"] == "Reuters")
+        self.assertEqual(reuters["confidence_tier"], "corroborated")
+        self.assertGreaterEqual(reuters["corroboration_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

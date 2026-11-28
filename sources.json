@@ -16,7 +16,8 @@
     "sargodha_police": ["sargodhapolice"],
     "kenya_times": ["thekenyatimes"],
     "gaza_partisan": ["qudsn", "yaffa_ps"],
-    "aljadeed": ["ALJADEEDNEWS"]
+    "aljadeed": ["ALJADEEDNEWS"],
+    "sawt_beirut": ["SawtBeirut"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]

@@ -75,6 +75,7 @@ _PLACES = [
     (("ramallah", "رام الله"), 31.9038, 35.2034, "Palestine", "Ramallah"),
     (("jerusalem", "القدس"), 31.7683, 35.2137, "Israel", "Jerusalem"),
     (("ben gurion", "ben-gurion"), 32.0005, 34.8708, "Israel", "Ben Gurion Airport"),
+    (("hadatha", "حداتا", "حداثا"), 33.17, 35.38, "Lebanon", "Hadatha"),
     (("baalbek", "بعلبك"), 34.0058, 36.2181, "Lebanon", "Baalbek"),
     (("hermel", "الهرمل"), 34.395, 36.385, "Lebanon", "Hermel"),
     (("al-walid", "al walid", "al-waleed", "al waleed", "suwaydiya", "al-suwaydiya", "معبر الوليد"), 33.40, 38.99, "Iraq", "Al-Walid crossing"),

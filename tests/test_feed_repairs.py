@@ -149,6 +149,13 @@ class XGateTests(unittest.TestCase):
         self.assertEqual(precision, "District")
         self.assertEqual(placed["location_name"], "Mushayrifa district, Hasakah")
         self.assertEqual(placed["coord_origin"], "admin")
+        self.assertIn("sawtbeirut", handles)
+        self.assertEqual(
+            serve_map.source_tier_for("x", "SawtBeirut", "https://www.sawtbeirut.com/feed/"),
+            "partisan (sovereigntist/anti-Hezbollah lean)",
+        )
+        self.assertTrue(serve_map.keep_x_post("SawtBeirut", "Israeli shelling hit Hadatha in south Lebanon"))
+        self.assertTrue(serve_map.partisan_source("SawtBeirut", "partisan (sovereigntist/anti-Hezbollah lean)"))
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

@@ -376,6 +376,29 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(feed["source_tier"], "National outlet")
         self.assertEqual(feed["parser"], "")
 
+    def test_sawt_beirut_places_hadatha_and_stays_partisan(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "sawt-beirut")
+        self.assertEqual(feed["url"], "https://www.sawtbeirut.com/feed/")
+        self.assertEqual(feed["language"], "ar")
+        self.assertEqual(feed["default_country"], "Lebanon")
+        self.assertIn("partisan", feed["source_tier"])
+        self.assertEqual(
+            [item["url"] for item in gf._feeds() if "sawtbeirut.com" in str(item.get("url") or "")],
+            ["https://www.sawtbeirut.com/feed/"],
+        )
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>قصف إسرائيلي على حداتا</title>
+          <description>Israeli shelling hit Hadatha in south Lebanon.</description>
+          <link>https://www.sawtbeirut.com/hadatha</link></item>
+          <item><title>حفل فني في بيروت</title><description>أمسية غنائية</description>
+          <link>https://www.sawtbeirut.com/arts</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["location_name"], "Hadatha")
+        self.assertEqual(events[0]["country"], "Lebanon")
+        self.assertIn("partisan", events[0]["source_tier"])
+
 
 if __name__ == "__main__":
     unittest.main()

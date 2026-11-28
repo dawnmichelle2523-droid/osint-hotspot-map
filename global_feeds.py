@@ -1206,6 +1206,11 @@ _PORTAL_OUTAGE_RE = re.compile(
     r"portal|website|online service|e-service|system down|ntsa",
     re.IGNORECASE,
 )
+_SAWT_RE = re.compile(
+    r"shelling|strike|explosion|drone|killed|attack|raid|clash|missile|"
+    r"قصف|غارة|انفجار|صاروخ|شهيد|قتل|اشتباك",
+    re.IGNORECASE,
+)
 _LBUA_RE = re.compile(
     r"strike|explosion|ballistic|drone|air[- ]alert|casualty|killed|missile|"
     r"удар|вибух|балістич|дрон|бпла|безпілот|тривог|загибл|поранен|ракет",
@@ -1614,6 +1619,8 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             matched = _QUDS_RE.search(blob) is not None
         elif profile == "lbua":
             matched = _LBUA_RE.search(blob) is not None
+        elif profile == "sawt":
+            matched = _SAWT_RE.search(blob) is not None
         elif profile == "kenya-times":
             if _PORTAL_OUTAGE_RE.search(blob):
                 continue
@@ -2241,6 +2248,12 @@ def _catalogue_feeds() -> list[dict]:
          "default_country": "Pakistan", "language": "ur", "source_tier": "National/regional outlet",
          "keyword_profile": "qudrat", "limit": 6},
         # /rss and /rss/ar return HTML. /feed and /rss.xml are 404. No XML feed was found.
+        # /rss redirects to /feed/, so only one URL is polled.
+        {"id": "sawt-beirut", "name": "Sawt Beirut International", "region": "Middle East", "category": "Security",
+         "url": "https://www.sawtbeirut.com/feed/", "parser": "security-rss",
+         "default_country": "Lebanon", "language": "ar",
+         "source_tier": "partisan (sovereigntist/anti-Hezbollah lean)",
+         "keyword_profile": "sawt", "limit": 6},
         {"id": "aljadeed", "name": "Al Jadeed", "region": "Middle East", "category": "Security",
          "url": "https://www.aljadeed.tv/", "parser": "", "default_country": "Lebanon",
          "language": "ar", "source_tier": "National outlet", "disabled": True,
