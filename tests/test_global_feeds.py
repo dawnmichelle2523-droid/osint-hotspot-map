@@ -228,6 +228,32 @@ class GlobalFeedParserTests(unittest.TestCase):
         again = gf.parse_ukraine_air(feeds["tg-air-alert-ua"], other.encode())
         self.assertEqual(again[0]["id"], events[0]["id"])
 
+    def test_efremov_sources_and_operative_english_feed(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        exile = feeds["tg-exilenova-plus"]
+        amk = feeds["tg-amk-mapping"]
+        self.assertEqual(exile["url"], "https://t.me/s/exilenova_plus")
+        self.assertEqual(exile["source_tier"], "Social-unverified / partisan (pro-UA)")
+        self.assertEqual(exile["language"], "uk")
+        self.assertEqual(amk["url"], "https://t.me/s/AMK_Mapping")
+        self.assertEqual(amk["source_tier"], "Social-unverified / partisan (pro-UA)")
+        operative = feeds["operative-en"]
+        self.assertEqual(operative["url"], "https://operativmm.az/en/rss")
+        self.assertEqual(operative["source_tier"], "National outlet")
+        self.assertEqual(operative["default_country"], "Azerbaijan")
+        self.assertIn("Caucasus", operative["region"])
+        page = """
+        <div class="tgme_widget_message" data-post="exilenova_plus/35393">
+          <div class="tgme_widget_message_text">Drone strike on the Efremov synthetic rubber plant in Tula Oblast.</div>
+          <time datetime="2026-11-26T23:18:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_telegram_preview(exile, page.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Russia")
+        self.assertEqual(events[0]["location_name"], "Efremov")
+        self.assertEqual(events[0]["source_tier"], "Social-unverified / partisan (pro-UA)")
+
 
 if __name__ == "__main__":
     unittest.main()

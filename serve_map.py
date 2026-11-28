@@ -272,6 +272,7 @@ _X_HANDLE_GROUPS = [
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
         "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
+        "Exilenova_plus", "AMK_Mapping_",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1328,6 +1329,13 @@ _CLAIM_HANDLES = {
 _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
 _ESTABLISHED_BREAKING = {"alhadath_brk"}
 _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
+# Pro-Ukrainian advocacy accounts. The trailing underscore is part of the X handle.
+_PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
+# Left out on purpose. They repost other accounts' video and are not sources.
+SKIPPED_X_HANDLES = {
+    "theosintbr1": "About 160 followers, and a late quote-reposter of other accounts' video.",
+    "worldsource24": "Generic headline aggregator that reposts other accounts' video.",
+}
 _OSINT_ANALYST_HANDLES = {"afrimeosint"}
 _LOCAL_OUTLET_X = {"baidoaonline"}
 _NHMP_HANDLES = {"nhmpofficial"}
@@ -1347,6 +1355,8 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     raw, tokens, compact = _identity_parts(kind, name, url)
     if _token_named(tokens, _NHMP_HANDLES):
         return osint.NHMP_TIER
+    if _token_named(tokens, _PRO_UA_HANDLES):
+        return "Social-unverified / partisan (pro-UA)"
     if _token_named(tokens, _PARTISAN_HANDLES):
         return "Social-unverified / partisan"
     if _token_named(tokens, _OSINT_ANALYST_HANDLES):
@@ -1361,7 +1371,7 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "Established national"
     if "ahram.org.eg" in raw:
         return "State Media"
-    if "nashaniva.com" in raw:
+    if "nashaniva.com" in raw or "operativmm.az" in raw:
         return "National outlet"
     if _token_named(tokens, _CAUTION_HANDLES):
         return "Single-Source / Opposition Caution"
@@ -1825,7 +1835,7 @@ def same_channel(item: dict, row: sqlite3.Row) -> bool:
 def partisan_source(*parts: object) -> bool:
     blob = " ".join(str(part or "") for part in parts).lower()
     tokens = set(re.findall(r"[a-z0-9_]+", blob))
-    return bool(tokens & _PARTISAN_HANDLES) or "social-unverified / partisan" in blob
+    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES)) or "social-unverified / partisan" in blob
 
 
 def both_partisan(item: dict, row: sqlite3.Row) -> bool:
@@ -1910,6 +1920,37 @@ def near_identical_text(left: object, right: object) -> bool:
     ):
         return True
     return SequenceMatcher(None, folded_left, folded_right).ratio() >= 0.92
+
+
+def shared_clip_original(conn: sqlite3.Connection, item: dict):
+    """A recent pin that already carries the same video or post URL, if any.
+
+    A later account that republishes that clip is amplification, not a second source.
+    """
+    import confidence_scoring
+
+    clips = confidence_scoring.media_fingerprints(
+        " ".join((story_text(item), str(item.get("source_url") or "")))
+    )
+    if not clips:
+        return None
+    moment = parse_when(item.get("published_at")) or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(timezone.utc)
+    cutoff = (moment - timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = conn.execute(
+        "SELECT id, title, summary, original_text, source_url, published_at, ingested_at FROM items "
+        "WHERE COALESCE(published_at, ingested_at, '') >= ? ORDER BY id DESC LIMIT 80",
+        (cutoff,),
+    ).fetchall()
+    for row in rows:
+        other = confidence_scoring.media_fingerprints(
+            " ".join((story_text(row), str(row["source_url"] or "")))
+        )
+        if clips & other:
+            return row
+    return None
 
 
 def amplification_original(conn: sqlite3.Connection, item: dict):
@@ -2781,7 +2822,22 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _NHMP_HANDLES:
         return True
+    if lowered in _PRO_UA_HANDLES and mentions_russia_ukraine(text):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
+
+
+def mentions_russia_ukraine(text: str) -> bool:
+    """Russia, Ukraine, and places those accounts report, including Tula and Efremov."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "russia", "russian", "ukraine", "ukrainian", "kyiv", "kiev", "kharkiv",
+        "odesa", "odessa", "donetsk", "luhansk", "donbas", "crimea", "kherson",
+        "zaporizhzhia", "mariupol", "sevastopol", "belgorod", "kursk", "bryansk",
+        "moscow", "tula", "efremov", "yefremov", "oblast",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("тула", "ефремов", "єфремов", "україн", "росі"))
 
 
 def mentions_ethiopia_region(text: str) -> bool:
@@ -4759,6 +4815,12 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 bump_amplification(conn, echo["id"])
                 conn.commit()
                 print(f"Amplified story {echo['id']} inside 30 minutes: {str(item.get('title') or '')[:80]}")
+                return False
+            clip = shared_clip_original(conn, item)
+            if clip is not None:
+                bump_amplification(conn, clip["id"])
+                conn.commit()
+                print(f"Same video as story {clip['id']}, not a second source: {str(item.get('title') or '')[:80]}")
                 return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:

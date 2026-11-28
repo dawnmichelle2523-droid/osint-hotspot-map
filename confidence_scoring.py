@@ -112,6 +112,33 @@ _STOPWORDS = {
 }
 
 _WORD = re.compile(r"[a-z0-9]{3,}")
+_MEDIA_URL = re.compile(
+    r"(?:https?://)?(?:www\.)?"
+    r"(?:"
+    r"t\.me/(?:s/)?([a-z0-9_]+)/(\d+)"
+    r"|(?:x|twitter)\.com/([a-z0-9_]+)/status/(\d+)"
+    r"|(?:youtube\.com/watch\?v=|youtu\.be/)([a-z0-9_-]{6,})"
+    r")",
+    re.IGNORECASE,
+)
+_VIA = re.compile(
+    r"\b(?:via|forwarded from|credit|quoting)\b[:\s@]*@?([a-z0-9_]{4,})",
+    re.IGNORECASE,
+)
+
+
+def media_fingerprints(text: object) -> set[str]:
+    """Shared post or video URLs. The same clip is one story, not two sources."""
+    found = set()
+    for match in _MEDIA_URL.finditer(str(text or "")):
+        telegram_channel, telegram_id, x_user, x_id, youtube = match.groups()
+        if telegram_channel and telegram_id:
+            found.add(f"tg:{telegram_channel.lower()}/{telegram_id}")
+        elif x_user and x_id:
+            found.add(f"x:{x_user.lower()}/{x_id}")
+        elif youtube:
+            found.add("yt:" + youtube.lower())
+    return found
 
 
 def score_incidents(incidents: list) -> list:
@@ -136,6 +163,12 @@ def score_incidents(incidents: list) -> list:
             "category": _category(view),
             "keywords": _keywords(view),
             "placed": _coords(view) is not None or bool(_country(view)),
+            "clips": media_fingerprints(" ".join(
+                str(view.get(key) or "")
+                for key in ("title", "summary", "source", "source_url", "original_text")
+            )),
+            "text": " ".join(str(view.get(key) or "") for key in ("title", "summary", "original_text")),
+            "identity": _identity_blob(view),
         })
 
     neighbor_keys: list[dict[str, str]] = []
@@ -381,11 +414,27 @@ def _is_partisan(view: dict) -> bool:
     if "partisan" in tier:
         return True
     blob = _identity_blob(view)
-    return any(_marker_in(blob, handle) for handle in ("amharawarupdate", "aaa_amhara", "ashara_media"))
+    return any(_marker_in(blob, handle) for handle in (
+        "amharawarupdate", "aaa_amhara", "ashara_media",
+        "exilenova_plus", "exilenova", "amk_mapping_", "amk_mapping",
+    ))
+
+
+def _reposts(left: dict, right: dict) -> bool:
+    """True when one item is the other's video or an explicit repost of it."""
+    if left.get("clips") and right.get("clips") and (left["clips"] & right["clips"]):
+        return True
+    identity = right.get("identity") or ""
+    for handle in _VIA.findall(left.get("text") or ""):
+        if _marker_in(identity, handle.lower()):
+            return True
+    return False
 
 
 def _corroborates(left: dict, right: dict) -> bool:
     if left["key"].startswith("anon:") or right["key"].startswith("anon:") or left["key"] == right["key"]:
+        return False
+    if _reposts(left, right) or _reposts(right, left):
         return False
     if left.get("partisan") and right.get("partisan"):
         return False

@@ -7,7 +7,8 @@
     "ethiopia_amhara": ["AmharaWarUpdate", "AAA_Amhara"],
     "horn_osint": ["AfriMEOSINT"],
     "somalia_local": ["BaidoaOnline"],
-    "pakistan_highways": ["NHMPofficial"]
+    "pakistan_highways": ["NHMPofficial"],
+    "pro_ua_partisan": ["Exilenova_plus", "AMK_Mapping_"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]

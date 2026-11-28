@@ -432,6 +432,88 @@ class ApiOutputTests(unittest.TestCase):
         self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
         self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
 
+    def test_pro_ua_accounts_do_not_corroborate_each_other(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source="https://t.me/exilenova_plus/35393",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Tula",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="AMK Mapping",
+                source="https://t.me/AMK_Mapping/41266",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Tula",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+
+    def test_same_video_repost_is_not_an_independent_source(self):
+        clip = "https://t.me/exilenova_plus/35393"
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source=clip,
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="Video of a strike on the Efremov synthetic rubber plant",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="Reuters",
+                source="https://www.reuters.com/world/efremov",
+                title="Video shows a strike on a rubber plant",
+                summary="The clip was first posted at " + clip,
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        reuters = next(item for item in scored if item["source_name"] == "Reuters")
+        self.assertEqual(reuters["confidence_tier"], "unverified")
+        self.assertEqual(reuters["corroboration_count"], 1)
+
+    def test_an_outlet_that_does_not_repost_the_clip_still_corroborates(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source="https://t.me/exilenova_plus/35393",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Efremov",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="Operative Information Center",
+                source="https://operativmm.az/en/story",
+                source_tier="National outlet",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Efremov",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        outlet = next(item for item in scored if item["source_name"] == "Operative Information Center")
+        self.assertEqual(outlet["confidence_tier"], "corroborated")
+        self.assertGreaterEqual(outlet["corroboration_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

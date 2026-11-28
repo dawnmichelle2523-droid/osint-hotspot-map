@@ -1202,7 +1202,9 @@ SECURITY_RE = re.compile(
     r"terror|hostage|coup|riot|shelling|drone|armed|flood|earthquake|cyclone|wildfire|"
     r"warning|alert|fighting|violence|killed|war|conflict|crisis|ceasefire|troops|bombing|"
     r"piracy|pirates?|hijack\w*|kidnapp?\w*|"
-    r"взрыв\w*|обстрел\w*|атак\w*|ракет\w*|дрон\w*|бпла|погиб\w*|убит\w*|задержа\w*|протест\w*)\b",
+    r"strike|struck|"
+    r"взрыв\w*|обстрел\w*|атак\w*|ракет\w*|дрон\w*|бпла|погиб\w*|убит\w*|задержа\w*|протест\w*|"
+    r"ураж\w*|влучан\w*|вибух\w*|обстріл\w*|удар\w*|атак\w*|безпілот\w*)\b",
     re.IGNORECASE,
 )
 JSON_PARSERS = {
@@ -2084,6 +2086,21 @@ def _catalogue_feeds() -> list[dict]:
         {"id": "tg-astra", "name": "ASTRA", "region": "Russia & Ukraine", "category": "Security",
          "url": "https://t.me/s/astrapress", "parser": "telegram", "channel": "astrapress",
          "default_country": "Russia", "source_tier": "Wire / Local Outlet", "limit": 8},
+        # English branch of Exilenova+. The public preview is the Ukrainian channel.
+        {"id": "tg-exilenova-plus", "name": "Exilenova+", "region": "Russia & Ukraine", "category": "Conflict",
+         "url": "https://t.me/s/exilenova_plus", "parser": "telegram", "channel": "exilenova_plus",
+         "default_country": "Ukraine", "language": "uk",
+         "source_tier": "Social-unverified / partisan (pro-UA)", "limit": 8},
+        {"id": "tg-amk-mapping", "name": "AMK Mapping", "region": "Russia & Ukraine", "category": "Conflict",
+         "url": "https://t.me/s/AMK_Mapping", "parser": "telegram", "channel": "AMK_Mapping",
+         "default_country": "Ukraine", "language": "en",
+         "source_tier": "Social-unverified / partisan (pro-UA)", "limit": 8},
+        # /en/rss redirects to /en/rss.xml and returned 50 items on 28 Nov 2026.
+        # Article pages can 403; the RSS itself is public.
+        {"id": "operative-en", "name": "Operative Information Center",
+         "region": "Azerbaijan, the Caucasus and the region", "category": "Security",
+         "url": "https://operativmm.az/en/rss", "parser": "security-rss",
+         "default_country": "Azerbaijan", "language": "en", "source_tier": "National outlet", "limit": 6},
         # News24 returns HTTP 403 to this datacentre. Kept so Railway can fetch it; a 403 fails quietly.
         {"id": "news24-top", "name": "News24", "region": "Africa", "category": "Security",
          "url": "https://feeds.news24.com/articles/news24/TopStories/rss",
@@ -2286,6 +2303,11 @@ def _fetch_feed(feed: dict, previous: list[dict]) -> dict:
         return {"ok": False, "status": "offline", "error": "timeout", "events": previous}
     except requests.HTTPError as exc:
         text = str(exc).lower()
+        code = getattr(getattr(exc, "response", None), "status_code", 0)
+        quiet = tuple(feed.get("quiet_http") or ())
+        if code in quiet:
+            print(f"{feed.get('name') or feed.get('id')} HTTP {code}. The feed stays configured.")
+            return {"ok": True, "status": "active", "error": "", "events": previous}
         if "429" in text or "rate" in text:
             message = "rate limited"
         elif "403" in text or "401" in text:

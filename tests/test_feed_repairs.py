@@ -65,6 +65,23 @@ class XGateTests(unittest.TestCase):
         self.assertIn("nhmpofficial", handles)
         self.assertEqual(serve_map.source_tier_for("x", "NHMPofficial", ""), "Official Source")
         self.assertTrue(serve_map.keep_x_post("NHMPofficial", "M-2 بند ہے"))
+        self.assertIn("exilenova_plus", handles)
+        self.assertIn("amk_mapping_", handles)
+        self.assertEqual(
+            serve_map.source_tier_for("x", "Exilenova_plus", ""),
+            "Social-unverified / partisan (pro-UA)",
+        )
+        self.assertEqual(
+            serve_map.source_tier_for("telegram", "AMK_Mapping", "https://t.me/s/AMK_Mapping"),
+            "Social-unverified / partisan (pro-UA)",
+        )
+        self.assertTrue(serve_map.keep_x_post("Exilenova_plus", "Drone strike on the Efremov plant in Tula"))
+        self.assertTrue(serve_map.keep_x_post("AMK_Mapping_", "Explosion reported in Kharkiv"))
+        self.assertFalse(serve_map.keep_x_post("Exilenova_plus", "A gallery opens in Paris"))
+        self.assertNotIn("theosintbr1", handles)
+        self.assertNotIn("worldsource24", handles)
+        self.assertEqual(ox.assign_tier("Exilenova_plus", "", False), "Social-unverified / partisan (pro-UA)")
+        self.assertEqual(ox.assign_tier("AMK_Mapping_", "", False), "Social-unverified / partisan (pro-UA)")
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

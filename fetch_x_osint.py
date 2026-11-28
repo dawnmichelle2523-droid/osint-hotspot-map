@@ -178,6 +178,8 @@ OUTLET_LABELS = {
     "afrimeosint": "AfriMEOSINT",
     "baidoaonline": "Baidoa Online",
     "nhmpofficial": "National Highways and Motorway Police",
+    "exilenova_plus": "Exilenova+",
+    "amk_mapping_": "AMK Mapping",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1049,6 +1051,8 @@ ESTABLISHED_BREAKING = {"alhadath_brk"}
 ESTABLISHED_BREAKING_TIER = "Established national / breaking news"
 PARTISAN_SOCIAL = {"amharawarupdate", "aaa_amhara"}
 PARTISAN_TIER = "Social-unverified / partisan"
+PRO_UA_PARTISAN = {"exilenova_plus", "amk_mapping_"}
+PRO_UA_TIER = "Social-unverified / partisan (pro-UA)"
 OSINT_ANALYST = {"afrimeosint"}
 OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
 LOCAL_OUTLET_X = {"baidoaonline"}
@@ -1078,6 +1082,8 @@ def pakistan_motorway(text: object) -> tuple[str, float, float] | None:
 
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
     key = handle.lower()
+    if key in PRO_UA_PARTISAN:
+        return PRO_UA_TIER
     if key in PARTISAN_SOCIAL:
         return PARTISAN_TIER
     if key in OSINT_ANALYST:
