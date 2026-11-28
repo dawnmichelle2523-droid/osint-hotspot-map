@@ -500,6 +500,7 @@ def _event(feed: dict, title: str, summary: str, lat: float, lng: float, **extra
         "geo_precision": precision,
         "coord_origin": origin,
         "location_name": location,
+        "cited_source": _clip(extra.get("cited_source") or "", 120),
     }
 
 
@@ -1205,6 +1206,26 @@ _PORTAL_OUTAGE_RE = re.compile(
     r"portal|website|online service|e-service|system down|ntsa",
     re.IGNORECASE,
 )
+_QUDS_RE = re.compile(
+    r"strike|killed|raid|arrest|displacement|drone|"
+    r"غارة|قصف|استهدف|شهيد|قتل|مداهم|اعتقال|نزح|تهجير",
+    re.IGNORECASE,
+)
+
+
+def health_citation(text: object) -> str:
+    """Institution named as the source of a casualty or raid claim. Not a person."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    if any(term in sample for term in ("مجمع الشفاء", "الشفاء الطبي")) or any(
+        term in lowered for term in ("al-shifa", "al shifa", "shifa medical")
+    ):
+        return "al-Shifa Medical Complex"
+    if "وزارة الصحة" in sample or "health ministry" in lowered:
+        return "Health Ministry"
+    return ""
+
+
 _QUDRAT_RE = re.compile(
     r"protest|security|transport|road|motorway|strike|attack|blast|police|closure|curfew|"
     r"احتجاج|مظاہر|دھرن|سیکیورٹی|ٹریفک|موٹروے|حملہ|دھماک|پولیس|کرفیو",
@@ -1572,6 +1593,8 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
         profile = feed.get("keyword_profile")
         if profile == "qudrat":
             matched = _QUDRAT_RE.search(blob) is not None
+        elif profile == "quds":
+            matched = _QUDS_RE.search(blob) is not None
         elif profile == "kenya-times":
             if _PORTAL_OUTAGE_RE.search(blob):
                 continue
@@ -1593,6 +1616,12 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
         )
         if placed:
+            cited = health_citation(blob)
+            if cited:
+                placed["cited_source"] = cited
+                note = "Cited source: " + cited + "."
+                if note not in placed["summary"]:
+                    placed["summary"] = _clip(placed["summary"] + " " + note, 500)
             found.append(placed)
     return found
 
@@ -2175,6 +2204,10 @@ def _catalogue_feeds() -> list[dict]:
          "default_country": "Israel", "language": "en", "source_tier": "Local outlet", "limit": 6},
         # Articles return 200. /rss and /feed are 404, and /rss.xml and the sitemap paths return the homepage HTML.
         # www.thekenyatimes.com returns HTTP 403. The bare host serves the RSS.
+        {"id": "quds", "name": "Quds News Network", "region": "Middle East", "category": "Security",
+         "url": "https://qudsn.co/rss", "parser": "security-rss",
+         "default_country": "Palestine", "language": "ar",
+         "source_tier": "partisan (Hamas-leaning)", "keyword_profile": "quds", "limit": 6},
         {"id": "kenya-times", "name": "The Kenya Times", "region": "Africa", "category": "Security",
          "url": "https://thekenyatimes.com/feed/", "parser": "security-rss",
          "default_country": "Kenya", "language": "en", "source_tier": "Secondary national outlet",
@@ -2558,6 +2591,7 @@ def features() -> list[dict]:
                     "category": event.get("feed_category") or row.get("category") or "OSINT",
                     "feed_category": event.get("feed_category") or row.get("category") or "",
                     "feed_id": feed_id,
+                    "cited_source": event.get("cited_source") or "",
                 },
             })
     grouped: dict[str, list] = {}

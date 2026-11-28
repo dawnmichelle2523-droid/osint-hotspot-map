@@ -523,6 +523,34 @@ class ApiOutputTests(unittest.TestCase):
         ])[0]
         self.assertLess(newer["confidence_score"], standard["confidence_score"])
 
+    def test_yaffa_repost_of_quds_is_not_a_second_source(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="qudsn",
+                source="https://qudsn.co/post/1",
+                source_tier="partisan (Hamas-leaning)",
+                title="Drone strike on al-Shati camp",
+                summary="A drone strike killed 3. Cited source: al-Shifa Medical Complex.",
+                country="Palestine",
+                lat=31.531,
+                lng=34.445,
+                timestamp="2026-11-26T01:00:00Z",
+            ),
+            incident(
+                source_name="yaffa_ps",
+                source="https://x.com/yaffa_ps/status/1",
+                source_tier="Social-unverified/partisan",
+                title="Drone strike on al-Shati camp",
+                summary="A drone strike killed 3. Cited source: al-Shifa Medical Complex.",
+                country="Palestine",
+                lat=31.531,
+                lng=34.445,
+                timestamp="2026-11-26T01:00:30Z",
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
 
 if __name__ == "__main__":
     unittest.main()

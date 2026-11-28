@@ -70,6 +70,7 @@ _PLACES = [
     (("basra", "البصرة"), 30.5081, 47.7835, "Iraq", "Basra"),
     (("kirkuk", "كركوك"), 35.4681, 44.3922, "Iraq", "Kirkuk"),
     (("beirut", "بيروت"), 33.8938, 35.5018, "Lebanon", "Beirut"),
+    (("al-shati", "al shati", "مخيم الشاطئ"), 31.531, 34.445, "Palestine", "al-Shati camp"),
     (("gaza", "غزة"), 31.5017, 34.4668, "Palestine", "Gaza"),
     (("ramallah", "رام الله"), 31.9038, 35.2034, "Palestine", "Ramallah"),
     (("jerusalem", "القدس"), 31.7683, 35.2137, "Israel", "Jerusalem"),

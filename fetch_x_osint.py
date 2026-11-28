@@ -186,6 +186,8 @@ OUTLET_LABELS = {
     "dailyqudrat": "Daily Qudrat",
     "sargodhapolice": "Sargodha District Police",
     "thekenyatimes": "The Kenya Times",
+    "qudsn": "Quds News Network",
+    "yaffa_ps": "Yaffa News Network",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1071,6 +1073,10 @@ SARGODHA_POLICE_HANDLE = "sargodhapolice"
 SARGODHA_POLICE_TIER = "Official Source"
 KENYA_TIMES_HANDLE = "thekenyatimes"
 KENYA_TIMES_TIER = "Secondary national outlet"
+QUDS_HANDLE = "qudsn"
+QUDS_TIER = "partisan (Hamas-leaning)"
+YAFFA_HANDLE = "yaffa_ps"
+YAFFA_TIER = "Social-unverified/partisan"
 OSINT_ANALYST = {"afrimeosint"}
 OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
 LOCAL_OUTLET_X = {"baidoaonline"}
@@ -1114,6 +1120,10 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
         return SARGODHA_POLICE_TIER
     if key == KENYA_TIMES_HANDLE:
         return KENYA_TIMES_TIER
+    if key == QUDS_HANDLE:
+        return QUDS_TIER
+    if key == YAFFA_HANDLE:
+        return YAFFA_TIER
     if key in PARTISAN_SOCIAL:
         return PARTISAN_TIER
     if key in OSINT_ANALYST:

@@ -327,6 +327,27 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertIn("Nairobi", events[0]["title"])
         self.assertNotIn("NTSA", events[0]["title"])
 
+    def test_quds_records_a_hospital_citation_and_yaffa_is_x_only(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        quds = feeds["quds"]
+        self.assertEqual(quds["url"], "https://qudsn.co/rss")
+        self.assertEqual(quds["source_tier"], "partisan (Hamas-leaning)")
+        self.assertEqual(quds["language"], "ar")
+        self.assertTrue(all("yaffa.ps" not in str(item.get("url") or "") for item in gf._feeds()))
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Drone strike on al-Shati camp killed 3, per مجمع الشفاء الطبي</title>
+          <description>An Israeli drone strike hit the camp.</description>
+          <link>https://qudsn.co/example</link></item>
+          <item><title>مباراة كرة قدم</title><description>نتيجة المباراة</description>
+          <link>https://qudsn.co/sport</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(quds, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["cited_source"], "al-Shifa Medical Complex")
+        self.assertIn("Cited source: al-Shifa Medical Complex.", events[0]["summary"])
+        self.assertEqual(events[0]["location_name"], "al-Shati camp")
+        self.assertEqual(events[0]["country"], "Palestine")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -128,6 +128,13 @@ class XGateTests(unittest.TestCase):
         )
         self.assertTrue(serve_map.keep_x_post("thekenyatimes", "Protest in Nairobi"))
         self.assertFalse(serve_map.keep_x_post("thekenyatimes", "A gallery opens in Paris"))
+        self.assertIn("qudsn", handles)
+        self.assertIn("yaffa_ps", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "qudsn", "https://qudsn.co/rss"), "partisan (Hamas-leaning)")
+        self.assertEqual(serve_map.source_tier_for("x", "yaffa_ps", ""), "Social-unverified/partisan")
+        self.assertTrue(serve_map.keep_x_post("qudsn", "غارة على مخيم الشاطئ"))
+        self.assertTrue(serve_map.partisan_source("qudsn", "partisan (Hamas-leaning)"))
+        self.assertTrue(serve_map.partisan_source("yaffa_ps", "Social-unverified/partisan"))
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

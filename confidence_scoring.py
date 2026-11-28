@@ -413,12 +413,13 @@ def _is_mbc_family(view: dict) -> bool:
 def _is_partisan(view: dict) -> bool:
     """Advocacy accounts do not corroborate each other."""
     tier = " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()).casefold()
-    if "partisan" in tier:
+    if "partisan" in tier and "nonpartisan" not in tier:
         return True
     blob = _identity_blob(view)
     return any(_marker_in(blob, handle) for handle in (
         "amharawarupdate", "aaa_amhara", "ashara_media",
         "exilenova_plus", "exilenova", "amk_mapping_", "amk_mapping",
+        "qudsn", "yaffa_ps",
     ))
 
 

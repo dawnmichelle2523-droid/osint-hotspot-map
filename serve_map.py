@@ -274,7 +274,7 @@ _X_HANDLE_GROUPS = [
         "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
         "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
         "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
-        "DailyQudrat", "sargodhapolice", "thekenyatimes",
+        "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1334,6 +1334,7 @@ _CLAIM_HANDLES = {
 _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
 _ESTABLISHED_BREAKING = {"alhadath_brk"}
 _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
+_GAZA_PARTISAN = {"qudsn", "yaffa_ps"}
 # Pro-Ukrainian advocacy accounts. The trailing underscore is part of the X handle.
 _PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
 # Left out on purpose. They repost other accounts' video and are not sources.
@@ -1388,6 +1389,10 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "National outlet"
     if _token_named(tokens, _KENYA_TIMES) or "thekenyatimes.com" in raw:
         return "Secondary national outlet"
+    if _token_named(tokens, {"qudsn"}) or "qudsn.co" in raw:
+        return "partisan (Hamas-leaning)"
+    if _token_named(tokens, {"yaffa_ps"}):
+        return "Social-unverified/partisan"
     if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
         return "National/regional outlet / pro-government (post-2024)"
     if _token_named(tokens, _RUDAW_ARABIC):
@@ -1883,7 +1888,9 @@ def same_channel(item: dict, row: sqlite3.Row) -> bool:
 def partisan_source(*parts: object) -> bool:
     blob = " ".join(str(part or "") for part in parts).lower()
     tokens = set(re.findall(r"[a-z0-9_]+", blob))
-    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES)) or "social-unverified / partisan" in blob
+    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES | _GAZA_PARTISAN)) or (
+        "partisan" in blob and "nonpartisan" not in blob
+    )
 
 
 def both_partisan(item: dict, row: sqlite3.Row) -> bool:
@@ -2886,6 +2893,8 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in (_STANDARD_KENYA | _KENYA_TIMES) and mentions_kenya(text):
         return True
+    if lowered in _GAZA_PARTISAN and mentions_palestine(text):
+        return True
     if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
         return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
@@ -2901,6 +2910,14 @@ def mentions_pakistan(text: str) -> bool:
         "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
         "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
     )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_palestine(text: str) -> bool:
+    """Gaza and the West Bank. Used for the partisan Gaza accounts."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("gaza", "palestine", "west bank", "al-shati", "al shati", "shifa", "rafah", "khan yunis", "jenin", "nablus", "ramallah")):
+        return True
+    return any(term in str(text or "") for term in ("غزة", "فلسطين", "الضفة", "الشاطئ", "الشفاء"))
 
 
 def mentions_kenya(text: str) -> bool:
