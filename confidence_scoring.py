@@ -419,7 +419,7 @@ def _is_partisan(view: dict) -> bool:
     return any(_marker_in(blob, handle) for handle in (
         "amharawarupdate", "aaa_amhara", "ashara_media",
         "exilenova_plus", "exilenova", "amk_mapping_", "amk_mapping",
-        "qudsn", "yaffa_ps", "sawtbeirut",
+        "qudsn", "yaffa_ps", "sawtbeirut", "mezopotamyatrk4",
     ))
 
 

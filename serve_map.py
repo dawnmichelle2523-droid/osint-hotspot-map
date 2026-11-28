@@ -275,7 +275,7 @@ _X_HANDLE_GROUPS = [
         "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
         "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
         "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps", "ALJADEEDNEWS",
-        "SawtBeirut",
+        "SawtBeirut", "mezopotamyatrk4",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1338,6 +1338,9 @@ _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
 _GAZA_PARTISAN = {"qudsn", "yaffa_ps"}
 _ALJADEED = {"aljadeednews"}
 _SAWT_BEIRUT = {"sawtbeirut"}
+# Handle taken from the site header social link, not guessed.
+_MEZOPOTAMYA = {"mezopotamyatrk4"}
+MEZOPOTAMYA_TIER = "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)"
 # Pro-Ukrainian advocacy accounts. The trailing underscore is part of the X handle.
 _PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
 # Left out on purpose. They repost other accounts' video and are not sources.
@@ -1400,6 +1403,8 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "National outlet"
     if _token_named(tokens, _SAWT_BEIRUT) or "sawtbeirut.com" in raw:
         return "partisan (sovereigntist/anti-Hezbollah lean)"
+    if _token_named(tokens, _MEZOPOTAMYA) or "mezopotamyaajansi" in raw:
+        return MEZOPOTAMYA_TIER
     if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
         return "National/regional outlet / pro-government (post-2024)"
     if _token_named(tokens, _RUDAW_ARABIC):
@@ -1895,7 +1900,7 @@ def same_channel(item: dict, row: sqlite3.Row) -> bool:
 def partisan_source(*parts: object) -> bool:
     blob = " ".join(str(part or "") for part in parts).lower()
     tokens = set(re.findall(r"[a-z0-9_]+", blob))
-    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES | _GAZA_PARTISAN | _SAWT_BEIRUT)) or (
+    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES | _GAZA_PARTISAN | _SAWT_BEIRUT | _MEZOPOTAMYA)) or (
         "partisan" in blob and "nonpartisan" not in blob
     )
 
@@ -2906,6 +2911,8 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _SAWT_BEIRUT and mentions_lebanon(text):
         return True
+    if lowered in _MEZOPOTAMYA and mentions_mezopotamya_beat(text):
+        return True
     if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
         return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
@@ -2921,6 +2928,19 @@ def mentions_pakistan(text: str) -> bool:
         "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
         "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
     )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_mezopotamya_beat(text: str) -> bool:
+    """Turkey, Syria, Iraq and Iran. Used for the outlet account found on its site."""
+    if mentions_syria_or_middle_east(text) or iraq_mention(text):
+        return True
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "turkey", "türkiye", "turkiye", "kurd", "kurdistan", "rojava", "iran", "tehran",
+        "diyarbakir", "diyarbakır", "hakkari", "mardin", "van ", "qamishli",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("تركيا", "كرد", "إيران", "ايران", "العراق"))
 
 
 def mentions_lebanon(text: str) -> bool:

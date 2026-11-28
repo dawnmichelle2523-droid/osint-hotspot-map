@@ -156,6 +156,14 @@ class XGateTests(unittest.TestCase):
         )
         self.assertTrue(serve_map.keep_x_post("SawtBeirut", "Israeli shelling hit Hadatha in south Lebanon"))
         self.assertTrue(serve_map.partisan_source("SawtBeirut", "partisan (sovereigntist/anti-Hezbollah lean)"))
+        self.assertIn("mezopotamyatrk4", handles)
+        self.assertNotIn("mezopotamyaajansi", handles)
+        self.assertEqual(
+            serve_map.source_tier_for("x", "mezopotamyatrk4", "https://mezopotamyaajansi45.com/"),
+            serve_map.MEZOPOTAMYA_TIER,
+        )
+        self.assertTrue(serve_map.keep_x_post("mezopotamyatrk4", "Clashes reported in Diyarbakir"))
+        self.assertTrue(serve_map.partisan_source("mezopotamyatrk4", serve_map.MEZOPOTAMYA_TIER))
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

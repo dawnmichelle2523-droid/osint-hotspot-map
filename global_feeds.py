@@ -2249,6 +2249,12 @@ def _catalogue_feeds() -> list[dict]:
          "keyword_profile": "qudrat", "limit": 6},
         # /rss and /rss/ar return HTML. /feed and /rss.xml are 404. No XML feed was found.
         # /rss redirects to /feed/, so only one URL is polled.
+        # /rss, /feed and /rss.xml return the HTML homepage. No scraper.
+        {"id": "mezopotamya", "name": "Mezopotamya Ajansı", "region": "Turkey, Syria, Iraq and Iran",
+         "category": "Security", "url": "https://mezopotamyaajansi45.com/", "parser": "",
+         "default_country": "Turkey", "language": "tr/ku/en",
+         "source_tier": "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)",
+         "disabled": True, "reason": "no RSS available"},
         {"id": "sawt-beirut", "name": "Sawt Beirut International", "region": "Middle East", "category": "Security",
          "url": "https://www.sawtbeirut.com/feed/", "parser": "security-rss",
          "default_country": "Lebanon", "language": "ar",

@@ -190,6 +190,7 @@ OUTLET_LABELS = {
     "yaffa_ps": "Yaffa News Network",
     "aljadeednews": "Al Jadeed",
     "sawtbeirut": "Sawt Beirut International",
+    "mezopotamyatrk4": "Mezopotamya Ajansı",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1083,6 +1084,8 @@ ALJADEED_HANDLE = "aljadeednews"
 ALJADEED_TIER = "National outlet"
 SAWT_HANDLE = "sawtbeirut"
 SAWT_TIER = "partisan (sovereigntist/anti-Hezbollah lean)"
+MEZOPOTAMYA_HANDLE = "mezopotamyatrk4"
+MEZOPOTAMYA_TIER = "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)"
 OSINT_ANALYST = {"afrimeosint"}
 OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
 LOCAL_OUTLET_X = {"baidoaonline"}
@@ -1134,6 +1137,8 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
         return ALJADEED_TIER
     if key == SAWT_HANDLE:
         return SAWT_TIER
+    if key == MEZOPOTAMYA_HANDLE:
+        return MEZOPOTAMYA_TIER
     if key in PARTISAN_SOCIAL:
         return PARTISAN_TIER
     if key in OSINT_ANALYST:

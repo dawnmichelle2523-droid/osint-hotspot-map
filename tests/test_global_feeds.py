@@ -399,6 +399,15 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["country"], "Lebanon")
         self.assertIn("partisan", events[0]["source_tier"])
 
+    def test_mezopotamya_is_disabled_without_a_feed(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "mezopotamya")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["parser"], "")
+        self.assertEqual(feed["language"], "tr/ku/en")
+        self.assertIn("PKK-linked", feed["source_tier"])
+        self.assertLessEqual(len(feed["source_tier"]), 80)
+
 
 if __name__ == "__main__":
     unittest.main()

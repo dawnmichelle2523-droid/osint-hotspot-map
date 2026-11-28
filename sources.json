@@ -17,7 +17,8 @@
     "kenya_times": ["thekenyatimes"],
     "gaza_partisan": ["qudsn", "yaffa_ps"],
     "aljadeed": ["ALJADEEDNEWS"],
-    "sawt_beirut": ["SawtBeirut"]
+    "sawt_beirut": ["SawtBeirut"],
+    "mezopotamya": ["mezopotamyatrk4"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]
