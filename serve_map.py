@@ -1415,7 +1415,7 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "State Media"
     if any(host in raw for host in (
         "nashaniva.com", "operativmm.az", "bianet.org", "korrespondent.net", "k.img.com.ua",
-        "dailyurdu.net", "haberturk.com",
+        "dailyurdu.net", "haberturk.com", "lb.ua",
     )):
         return "National outlet"
     if "ura.news" in raw:

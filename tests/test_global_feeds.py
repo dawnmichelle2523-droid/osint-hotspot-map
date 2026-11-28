@@ -348,6 +348,25 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["location_name"], "al-Shati camp")
         self.assertEqual(events[0]["country"], "Palestine")
 
+    def test_lbua_keeps_one_feed_and_records_officials(self):
+        lb = [item for item in gf._feeds() if "lb.ua" in str(item.get("url") or "")]
+        self.assertEqual([item["url"] for item in lb], ["https://lb.ua/rss/ukr/news.xml"])
+        self.assertEqual(lb[0]["language"], "uk")
+        self.assertEqual(lb[0]["source_tier"], "National outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Балістичний удар по Києву</title>
+          <description>Вибухи підтвердили Повітряні сили та мер Києва.</description>
+          <link>https://lb.ua/news/kyiv-strike</link></item>
+          <item><title>Суд скасував голосування</title>
+          <description>Рішення стосується виборів.</description>
+          <link>https://lb.ua/world/court</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(lb[0], rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["cited_source"], "Ukrainian Air Force; Kyiv city officials")
+        self.assertEqual(events[0]["location_name"], "Kyiv")
+        self.assertNotIn("rss.xml", events[0]["source"])
+
 
 if __name__ == "__main__":
     unittest.main()

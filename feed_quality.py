@@ -162,7 +162,7 @@ _PLACES = [
     (("herat", "هرات"), 34.3529, 62.204, "Afghanistan", "Herat"),
     (("mazar-i-sharif", "mazar i sharif"), 36.708, 67.1109, "Afghanistan", "Mazar-i-Sharif"),
     (("jalalabad",), 34.4415, 70.4361, "Afghanistan", "Jalalabad"),
-    (("kyiv", "kiev", "київ", "киев"), 50.4501, 30.5234, "Ukraine", "Kyiv"),
+    (("kyiv", "kiev", "київ", "києву", "києві", "киев"), 50.4501, 30.5234, "Ukraine", "Kyiv"),
     (("kharkiv", "харків"), 49.9935, 36.2304, "Ukraine", "Kharkiv"),
     (("odesa", "odessa"), 46.4825, 30.7233, "Ukraine", "Odesa"),
     (("donetsk", "донецк"), 48.0159, 37.8028, "Ukraine", "Donetsk"),
@@ -653,7 +653,7 @@ def _match_place(text: str, prefer_country: str = ""):
             if len(alias) < 4:
                 continue
             if any("\u0600" <= ch <= "\u06FF" or "\u0400" <= ch <= "\u04FF" for ch in alias):
-                found = alias in text
+                found = alias.casefold() in text.casefold()
             else:
                 found = re.search(r"(?<![a-z0-9])" + re.escape(alias) + r"(?![a-z0-9])", lowered) is not None
             if not found:

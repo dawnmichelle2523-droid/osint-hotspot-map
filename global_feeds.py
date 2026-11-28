@@ -1206,11 +1206,28 @@ _PORTAL_OUTAGE_RE = re.compile(
     r"portal|website|online service|e-service|system down|ntsa",
     re.IGNORECASE,
 )
+_LBUA_RE = re.compile(
+    r"strike|explosion|ballistic|drone|air[- ]alert|casualty|killed|missile|"
+    r"удар|вибух|балістич|дрон|бпла|безпілот|тривог|загибл|поранен|ракет",
+    re.IGNORECASE,
+)
 _QUDS_RE = re.compile(
     r"strike|killed|raid|arrest|displacement|drone|"
     r"غارة|قصف|استهدف|شهيد|قتل|مداهم|اعتقال|نزح|تهجير",
     re.IGNORECASE,
 )
+
+
+def official_citation(text: object) -> str:
+    """Air Force or city-official attribution. The person's name is not stored."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    parts = []
+    if "повітряні сили" in lowered or "повітряних сил" in lowered or "air force" in lowered:
+        parts.append("Ukrainian Air Force")
+    if any(term in lowered for term in ("мер києва", "міський голова", "кмда", "city mayor", "city officials")):
+        parts.append("Kyiv city officials")
+    return "; ".join(parts)
 
 
 def health_citation(text: object) -> str:
@@ -1595,6 +1612,8 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             matched = _QUDRAT_RE.search(blob) is not None
         elif profile == "quds":
             matched = _QUDS_RE.search(blob) is not None
+        elif profile == "lbua":
+            matched = _LBUA_RE.search(blob) is not None
         elif profile == "kenya-times":
             if _PORTAL_OUTAGE_RE.search(blob):
                 continue
@@ -1616,7 +1635,7 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
         )
         if placed:
-            cited = health_citation(blob)
+            cited = health_citation(blob) or official_citation(blob)
             if cited:
                 placed["cited_source"] = cited
                 note = "Cited source: " + cited + "."
@@ -2204,6 +2223,11 @@ def _catalogue_feeds() -> list[dict]:
          "default_country": "Israel", "language": "en", "source_tier": "Local outlet", "limit": 6},
         # Articles return 200. /rss and /feed are 404, and /rss.xml and the sitemap paths return the homepage HTML.
         # www.thekenyatimes.com returns HTTP 403. The bare host serves the RSS.
+        # rss.xml shares 98 of 100 links with news.xml, so only news.xml is polled.
+        {"id": "lbua", "name": "LB.ua", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://lb.ua/rss/ukr/news.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "National outlet",
+         "keyword_profile": "lbua", "limit": 6},
         {"id": "quds", "name": "Quds News Network", "region": "Middle East", "category": "Security",
          "url": "https://qudsn.co/rss", "parser": "security-rss",
          "default_country": "Palestine", "language": "ar",
