@@ -76,6 +76,7 @@ OFFICIAL_SOURCES = (
     {"id": "fcdo", "label": "UK FCDO", "markers": ("fcdo", "foreign-travel-advice"), "feeds": ("uk-fcdo-atom",), "prefixes": ()},
     {"id": "state-dept", "label": "US State Department", "markers": ("state department", "travel.state.gov"), "feeds": ("us-advisories", "us-advisories-rss"), "prefixes": ()},
     {"id": "nhmp", "label": "National Highways and Motorway Police", "markers": ("nhmpofficial", "nhmp"), "feeds": (), "prefixes": ()},
+    {"id": "sargodha-police", "label": "Sargodha District Police", "markers": ("sargodhapolice",), "feeds": (), "prefixes": ()},
     {"id": "gac", "label": "Global Affairs Canada", "markers": ("global affairs canada", "travel.gc.ca"), "feeds": ("canada-advisories",), "prefixes": ()},
     {"id": "germany-travel", "label": "German Foreign Office", "markers": ("auswaertiges-amt.de", "german foreign office"), "feeds": ("de-travel",), "prefixes": ()},
     {"id": "smartraveller", "label": "Smartraveller", "markers": ("smartraveller",), "feeds": ("au-smartraveller",), "prefixes": ()},

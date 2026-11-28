@@ -254,6 +254,63 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["location_name"], "Efremov")
         self.assertEqual(events[0]["source_tier"], "Social-unverified / partisan (pro-UA)")
 
+    def test_turkey_ukraine_israel_and_lebanon_catalogue(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertEqual(feeds["wire-anadolu"]["url"], "https://www.aa.com.tr/en/rss/default?cat=guncel")
+        self.assertEqual(feeds["wire-anadolu-tr"]["url"], "https://www.aa.com.tr/tr/rss/default?cat=guncel")
+        self.assertEqual(feeds["bbc-turkce"]["source_tier"], "Established national")
+        self.assertEqual(feeds["bianet-tr"]["language"], "tr")
+        self.assertEqual(feeds["bianet-en"]["language"], "en")
+        self.assertIn(403, feeds["haberdairesi"]["quiet_http"])
+        self.assertEqual(feeds["haberdairesi"]["source_tier"], "Local outlet")
+        self.assertNotIn("dha", feeds)
+        self.assertNotIn("iha", feeds)
+        self.assertTrue(feeds["korrespondent-all"]["url"].endswith("/all_news2.0.xml"))
+        self.assertEqual(feeds["korrespondent-kyiv"]["source_tier"], "National outlet")
+        self.assertNotIn("korrespondent-zaporozhye", feeds)
+        self.assertNotIn("inform-zp-ru", feeds)
+        inform = feeds["inform-zp"]
+        self.assertEqual(inform["url"], "https://www.inform.zp.ua/feed/")
+        self.assertEqual(inform["source_tier"], "Local outlet")
+        self.assertTrue(inform["tag_transport"])
+        rss = """<?xml version="1.0"?><rss><channel><item>
+          <title>У Запоріжжі перекрили дорогу біля ДніпроГЕС</title>
+          <description>The DniproHES dam road is closed.</description>
+          <link>https://www.inform.zp.ua/example</link></item></channel></rss>"""
+        events = gf.parse_security_rss(inform, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["feed_category"], "Travel / transport disruption")
+        self.assertEqual(events[0]["country"], "Ukraine")
+        self.assertEqual(feeds["ywn"]["url"], "https://www.theyeshivaworld.com/feed")
+        self.assertEqual(feeds["ywn"]["region"], "Israel and the United States")
+        self.assertTrue(feeds["transparency-news"]["disabled"])
+        self.assertEqual(feeds["transparency-news"]["reason"], "no RSS available")
+        self.assertNotIn("nna-leb", feeds)
+        self.assertFalse(any("lorient" in item["id"] for item in gf._feeds()))
+        airport = """<?xml version="1.0"?><rss><channel><item>
+          <title>Protest at Ben Gurion Airport</title>
+          <description>Haredi protesters blocked a road.</description>
+          <link>https://www.theyeshivaworld.com/example</link></item></channel></rss>"""
+        pinned = gf.parse_security_rss(feeds["ywn"], airport.encode())
+        self.assertEqual(pinned[0]["location_name"], "Ben Gurion Airport")
+        self.assertEqual(pinned[0]["country"], "Israel")
+
+    def test_daily_qudrat_keeps_protest_and_drops_lifestyle(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "daily-qudrat")
+        self.assertEqual(feed["url"], "https://dailyqudrat.pk/feed/")
+        self.assertEqual(feed["language"], "ur")
+        self.assertEqual(feed["source_tier"], "National/regional outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>سرگودھا میں احتجاج</title><description>سڑک بند</description>
+          <link>https://dailyqudrat.pk/protest</link></item>
+          <item><title>فلمی تقریب</title><description>مشہور اداکارہ</description>
+          <link>https://dailyqudrat.pk/film</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Pakistan")
+        self.assertNotIn("اداکارہ", events[0]["title"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1196,6 +1196,16 @@ def parse_deepstate(feed: dict, content: bytes) -> list[dict]:
     )]
 
 
+_QUDRAT_RE = re.compile(
+    r"protest|security|transport|road|motorway|strike|attack|blast|police|closure|curfew|"
+    r"احتجاج|مظاہر|دھرن|سیکیورٹی|ٹریفک|موٹروے|حملہ|دھماک|پولیس|کرفیو",
+    re.IGNORECASE,
+)
+_TRANSPORT_RE = re.compile(
+    r"road clos\w*|border clos\w*|crossing|перекри\w*|дніпрогес|днепрогэс|dniprohes|"
+    r"al-walid|al walid|suwaydiya|معبر الوليد",
+    re.IGNORECASE,
+)
 SECURITY_RE = re.compile(
     r"\b(attack|attacks|explosion|explode|protest|unrest|kidnapping|kidnap|shooting|"
     r"airstrike|air strike|security|evacuation|blast|bomb|missile|clash|militant|"
@@ -1549,10 +1559,22 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             break
         title = _strip(entry.get("title")) or ""
         summary = _strip(entry.get("summary") or entry.get("description") or "")
-        if not SECURITY_RE.search(title + " " + summary):
+        blob = title + " " + summary
+        profile = feed.get("keyword_profile")
+        if profile == "qudrat":
+            matched = _QUDRAT_RE.search(blob) is not None
+        else:
+            matched = SECURITY_RE.search(blob) is not None or (
+                bool(feed.get("tag_transport")) and _TRANSPORT_RE.search(blob) is not None
+            )
+        if not matched:
             continue
+        used = feed
+        if feed.get("tag_transport") and _TRANSPORT_RE.search(blob):
+            used = dict(feed)
+            used["category"] = "Travel / transport disruption"
         placed = _place_event(
-            feed, title, summary, feed.get("default_country") or "",
+            used, title, summary, feed.get("default_country") or "",
             severity="high" if SECURITY_RE.search(title) else "medium",
             timestamp=entry.get("published") or entry.get("updated"),
             source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
@@ -2101,6 +2123,52 @@ def _catalogue_feeds() -> list[dict]:
          "region": "Azerbaijan, the Caucasus and the region", "category": "Security",
          "url": "https://operativmm.az/en/rss", "parser": "security-rss",
          "default_country": "Azerbaijan", "language": "en", "source_tier": "National outlet", "limit": 6},
+        # English current news is already wired as wire-anadolu. These are the other public AA feeds.
+        _wire("wire-anadolu-en-world", "Anadolu Agency English", "https://www.aa.com.tr/en/rss/default?cat=world", "Turkey", "Wire / Outlet"),
+        _wire("wire-anadolu-tr", "Anadolu Agency", "https://www.aa.com.tr/tr/rss/default?cat=guncel", "Turkey", "Wire / Outlet"),
+        _wire("wire-anadolu-tr-world", "Anadolu Agency", "https://www.aa.com.tr/tr/rss/default?cat=dunya", "Turkey", "Wire / Outlet"),
+        {"id": "bbc-turkce", "name": "BBC Türkçe", "region": "UK & Europe", "category": "Security",
+         "url": "https://feeds.bbci.co.uk/turkce/rss.xml", "parser": "security-rss",
+         "default_country": "Turkey", "language": "tr", "source_tier": "Established national", "limit": 6},
+        {"id": "bianet-tr", "name": "Bianet", "region": "UK & Europe", "category": "Security",
+         "url": "https://bianet.org/rss/bianet", "parser": "security-rss",
+         "default_country": "Turkey", "language": "tr", "source_tier": "National outlet", "limit": 6},
+        {"id": "bianet-en", "name": "Bianet English", "region": "UK & Europe", "category": "Security",
+         "url": "https://bianet.org/rss/english", "parser": "security-rss",
+         "default_country": "Turkey", "language": "en", "source_tier": "National outlet", "limit": 6},
+        # Every path, including /feed and the sitemap, returned Cloudflare HTTP 403 here.
+        {"id": "haberdairesi", "name": "Haber Dairesi", "region": "UK & Europe", "category": "Security",
+         "url": "https://www.haberdairesi.com/feed", "parser": "security-rss",
+         "default_country": "Turkey", "language": "tr", "source_tier": "Local outlet",
+         "limit": 6, "quiet_http": (403,)},
+        # HTTPS to k.img.com.ua fails. The subscription page publishes these HTTP feeds.
+        # There is no Zaporizhzhia or war feed; Kyiv is the only city feed.
+        {"id": "korrespondent-all", "name": "Korrespondent", "region": "Russia & Ukraine", "category": "Security",
+         "url": "http://k.img.com.ua/rss/ru/all_news2.0.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "ru", "source_tier": "National outlet", "limit": 6},
+        {"id": "korrespondent-ukraine", "name": "Korrespondent Ukraine", "region": "Russia & Ukraine", "category": "Security",
+         "url": "http://k.img.com.ua/rss/ru/ukraine.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "ru", "source_tier": "National outlet", "limit": 6},
+        {"id": "korrespondent-kyiv", "name": "Korrespondent Kyiv", "region": "Russia & Ukraine", "category": "Security",
+         "url": "http://k.img.com.ua/rss/ru/kyiv.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "ru", "source_tier": "National outlet", "limit": 6},
+        # The Russian feed /ru/feed/ mirrors these Ukrainian items, so only one is polled.
+        {"id": "inform-zp", "name": "Inform.zp.ua", "region": "Zaporizhzhia Oblast", "category": "Security",
+         "url": "https://www.inform.zp.ua/feed/", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "Local outlet",
+         "tag_transport": True, "limit": 6},
+        {"id": "ywn", "name": "Yeshiva World News", "region": "Israel and the United States", "category": "Security",
+         "url": "https://www.theyeshivaworld.com/feed", "parser": "security-rss",
+         "default_country": "Israel", "language": "en", "source_tier": "Local outlet", "limit": 6},
+        # Articles return 200. /rss and /feed are 404, and /rss.xml and the sitemap paths return the homepage HTML.
+        {"id": "daily-qudrat", "name": "Daily Qudrat", "region": "South Asia", "category": "Security",
+         "url": "https://dailyqudrat.pk/feed/", "parser": "security-rss",
+         "default_country": "Pakistan", "language": "ur", "source_tier": "National/regional outlet",
+         "keyword_profile": "qudrat", "limit": 6},
+        {"id": "transparency-news", "name": "Transparency News", "region": "Middle East", "category": "Security",
+         "url": "https://transparency.news/", "parser": "", "default_country": "Lebanon",
+         "language": "ar", "source_tier": "Local outlet", "disabled": True,
+         "reason": "no RSS available"},
         # News24 returns HTTP 403 to this datacentre. Kept so Railway can fetch it; a 403 fails quietly.
         {"id": "news24-top", "name": "News24", "region": "Africa", "category": "Security",
          "url": "https://feeds.news24.com/articles/news24/TopStories/rss",

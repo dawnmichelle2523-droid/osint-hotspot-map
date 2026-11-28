@@ -180,6 +180,11 @@ OUTLET_LABELS = {
     "nhmpofficial": "National Highways and Motorway Police",
     "exilenova_plus": "Exilenova+",
     "amk_mapping_": "AMK Mapping",
+    "ywnreporter": "YWNReporter",
+    "rudaw_arabic": "Rudaw Arabic",
+    "shahidhussainjm": "ShahidHussainJM",
+    "dailyqudrat": "Daily Qudrat",
+    "sargodhapolice": "Sargodha District Police",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1053,6 +1058,16 @@ PARTISAN_SOCIAL = {"amharawarupdate", "aaa_amhara"}
 PARTISAN_TIER = "Social-unverified / partisan"
 PRO_UA_PARTISAN = {"exilenova_plus", "amk_mapping_"}
 PRO_UA_TIER = "Social-unverified / partisan (pro-UA)"
+YWN_HANDLE = "ywnreporter"
+YWN_TIER = "Journalist / Social-unverified"
+RUDAW_ARABIC_HANDLE = "rudaw_arabic"
+RUDAW_ARABIC_TIER = "Regional outlet / Kurdish-aligned"
+SHAHID_HANDLE = "shahidhussainjm"
+SHAHID_TIER = "Social-unverified"
+DAILY_QUDRAT_HANDLE = "dailyqudrat"
+DAILY_QUDRAT_TIER = "National/regional outlet"
+SARGODHA_POLICE_HANDLE = "sargodhapolice"
+SARGODHA_POLICE_TIER = "Official Source"
 OSINT_ANALYST = {"afrimeosint"}
 OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
 LOCAL_OUTLET_X = {"baidoaonline"}
@@ -1084,6 +1099,16 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
     key = handle.lower()
     if key in PRO_UA_PARTISAN:
         return PRO_UA_TIER
+    if key == YWN_HANDLE:
+        return YWN_TIER
+    if key == RUDAW_ARABIC_HANDLE:
+        return RUDAW_ARABIC_TIER
+    if key == SHAHID_HANDLE:
+        return SHAHID_TIER
+    if key == DAILY_QUDRAT_HANDLE:
+        return DAILY_QUDRAT_TIER
+    if key == SARGODHA_POLICE_HANDLE:
+        return SARGODHA_POLICE_TIER
     if key in PARTISAN_SOCIAL:
         return PARTISAN_TIER
     if key in OSINT_ANALYST:

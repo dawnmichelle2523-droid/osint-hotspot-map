@@ -82,6 +82,44 @@ class XGateTests(unittest.TestCase):
         self.assertNotIn("worldsource24", handles)
         self.assertEqual(ox.assign_tier("Exilenova_plus", "", False), "Social-unverified / partisan (pro-UA)")
         self.assertEqual(ox.assign_tier("AMK_Mapping_", "", False), "Social-unverified / partisan (pro-UA)")
+        self.assertIn("ywnreporter", handles)
+        self.assertEqual(ox.OUTLET_LABELS["ywnreporter"], "YWNReporter")
+        self.assertEqual(serve_map.source_tier_for("x", "YWNReporter", ""), "Journalist / Social-unverified")
+        self.assertTrue(serve_map.keep_x_post("YWNReporter", "Haredi anti-draft protest blocks a highway at Ben Gurion"))
+        self.assertTrue(serve_map.keep_x_post("YWNReporter", "Protest in Brooklyn"))
+        self.assertFalse(serve_map.keep_x_post("YWNReporter", "A gallery opens in Paris"))
+        self.assertIn("rudaw_arabic", handles)
+        self.assertEqual(
+            serve_map.source_tier_for("x", "rudaw_arabic", ""),
+            "Regional outlet / Kurdish-aligned",
+        )
+        self.assertTrue(serve_map.keep_x_post("rudaw_arabic", "Iraqi border forces closed the al-Walid crossing with Syria"))
+        self.assertFalse(serve_map.keep_x_post("rudaw_arabic", "A gallery opens in Paris"))
+        rudaw = next(row for row in serve_map.DISABLED_RSS if row["name"] == "Rudaw English")
+        self.assertIn("HTML", rudaw["reason"])
+        self.assertIn("dailyqudrat", handles)
+        self.assertIn("sargodhapolice", handles)
+        self.assertNotIn("officialshehr", handles)
+        self.assertNotIn("sherazi_silmian", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "DailyQudrat", ""), "National/regional outlet")
+        self.assertEqual(serve_map.source_tier_for("x", "sargodhapolice", ""), "Official Source")
+        self.assertEqual(ox.assign_tier("sargodhapolice", "", False), "Official Source")
+        self.assertTrue(serve_map.keep_x_post("DailyQudrat", "احتجاج کے باعث سڑک بند"))
+        self.assertFalse(serve_map.keep_x_post("DailyQudrat", "A gallery opens in Paris"))
+        placed = {}
+        lat, _lng, precision = serve_map.placed_coordinates(
+            {
+                "source_name": "sargodhapolice",
+                "source_kind": "x",
+                "title": "Containers closed the Sargodha–Mandi Bahauddin road at Dhori",
+                "summary": "",
+                "original_text": "",
+            },
+            placed,
+        )
+        self.assertEqual(precision, "Regional / Country")
+        self.assertIn("Dhori", placed["location_name"])
+        self.assertAlmostEqual(lat, 32.33, places=2)
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

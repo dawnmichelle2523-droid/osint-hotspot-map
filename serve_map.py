@@ -112,7 +112,7 @@ RSS_FEEDS = [
 DISABLED_RSS = (
     {"name": "Al Jazeera Middle East", "url": "https://www.aljazeera.com/xml/rss/middleeast.xml", "reason": "HTTP 404 on 27 Nov 2026. The all-news RSS remains active.", "checked": "2026-11-27"},
     {"name": "Shafaq English", "url": "https://shafaq.com/en/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
-    {"name": "Rudaw English", "url": "https://www.rudaw.net/english/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "Rudaw English", "url": "https://www.rudaw.net/english/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. Arabic, Sorani and /feed also returned HTML on 28 Nov 2026. No replacement feed was found.", "checked": "2026-11-28"},
     {"name": "The New Region", "url": "https://thenewregion.com/feed", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
     {"name": "ISW", "url": "https://www.understandingwar.org/rss.xml", "reason": "HTTP 403 on 27 Nov 2026. No public replacement RSS was found.", "checked": "2026-11-27"},
     {"name": "Syriac Press", "url": "https://syriacpress.com/feed/", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
@@ -272,7 +272,9 @@ _X_HANDLE_GROUPS = [
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
         "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
-        "Exilenova_plus", "AMK_Mapping_",
+        "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
+        "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
+        "DailyQudrat", "sargodhapolice",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -469,6 +471,9 @@ _HANDLE_COUNTRY = {
     "iomchad": "Chad",
     "usainksa": "Saudi Arabia",
     "nhmpofficial": "Pakistan",
+    "shahidhussainjm": "Pakistan",
+    "dailyqudrat": "Pakistan",
+    "sargodhapolice": "Pakistan",
 }
 _RSS_DESK = {
     "https://english.enabbaladi.net/feed/": "Syria",
@@ -1335,10 +1340,25 @@ _PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
 SKIPPED_X_HANDLES = {
     "theosintbr1": "About 160 followers, and a late quote-reposter of other accounts' video.",
     "worldsource24": "Generic headline aggregator that reposts other accounts' video.",
+    "officialshehr": "Individual account. Not added.",
+    "sherazi_silmian": "Individual account. Not added.",
 }
 _OSINT_ANALYST_HANDLES = {"afrimeosint"}
 _LOCAL_OUTLET_X = {"baidoaonline"}
 _NHMP_HANDLES = {"nhmpofficial"}
+_YWN_HANDLES = {"ywnreporter"}
+_RUDAW_ARABIC = {"rudaw_arabic"}
+# Handle only. The personal name is not stored.
+_SHAHID_HANDLES = {"shahidhussainjm"}
+_RIZWAN_HANDLES = {"rizwanghilzai"}
+_SHAHERYAR_HANDLES = {"shaheryarhassan"}
+_STANDARD_KENYA = {"standardkenya"}
+_KHIT_HANDLES = {"khitrafficpol"}
+_HALAB_HANDLES = {"halabtodaytv"}
+_DAILY_QUDRAT = {"dailyqudrat"}
+_SARGODHA_POLICE = {"sargodhapolice"}
+# Long-standing Karachi Traffic Police account. The X profile has no verification badge.
+KHIT_NOTE = "X account not verified-badged; long-standing account"
 _ALARABIYA_HANDLES = {"alarabiya", "alarabiya_eng"}
 # Al Arabiya and Al Hadath are one MBC network. They do not corroborate each other.
 _MBC_FAMILY = {"alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk"}
@@ -1355,6 +1375,20 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     raw, tokens, compact = _identity_parts(kind, name, url)
     if _token_named(tokens, _NHMP_HANDLES):
         return osint.NHMP_TIER
+    if _token_named(tokens, _YWN_HANDLES):
+        return "Journalist / Social-unverified"
+    if _token_named(tokens, _SHAHID_HANDLES) or _token_named(tokens, _RIZWAN_HANDLES) or _token_named(tokens, _SHAHERYAR_HANDLES):
+        return "Social-unverified"
+    if _token_named(tokens, _KHIT_HANDLES) or _token_named(tokens, _SARGODHA_POLICE):
+        return "Official Source"
+    if _token_named(tokens, _DAILY_QUDRAT) or "dailyqudrat.pk" in raw:
+        return "National/regional outlet"
+    if _token_named(tokens, _STANDARD_KENYA) or "standardmedia.co.ke" in raw:
+        return "National outlet"
+    if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
+        return "National/regional outlet / pro-government (post-2024)"
+    if _token_named(tokens, _RUDAW_ARABIC):
+        return "Regional outlet / Kurdish-aligned"
     if _token_named(tokens, _PRO_UA_HANDLES):
         return "Social-unverified / partisan (pro-UA)"
     if _token_named(tokens, _PARTISAN_HANDLES):
@@ -1371,8 +1405,19 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "Established national"
     if "ahram.org.eg" in raw:
         return "State Media"
-    if "nashaniva.com" in raw or "operativmm.az" in raw:
+    if any(host in raw for host in (
+        "nashaniva.com", "operativmm.az", "bianet.org", "korrespondent.net", "k.img.com.ua",
+        "dailyurdu.net", "haberturk.com",
+    )):
         return "National outlet"
+    if "ura.news" in raw:
+        return "Regional outlet / Russian state-aligned media"
+    if "rosbalt.ru" in raw:
+        return "Russian media (Kremlin-permitted)"
+    if "bbci.co.uk/turkce" in raw:
+        return "Established national"
+    if any(host in raw for host in ("haberdairesi.com", "inform.zp.ua", "theyeshivaworld.com", "transparency.news")):
+        return "Local outlet"
     if _token_named(tokens, _CAUTION_HANDLES):
         return "Single-Source / Opposition Caution"
     if _token_named(tokens, _CLAIM_HANDLES):
@@ -2824,7 +2869,98 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _PRO_UA_HANDLES and mentions_russia_ukraine(text):
         return True
+    if lowered in _YWN_HANDLES and mentions_ywn_beat(text):
+        return True
+    if lowered in _RUDAW_ARABIC and mentions_rudaw_beat(text):
+        return True
+    if lowered in _SHAHID_HANDLES and mentions_sindh(text):
+        return True
+    if lowered in (_RIZWAN_HANDLES | _SHAHERYAR_HANDLES) and mentions_pakistan(text):
+        return True
+    if lowered in _KHIT_HANDLES or lowered in _SARGODHA_POLICE:
+        return True
+    if lowered in _DAILY_QUDRAT and mentions_pakistan(text):
+        return True
+    if lowered in _STANDARD_KENYA and mentions_kenya(text):
+        return True
+    if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
+
+
+def mentions_pakistan(text: str) -> bool:
+    """Pakistan and its highways. Handles are stored without personal names."""
+    if mentions_sindh(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "pakistan", "peshawar", "quetta", "lahore", "islamabad", "motorway",
+        "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
+        "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
+    )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_kenya(text: str) -> bool:
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in ("kenya", "kenyan", "kisumu", "nairobi", "mombasa"))
+
+
+def mentions_halab_beat(text: str) -> bool:
+    if mentions_syria_or_middle_east(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in ("safita", "tartus", "tartous", "aleppo", "halab"))
+
+
+def party_claim_text(text: str) -> bool:
+    """A relayed party statement, not an independent report."""
+    lowered = str(text or "").lower()
+    party = any(term in lowered for term in ("jui", "jamiat", "party"))
+    relay = any(term in lowered for term in ("spokesperson", "statement", "said", "claims", "according to"))
+    return party and relay
+
+
+def relays_named_source(text: str, other: str) -> bool:
+    """True when the text credits another handle, such as 'Via @NHMPofficial'."""
+    sample = str(text or "").lower()
+    identity = str(other or "").lower()
+    for handle in re.findall(r"\bvia\b[:\s@]*@?([a-z0-9_]{4,})", sample):
+        if handle and handle in identity:
+            return True
+    return False
+
+
+def mentions_sindh(text: str) -> bool:
+    """Pakistan, Sindh and Karachi. Used for the gated handle, which is stored without a personal name."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "pakistan", "sindh", "karachi", "hub river", "jui", "jamiat",
+    ))
+
+
+def mentions_ywn_beat(text: str) -> bool:
+    """Israel, the Middle East, and the New York tri-state area. The handle is stored, not a person's name."""
+    if mentions_syria_or_middle_east(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "new york", "new jersey", "connecticut", "nyc", "brooklyn", "manhattan",
+        "queens", "bronx", "staten island", "newark", "ben gurion", "haredi",
+        "tri-state", "tristate",
+    ))
+
+
+def mentions_rudaw_beat(text: str) -> bool:
+    """Iraq, the Kurdistan Region, Syria, and the border crossings Rudaw Arabic covers."""
+    if mentions_syria_or_middle_east(text) or iraq_mention(text):
+        return True
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "kurdistan", "erbil", "kurd", "al-walid", "al walid", "al-waleed", "waleed",
+        "suwaydiya", "suwaydiyah", "border", "crossing",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("الوليد", "السويدية", "كردستان", "أربيل", "اربيل"))
 
 
 def mentions_russia_ukraine(text: str) -> bool:
@@ -3861,6 +3997,39 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
             placed["country"] = "Pakistan"
             placed["coord_origin"] = "region"
             return lat, lng, "Regional / Country"
+    if channel_handle(item).lower() in _SHAHID_HANDLES and "hub river" in raw_blob_early.lower():
+        placed["location_name"] = "Hub River Road"
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "region"
+        return 24.905, 66.95, "Regional / Country"
+    handle = channel_handle(item).lower()
+    road_text = raw_blob_early.lower()
+    if handle in _SHAHERYAR_HANDLES or handle in _NHMP_HANDLES:
+        for needle, label, lat, lng in (
+            ("kot momin", "Kot Momin interchange", 32.19, 73.02),
+            ("bhera", "M-2 at Bhera", 32.48, 72.91),
+            ("salam interchange", "Salam interchange", 32.42, 72.95),
+        ):
+            if needle in road_text:
+                placed["location_name"] = label
+                placed["country"] = "Pakistan"
+                placed["coord_origin"] = "region"
+                return lat, lng, "Regional / Country"
+    if handle in _SARGODHA_POLICE and ("dhori" in road_text or "mandi bahauddin" in road_text):
+        placed["location_name"] = "Sargodha–Mandi Bahauddin road at Dhori"
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "region"
+        return 32.33, 73.05, "Regional / Country"
+    if handle in _KHIT_HANDLES and ("lucky pahari" in road_text or "hub river" in road_text or "ٹریفک" in raw_blob_early):
+        if "lucky pahari" in road_text:
+            placed["location_name"] = "Lucky Pahari"
+            point = (24.89, 66.97)
+        else:
+            placed["location_name"] = "Hub River Road"
+            point = (24.905, 66.95)
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "place"
+        return point[0], point[1], "City / Area"
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
     raw_blob = " ".join(
         str(part or "")
@@ -4723,7 +4892,24 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         print(f"Dropped spam before insert: {str(item.get('title') or '')[:80]}")
         return False
     threat_code, threat_label = assigned_threat(blob, item.get("category") or placed.get("category"))
-    placed["category"] = osint.NHMP_CATEGORY if channel_handle(item).lower() in _NHMP_HANDLES else threat_label
+    if channel_handle(item).lower() in _NHMP_HANDLES:
+        placed["category"] = osint.NHMP_CATEGORY
+    elif channel_handle(item).lower() in _SHAHID_HANDLES and mentions_sindh(blob) and any(
+        term in blob.lower() for term in ("protest", "sit-in", "sit in", "block", "jui", "road")
+    ):
+        placed["category"] = "Protest / transport disruption"
+    elif channel_handle(item).lower() in _RIZWAN_HANDLES and party_claim_text(blob):
+        placed["category"] = "Party claim"
+    elif channel_handle(item).lower() in _KHIT_HANDLES:
+        placed["category"] = "Travel / transport disruption"
+    elif channel_handle(item).lower() in _SARGODHA_POLICE and any(
+        term in blob.lower() for term in ("road", "motorway", "container", "closed", "closure", "dhori")
+    ):
+        placed["category"] = "Travel / transport disruption"
+    elif channel_handle(item).lower() in _SHAHERYAR_HANDLES and relays_named_source(blob, "nhmpofficial"):
+        placed["category"] = "Repost"
+    else:
+        placed["category"] = threat_label
     placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({
@@ -4824,13 +5010,20 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:
-                if same_channel(item, match) or both_partisan(item, match) or same_mbc_network(item, match):
+                other_name = f"{match['source_name'] or ''} {match['source_url'] if 'source_url' in match.keys() else ''}"
+                incoming = story_text(item)
+                claim = party_claim_text(incoming) or "party claim" in str(item.get("category") or "").lower()
+                relay = relays_named_source(incoming, other_name) or relays_named_source(story_text(match), item.get("source_name") or "")
+                if claim or relay:
+                    print(f"Not corroboration: {str(item.get('title') or '')[:80]}")
+                elif same_channel(item, match) or both_partisan(item, match) or same_mbc_network(item, match):
                     print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
+                    return False
                 else:
                     bump_corroboration(conn, match["id"])
                     conn.commit()
                     print(f"Corroborated story {match['id']} from another channel: {item['title'][:80]}")
-                return False
+                    return False
         finally:
             conn.close()
     if item.get("source_kind") == "x" and not keep_x_post(

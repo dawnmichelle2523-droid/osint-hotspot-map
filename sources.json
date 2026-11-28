@@ -8,7 +8,12 @@
     "horn_osint": ["AfriMEOSINT"],
     "somalia_local": ["BaidoaOnline"],
     "pakistan_highways": ["NHMPofficial"],
-    "pro_ua_partisan": ["Exilenova_plus", "AMK_Mapping_"]
+    "pro_ua_partisan": ["Exilenova_plus", "AMK_Mapping_"],
+    "ywn": ["YWNReporter"],
+    "rudaw_arabic": ["rudaw_arabic"],
+    "sindh_reporter": ["ShahidHussainJM"],
+    "daily_qudrat": ["DailyQudrat"],
+    "sargodha_police": ["sargodhapolice"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]
