@@ -159,6 +159,7 @@ TELEGRAM_CHANNELS = [
     "Middle_East_Spectator",
     "QudsNen",
     "SudanTribune",
+    "GeneralStaffZSU",
 ]
 # No public posts on the t.me/s preview on 27 Nov 2026. Kept so they can be retried.
 TELEGRAM_DISABLED = (
@@ -275,7 +276,8 @@ _X_HANDLE_GROUPS = [
         "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
         "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
         "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps", "ALJADEEDNEWS",
-        "SawtBeirut", "mezopotamyatrk4",
+        "SawtBeirut", "mezopotamyatrk4", "DropSiteNews", "Annahar", "ekathimerini", "24tvua",
+        "echofm_online", "cgtnenespanol", "citizentvkenya", "VoiceofHorn", "cairo24_", "LOrientToday",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1237,7 +1239,7 @@ _WIRE_NAMES = {
 }
 _OFFICIAL_HANDLES = {
     "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en", "uk_mto",
-    "alsakaniali", "cjfcspox", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
+    "alsakaniali", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
     "ksamofa", "modgovksa", "moisaudiarabia",
     "yemen_pm", "mkhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "irimfa_spox",
     "ir_rezaee", "mmohammadii61", "hatami_org", "gharibabadi", "iran_in_kuwait", "iraqipmo",
@@ -1338,6 +1340,10 @@ _PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
 _GAZA_PARTISAN = {"qudsn", "yaffa_ps"}
 _ALJADEED = {"aljadeednews"}
 _SAWT_BEIRUT = {"sawtbeirut"}
+# Paid blue check, not a government-verified badge. Official status is unconfirmed.
+_COALITION_SPOX = {"cjfcspox"}
+_HOUTHI_CLAIM = {"yah_saree", "mmy1444"}
+CJFC_NOTE = "Paid blue check, not a government-verified badge. Official status unconfirmed."
 # Handle taken from the site header social link, not guessed.
 _MEZOPOTAMYA = {"mezopotamyatrk4"}
 MEZOPOTAMYA_TIER = "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)"
@@ -1381,6 +1387,8 @@ _CASUALTY_WORDS = re.compile(
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _COALITION_SPOX) or _token_named(tokens, _HOUTHI_CLAIM):
+        return "Party claim"
     if _token_named(tokens, _NHMP_HANDLES):
         return osint.NHMP_TIER
     if _token_named(tokens, _YWN_HANDLES):
@@ -1421,13 +1429,39 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "Established national / breaking news"
     if _token_named(tokens, _ALARABIYA_HANDLES) or "alarabiya.net" in raw:
         return ALARABIYA_TIER
+    if "aljazeera.com" in raw or _token_named(tokens, {"ajenglish"}):
+        return "Qatar state-funded"
+    if "dropsitenews.com" in raw or _token_named(tokens, {"dropsitenews"}):
+        return "Independent investigative / advocacy-leaning"
+    if "annahar.com" in raw or _token_named(tokens, {"annahar"}):
+        return "National outlet"
+    if "ekathimerini.com" in raw or _token_named(tokens, {"ekathimerini"}):
+        return "Independent national outlet"
+    if "svoboda.org" in raw:
+        return "US-govt-funded"
+    if "24tv.ua" in raw or _token_named(tokens, {"24tvua"}):
+        return "National outlet"
+    if "kyivindependent.com" in raw:
+        return "Independent national outlet"
+    if _token_named(tokens, {"echofm_online"}):
+        return "Exile media"
+    if _token_named(tokens, {"cgtnenespanol"}):
+        return "Chinese state media"
+    if _token_named(tokens, {"citizentvkenya"}) or "citizen.digital" in raw:
+        return "National broadcaster"
+    if _token_named(tokens, {"voiceofhorn"}):
+        return "Unverified aggregator"
+    if _token_named(tokens, {"cairo24_"}) or "cairo24.com" in raw:
+        return "Private outlet / generally pro-government"
+    if _token_named(tokens, {"lorienttoday", "lorientlejour"}) or "lorientlejour.com" in raw:
+        return "Independent national outlet"
     if "news24.com" in raw or "feeds.news24.com" in raw:
         return "Established national"
     if "ahram.org.eg" in raw:
         return "State Media"
     if any(host in raw for host in (
         "nashaniva.com", "operativmm.az", "bianet.org", "korrespondent.net", "k.img.com.ua",
-        "dailyurdu.net", "haberturk.com", "lb.ua",
+        "dailyurdu.net", "haberturk.com", "lb.ua", "pravda.com.ua", "vot-tak.tv",
     )):
         return "National outlet"
     if "ura.news" in raw:
@@ -2907,6 +2941,26 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _GAZA_PARTISAN and mentions_palestine(text):
         return True
+    if lowered == "dropsitenews" and mentions_palestine(text):
+        return True
+    if lowered == "annahar" and (mentions_lebanon(text) or mentions_palestine(text)):
+        return True
+    if lowered == "ekathimerini" and mentions_greece(text):
+        return True
+    if lowered == "24tvua" and mentions_russia_ukraine(text):
+        return True
+    if lowered == "echofm_online" and mentions_russia_ukraine(text):
+        return True
+    if lowered == "cgtnenespanol":
+        return True
+    if lowered in {"citizentvkenya", "voiceofhorn"} and mentions_kenya(text):
+        return True
+    if lowered == "cairo24_" and any(term in str(text or "").lower() for term in ("egypt", "aswan", "abu simbel", "cairo")):
+        return True
+    if lowered == "lorienttoday" and mentions_lebanon(text):
+        return True
+    if lowered in _COALITION_SPOX or lowered in _HOUTHI_CLAIM:
+        return True
     if lowered in _ALJADEED and (mentions_syria_or_middle_east(text) or mentions_lebanon(text)):
         return True
     if lowered in _SAWT_BEIRUT and mentions_lebanon(text):
@@ -2928,6 +2982,13 @@ def mentions_pakistan(text: str) -> bool:
         "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
         "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
     )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_greece(text: str) -> bool:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("greece", "greek", "athens", "thessaloniki", "piraeus")):
+        return True
+    return any(term in str(text or "") for term in ("Ελλάδα", "Αθήνα", "απεργ"))
 
 
 def mentions_mezopotamya_beat(text: str) -> bool:
@@ -4092,6 +4153,11 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
                 placed["country"] = "Pakistan"
                 placed["coord_origin"] = "region"
                 return lat, lng, "Regional / Country"
+    if handle in _COALITION_SPOX and any(term in road_text for term in ("eastern province", "الشرقية", "intercept", "اعتراض")):
+        placed["location_name"] = "Eastern Province"
+        placed["country"] = "Saudi Arabia"
+        placed["coord_origin"] = "region"
+        return 26.4207, 50.0888, "Regional / Country"
     if handle in _ALJADEED and any(term in road_text for term in ("mushayrifa", "مشيرفة", "المشيرفة")):
         placed["location_name"] = "Mushayrifa district, Hasakah"
         placed["country"] = "Syria"
@@ -4932,6 +4998,8 @@ def backfill_actor_system() -> int:
 
 
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    if "instagram.com" in str(item.get("source_url") or "").lower():
+        return False
     if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
         return False
     if is_spam_post(spam_post_text(item.get("title"), item.get("summary"), item.get("original_text"), item.get("source_url"))):
@@ -4992,6 +5060,14 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         placed["category"] = "Repost"
     elif channel_handle(item).lower() in _ALJADEED and suicide_attack_text(blob):
         placed["category"] = "Suicide attack"
+    elif channel_handle(item).lower() in _COALITION_SPOX or channel_handle(item).lower() in _HOUTHI_CLAIM:
+        placed["category"] = "Party claim"
+    elif channel_handle(item).lower() == "ekathimerini":
+        import global_feeds
+        category, severity = global_feeds.greek_strike_level(blob)
+        if category:
+            placed["category"] = category
+            placed["severity"] = severity
     else:
         placed["category"] = threat_label
     if channel_handle(item).lower() in _ALJADEED:

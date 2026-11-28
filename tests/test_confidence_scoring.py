@@ -585,6 +585,30 @@ class ApiOutputTests(unittest.TestCase):
         self.assertEqual(reuters["confidence_tier"], "corroborated")
         self.assertGreaterEqual(reuters["corroboration_count"], 2)
 
+    def test_shifa_kofiya_and_local_reports_are_one_attribution(self):
+        shared = dict(country="Palestine", lat=31.52, lng=34.45, timestamp="2026-11-26T12:00:00Z", category="Conflict")
+        scored = scoring.score_incidents([
+            incident(source_name="Drop Site News", title="Local reports of a strike", summary="Local reports said a strike hit Gaza.", source="https://www.dropsitenews.com/a", **shared),
+            incident(source_name="An-Nahar", title="Al-Kofiya on a strike", summary="Al-Kofiya said a strike hit Gaza.", source="https://www.annahar.com/a", timestamp="2026-11-26T12:10:00Z", country="Palestine", lat=31.52, lng=34.45, category="Conflict"),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
+    def test_coalition_and_houthi_claims_do_not_corroborate(self):
+        shared = dict(
+            title="Drones intercepted over the Eastern Province",
+            summary="Missiles and drones were reported over the Eastern Province",
+            country="Saudi Arabia",
+            lat=26.42,
+            lng=50.09,
+            category="Conflict",
+            timestamp="2026-11-26T12:00:00Z",
+        )
+        scored = scoring.score_incidents([
+            incident(source_name="CJFCSpox", source_tier="Party claim", source="https://x.com/CJFCSpox/status/1", **shared),
+            incident(source_name="Yah_Saree", source_tier="Party claim", source="https://x.com/Yah_Saree/status/2", timestamp="2026-11-26T12:20:00Z", title=shared["title"], summary=shared["summary"], country="Saudi Arabia", lat=26.42, lng=50.09, category="Conflict"),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
 
 if __name__ == "__main__":
     unittest.main()

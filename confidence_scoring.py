@@ -423,6 +423,56 @@ def _is_partisan(view: dict) -> bool:
     ))
 
 
+def _casualty_office_key(text: str) -> str:
+    """Shared key when a casualty figure is cited to a military administration."""
+    lowered = str(text or "").lower()
+    if not re.search(r"killed|dead|wounded|casualty|загиб|поран|жертв", lowered):
+        return ""
+    if not any(term in lowered for term in (
+        "ova", "ова", "military administration", "військов", "міськ",
+        "ukrainian official", "украинск", "українськ",
+    )):
+        return ""
+    if "zhytomyr" in lowered or "житомир" in lowered:
+        return "zhytomyr-ova"
+    if "kyiv" in lowered or "kiev" in lowered or "київ" in lowered or "киев" in lowered:
+        return "kyiv-city-ma"
+    if "ukrainian official" in lowered or "украинск" in lowered or "українськ" in lowered:
+        return "ukrainian-officials"
+    if any(term in lowered for term in ("odesa", "odessa", "одес")) and any(
+        term in lowered for term in ("ova", "ова", "military administration", "військов")
+    ):
+        return "odesa-ova"
+    if "dtek" in lowered or "дтек" in lowered:
+        return "dtek"
+    return "military-administration"
+
+
+def _belligerent_side(identity: str) -> str:
+    """Coalition and Houthi spokesperson claims do not confirm each other."""
+    lowered = identity.lower()
+    if "cjfcspox" in lowered:
+        return "coalition"
+    if "yah_saree" in lowered or "mmy1444" in lowered:
+        return "houthi"
+    return ""
+
+
+def _gaza_attribution_key(text: str) -> str:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "al-shifa", "al shifa", "shifa hospital", "al-kofiya", "al kofiya", "kofiya",
+        "local reports", "local report", "attributed to al-shifa",
+    )) or "الشفاء" in str(text or "") or "الكوفية" in str(text or ""):
+        return "al-shifa"
+    return ""
+
+
+def _same_official_casualty(left: str, right: str) -> bool:
+    key = _casualty_office_key(left)
+    return bool(key) and key == _casualty_office_key(right)
+
+
 def _reposts(left: dict, right: dict) -> bool:
     """True when one item is the other's video or an explicit repost of it."""
     if left.get("clips") and right.get("clips") and (left["clips"] & right["clips"]):
@@ -440,6 +490,12 @@ def _corroborates(left: dict, right: dict) -> bool:
     if _reposts(left, right) or _reposts(right, left):
         return False
     if left.get("partisan") and right.get("partisan"):
+        return False
+    if _same_official_casualty(left.get("text") or "", right.get("text") or ""):
+        return False
+    if _gaza_attribution_key(left.get("text") or "") and _gaza_attribution_key(left.get("text") or "") == _gaza_attribution_key(right.get("text") or ""):
+        return False
+    if _belligerent_side(left.get("identity") or "") and _belligerent_side(right.get("identity") or ""):
         return False
     if left.get("mbc") and right.get("mbc"):
         return False
@@ -498,7 +554,14 @@ def _score(tier: str, count: int, placed: bool, source_tier: str = "") -> int:
     else:
         value = 36 if placed else 24
     # A newer digital outlet sits below an established national outlet such as The Standard.
-    if "secondary national" in source_tier.casefold():
+    folded = source_tier.casefold()
+    if "secondary national" in folded:
+        value -= 8
+    elif "independent national" in folded or "national broadcaster" in folded:
+        value += 6
+    elif "unverified aggregator" in folded:
+        value -= 16
+    elif folded == "aggregator":
         value -= 8
     return max(0, min(100, int(value)))
 

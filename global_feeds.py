@@ -314,8 +314,9 @@ def _feeds() -> list[dict]:
          "parser": "gdelt", "timeout": 12},
         {"id": "wire-bbc", "name": "BBC World Security", "region": "Global", "category": "Security",
          "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "parser": "security-rss"},
-        {"id": "wire-aj", "name": "Al Jazeera Security", "region": "Global", "category": "Security",
-         "url": "https://www.aljazeera.com/xml/rss/all.xml", "parser": "security-rss"},
+        {"id": "wire-aj", "name": "Al Jazeera English", "region": "Global", "category": "Security",
+         "url": "https://www.aljazeera.com/xml/rss/all.xml", "parser": "security-rss",
+         "source_tier": "Qatar state-funded", "limit": 6},
         {"id": "wire-f24", "name": "France 24 Security", "region": "Global", "category": "Security",
          "url": "https://www.france24.com/en/rss", "parser": "security-rss"},
         {"id": "wire-dw", "name": "DW World Security", "region": "Global", "category": "Security",
@@ -1223,6 +1224,82 @@ _QUDS_RE = re.compile(
 )
 
 
+_ODESA_DEDUPE = {"svoboda", "tv24", "vot-tak", "pravda-uk", "pravda-en", "unn", "kyiv-independent"}
+_GREEK_NEWS = {"ekathimerini", "protothema", "newsbomb"}
+_GREEK_RE = re.compile(
+    r"strike|security|transport|disaster|earthquake|flood|fire|explosion|attack|"
+    r"απεργ|ασφαλ|μεταφορ|σεισμ|πλημμ|πυρκαγ|εκρηξ|έκρηξ",
+    re.IGNORECASE,
+)
+_INTERFAX_RE = re.compile(
+    r"strike|attack|explosion|drone|missile|shelling|killed|war|clash|"
+    r"удар|взрыв|дрон|ракет|обстрел|атак|погиб",
+    re.IGNORECASE,
+)
+_BYLINE_RE = re.compile(r"(?i)\b(?:by|από)\s+\S+(?:\s+\S+){0,2}")
+
+
+def _iso_day(stamp: object) -> str:
+    text = str(stamp or "").strip()
+    if len(text) >= 10 and text[4:5] == "-" and text[7:8] == "-":
+        return text[:10]
+    try:
+        from email.utils import parsedate_to_datetime
+        moment = parsedate_to_datetime(text)
+        if moment is not None:
+            return moment.date().isoformat()
+    except (TypeError, ValueError, IndexError, OverflowError):
+        return ""
+    return ""
+
+
+def odesa_strike_office(text: object) -> str:
+    """Institution behind an Odesa casualty figure. A person's name is not returned."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    if not any(term in lowered for term in ("odesa", "odessa", "одес")):
+        return ""
+    if not re.search(r"killed|dead|wounded|casualty|strike|explosion|missile|drone|загиб|поран|удар|вибух", lowered):
+        return ""
+    parts = []
+    if any(term in lowered for term in ("military administration", "ова", "ova", "військов", "обласн")):
+        parts.append("Odesa Oblast Military Administration")
+    if "dtek" in lowered or "дтек" in lowered:
+        parts.append("DTEK")
+    return "; ".join(parts)
+
+
+def greek_strike_level(text: object) -> tuple[str, str]:
+    """Greek strikes stay civil or transport disruption, never a high security alert."""
+    lowered = str(text or "").lower()
+    strike = any(term in lowered for term in ("strike", "walkout", "industrial action", "απεργ"))
+    greece = any(term in lowered for term in ("greece", "greek", "athens", "thessaloniki", "ελλάδ", "αθήν"))
+    if not (strike and greece):
+        return "", ""
+    transport = any(term in lowered for term in (
+        "transport", "metro", "flight", "airport", "port", "ferry", "train", "bus", "traffic",
+        "seafarer", "piraeus", "patras", "igoumenitsa", "λιμαν", "ναυτ",
+    ))
+    return "Civil / transport disruption", ("medium" if transport else "low")
+
+
+def casualty_office(text: object) -> str:
+    """Official body behind a casualty figure. A person's name is not returned."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    if not re.search(r"killed|dead|wounded|casualty|загиб|поран|жертв", lowered):
+        return ""
+    if not any(term in lowered for term in ("ova", "ова", "military administration", "військов", "міськ")):
+        return ""
+    if "житомир" in lowered or "zhytomyr" in lowered:
+        return "Zhytomyr Oblast Military Administration"
+    if "київ" in lowered or "києв" in lowered or "kyiv" in lowered or "kiev" in lowered:
+        return "Kyiv city military administration"
+    if re.search(r"ukrainian official|українськ\w* офіц|украинск\w* офиц|украинск\w* власт", lowered):
+        return "Ukrainian officials"
+    return "Military administration"
+
+
 def official_citation(text: object) -> str:
     """Air Force or city-official attribution. The person's name is not stored."""
     sample = str(text or "")
@@ -1233,6 +1310,17 @@ def official_citation(text: object) -> str:
     if any(term in lowered for term in ("мер києва", "міський голова", "кмда", "city mayor", "city officials")):
         parts.append("Kyiv city officials")
     return "; ".join(parts)
+
+
+def gaza_single_attribution(text: object) -> str:
+    """al-Shifa, Al-Kofiya, and 'local reports' are one attribution, not three sources."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    if any(term in lowered for term in (
+        "al-shifa", "al shifa", "shifa hospital", "al-kofiya", "al kofiya", "kofiya", "local reports", "local report",
+    )) or any(term in sample for term in ("الشفاء", "الكوفية")):
+        return "al-Shifa hospital"
+    return ""
 
 
 def health_citation(text: object) -> str:
@@ -1611,7 +1699,13 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             break
         title = _strip(entry.get("title")) or ""
         summary = _strip(entry.get("summary") or entry.get("description") or "")
-        blob = title + " " + summary
+        if feed.get("strip_authors"):
+            title = _BYLINE_RE.sub("", title).strip(" -–,")
+            summary = _BYLINE_RE.sub("", summary).strip(" -–,")
+        link = str(entry.get("link") or "")
+        blob = title + " " + summary + " " + link
+        if "instagram.com" in blob.lower():
+            continue
         profile = feed.get("keyword_profile")
         if profile == "qudrat":
             matched = _QUDRAT_RE.search(blob) is not None
@@ -1621,6 +1715,12 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             matched = _LBUA_RE.search(blob) is not None
         elif profile == "sawt":
             matched = _SAWT_RE.search(blob) is not None
+        elif profile == "greek":
+            matched = _GREEK_RE.search(blob) is not None
+        elif profile == "interfax":
+            matched = _INTERFAX_RE.search(blob) is not None
+        elif feed.get("id") == "annahar":
+            matched = SECURITY_RE.search(blob) is not None or re.search(r"قصف|غارة|شهيد|قتل|انفجار|اشتباك", blob) is not None
         elif profile == "kenya-times":
             if _PORTAL_OUTAGE_RE.search(blob):
                 continue
@@ -1642,7 +1742,42 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
             source=entry.get("link") or feed.get("url"), id=entry.get("id") or entry.get("link") or title,
         )
         if placed:
-            cited = health_citation(blob) or official_citation(blob)
+            cited = gaza_single_attribution(blob) or health_citation(blob) or official_citation(blob) or casualty_office(blob)
+            if cited == "al-Shifa hospital":
+                place = placed.get("location_name") or "Gaza"
+                sentence = f"An incident in {place} was attributed to al-Shifa hospital."
+                placed["title"] = sentence
+                placed["summary"] = sentence
+                placed.pop("original_text", None)
+            if feed.get("dedupe_group") == "pravda":
+                story = re.search(r"/(\d{5,})/?", str(placed.get("source") or ""))
+                if story:
+                    placed["id"] = "pravda:" + story.group(1)
+            odesa_office = odesa_strike_office(blob)
+            if odesa_office and feed.get("id") in _ODESA_DEDUPE:
+                day = _iso_day(placed.get("timestamp"))
+                placed["id"] = "odesa-strike:" + day
+                sentence = "A strike casualty report in Odesa oblast was attributed to " + odesa_office + "."
+                placed["title"] = sentence
+                placed["summary"] = sentence
+                placed["location_name"] = "Odesa"
+                placed["country"] = "Ukraine"
+                placed["cited_source"] = odesa_office
+                placed.pop("original_text", None)
+            relay = casualty_office(blob)
+            if relay and not odesa_office:
+                place = (placed.get("location_name") or placed.get("country") or "unknown").casefold()
+                day = str(placed.get("timestamp") or "")[:10]
+                placed["id"] = "casualty:" + place + ":" + day
+            category, severity = greek_strike_level(blob)
+            if category and feed.get("id") in _GREEK_NEWS:
+                placed["feed_category"] = category
+                placed["severity"] = severity
+                place = (placed.get("location_name") or "Greece").casefold()
+                placed["id"] = "greece-strike:" + place + ":" + _iso_day(placed.get("timestamp"))
+            if feed.get("id") == "interfax-ru" and re.search(r"миноборон|ministry of defen", blob, re.I):
+                placed["feed_category"] = "Party claim"
+                placed["cited_source"] = "Russian Defence Ministry"
             if cited:
                 placed["cited_source"] = cited
                 note = "Cited source: " + cited + "."
@@ -2132,8 +2267,57 @@ def _catalogue_feeds() -> list[dict]:
         _local("local-kabulnow", "KabulNow", "https://kabulnow.com/feed/", "Afghanistan", "Afghanistan"),
         _local("local-balochistan-post", "The Balochistan Post", "https://thebalochistanpost.net/feed/", "Pakistan", "South Asia"),
         _local("local-irrawaddy", "The Irrawaddy", "https://www.irrawaddy.com/feed", "Myanmar", "APAC"),
-        _local("local-kyiv-independent", "Kyiv Independent", "https://kyivindependent.com/news-archive/rss/", "Ukraine", "Russia & Ukraine"),
-        _local("local-ukrainska-pravda", "Ukrainska Pravda", "https://www.pravda.com.ua/eng/rss/", "Ukraine", "Russia & Ukraine"),
+        {"id": "kyiv-independent", "name": "The Kyiv Independent", "region": "Russia & Ukraine",
+         "category": "Security", "url": "https://kyivindependent.com/news-archive/rss/",
+         "parser": "security-rss", "default_country": "Ukraine", "language": "en",
+         "source_tier": "Independent national outlet", "dedupe_group": "ukraine-national",
+         "strip_authors": True, "limit": 6},
+        {"id": "unn", "name": "Ukrainian National News", "region": "Russia & Ukraine",
+         "category": "Security", "url": "https://unn.ua/en/rss/news_en.xml",
+         "parser": "security-rss", "default_country": "Ukraine", "language": "en",
+         "source_tier": "National outlet", "dedupe_group": "ukraine-national", "limit": 6},
+        {"id": "malyn", "name": "malyn.media", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://malyn.media/feed/", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "Local outlet",
+         "geo_precision": "Hromada", "coord_origin": "admin", "limit": 6},
+        {"id": "shelter", "name": "Shelter", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://shelter.in.ua/rss.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "National outlet", "limit": 6},
+        {"id": "interfax-ru", "name": "Interfax", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://www.interfax.ru/rss.asp", "parser": "security-rss",
+         "default_country": "Russia", "language": "ru",
+         "source_tier": "Russian state-aligned", "keyword_profile": "interfax", "limit": 6},
+        {"id": "protothema", "name": "Proto Thema", "region": "UK & Europe", "category": "Security",
+         "url": "https://www.protothema.gr/rss/news/general/", "parser": "security-rss",
+         "default_country": "Greece", "language": "el", "source_tier": "National outlet",
+         "keyword_profile": "greek", "dedupe_group": "greece", "strip_authors": True, "limit": 6},
+        {"id": "newsbomb", "name": "Newsbomb", "region": "UK & Europe", "category": "Security",
+         "url": "https://www.newsbomb.gr/oles-oi-eidhseis?format=feed&type=rss",
+         "parser": "security-rss", "default_country": "Greece", "language": "el",
+         "source_tier": "Aggregator", "keyword_profile": "greek", "dedupe_group": "greece",
+         "strip_authors": True, "limit": 6},
+        {"id": "tg-general-staff", "name": "General Staff of the Armed Forces of Ukraine",
+         "region": "Russia & Ukraine", "category": "Party claim",
+         "url": "https://t.me/s/GeneralStaffZSU", "parser": "telegram", "channel": "GeneralStaffZSU",
+         "default_country": "Ukraine", "language": "uk",
+         "source_tier": "Party claim", "limit": 8},
+        {"id": "pravda-uk", "name": "Ukrainska Pravda", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://www.pravda.com.ua/rss/view_news/", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "Independent national outlet",
+         "dedupe_group": "pravda", "limit": 6},
+        {"id": "svoboda", "name": "Radio Svoboda", "region": "Russia, Ukraine and Belarus", "category": "Security",
+         "url": "https://www.svoboda.org/api/zrqiteuuir", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "ru", "source_tier": "US-govt-funded", "limit": 6},
+        {"id": "tv24", "name": "24 Kanal", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://24tv.ua/rss/all.xml", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "uk", "source_tier": "National outlet", "limit": 6},
+        {"id": "vot-tak", "name": "Vot Tak", "region": "Russia, Ukraine and Belarus", "category": "Security",
+         "url": "https://vot-tak.tv/rss", "parser": "security-rss",
+         "language": "ru", "source_tier": "Exile / independent media", "limit": 6},
+        {"id": "pravda-en", "name": "Ukrainska Pravda", "region": "Russia & Ukraine", "category": "Security",
+         "url": "https://www.pravda.com.ua/eng/rss/", "parser": "security-rss",
+         "default_country": "Ukraine", "language": "en", "source_tier": "Independent national outlet",
+         "dedupe_group": "pravda", "limit": 6},
         {"id": "local-meduza", "name": "Meduza", "region": "Russia, Central Asia and the Caucasus",
          "category": "Security", "url": "https://meduza.io/rss/en/all", "parser": "security-rss",
          "default_country": "Russia", "language": "en", "source_tier": "National outlet", "limit": 6},
@@ -2255,6 +2439,30 @@ def _catalogue_feeds() -> list[dict]:
          "default_country": "Turkey", "language": "tr/ku/en",
          "source_tier": "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)",
          "disabled": True, "reason": "no RSS available"},
+        # Cloudflare 403. One attempt per refresh, no retries and no HTML scraping.
+        {"id": "ekathimerini", "name": "Kathimerini English Edition", "region": "UK & Europe",
+         "category": "Security", "url": "https://www.ekathimerini.com/rss", "parser": "security-rss",
+         "default_country": "Greece", "language": "en", "source_tier": "Independent national outlet",
+         "dedupe_group": "greece", "limit": 6, "quiet_http": (403,)},
+        {"id": "lorient-today", "name": "L'Orient Today", "region": "Middle East", "category": "Security",
+         "url": "https://today.lorientlejour.com/rss", "parser": "security-rss",
+         "default_country": "Lebanon", "language": "en/fr", "source_tier": "Independent national outlet",
+         "limit": 6, "quiet_http": (403, 404)},
+        {"id": "cairo24", "name": "Cairo 24", "region": "Africa", "category": "Security",
+         "url": "https://www.cairo24.com/", "parser": "", "default_country": "Egypt",
+         "language": "ar", "source_tier": "Private outlet / generally pro-government",
+         "disabled": True, "reason": "no RSS available"},
+        {"id": "citizen-digital", "name": "Citizen Digital", "region": "Africa", "category": "Security",
+         "url": "https://www.citizen.digital/", "parser": "", "default_country": "Kenya",
+         "language": "en", "source_tier": "National broadcaster", "disabled": True,
+         "reason": "no RSS available"},
+        {"id": "drop-site", "name": "Drop Site News", "region": "Middle East", "category": "Security",
+         "url": "https://www.dropsitenews.com/feed", "parser": "security-rss",
+         "default_country": "Palestine", "language": "en",
+         "source_tier": "Independent investigative / advocacy-leaning", "limit": 6},
+        {"id": "annahar", "name": "An-Nahar", "region": "Middle East", "category": "Security",
+         "url": "https://www.annahar.com/rss", "parser": "security-rss",
+         "default_country": "Lebanon", "language": "ar", "source_tier": "National outlet", "limit": 6},
         {"id": "sawt-beirut", "name": "Sawt Beirut International", "region": "Middle East", "category": "Security",
          "url": "https://www.sawtbeirut.com/feed/", "parser": "security-rss",
          "default_country": "Lebanon", "language": "ar",

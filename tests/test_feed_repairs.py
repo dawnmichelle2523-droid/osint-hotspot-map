@@ -164,6 +164,40 @@ class XGateTests(unittest.TestCase):
         )
         self.assertTrue(serve_map.keep_x_post("mezopotamyatrk4", "Clashes reported in Diyarbakir"))
         self.assertTrue(serve_map.partisan_source("mezopotamyatrk4", serve_map.MEZOPOTAMYA_TIER))
+        self.assertIn("ajenglish", handles)
+        self.assertIn("dropsitenews", handles)
+        self.assertIn("annahar", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "AJEnglish", ""), "Qatar state-funded")
+        self.assertEqual(serve_map.source_tier_for("x", "DropSiteNews", ""), "Independent investigative / advocacy-leaning")
+        self.assertEqual(serve_map.source_tier_for("x", "Annahar", "https://www.annahar.com/rss"), "National outlet")
+        self.assertTrue(serve_map.keep_x_post("DropSiteNews", "Strike reported in Gaza"))
+        self.assertTrue(serve_map.keep_x_post("Annahar", "Blast in Beirut"))
+        self.assertIn("ekathimerini", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "ekathimerini", ""), "Independent national outlet")
+        self.assertTrue(serve_map.keep_x_post("ekathimerini", "Ferry strike in Piraeus"))
+        self.assertFalse(serve_map.keep_x_post("ekathimerini", "A gallery opens in Paris"))
+        self.assertIn("24tvua", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "24tvua", "https://24tv.ua/rss/all.xml"), "National outlet")
+        self.assertTrue(serve_map.keep_x_post("24tvua", "Strike reported in Odesa"))
+        for handle in ("echofm_online", "cgtnenespanol", "citizentvkenya", "voiceofhorn", "cairo24_", "lorienttoday"):
+            self.assertIn(handle, handles)
+        self.assertIn("GeneralStaffZSU", serve_map.TELEGRAM_CHANNELS)
+        self.assertEqual(serve_map.source_tier_for("x", "cgtnenespanol", ""), "Chinese state media")
+        self.assertEqual(serve_map.source_tier_for("x", "voiceofhorn", ""), "Unverified aggregator")
+        self.assertEqual(serve_map.source_tier_for("rss", "Cairo 24", "https://www.cairo24.com/"), "Private outlet / generally pro-government")
+        self.assertIn("cjfcspox", handles)
+        self.assertNotIn("cjfcspox", ox.OFFICIAL_HANDLES)
+        self.assertEqual(serve_map.source_tier_for("x", "CJFCSpox", ""), "Party claim")
+        self.assertEqual(ox.assign_tier("CJFCSpox", "official_primary", False), "Party claim")
+        self.assertIn("blue check", serve_map.CJFC_NOTE)
+        placed = {}
+        lat, lng, precision = serve_map.placed_coordinates(
+            {"source_name": "CJFCSpox", "source_kind": "x", "title": "اعتراض مسيرات فوق المنطقة الشرقية", "summary": "", "original_text": ""},
+            placed,
+        )
+        self.assertEqual(placed["location_name"], "Eastern Province")
+        self.assertEqual(precision, "Regional / Country")
+        self.assertAlmostEqual(lat, 26.4207, places=3)
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

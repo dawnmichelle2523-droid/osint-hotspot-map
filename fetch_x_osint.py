@@ -113,7 +113,6 @@ OFFICIAL_HANDLES = {
     "uk_mto",
     "centcom",
     "centcomfarsi",
-    "cjfcspox",
     "saudidcd",
     "ksagaca",
     "spa_eng",
@@ -190,6 +189,16 @@ OUTLET_LABELS = {
     "yaffa_ps": "Yaffa News Network",
     "aljadeednews": "Al Jadeed",
     "sawtbeirut": "Sawt Beirut International",
+    "dropsitenews": "Drop Site News",
+    "annahar": "An-Nahar",
+    "ekathimerini": "Kathimerini",
+    "24tvua": "24 Kanal",
+    "echofm_online": "Echo",
+    "cgtnenespanol": "CGTN en Español",
+    "citizentvkenya": "Citizen TV Kenya",
+    "voiceofhorn": "Voice of the Horn",
+    "cairo24_": "Cairo 24",
+    "lorienttoday": "L'Orient Today",
     "mezopotamyatrk4": "Mezopotamya Ajansı",
     "alarabytv": "Al Araby TV",
 }
@@ -1145,6 +1154,20 @@ def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
         return OSINT_ANALYST_TIER
     if key in LOCAL_OUTLET_X:
         return LOCAL_OUTLET_TIER
+    if key == "ajenglish":
+        return "Qatar state-funded"
+    if key == "dropsitenews":
+        return "Independent investigative / advocacy-leaning"
+    if key == "annahar":
+        return "National outlet"
+    if key == "ekathimerini":
+        return "Independent national outlet"
+    if key == "24tvua":
+        return "National outlet"
+    if key == "cjfcspox":
+        return "Party claim"
+    if key in {"yah_saree", "mmy1444"}:
+        return "Party claim"
     if key in ALARABIYA_X:
         return ALARABIYA_TIER
     if key == NHMP_HANDLE:
