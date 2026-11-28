@@ -194,6 +194,40 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["country"], "Belarus")
         self.assertEqual(events[0]["source_tier"], "National outlet")
 
+    def test_meduza_keeps_both_languages_once(self):
+        meduza = [item for item in gf._feeds() if str(item.get("url") or "").startswith("https://meduza.io/rss/")]
+        urls = sorted(item["url"] for item in meduza)
+        self.assertEqual(urls, ["https://meduza.io/rss/all", "https://meduza.io/rss/en/all"])
+        self.assertTrue(all(item["source_tier"] == "National outlet" for item in meduza))
+        self.assertTrue(all(item["region"] == "Russia, Central Asia and the Caucasus" for item in meduza))
+        self.assertEqual(len(meduza), 2)
+
+    def test_air_alerts_keep_one_explosion_per_oblast(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertNotEqual(feeds["tg-air-alert-ua"]["channel"], feeds["tg-povitryana"]["channel"])
+        self.assertEqual(feeds["tg-povitryana"]["source_tier"], "Ukraine air-alert aggregator / Social-unverified")
+        page = """
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/1">
+          <div class="tgme_widget_message_text">✈️ Харківщина: →Лозова/р-н.</div>
+          <time datetime="2026-11-27T23:40:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/2">
+          <div class="tgme_widget_message_text">💥 Лозова (Харківщина) - вибухи</div>
+          <time datetime="2026-11-27T23:43:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/3">
+          <div class="tgme_widget_message_text">💥 Харків - вибухи</div>
+          <time datetime="2026-11-27T23:44:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_ukraine_air(feeds["tg-povitryana"], page.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["location_name"], "Kharkiv oblast")
+        self.assertNotIn("Лозова", events[0]["summary"])
+        other = page.replace("povitryanatrivogaaa", "air_alert_ua")
+        again = gf.parse_ukraine_air(feeds["tg-air-alert-ua"], other.encode())
+        self.assertEqual(again[0]["id"], events[0]["id"])
+
 
 if __name__ == "__main__":
     unittest.main()

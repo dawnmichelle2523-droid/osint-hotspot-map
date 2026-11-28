@@ -1201,7 +1201,8 @@ SECURITY_RE = re.compile(
     r"airstrike|air strike|security|evacuation|blast|bomb|missile|clash|militant|"
     r"terror|hostage|coup|riot|shelling|drone|armed|flood|earthquake|cyclone|wildfire|"
     r"warning|alert|fighting|violence|killed|war|conflict|crisis|ceasefire|troops|bombing|"
-    r"piracy|pirates?|hijack\w*|kidnapp?\w*)\b",
+    r"piracy|pirates?|hijack\w*|kidnapp?\w*|"
+    r"взрыв\w*|обстрел\w*|атак\w*|ракет\w*|дрон\w*|бпла|погиб\w*|убит\w*|задержа\w*|протест\w*)\b",
     re.IGNORECASE,
 )
 JSON_PARSERS = {
@@ -1743,6 +1744,82 @@ def parse_bluesky(feed: dict, content: bytes) -> list[dict]:
     return found
 
 
+_UA_OBLASTS = (
+    ("харків", "Kharkiv oblast", 49.99, 36.23),
+    ("запоріж", "Zaporizhzhia oblast", 47.84, 35.14),
+    ("дніпр", "Dnipro oblast", 48.46, 35.04),
+    ("київ", "Kyiv", 50.45, 30.52),
+    ("одес", "Odesa oblast", 46.48, 30.72),
+    ("микола", "Mykolaiv oblast", 46.97, 32.00),
+    ("херсон", "Kherson oblast", 46.64, 32.62),
+    ("полтав", "Poltava oblast", 49.59, 34.55),
+    ("житомир", "Zhytomyr oblast", 50.25, 28.66),
+    ("кіровоград", "Kirovohrad oblast", 48.51, 32.26),
+    ("черкас", "Cherkasy oblast", 49.44, 32.06),
+    ("сум", "Sumy oblast", 50.91, 34.80),
+    ("донець", "Donetsk oblast", 48.02, 37.80),
+    ("луган", "Luhansk oblast", 48.57, 39.31),
+    ("вінниц", "Vinnytsia oblast", 49.23, 28.47),
+    ("черніг", "Chernihiv oblast", 51.50, 31.28),
+    ("львів", "Lviv oblast", 49.84, 24.03),
+    ("крим", "Crimea", 44.95, 34.10),
+)
+
+
+def _ukraine_explosion(text: str) -> bool:
+    lowered = text.lower()
+    if "відбій" in lowered or "повітряна тривога" in lowered:
+        return False
+    return "вибух" in lowered or "💥" in text
+
+
+def _ukraine_oblast(text: str) -> tuple[str, float, float]:
+    lowered = text.lower()
+    for needle, label, lat, lng in _UA_OBLASTS:
+        if needle in lowered:
+            return label, lat, lng
+    return "Ukraine", 48.38, 31.17
+
+
+def parse_ukraine_air(feed: dict, content: bytes) -> list[dict]:
+    """Explosion reports only, one pin per oblast.
+
+    Alert starts, all-clears and drone tracks are left off the map. Both
+    air-alert channels share an oblast id, so the same oblast does not
+    double-count within one refresh.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(content.decode("utf-8", "replace"), "html.parser")
+    channel = str(feed.get("channel") or "").strip()
+    found: dict[str, dict] = {}
+    for wrap in soup.select(".tgme_widget_message"):
+        post = " ".join(str(wrap.get("data-post") or "").split())
+        if channel and post and not post.lower().startswith(channel.lower() + "/"):
+            continue
+        node = wrap.select_one(".tgme_widget_message_text")
+        if node is None:
+            continue
+        raw = _strip(node.get_text(" ", strip=True))
+        if not _ukraine_explosion(raw):
+            continue
+        place, lat, lng = _ukraine_oblast(raw)
+        clock = wrap.select_one("time")
+        when = clock.get("datetime") if clock is not None else ""
+        link = f"https://t.me/{post}" if post else str(feed.get("url") or "")
+        summary = f"An explosion was reported in {place}."
+        key = place.casefold()
+        found[key] = _event(
+            feed, summary, summary, lat, lng,
+            country="Ukraine", severity="high", timestamp=when or "",
+            source=link, id="ua-explosion:" + key,
+            coord_origin="place", geo_precision="City / Area", location_name=place,
+        )
+        if len(found) >= int(feed.get("limit") or 8):
+            break
+    return list(found.values())
+
+
 def parse_telegram_preview(feed: dict, content: bytes) -> list[dict]:
     """Public t.me/s preview. Only the channel name is kept, not other users."""
     from bs4 import BeautifulSoup
@@ -1965,7 +2042,12 @@ def _catalogue_feeds() -> list[dict]:
         _local("local-irrawaddy", "The Irrawaddy", "https://www.irrawaddy.com/feed", "Myanmar", "APAC"),
         _local("local-kyiv-independent", "Kyiv Independent", "https://kyivindependent.com/news-archive/rss/", "Ukraine", "Russia & Ukraine"),
         _local("local-ukrainska-pravda", "Ukrainska Pravda", "https://www.pravda.com.ua/eng/rss/", "Ukraine", "Russia & Ukraine"),
-        _local("local-meduza", "Meduza", "https://meduza.io/rss/en/all", "Russia", "Russia & Ukraine"),
+        {"id": "local-meduza", "name": "Meduza", "region": "Russia, Central Asia and the Caucasus",
+         "category": "Security", "url": "https://meduza.io/rss/en/all", "parser": "security-rss",
+         "default_country": "Russia", "language": "en", "source_tier": "National outlet", "limit": 6},
+        {"id": "meduza-ru", "name": "Meduza", "region": "Russia, Central Asia and the Caucasus",
+         "category": "Security", "url": "https://meduza.io/rss/all", "parser": "security-rss",
+         "default_country": "Russia", "language": "ru", "source_tier": "National outlet", "limit": 6},
         _local("local-moscow-times", "The Moscow Times", "https://www.themoscowtimes.com/rss/news", "Russia", "Russia & Ukraine"),
         _local("local-times-of-israel", "Times of Israel", "https://www.timesofisrael.com/feed/", "Israel", "Middle East"),
         _local("local-972", "+972 Magazine", "https://www.972mag.com/feed/", "Israel", "Middle East"),
@@ -1992,9 +2074,13 @@ def _catalogue_feeds() -> list[dict]:
          "url": "https://t.me/s/DeepStateUA", "parser": "telegram", "channel": "DeepStateUA",
          "default_country": "Ukraine", "source_tier": "OSINT", "limit": 8},
         {"id": "tg-air-alert-ua", "name": "Ukrainian air-raid alerts", "region": "Russia & Ukraine",
-         "category": "Security", "url": "https://t.me/s/air_alert_ua", "parser": "telegram",
-         "channel": "air_alert_ua", "default_country": "Ukraine", "source_tier": "Official",
-         "keep_all": True, "limit": 8},
+         "category": "Security", "url": "https://t.me/s/air_alert_ua", "parser": "ukraine-air",
+         "channel": "air_alert_ua", "default_country": "Ukraine", "language": "uk",
+         "source_tier": "Official", "limit": 8},
+        {"id": "tg-povitryana", "name": "Карта повітряних тривог", "region": "Russia & Ukraine",
+         "category": "Security", "url": "https://t.me/s/povitryanatrivogaaa", "parser": "ukraine-air",
+         "channel": "povitryanatrivogaaa", "default_country": "Ukraine", "language": "uk",
+         "source_tier": "Ukraine air-alert aggregator / Social-unverified", "limit": 8},
         {"id": "tg-astra", "name": "ASTRA", "region": "Russia & Ukraine", "category": "Security",
          "url": "https://t.me/s/astrapress", "parser": "telegram", "channel": "astrapress",
          "default_country": "Russia", "source_tier": "Wire / Local Outlet", "limit": 8},
@@ -2129,6 +2215,7 @@ PARSERS = {
     "copernicus": parse_copernicus,
     "bluesky": parse_bluesky,
     "telegram": parse_telegram_preview,
+    "ukraine-air": parse_ukraine_air,
     "ashara": parse_ashara,
     "sitemap-news": parse_sitemap_news,
 }
