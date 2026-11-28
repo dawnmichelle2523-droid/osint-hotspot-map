@@ -311,6 +311,22 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(events[0]["country"], "Pakistan")
         self.assertNotIn("اداکارہ", events[0]["title"])
 
+    def test_kenya_times_drops_portal_outages(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "kenya-times")
+        self.assertEqual(feed["url"], "https://thekenyatimes.com/feed/")
+        self.assertNotIn("www.", feed["url"])
+        self.assertEqual(feed["source_tier"], "Secondary national outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Protest blocks a road in Nairobi</title><description>Police were on the street.</description>
+          <link>https://thekenyatimes.com/protest</link></item>
+          <item><title>NTSA portal disruption</title><description>The online service is down.</description>
+          <link>https://thekenyatimes.com/ntsa</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Nairobi", events[0]["title"])
+        self.assertNotIn("NTSA", events[0]["title"])
+
 
 if __name__ == "__main__":
     unittest.main()

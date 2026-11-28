@@ -514,6 +514,15 @@ class ApiOutputTests(unittest.TestCase):
         self.assertEqual(outlet["confidence_tier"], "corroborated")
         self.assertGreaterEqual(outlet["corroboration_count"], 2)
 
+    def test_kenya_times_scores_below_the_standard(self):
+        standard = scoring.score_incidents([
+            incident(source_name="The Standard", source_tier="National outlet", country="Kenya", lat=-1.29, lng=36.82),
+        ])[0]
+        newer = scoring.score_incidents([
+            incident(source_name="The Kenya Times", source_tier="Secondary national outlet", country="Kenya", lat=-1.29, lng=36.82),
+        ])[0]
+        self.assertLess(newer["confidence_score"], standard["confidence_score"])
+
 
 if __name__ == "__main__":
     unittest.main()

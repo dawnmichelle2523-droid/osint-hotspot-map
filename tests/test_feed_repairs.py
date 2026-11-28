@@ -120,6 +120,14 @@ class XGateTests(unittest.TestCase):
         self.assertEqual(precision, "Regional / Country")
         self.assertIn("Dhori", placed["location_name"])
         self.assertAlmostEqual(lat, 32.33, places=2)
+        self.assertIn("thekenyatimes", handles)
+        self.assertEqual(serve_map.source_tier_for("x", "thekenyatimes", ""), "Secondary national outlet")
+        self.assertEqual(
+            serve_map.source_tier_for("rss", "The Standard", "https://www.standardmedia.co.ke/rss/kenya.php"),
+            "National outlet",
+        )
+        self.assertTrue(serve_map.keep_x_post("thekenyatimes", "Protest in Nairobi"))
+        self.assertFalse(serve_map.keep_x_post("thekenyatimes", "A gallery opens in Paris"))
 
     def test_pakistan_motorways_stay_regional(self):
         cases = {

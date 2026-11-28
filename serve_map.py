@@ -274,7 +274,7 @@ _X_HANDLE_GROUPS = [
         "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
         "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
         "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
-        "DailyQudrat", "sargodhapolice",
+        "DailyQudrat", "sargodhapolice", "thekenyatimes",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -1353,6 +1353,7 @@ _SHAHID_HANDLES = {"shahidhussainjm"}
 _RIZWAN_HANDLES = {"rizwanghilzai"}
 _SHAHERYAR_HANDLES = {"shaheryarhassan"}
 _STANDARD_KENYA = {"standardkenya"}
+_KENYA_TIMES = {"thekenyatimes"}
 _KHIT_HANDLES = {"khitrafficpol"}
 _HALAB_HANDLES = {"halabtodaytv"}
 _DAILY_QUDRAT = {"dailyqudrat"}
@@ -1385,6 +1386,8 @@ def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
         return "National/regional outlet"
     if _token_named(tokens, _STANDARD_KENYA) or "standardmedia.co.ke" in raw:
         return "National outlet"
+    if _token_named(tokens, _KENYA_TIMES) or "thekenyatimes.com" in raw:
+        return "Secondary national outlet"
     if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
         return "National/regional outlet / pro-government (post-2024)"
     if _token_named(tokens, _RUDAW_ARABIC):
@@ -2881,7 +2884,7 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in _DAILY_QUDRAT and mentions_pakistan(text):
         return True
-    if lowered in _STANDARD_KENYA and mentions_kenya(text):
+    if lowered in (_STANDARD_KENYA | _KENYA_TIMES) and mentions_kenya(text):
         return True
     if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
         return True

@@ -170,6 +170,7 @@ def score_incidents(incidents: list) -> list:
             )),
             "text": " ".join(str(view.get(key) or "") for key in ("title", "summary", "original_text")),
             "identity": _identity_blob(view),
+            "source_tier": " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()),
         })
 
     neighbor_keys: list[dict[str, str]] = []
@@ -200,7 +201,7 @@ def score_incidents(incidents: list) -> list:
                 names = [item["display"]]
         item["target"]["confidence_tier"] = tier
         item["target"]["confidence_label"] = LABELS[tier]
-        item["target"]["confidence_score"] = _score(tier, count, item["placed"])
+        item["target"]["confidence_score"] = _score(tier, count, item["placed"], item.get("source_tier") or "")
         item["target"]["corroborating_sources"] = names
         item["target"]["corroboration_count"] = count
     return incidents
@@ -487,7 +488,7 @@ def _unique_names(sources: dict[str, str]) -> list[str]:
     return names
 
 
-def _score(tier: str, count: int, placed: bool) -> int:
+def _score(tier: str, count: int, placed: bool, source_tier: str = "") -> int:
     if tier == TIER_OFFICIAL:
         value = 92 + 2 * max(0, count - 1)
     elif tier == TIER_CORROBORATED:
@@ -495,6 +496,9 @@ def _score(tier: str, count: int, placed: bool) -> int:
         value = min(88, 62 + 8 * max(0, count - 2))
     else:
         value = 36 if placed else 24
+    # A newer digital outlet sits below an established national outlet such as The Standard.
+    if "secondary national" in source_tier.casefold():
+        value -= 8
     return max(0, min(100, int(value)))
 
 

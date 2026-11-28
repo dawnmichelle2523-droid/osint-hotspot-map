@@ -1196,6 +1196,15 @@ def parse_deepstate(feed: dict, content: bytes) -> list[dict]:
     )]
 
 
+_KENYA_TIMES_RE = re.compile(
+    r"protest|security|transport|strike|attack|blast|shooting|stabbing|clash|road|"
+    r"unrest|police|terror|explosion|riot|highway",
+    re.IGNORECASE,
+)
+_PORTAL_OUTAGE_RE = re.compile(
+    r"portal|website|online service|e-service|system down|ntsa",
+    re.IGNORECASE,
+)
 _QUDRAT_RE = re.compile(
     r"protest|security|transport|road|motorway|strike|attack|blast|police|closure|curfew|"
     r"احتجاج|مظاہر|دھرن|سیکیورٹی|ٹریفک|موٹروے|حملہ|دھماک|پولیس|کرفیو",
@@ -1563,6 +1572,10 @@ def parse_security_rss(feed: dict, content: bytes) -> list[dict]:
         profile = feed.get("keyword_profile")
         if profile == "qudrat":
             matched = _QUDRAT_RE.search(blob) is not None
+        elif profile == "kenya-times":
+            if _PORTAL_OUTAGE_RE.search(blob):
+                continue
+            matched = _KENYA_TIMES_RE.search(blob) is not None
         else:
             matched = SECURITY_RE.search(blob) is not None or (
                 bool(feed.get("tag_transport")) and _TRANSPORT_RE.search(blob) is not None
@@ -2161,6 +2174,11 @@ def _catalogue_feeds() -> list[dict]:
          "url": "https://www.theyeshivaworld.com/feed", "parser": "security-rss",
          "default_country": "Israel", "language": "en", "source_tier": "Local outlet", "limit": 6},
         # Articles return 200. /rss and /feed are 404, and /rss.xml and the sitemap paths return the homepage HTML.
+        # www.thekenyatimes.com returns HTTP 403. The bare host serves the RSS.
+        {"id": "kenya-times", "name": "The Kenya Times", "region": "Africa", "category": "Security",
+         "url": "https://thekenyatimes.com/feed/", "parser": "security-rss",
+         "default_country": "Kenya", "language": "en", "source_tier": "Secondary national outlet",
+         "keyword_profile": "kenya-times", "limit": 6},
         {"id": "daily-qudrat", "name": "Daily Qudrat", "region": "South Asia", "category": "Security",
          "url": "https://dailyqudrat.pk/feed/", "parser": "security-rss",
          "default_country": "Pakistan", "language": "ur", "source_tier": "National/regional outlet",
