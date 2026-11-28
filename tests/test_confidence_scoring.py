@@ -221,6 +221,33 @@ class CorroborationTests(unittest.TestCase):
         self.assertEqual(feature["properties"]["confidence_tier"], "unverified")
         self.assertEqual(feature["properties"]["confidence_score"], 36)
 
+    def test_al_arabiya_does_not_corroborate_al_hadath(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Al Arabiya",
+                source="https://english.alarabiya.net/story",
+                source_tier="Regional broadcaster / Saudi state-aligned",
+                title="Airstrike near the port",
+                summary="Airstrike near the port",
+                country="Yemen",
+                lat=12.8,
+                lng=45.0,
+            ),
+            incident(
+                source_name="Alhadath_Brk",
+                source="https://x.com/Alhadath_Brk/status/9",
+                source_tier="Established national / breaking news",
+                title="Airstrike near the port",
+                summary="Airstrike near the port",
+                country="Yemen",
+                lat=12.8,
+                lng=45.0,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
 
 class ApiOutputTests(unittest.TestCase):
     def setUp(self):
@@ -377,6 +404,210 @@ class ApiOutputTests(unittest.TestCase):
         blob = json.dumps(digest)
         self.assertIn("Confidence: Official Advisory", blob)
         self.assertIn("Confidence: Multi-Source Corroborated", blob)
+
+    def test_partisan_accounts_do_not_corroborate_each_other(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Ashara Media",
+                source="https://t.me/ashara_media/42",
+                source_tier="partisan (pro-Fano) / Social-unverified",
+                title="Security incident in Amhara",
+                summary="Security incident in Amhara",
+                country="Ethiopia",
+                lat=11.6,
+                lng=37.4,
+            ),
+            incident(
+                source_name="AAA_Amhara",
+                source="https://x.com/AAA_Amhara/status/1",
+                source_tier="Social-unverified / partisan",
+                title="Security incident in Amhara",
+                summary="Security incident in Amhara",
+                country="Ethiopia",
+                lat=11.6,
+                lng=37.4,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
+    def test_pro_ua_accounts_do_not_corroborate_each_other(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source="https://t.me/exilenova_plus/35393",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Tula",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="AMK Mapping",
+                source="https://t.me/AMK_Mapping/41266",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Tula",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+
+    def test_same_video_repost_is_not_an_independent_source(self):
+        clip = "https://t.me/exilenova_plus/35393"
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source=clip,
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="Video of a strike on the Efremov synthetic rubber plant",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="Reuters",
+                source="https://www.reuters.com/world/efremov",
+                title="Video shows a strike on a rubber plant",
+                summary="The clip was first posted at " + clip,
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        reuters = next(item for item in scored if item["source_name"] == "Reuters")
+        self.assertEqual(reuters["confidence_tier"], "unverified")
+        self.assertEqual(reuters["corroboration_count"], 1)
+
+    def test_an_outlet_that_does_not_repost_the_clip_still_corroborates(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="Exilenova+",
+                source="https://t.me/exilenova_plus/35393",
+                source_tier="Social-unverified / partisan (pro-UA)",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Efremov",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+            ),
+            incident(
+                source_name="Operative Information Center",
+                source="https://operativmm.az/en/story",
+                source_tier="National outlet",
+                title="Drone strike on the Efremov plant",
+                summary="A drone strike hit the synthetic rubber plant in Efremov",
+                country="Russia",
+                lat=53.15,
+                lng=38.08,
+                timestamp=LATER,
+            ),
+        ])
+        outlet = next(item for item in scored if item["source_name"] == "Operative Information Center")
+        self.assertEqual(outlet["confidence_tier"], "corroborated")
+        self.assertGreaterEqual(outlet["corroboration_count"], 2)
+
+    def test_kenya_times_scores_below_the_standard(self):
+        standard = scoring.score_incidents([
+            incident(source_name="The Standard", source_tier="National outlet", country="Kenya", lat=-1.29, lng=36.82),
+        ])[0]
+        newer = scoring.score_incidents([
+            incident(source_name="The Kenya Times", source_tier="Secondary national outlet", country="Kenya", lat=-1.29, lng=36.82),
+        ])[0]
+        self.assertLess(newer["confidence_score"], standard["confidence_score"])
+
+    def test_yaffa_repost_of_quds_is_not_a_second_source(self):
+        scored = scoring.score_incidents([
+            incident(
+                source_name="qudsn",
+                source="https://qudsn.co/post/1",
+                source_tier="partisan (Hamas-leaning)",
+                title="Drone strike on al-Shati camp",
+                summary="A drone strike killed 3. Cited source: al-Shifa Medical Complex.",
+                country="Palestine",
+                lat=31.531,
+                lng=34.445,
+                timestamp="2026-11-26T01:00:00Z",
+            ),
+            incident(
+                source_name="yaffa_ps",
+                source="https://x.com/yaffa_ps/status/1",
+                source_tier="Social-unverified/partisan",
+                title="Drone strike on al-Shati camp",
+                summary="A drone strike killed 3. Cited source: al-Shifa Medical Complex.",
+                country="Palestine",
+                lat=31.531,
+                lng=34.445,
+                timestamp="2026-11-26T01:00:30Z",
+            ),
+        ])
+        self.assertTrue(all(item["confidence_tier"] == "unverified" for item in scored))
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
+    def test_sawt_beirut_needs_an_independent_source(self):
+        shelling = dict(
+            title="Israeli shelling in Hadatha",
+            summary="Israeli shelling hit Hadatha in south Lebanon",
+            country="Lebanon",
+            lat=33.17,
+            lng=35.38,
+            timestamp="2026-11-26T12:00:00Z",
+        )
+        alone = scoring.score_incidents([
+            incident(source_name="Sawt Beirut International", source_tier="partisan (sovereigntist/anti-Hezbollah lean)", **shelling),
+            incident(
+                source_name="yaffa_ps",
+                source_tier="Social-unverified/partisan",
+                source="https://x.com/yaffa_ps/status/9",
+                timestamp="2026-11-26T12:05:00Z",
+                **{k: v for k, v in shelling.items() if k != "timestamp"},
+            ),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in alone))
+        paired = scoring.score_incidents([
+            incident(source_name="Sawt Beirut International", source_tier="partisan (sovereigntist/anti-Hezbollah lean)", **shelling),
+            incident(
+                source_name="Reuters",
+                source="https://www.reuters.com/world/hadatha",
+                source_tier="Wire / Outlet",
+                timestamp="2026-11-26T13:00:00Z",
+                **{k: v for k, v in shelling.items() if k != "timestamp"},
+            ),
+        ])
+        reuters = next(item for item in paired if item["source_name"] == "Reuters")
+        self.assertEqual(reuters["confidence_tier"], "corroborated")
+        self.assertGreaterEqual(reuters["corroboration_count"], 2)
+
+    def test_shifa_kofiya_and_local_reports_are_one_attribution(self):
+        shared = dict(country="Palestine", lat=31.52, lng=34.45, timestamp="2026-11-26T12:00:00Z", category="Conflict")
+        scored = scoring.score_incidents([
+            incident(source_name="Drop Site News", title="Local reports of a strike", summary="Local reports said a strike hit Gaza.", source="https://www.dropsitenews.com/a", **shared),
+            incident(source_name="An-Nahar", title="Al-Kofiya on a strike", summary="Al-Kofiya said a strike hit Gaza.", source="https://www.annahar.com/a", timestamp="2026-11-26T12:10:00Z", country="Palestine", lat=31.52, lng=34.45, category="Conflict"),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
+
+    def test_coalition_and_houthi_claims_do_not_corroborate(self):
+        shared = dict(
+            title="Drones intercepted over the Eastern Province",
+            summary="Missiles and drones were reported over the Eastern Province",
+            country="Saudi Arabia",
+            lat=26.42,
+            lng=50.09,
+            category="Conflict",
+            timestamp="2026-11-26T12:00:00Z",
+        )
+        scored = scoring.score_incidents([
+            incident(source_name="CJFCSpox", source_tier="Party claim", source="https://x.com/CJFCSpox/status/1", **shared),
+            incident(source_name="Yah_Saree", source_tier="Party claim", source="https://x.com/Yah_Saree/status/2", timestamp="2026-11-26T12:20:00Z", title=shared["title"], summary=shared["summary"], country="Saudi Arabia", lat=26.42, lng=50.09, category="Conflict"),
+        ])
+        self.assertTrue(all(item["corroboration_count"] == 1 for item in scored))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,28 @@
 {
   "batches": {
     "mandatory_and_maritime": ["moi_bahrain", "BDF_Bahrain", "kuwaitarmyghq", "MOInformation", "MOFAQatar_EN", "UK_MTO", "Alsakaniali", "_MartinKelly_", "CENTCOM", "CENTCOMFarsi"],
-    "official_primary": ["IDF", "IDFSpokesperson", "AvichayAdraee", "CJFCSpox", "SaudiDCD", "Reuters", "AP", "AFP", "NNALeb", "IRIMFA_SPOX"]
+    "official_primary": ["IDF", "IDFSpokesperson", "AvichayAdraee", "SaudiDCD", "Reuters", "AP", "AFP", "NNALeb", "IRIMFA_SPOX"],
+    "belligerent_claims": ["CJFCSpox", "Yah_Saree", "MMY1444"],
+    "established_breaking": ["Alhadath_Brk"],
+    "alarabiya": ["AlArabiya", "AlArabiya_Eng"],
+    "ethiopia_amhara": ["AmharaWarUpdate", "AAA_Amhara"],
+    "horn_osint": ["AfriMEOSINT"],
+    "somalia_local": ["BaidoaOnline"],
+    "pakistan_highways": ["NHMPofficial"],
+    "pro_ua_partisan": ["Exilenova_plus", "AMK_Mapping_"],
+    "ywn": ["YWNReporter"],
+    "rudaw_arabic": ["rudaw_arabic"],
+    "sindh_reporter": ["ShahidHussainJM"],
+    "daily_qudrat": ["DailyQudrat"],
+    "sargodha_police": ["sargodhapolice"],
+    "kenya_times": ["thekenyatimes"],
+    "gaza_partisan": ["qudsn", "yaffa_ps"],
+    "aljadeed": ["ALJADEEDNEWS"],
+    "sawt_beirut": ["SawtBeirut"],
+    "mezopotamya": ["mezopotamyatrk4"],
+    "gaza_outlets": ["DropSiteNews", "Annahar"],
+    "kathimerini": ["ekathimerini"],
+    "tv24": ["24tvua"]
   },
   "excluded_handles": ["SEPAH_NEWS1", "yahya_saree", "Tasnimnews_EN", "irantimes72"],
   "website_only_checks_note": ["https://mofa.go.jp (Japan MOFA anzen - no X account)"]

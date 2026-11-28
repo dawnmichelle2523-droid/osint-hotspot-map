@@ -82,6 +82,422 @@ class GlobalFeedParserTests(unittest.TestCase):
         self.assertEqual(status["DeepStateMap Snapshot"], "offline")
         self.assertIn(status["USGS Earthquakes M4.5+"], {"active", "unchecked"})
 
+    def test_7sur7_stays_disabled_because_it_has_no_rss(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "7sur7")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["source_tier"], "National outlet")
+        self.assertEqual(feed["language"], "French")
+        self.assertEqual(feed["default_country"], "Democratic Republic of the Congo")
+        self.assertEqual(feed["parser"], "")
+        result = gf._fetch_feed(feed, [{"id": "old"}])
+        self.assertEqual(result["status"], "disabled")
+        self.assertEqual(result["error"], "no RSS available")
+        self.assertEqual(result["events"], [])
+        status = {item["source_name"]: item for item in gf.status_rows()}
+        self.assertEqual(status["7sur7.cd"]["status"], "disabled")
+        self.assertEqual(status["7sur7.cd"]["last_error"], "no RSS available")
+
+    def test_ashara_keeps_place_and_drops_personal_names(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "tg-ashara")
+        self.assertEqual(feed["language"], "am")
+        self.assertEqual(feed["source_tier"], "partisan (pro-Fano) / Social-unverified")
+        self.assertTrue(feed["low_yield"])
+        self.assertIn("Amharic", feed["yield_note"])
+        self.assertNotIn("ENABLE_X", feed["url"])
+        page = """
+        <div class="tgme_widget_message" data-post="ashara_media/42">
+          <div class="tgme_widget_message_text">Defectors: Abebe Bekele, Chaltu Tesfaye. Fighting in Amhara.</div>
+          <time datetime="2026-11-27T12:00:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="ashara_media/43">
+          <div class="tgme_widget_message_text">አበበ በቀለ እና ጫልቱ ተስፋዬ ከአፋር</div>
+          <time datetime="2026-11-27T13:00:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_ashara(feed, page.encode())
+        self.assertEqual(len(events), 2)
+        blob = json.dumps(events)
+        self.assertNotIn("Abebe", blob)
+        self.assertNotIn("Bekele", blob)
+        self.assertNotIn("Chaltu", blob)
+        self.assertNotIn("Tesfaye", blob)
+        self.assertNotIn("አበበ", blob)
+        self.assertNotIn("በቀለ", blob)
+        self.assertEqual(events[0]["location_name"], "Amhara")
+        self.assertEqual(events[0]["country"], "Ethiopia")
+        self.assertEqual(events[0]["source_tier"], "partisan (pro-Fano) / Social-unverified")
+        self.assertEqual(events[0]["original_text"] if "original_text" in events[0] else "", "")
+        self.assertIn("Amhara", events[0]["summary"])
+        self.assertEqual(events[1]["location_name"], "Afar")
+        self.assertNotIn("አበበ", events[1]["summary"])
+
+    def test_ahram_is_kept_for_a_quiet_block_and_imb_is_public(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        ahram = feeds["ahram"]
+        self.assertEqual(ahram["source_tier"], "State Media")
+        self.assertEqual(ahram["default_country"], "Egypt")
+        self.assertIn(403, ahram["quiet_http"])
+        self.assertIn("Rss.aspx", ahram["url"])
+        imb = feeds["imb-prc"]
+        self.assertEqual(imb["url"], "https://icc-ccs.org/feed/")
+        self.assertEqual(imb["source_tier"], "Official")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Eight sailors kidnapped off Somalia</title>
+          <description>Pirates seized the crew in the Gulf of Aden.</description>
+          <link>https://icc-ccs.org/example</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(imb, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Somalia", events[0]["title"])
+        self.assertEqual(events[0]["source_tier"], "Official")
+        arab = [item for item in gf._feeds() if item["id"].startswith("alarabiya-")]
+        self.assertEqual(len(arab), 2)
+        self.assertTrue(all(403 in item["quiet_http"] for item in arab))
+        self.assertTrue(all(item["source_tier"] == "Regional broadcaster / Saudi state-aligned" for item in arab))
+
+    def test_baidoa_sitemap_keeps_recent_security_urls_only(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "baidoa-sitemap")
+        self.assertEqual(feed["source_tier"], "Local outlet")
+        self.assertEqual(feed["default_country"], "Somalia")
+        recent = "2026-11-27T08:00:00.000Z"
+        old = "2026-06-27T09:25:46.674Z"
+        xml = f"""<?xml version="1.0"?><urlset>
+          <url><loc>https://www.baidoaonline.com/about</loc><lastmod>{recent}</lastmod></url>
+          <url><loc>https://www.baidoaonline.com/news/clan-fighting-erupts-in-galmudug</loc><lastmod>{recent}</lastmod></url>
+          <url><loc>https://www.baidoaonline.com/news/armed-fighters-attack-a-base</loc><lastmod>{old}</lastmod></url>
+        </urlset>"""
+        events = gf.parse_sitemap_news(feed, xml.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Galmudug", events[0]["title"])
+        self.assertEqual(events[0]["country"], "Somalia")
+        self.assertEqual(events[0]["source_tier"], "Local outlet")
+
+    def test_nasha_niva_sections_are_rss_and_tagged_belarus(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        for section_id in ("611", "584", "615", "706"):
+            feed = feeds["nashaniva-" + section_id]
+            self.assertEqual(feed["source_tier"], "National outlet")
+            self.assertEqual(feed["default_country"], "Belarus")
+            self.assertEqual(feed["language"], "be")
+            self.assertTrue(feed["url"].endswith("/rss-ca/" + section_id + "/"))
+        empty = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel>
+          <title>Nasha Niva</title><link>https://nashaniva.com/</link><language>be</language>
+        </channel></rss>"""
+        self.assertEqual(gf.parse_placed_rss(feeds["nashaniva-706"], empty), [])
+        item = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel>
+          <item><title>Explosion in Minsk</title><description>A blast was reported.</description>
+          <link>https://nashaniva.com/example</link></item>
+        </channel></rss>"""
+        events = gf.parse_placed_rss(feeds["nashaniva-611"], item)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Belarus")
+        self.assertEqual(events[0]["source_tier"], "National outlet")
+
+    def test_meduza_keeps_both_languages_once(self):
+        meduza = [item for item in gf._feeds() if str(item.get("url") or "").startswith("https://meduza.io/rss/")]
+        urls = sorted(item["url"] for item in meduza)
+        self.assertEqual(urls, ["https://meduza.io/rss/all", "https://meduza.io/rss/en/all"])
+        self.assertTrue(all(item["source_tier"] == "National outlet" for item in meduza))
+        self.assertTrue(all(item["region"] == "Russia, Central Asia and the Caucasus" for item in meduza))
+        self.assertEqual(len(meduza), 2)
+
+    def test_air_alerts_keep_one_explosion_per_oblast(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertNotEqual(feeds["tg-air-alert-ua"]["channel"], feeds["tg-povitryana"]["channel"])
+        self.assertEqual(feeds["tg-povitryana"]["source_tier"], "Ukraine air-alert aggregator / Social-unverified")
+        page = """
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/1">
+          <div class="tgme_widget_message_text">✈️ Харківщина: →Лозова/р-н.</div>
+          <time datetime="2026-11-27T23:40:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/2">
+          <div class="tgme_widget_message_text">💥 Лозова (Харківщина) - вибухи</div>
+          <time datetime="2026-11-27T23:43:00+00:00"></time>
+        </div>
+        <div class="tgme_widget_message" data-post="povitryanatrivogaaa/3">
+          <div class="tgme_widget_message_text">💥 Харків - вибухи</div>
+          <time datetime="2026-11-27T23:44:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_ukraine_air(feeds["tg-povitryana"], page.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["location_name"], "Kharkiv oblast")
+        self.assertNotIn("Лозова", events[0]["summary"])
+        other = page.replace("povitryanatrivogaaa", "air_alert_ua")
+        again = gf.parse_ukraine_air(feeds["tg-air-alert-ua"], other.encode())
+        self.assertEqual(again[0]["id"], events[0]["id"])
+
+    def test_efremov_sources_and_operative_english_feed(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        exile = feeds["tg-exilenova-plus"]
+        amk = feeds["tg-amk-mapping"]
+        self.assertEqual(exile["url"], "https://t.me/s/exilenova_plus")
+        self.assertEqual(exile["source_tier"], "Social-unverified / partisan (pro-UA)")
+        self.assertEqual(exile["language"], "uk")
+        self.assertEqual(amk["url"], "https://t.me/s/AMK_Mapping")
+        self.assertEqual(amk["source_tier"], "Social-unverified / partisan (pro-UA)")
+        operative = feeds["operative-en"]
+        self.assertEqual(operative["url"], "https://operativmm.az/en/rss")
+        self.assertEqual(operative["source_tier"], "National outlet")
+        self.assertEqual(operative["default_country"], "Azerbaijan")
+        self.assertIn("Caucasus", operative["region"])
+        page = """
+        <div class="tgme_widget_message" data-post="exilenova_plus/35393">
+          <div class="tgme_widget_message_text">Drone strike on the Efremov synthetic rubber plant in Tula Oblast.</div>
+          <time datetime="2026-11-26T23:18:00+00:00"></time>
+        </div>
+        """
+        events = gf.parse_telegram_preview(exile, page.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Russia")
+        self.assertEqual(events[0]["location_name"], "Efremov")
+        self.assertEqual(events[0]["source_tier"], "Social-unverified / partisan (pro-UA)")
+
+    def test_turkey_ukraine_israel_and_lebanon_catalogue(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertEqual(feeds["wire-anadolu"]["url"], "https://www.aa.com.tr/en/rss/default?cat=guncel")
+        self.assertEqual(feeds["wire-anadolu-tr"]["url"], "https://www.aa.com.tr/tr/rss/default?cat=guncel")
+        self.assertEqual(feeds["bbc-turkce"]["source_tier"], "Established national")
+        self.assertEqual(feeds["bianet-tr"]["language"], "tr")
+        self.assertEqual(feeds["bianet-en"]["language"], "en")
+        self.assertIn(403, feeds["haberdairesi"]["quiet_http"])
+        self.assertEqual(feeds["haberdairesi"]["source_tier"], "Local outlet")
+        self.assertNotIn("dha", feeds)
+        self.assertNotIn("iha", feeds)
+        self.assertTrue(feeds["korrespondent-all"]["url"].endswith("/all_news2.0.xml"))
+        self.assertEqual(feeds["korrespondent-kyiv"]["source_tier"], "National outlet")
+        self.assertNotIn("korrespondent-zaporozhye", feeds)
+        self.assertNotIn("inform-zp-ru", feeds)
+        inform = feeds["inform-zp"]
+        self.assertEqual(inform["url"], "https://www.inform.zp.ua/feed/")
+        self.assertEqual(inform["source_tier"], "Local outlet")
+        self.assertTrue(inform["tag_transport"])
+        rss = """<?xml version="1.0"?><rss><channel><item>
+          <title>У Запоріжжі перекрили дорогу біля ДніпроГЕС</title>
+          <description>The DniproHES dam road is closed.</description>
+          <link>https://www.inform.zp.ua/example</link></item></channel></rss>"""
+        events = gf.parse_security_rss(inform, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["feed_category"], "Travel / transport disruption")
+        self.assertEqual(events[0]["country"], "Ukraine")
+        self.assertEqual(feeds["ywn"]["url"], "https://www.theyeshivaworld.com/feed")
+        self.assertEqual(feeds["ywn"]["region"], "Israel and the United States")
+        self.assertTrue(feeds["transparency-news"]["disabled"])
+        self.assertEqual(feeds["transparency-news"]["reason"], "no RSS available")
+        self.assertNotIn("nna-leb", feeds)
+        self.assertTrue(any(item["id"] == "lorient-today" for item in gf._feeds()))
+        airport = """<?xml version="1.0"?><rss><channel><item>
+          <title>Protest at Ben Gurion Airport</title>
+          <description>Haredi protesters blocked a road.</description>
+          <link>https://www.theyeshivaworld.com/example</link></item></channel></rss>"""
+        pinned = gf.parse_security_rss(feeds["ywn"], airport.encode())
+        self.assertEqual(pinned[0]["location_name"], "Ben Gurion Airport")
+        self.assertEqual(pinned[0]["country"], "Israel")
+
+    def test_daily_qudrat_keeps_protest_and_drops_lifestyle(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "daily-qudrat")
+        self.assertEqual(feed["url"], "https://dailyqudrat.pk/feed/")
+        self.assertEqual(feed["language"], "ur")
+        self.assertEqual(feed["source_tier"], "National/regional outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>سرگودھا میں احتجاج</title><description>سڑک بند</description>
+          <link>https://dailyqudrat.pk/protest</link></item>
+          <item><title>فلمی تقریب</title><description>مشہور اداکارہ</description>
+          <link>https://dailyqudrat.pk/film</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["country"], "Pakistan")
+        self.assertNotIn("اداکارہ", events[0]["title"])
+
+    def test_kenya_times_drops_portal_outages(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "kenya-times")
+        self.assertEqual(feed["url"], "https://thekenyatimes.com/feed/")
+        self.assertNotIn("www.", feed["url"])
+        self.assertEqual(feed["source_tier"], "Secondary national outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Protest blocks a road in Nairobi</title><description>Police were on the street.</description>
+          <link>https://thekenyatimes.com/protest</link></item>
+          <item><title>NTSA portal disruption</title><description>The online service is down.</description>
+          <link>https://thekenyatimes.com/ntsa</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertIn("Nairobi", events[0]["title"])
+        self.assertNotIn("NTSA", events[0]["title"])
+
+    def test_quds_records_a_hospital_citation_and_yaffa_is_x_only(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        quds = feeds["quds"]
+        self.assertEqual(quds["url"], "https://qudsn.co/rss")
+        self.assertEqual(quds["source_tier"], "partisan (Hamas-leaning)")
+        self.assertEqual(quds["language"], "ar")
+        self.assertTrue(all("yaffa.ps" not in str(item.get("url") or "") for item in gf._feeds()))
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Drone strike on al-Shati camp killed 3, per مجمع الشفاء الطبي</title>
+          <description>An Israeli drone strike hit the camp.</description>
+          <link>https://qudsn.co/example</link></item>
+          <item><title>مباراة كرة قدم</title><description>نتيجة المباراة</description>
+          <link>https://qudsn.co/sport</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(quds, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["cited_source"], "al-Shifa hospital")
+        self.assertIn("Cited source: al-Shifa hospital.", events[0]["summary"])
+        self.assertEqual(events[0]["location_name"], "al-Shati camp")
+        self.assertEqual(events[0]["country"], "Palestine")
+
+    def test_lbua_keeps_one_feed_and_records_officials(self):
+        lb = [item for item in gf._feeds() if "lb.ua" in str(item.get("url") or "")]
+        self.assertEqual([item["url"] for item in lb], ["https://lb.ua/rss/ukr/news.xml"])
+        self.assertEqual(lb[0]["language"], "uk")
+        self.assertEqual(lb[0]["source_tier"], "National outlet")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Балістичний удар по Києву</title>
+          <description>Вибухи підтвердили Повітряні сили та мер Києва.</description>
+          <link>https://lb.ua/news/kyiv-strike</link></item>
+          <item><title>Суд скасував голосування</title>
+          <description>Рішення стосується виборів.</description>
+          <link>https://lb.ua/world/court</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(lb[0], rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["cited_source"], "Ukrainian Air Force; Kyiv city officials")
+        self.assertEqual(events[0]["location_name"], "Kyiv")
+        self.assertNotIn("rss.xml", events[0]["source"])
+
+    def test_aljadeed_has_no_rss(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "aljadeed")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["language"], "ar")
+        self.assertEqual(feed["default_country"], "Lebanon")
+        self.assertEqual(feed["source_tier"], "National outlet")
+        self.assertEqual(feed["parser"], "")
+
+    def test_sawt_beirut_places_hadatha_and_stays_partisan(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "sawt-beirut")
+        self.assertEqual(feed["url"], "https://www.sawtbeirut.com/feed/")
+        self.assertEqual(feed["language"], "ar")
+        self.assertEqual(feed["default_country"], "Lebanon")
+        self.assertIn("partisan", feed["source_tier"])
+        self.assertEqual(
+            [item["url"] for item in gf._feeds() if "sawtbeirut.com" in str(item.get("url") or "")],
+            ["https://www.sawtbeirut.com/feed/"],
+        )
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>قصف إسرائيلي على حداتا</title>
+          <description>Israeli shelling hit Hadatha in south Lebanon.</description>
+          <link>https://www.sawtbeirut.com/hadatha</link></item>
+          <item><title>حفل فني في بيروت</title><description>أمسية غنائية</description>
+          <link>https://www.sawtbeirut.com/arts</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["location_name"], "Hadatha")
+        self.assertEqual(events[0]["country"], "Lebanon")
+        self.assertIn("partisan", events[0]["source_tier"])
+
+    def test_gaza_attributions_collapse_and_drop_instagram(self):
+        urls = [item["url"] for item in gf._feeds() if item.get("url") == "https://www.aljazeera.com/xml/rss/all.xml"]
+        self.assertEqual(len(urls), 1)
+        aj = next(item for item in gf._feeds() if item["id"] == "wire-aj")
+        self.assertEqual(aj["source_tier"], "Qatar state-funded")
+        drop = next(item for item in gf._feeds() if item["id"] == "drop-site")
+        self.assertEqual(drop["url"], "https://www.dropsitenews.com/feed")
+        nahar = next(item for item in gf._feeds() if item["id"] == "annahar")
+        self.assertEqual(nahar["url"], "https://www.annahar.com/rss")
+        self.assertFalse(nahar.get("disabled"))
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Local reports: Ahmad Saleh was killed. Photo: Lina Haddad</title>
+          <description>Al-Kofiya said the strike hit Gaza.</description>
+          <link>https://www.dropsitenews.com/p/example</link></item>
+          <item><title>Reel</title><description>clip</description>
+          <link>https://www.instagram.com/reel/abc</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(drop, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["cited_source"], "al-Shifa hospital")
+        blob = events[0]["title"] + events[0]["summary"]
+        self.assertNotIn("Ahmad", blob)
+        self.assertNotIn("Lina", blob)
+        self.assertNotIn("instagram", blob.lower())
+
+    def test_kathimerini_fails_quietly_and_softens_strikes(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "ekathimerini")
+        self.assertEqual(feed["url"], "https://www.ekathimerini.com/rss")
+        self.assertEqual(feed["source_tier"], "Independent national outlet")
+        self.assertIn(403, feed["quiet_http"])
+        self.assertEqual(
+            [item["url"] for item in gf._feeds() if "ekathimerini.com" in str(item.get("url") or "")],
+            ["https://www.ekathimerini.com/rss"],
+        )
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Metro strike brings Athens transport to a halt</title>
+          <description>Workers walked out across Greece.</description>
+          <link>https://www.ekathimerini.com/news/strike</link></item>
+          <item><title>Gallery opening in Athens</title><description>A new show.</description>
+          <link>https://www.ekathimerini.com/culture</link></item>
+        </channel></rss>"""
+        events = gf.parse_security_rss(feed, rss.encode())
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["feed_category"], "Civil / transport disruption")
+        self.assertEqual(events[0]["severity"], "medium")
+        self.assertEqual(events[0]["country"], "Greece")
+
+    def test_svoboda_and_24_kanal_share_odesa_strike_reports(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertEqual(feeds["svoboda"]["url"], "https://www.svoboda.org/api/zrqiteuuir")
+        self.assertEqual(feeds["svoboda"]["source_tier"], "US-govt-funded")
+        self.assertEqual(feeds["svoboda"]["language"], "ru")
+        self.assertFalse(any(item.get("url") == "https://www.svoboda.org/rss/" for item in gf._feeds()))
+        self.assertEqual(feeds["tv24"]["url"], "https://24tv.ua/rss/all.xml")
+        rss = """<?xml version="1.0"?><rss><channel>
+          <item><title>Удар по Одесі: загинули люди</title>
+          <description>Одеська ОВА та DTEK повідомили про пошкодження. Автор: Іван Петренко.</description>
+          <pubDate>Tue, 25 Nov 2026 22:00:00 GMT</pubDate>
+          <link>https://www.svoboda.org/a/odesa-1</link></item>
+        </channel></rss>"""
+        one = gf.parse_security_rss(feeds["svoboda"], rss.encode())
+        other_xml = rss.replace("svoboda.org/a/odesa-1", "24tv.ua/odesa-2").replace("Іван Петренко", "Марія Коваль")
+        two = gf.parse_security_rss(feeds["tv24"], other_xml.encode())
+        self.assertEqual(one[0]["id"], two[0]["id"])
+        self.assertEqual(one[0]["id"], "odesa-strike:2026-11-25")
+        self.assertIn("Odesa Oblast Military Administration", one[0]["cited_source"])
+        self.assertIn("DTEK", one[0]["cited_source"])
+        self.assertNotIn("Петренко", one[0]["title"] + one[0]["summary"])
+        self.assertNotIn("Коваль", two[0]["title"] + two[0]["summary"])
+
+    def test_recovery_sources_are_catalogued(self):
+        feeds = {item["id"]: item for item in gf._feeds()}
+        self.assertEqual(feeds["kyiv-independent"]["url"], "https://kyivindependent.com/news-archive/rss/")
+        self.assertEqual(feeds["kyiv-independent"]["source_tier"], "Independent national outlet")
+        self.assertTrue(feeds["kyiv-independent"]["strip_authors"])
+        self.assertEqual(feeds["unn"]["url"], "https://unn.ua/en/rss/news_en.xml")
+        self.assertEqual(feeds["malyn"]["url"], "https://malyn.media/feed/")
+        self.assertEqual(feeds["shelter"]["url"], "https://shelter.in.ua/rss.xml")
+        self.assertEqual(feeds["interfax-ru"]["url"], "https://www.interfax.ru/rss.asp")
+        self.assertEqual(feeds["interfax-ru"]["source_tier"], "Russian state-aligned")
+        self.assertEqual(feeds["protothema"]["url"], "https://www.protothema.gr/rss/news/general/")
+        self.assertEqual(feeds["newsbomb"]["source_tier"], "Aggregator")
+        self.assertEqual(feeds["tg-general-staff"]["channel"], "GeneralStaffZSU")
+        self.assertEqual(feeds["tg-general-staff"]["source_tier"], "Party claim")
+        self.assertTrue(feeds["cairo24"]["disabled"])
+        self.assertEqual(feeds["cairo24"]["reason"], "no RSS available")
+        self.assertTrue(feeds["citizen-digital"]["disabled"])
+        self.assertEqual(feeds["lorient-today"]["url"], "https://today.lorientlejour.com/rss")
+        self.assertIn(403, feeds["lorient-today"]["quiet_http"])
+
+    def test_mezopotamya_is_disabled_without_a_feed(self):
+        feed = next(item for item in gf._feeds() if item["id"] == "mezopotamya")
+        self.assertTrue(feed["disabled"])
+        self.assertEqual(feed["reason"], "no RSS available")
+        self.assertEqual(feed["parser"], "")
+        self.assertEqual(feed["language"], "tr/ku/en")
+        self.assertIn("PKK-linked", feed["source_tier"])
+        self.assertLessEqual(len(feed["source_tier"]), 80)
+
 
 if __name__ == "__main__":
     unittest.main()

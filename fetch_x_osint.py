@@ -41,6 +41,20 @@ SOURCES = ROOT / "sources.json"
 # First model, then the retry if the API rejects it.
 MODEL = "grok-4-fast-reasoning"
 BASE_URL = "https://api.x.ai/v1"
+
+
+def _flag_on(name: str) -> bool:
+    return (os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def x_feeds_enabled() -> bool:
+    """X account fetching is off until Dawn turns it on. No paid call is made by default."""
+    return _flag_on("ENABLE_X_FEEDS")
+
+
+def background_xai_enabled() -> bool:
+    """Scheduled and background model calls stay off. On-demand drafts are separate."""
+    return _flag_on("ENABLE_BACKGROUND_XAI")
 # Plain HTTP (the OpenAI client's transport) stops at 10s.
 # The xAI Responses call itself stops at 25s, with no retries.
 HTTP_TIMEOUT = 10
@@ -99,7 +113,6 @@ OFFICIAL_HANDLES = {
     "uk_mto",
     "centcom",
     "centcomfarsi",
-    "cjfcspox",
     "saudidcd",
     "ksagaca",
     "spa_eng",
@@ -156,6 +169,37 @@ OUTLET_LABELS = {
     "bbcarabic": "BBC Arabic",
     "ajenglish": "Al Jazeera English",
     "alhadath": "Al Hadath",
+    "alarabiya": "Al Arabiya",
+    "alarabiya_eng": "Al Arabiya English",
+    "alhadath_brk": "Al Hadath Breaking",
+    "amharawarupdate": "Amhara War Updates",
+    "aaa_amhara": "Amhara Association of America",
+    "afrimeosint": "AfriMEOSINT",
+    "baidoaonline": "Baidoa Online",
+    "nhmpofficial": "National Highways and Motorway Police",
+    "exilenova_plus": "Exilenova+",
+    "amk_mapping_": "AMK Mapping",
+    "ywnreporter": "YWNReporter",
+    "rudaw_arabic": "Rudaw Arabic",
+    "shahidhussainjm": "ShahidHussainJM",
+    "dailyqudrat": "Daily Qudrat",
+    "sargodhapolice": "Sargodha District Police",
+    "thekenyatimes": "The Kenya Times",
+    "qudsn": "Quds News Network",
+    "yaffa_ps": "Yaffa News Network",
+    "aljadeednews": "Al Jadeed",
+    "sawtbeirut": "Sawt Beirut International",
+    "dropsitenews": "Drop Site News",
+    "annahar": "An-Nahar",
+    "ekathimerini": "Kathimerini",
+    "24tvua": "24 Kanal",
+    "echofm_online": "Echo",
+    "cgtnenespanol": "CGTN en Español",
+    "citizentvkenya": "Citizen TV Kenya",
+    "voiceofhorn": "Voice of the Horn",
+    "cairo24_": "Cairo 24",
+    "lorienttoday": "L'Orient Today",
+    "mezopotamyatrk4": "Mezopotamya Ajansı",
     "alarabytv": "Al Araby TV",
 }
 
@@ -1023,8 +1067,113 @@ def is_primary_handle(handle: str, batches_by_handle: dict[str, str]) -> bool:
     return batches_by_handle.get(key) in OFFICIAL_BATCHES
 
 
+ESTABLISHED_BREAKING = {"alhadath_brk"}
+ESTABLISHED_BREAKING_TIER = "Established national / breaking news"
+PARTISAN_SOCIAL = {"amharawarupdate", "aaa_amhara"}
+PARTISAN_TIER = "Social-unverified / partisan"
+PRO_UA_PARTISAN = {"exilenova_plus", "amk_mapping_"}
+PRO_UA_TIER = "Social-unverified / partisan (pro-UA)"
+YWN_HANDLE = "ywnreporter"
+YWN_TIER = "Journalist / Social-unverified"
+RUDAW_ARABIC_HANDLE = "rudaw_arabic"
+RUDAW_ARABIC_TIER = "Regional outlet / Kurdish-aligned"
+SHAHID_HANDLE = "shahidhussainjm"
+SHAHID_TIER = "Social-unverified"
+DAILY_QUDRAT_HANDLE = "dailyqudrat"
+DAILY_QUDRAT_TIER = "National/regional outlet"
+SARGODHA_POLICE_HANDLE = "sargodhapolice"
+SARGODHA_POLICE_TIER = "Official Source"
+KENYA_TIMES_HANDLE = "thekenyatimes"
+KENYA_TIMES_TIER = "Secondary national outlet"
+QUDS_HANDLE = "qudsn"
+QUDS_TIER = "partisan (Hamas-leaning)"
+YAFFA_HANDLE = "yaffa_ps"
+YAFFA_TIER = "Social-unverified/partisan"
+ALJADEED_HANDLE = "aljadeednews"
+ALJADEED_TIER = "National outlet"
+SAWT_HANDLE = "sawtbeirut"
+SAWT_TIER = "partisan (sovereigntist/anti-Hezbollah lean)"
+MEZOPOTAMYA_HANDLE = "mezopotamyatrk4"
+MEZOPOTAMYA_TIER = "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)"
+OSINT_ANALYST = {"afrimeosint"}
+OSINT_ANALYST_TIER = "OSINT analyst / Social-unverified"
+LOCAL_OUTLET_X = {"baidoaonline"}
+LOCAL_OUTLET_TIER = "Local outlet"
+ALARABIYA_X = {"alarabiya", "alarabiya_eng"}
+ALARABIYA_TIER = "Regional broadcaster / Saudi state-aligned"
+NHMP_HANDLE = "nhmpofficial"
+NHMP_TIER = "Official Source"
+NHMP_CATEGORY = "Travel / transport disruption"
+# Corridor midpoints, not interchanges. M-11 is listed before M-1.
+PAKISTAN_MOTORWAYS = (
+    (re.compile(r"\bM[\s-]*11\b", re.I), "M-11 Lahore–Sialkot", 32.05, 74.35),
+    (re.compile(r"\bM[\s-]*1\b", re.I), "M-1 Islamabad–Peshawar", 33.85, 72.30),
+    (re.compile(r"\bM[\s-]*2\b", re.I), "M-2 Lahore–Islamabad", 32.60, 73.05),
+    (re.compile(r"\bM[\s-]*4\b", re.I), "M-4 Faisalabad–Multan", 30.85, 72.25),
+)
+
+
+def pakistan_motorway(text: object) -> tuple[str, float, float] | None:
+    """Regional road segment for a Pakistan motorway code, or None."""
+    sample = str(text or "")
+    for pattern, label, lat, lng in PAKISTAN_MOTORWAYS:
+        if pattern.search(sample):
+            return label, lat, lng
+    return None
+
+
 def assign_tier(handle: str, batch: str, cites_official: bool) -> str:
     key = handle.lower()
+    if key in PRO_UA_PARTISAN:
+        return PRO_UA_TIER
+    if key == YWN_HANDLE:
+        return YWN_TIER
+    if key == RUDAW_ARABIC_HANDLE:
+        return RUDAW_ARABIC_TIER
+    if key == SHAHID_HANDLE:
+        return SHAHID_TIER
+    if key == DAILY_QUDRAT_HANDLE:
+        return DAILY_QUDRAT_TIER
+    if key == SARGODHA_POLICE_HANDLE:
+        return SARGODHA_POLICE_TIER
+    if key == KENYA_TIMES_HANDLE:
+        return KENYA_TIMES_TIER
+    if key == QUDS_HANDLE:
+        return QUDS_TIER
+    if key == YAFFA_HANDLE:
+        return YAFFA_TIER
+    if key == ALJADEED_HANDLE:
+        return ALJADEED_TIER
+    if key == SAWT_HANDLE:
+        return SAWT_TIER
+    if key == MEZOPOTAMYA_HANDLE:
+        return MEZOPOTAMYA_TIER
+    if key in PARTISAN_SOCIAL:
+        return PARTISAN_TIER
+    if key in OSINT_ANALYST:
+        return OSINT_ANALYST_TIER
+    if key in LOCAL_OUTLET_X:
+        return LOCAL_OUTLET_TIER
+    if key == "ajenglish":
+        return "Qatar state-funded"
+    if key == "dropsitenews":
+        return "Independent investigative / advocacy-leaning"
+    if key == "annahar":
+        return "National outlet"
+    if key == "ekathimerini":
+        return "Independent national outlet"
+    if key == "24tvua":
+        return "National outlet"
+    if key == "cjfcspox":
+        return "Party claim"
+    if key in {"yah_saree", "mmy1444"}:
+        return "Party claim"
+    if key in ALARABIYA_X:
+        return ALARABIYA_TIER
+    if key == NHMP_HANDLE:
+        return NHMP_TIER
+    if key in ESTABLISHED_BREAKING:
+        return ESTABLISHED_BREAKING_TIER
     if batch == AGGREGATOR_BATCH or key in AGGREGATOR_HANDLES:
         return "Unverified Lead"
     if key in STATE_MEDIA:
@@ -1184,9 +1333,15 @@ def prepare_incidents(
         if require_recent and (moment < window_start or moment > window_end + timedelta(minutes=15)):
             continue
         region = normalize_region(placed.get("region")) or normalize_region(item.get("region"))
+        road = pakistan_motorway(f"{title} {summary}") if handle.lower() == NHMP_HANDLE else None
+        if road:
+            label, lat, lng = road
+            coords = (lng, lat)
+            placed["location_name"] = label
+            region = "Pakistan"
         if region is None:
             continue
-        category = normalize_category(item.get("category"), batch)
+        category = NHMP_CATEGORY if handle.lower() == NHMP_HANDLE else normalize_category(item.get("category"), batch)
         cited = clean_handle(item.get("cited_handle"))
         if cited.lower() in excluded:
             continue
@@ -1196,7 +1351,7 @@ def prepare_incidents(
             cites_named = True
             cites_primary = True
         tier = assign_tier(handle, batch, cites_named or cites_primary)
-        if tier in ("State-Affiliated / Single-Source", "Attributed"):
+        if tier in ("State-Affiliated / Single-Source", "Attributed", ESTABLISHED_BREAKING_TIER, PARTISAN_TIER, OSINT_ANALYST_TIER):
             summary = ensure_named(summary, handle, str(item.get("claimant") or ""))
         seen.add(source)
         features.append(
@@ -1517,6 +1672,9 @@ def x_prompt(batch: str, handles: list[str], excluded: list[str], start: datetim
 
 
 def main() -> None:
+    if not x_feeds_enabled():
+        print("X feeds are off. Set ENABLE_X_FEEDS=true to fetch them. No API call was made.")
+        return
     api_key = exit_if_no_key()
     sources = load_sources()
     batches = sources["batches"]

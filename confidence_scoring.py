@@ -66,7 +66,8 @@ OFFICIAL_SOURCES = (
     {"id": "ecdc", "label": "ECDC", "markers": ("ecdc",), "feeds": ("ecdc",), "prefixes": ()},
     {"id": "africa-cdc", "label": "Africa CDC", "markers": ("africa cdc",), "feeds": ("africa-cdc",), "prefixes": ()},
     {"id": "crisis-group", "label": "Crisis Group", "markers": ("crisis group", "crisisgroup"), "feeds": ("wire-icg",), "prefixes": ()},
-    {"id": "ukmto", "label": "UKMTO", "markers": ("ukmto",), "feeds": (), "prefixes": ()},
+    {"id": "ukmto", "label": "UKMTO", "markers": ("ukmto",), "feeds": ("ukmto",), "prefixes": ()},
+    {"id": "imb", "label": "IMB Piracy Reporting Centre", "markers": ("icc-ccs.org", "imb piracy"), "feeds": ("imb-prc",), "prefixes": ()},
     {"id": "cmf", "label": "Combined Maritime Forces", "markers": ("combined maritime",), "feeds": ("cmf",), "prefixes": ()},
     {"id": "faa", "label": "FAA", "markers": ("faa",), "feeds": ("faa",), "prefixes": ()},
     {"id": "cisa", "label": "CISA", "markers": ("cisa",), "feeds": ("cisa-kev", "cisa-news"), "prefixes": ("cisa-",)},
@@ -74,7 +75,15 @@ OFFICIAL_SOURCES = (
     {"id": "cert-eu", "label": "CERT-EU", "markers": ("cert-eu", "cert.europa.eu"), "feeds": ("cert-eu",), "prefixes": ()},
     {"id": "fcdo", "label": "UK FCDO", "markers": ("fcdo", "foreign-travel-advice"), "feeds": ("uk-fcdo-atom",), "prefixes": ()},
     {"id": "state-dept", "label": "US State Department", "markers": ("state department", "travel.state.gov"), "feeds": ("us-advisories", "us-advisories-rss"), "prefixes": ()},
+    {"id": "nhmp", "label": "National Highways and Motorway Police", "markers": ("nhmpofficial", "nhmp"), "feeds": (), "prefixes": ()},
+    {"id": "sargodha-police", "label": "Sargodha District Police", "markers": ("sargodhapolice",), "feeds": (), "prefixes": ()},
     {"id": "gac", "label": "Global Affairs Canada", "markers": ("global affairs canada", "travel.gc.ca"), "feeds": ("canada-advisories",), "prefixes": ()},
+    {"id": "germany-travel", "label": "German Foreign Office", "markers": ("auswaertiges-amt.de", "german foreign office"), "feeds": ("de-travel",), "prefixes": ()},
+    {"id": "smartraveller", "label": "Smartraveller", "markers": ("smartraveller",), "feeds": ("au-smartraveller",), "prefixes": ()},
+    {"id": "cdc", "label": "US CDC", "markers": ("cdc.gov", "wwwnc.cdc.gov"), "feeds": ("cdc-travel",), "prefixes": ()},
+    {"id": "copernicus", "label": "Copernicus EMS", "markers": ("copernicus",), "feeds": ("copernicus-ems",), "prefixes": ()},
+    {"id": "un-news", "label": "UN News", "markers": ("news.un.org", "un news"), "feeds": ("un-news",), "prefixes": ()},
+    {"id": "ua-air-alert", "label": "Ukrainian air-raid alerts", "markers": ("air-raid", "air_alert_ua"), "feeds": ("tg-air-alert-ua",), "prefixes": ()},
 )
 
 GENERIC_CATEGORIES = {
@@ -104,6 +113,33 @@ _STOPWORDS = {
 }
 
 _WORD = re.compile(r"[a-z0-9]{3,}")
+_MEDIA_URL = re.compile(
+    r"(?:https?://)?(?:www\.)?"
+    r"(?:"
+    r"t\.me/(?:s/)?([a-z0-9_]+)/(\d+)"
+    r"|(?:x|twitter)\.com/([a-z0-9_]+)/status/(\d+)"
+    r"|(?:youtube\.com/watch\?v=|youtu\.be/)([a-z0-9_-]{6,})"
+    r")",
+    re.IGNORECASE,
+)
+_VIA = re.compile(
+    r"\b(?:via|forwarded from|credit|quoting)\b[:\s@]*@?([a-z0-9_]{4,})",
+    re.IGNORECASE,
+)
+
+
+def media_fingerprints(text: object) -> set[str]:
+    """Shared post or video URLs. The same clip is one story, not two sources."""
+    found = set()
+    for match in _MEDIA_URL.finditer(str(text or "")):
+        telegram_channel, telegram_id, x_user, x_id, youtube = match.groups()
+        if telegram_channel and telegram_id:
+            found.add(f"tg:{telegram_channel.lower()}/{telegram_id}")
+        elif x_user and x_id:
+            found.add(f"x:{x_user.lower()}/{x_id}")
+        elif youtube:
+            found.add("yt:" + youtube.lower())
+    return found
 
 
 def score_incidents(incidents: list) -> list:
@@ -118,6 +154,8 @@ def score_incidents(incidents: list) -> list:
         prepared.append({
             "target": target,
             "official": official is not None,
+            "partisan": _is_partisan(view),
+            "mbc": _is_mbc_family(view),
             "key": key,
             "display": display,
             "coords": _coords(view),
@@ -126,6 +164,13 @@ def score_incidents(incidents: list) -> list:
             "category": _category(view),
             "keywords": _keywords(view),
             "placed": _coords(view) is not None or bool(_country(view)),
+            "clips": media_fingerprints(" ".join(
+                str(view.get(key) or "")
+                for key in ("title", "summary", "source", "source_url", "original_text")
+            )),
+            "text": " ".join(str(view.get(key) or "") for key in ("title", "summary", "original_text")),
+            "identity": _identity_blob(view),
+            "source_tier": " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()),
         })
 
     neighbor_keys: list[dict[str, str]] = []
@@ -156,7 +201,7 @@ def score_incidents(incidents: list) -> list:
                 names = [item["display"]]
         item["target"]["confidence_tier"] = tier
         item["target"]["confidence_label"] = LABELS[tier]
-        item["target"]["confidence_score"] = _score(tier, count, item["placed"])
+        item["target"]["confidence_score"] = _score(tier, count, item["placed"], item.get("source_tier") or "")
         item["target"]["corroborating_sources"] = names
         item["target"]["corroboration_count"] = count
     return incidents
@@ -356,8 +401,103 @@ def _keywords(view: dict) -> set[str]:
     return {token for token in _WORD.findall(text) if token not in _STOPWORDS}
 
 
+_MBC_MARKERS = ("alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk", "alarabiya.net")
+
+
+def _is_mbc_family(view: dict) -> bool:
+    """Al Arabiya and Al Hadath belong to one network."""
+    blob = _identity_blob(view)
+    return any(_marker_in(blob, marker) for marker in _MBC_MARKERS)
+
+
+def _is_partisan(view: dict) -> bool:
+    """Advocacy accounts do not corroborate each other."""
+    tier = " ".join(str(view.get("source_tier") or view.get("verification_tier") or "").split()).casefold()
+    if "partisan" in tier and "nonpartisan" not in tier:
+        return True
+    blob = _identity_blob(view)
+    return any(_marker_in(blob, handle) for handle in (
+        "amharawarupdate", "aaa_amhara", "ashara_media",
+        "exilenova_plus", "exilenova", "amk_mapping_", "amk_mapping",
+        "qudsn", "yaffa_ps", "sawtbeirut", "mezopotamyatrk4",
+    ))
+
+
+def _casualty_office_key(text: str) -> str:
+    """Shared key when a casualty figure is cited to a military administration."""
+    lowered = str(text or "").lower()
+    if not re.search(r"killed|dead|wounded|casualty|загиб|поран|жертв", lowered):
+        return ""
+    if not any(term in lowered for term in (
+        "ova", "ова", "military administration", "військов", "міськ",
+        "ukrainian official", "украинск", "українськ",
+    )):
+        return ""
+    if "zhytomyr" in lowered or "житомир" in lowered:
+        return "zhytomyr-ova"
+    if "kyiv" in lowered or "kiev" in lowered or "київ" in lowered or "киев" in lowered:
+        return "kyiv-city-ma"
+    if "ukrainian official" in lowered or "украинск" in lowered or "українськ" in lowered:
+        return "ukrainian-officials"
+    if any(term in lowered for term in ("odesa", "odessa", "одес")) and any(
+        term in lowered for term in ("ova", "ова", "military administration", "військов")
+    ):
+        return "odesa-ova"
+    if "dtek" in lowered or "дтек" in lowered:
+        return "dtek"
+    return "military-administration"
+
+
+def _belligerent_side(identity: str) -> str:
+    """Coalition and Houthi spokesperson claims do not confirm each other."""
+    lowered = identity.lower()
+    if "cjfcspox" in lowered:
+        return "coalition"
+    if "yah_saree" in lowered or "mmy1444" in lowered:
+        return "houthi"
+    return ""
+
+
+def _gaza_attribution_key(text: str) -> str:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "al-shifa", "al shifa", "shifa hospital", "al-kofiya", "al kofiya", "kofiya",
+        "local reports", "local report", "attributed to al-shifa",
+    )) or "الشفاء" in str(text or "") or "الكوفية" in str(text or ""):
+        return "al-shifa"
+    return ""
+
+
+def _same_official_casualty(left: str, right: str) -> bool:
+    key = _casualty_office_key(left)
+    return bool(key) and key == _casualty_office_key(right)
+
+
+def _reposts(left: dict, right: dict) -> bool:
+    """True when one item is the other's video or an explicit repost of it."""
+    if left.get("clips") and right.get("clips") and (left["clips"] & right["clips"]):
+        return True
+    identity = right.get("identity") or ""
+    for handle in _VIA.findall(left.get("text") or ""):
+        if _marker_in(identity, handle.lower()):
+            return True
+    return False
+
+
 def _corroborates(left: dict, right: dict) -> bool:
     if left["key"].startswith("anon:") or right["key"].startswith("anon:") or left["key"] == right["key"]:
+        return False
+    if _reposts(left, right) or _reposts(right, left):
+        return False
+    if left.get("partisan") and right.get("partisan"):
+        return False
+    if _same_official_casualty(left.get("text") or "", right.get("text") or ""):
+        return False
+    if _gaza_attribution_key(left.get("text") or "") and _gaza_attribution_key(left.get("text") or "") == _gaza_attribution_key(right.get("text") or ""):
+        return False
+    if _belligerent_side(left.get("identity") or "") and _belligerent_side(right.get("identity") or ""):
+        return False
+    if left.get("mbc") and right.get("mbc"):
         return False
     if left["when"] is None or right["when"] is None:
         return False
@@ -405,7 +545,7 @@ def _unique_names(sources: dict[str, str]) -> list[str]:
     return names
 
 
-def _score(tier: str, count: int, placed: bool) -> int:
+def _score(tier: str, count: int, placed: bool, source_tier: str = "") -> int:
     if tier == TIER_OFFICIAL:
         value = 92 + 2 * max(0, count - 1)
     elif tier == TIER_CORROBORATED:
@@ -413,6 +553,16 @@ def _score(tier: str, count: int, placed: bool) -> int:
         value = min(88, 62 + 8 * max(0, count - 2))
     else:
         value = 36 if placed else 24
+    # A newer digital outlet sits below an established national outlet such as The Standard.
+    folded = source_tier.casefold()
+    if "secondary national" in folded:
+        value -= 8
+    elif "independent national" in folded or "national broadcaster" in folded:
+        value += 6
+    elif "unverified aggregator" in folded:
+        value -= 16
+    elif folded == "aggregator":
+        value -= 8
     return max(0, min(100, int(value)))
 
 

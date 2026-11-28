@@ -26,16 +26,19 @@ jobs:
       - name: Fetch X incidents
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          ENABLE_X_FEEDS: ${{ vars.ENABLE_X_FEEDS }}
         run: python fetch_x_osint.py
 
       - name: Fetch web advisories
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          ENABLE_BACKGROUND_XAI: ${{ vars.ENABLE_BACKGROUND_XAI }}
         run: python fetch_web_advisories.py
 
       - name: Generate daily brief
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          ENABLE_BACKGROUND_XAI: ${{ vars.ENABLE_BACKGROUND_XAI }}
         run: python generate_brief.py
 
       - name: Commit hotspots

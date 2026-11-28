@@ -82,20 +82,18 @@ _thermal_cache: dict = {"at": 0.0, "points": None}
 ALJAZEERA_ALL_FEED = "https://www.aljazeera.com/xml/rss/all.xml"
 ALJAZEERA_MIDDLE_EAST_PAGE = "https://www.aljazeera.com/where/middle-east/"
 RSS_FEEDS = [
-    ("Al Jazeera Middle East", "https://www.aljazeera.com/xml/rss/middleeast.xml"),
     ("Al Jazeera", ALJAZEERA_ALL_FEED),
     ("BBC Middle East", "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"),
     ("Reuters Middle East & Syria", "https://news.google.com/rss/search?q=site:reuters.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("AP Middle East & Syria", "https://news.google.com/rss/search?q=site:apnews.com+(Middle+East+OR+Syria)&hl=en-US&gl=US&ceid=US:en"),
     ("Enab Baladi", "https://english.enabbaladi.net/feed/"),
-    ("Syria Direct", "https://syriadirect.org/feed/"),
-    ("Shafaq English", "https://shafaq.com/en/rss"),
+    ("Syria Direct", "https://syriadirect.org/feed"),
     ("Iraqi News", "https://www.iraqinews.com/feed/"),
-    ("Rudaw English", "https://www.rudaw.net/english/rss"),
-    ("Iran International", "https://www.iranintl.com/en/rss"),
+    ("Iran International", "https://www.iranintl.com/feed/"),
     ("Arab News", "https://www.arabnews.com/rss.xml"),
-    ("Al Arabiya English", "https://english.alarabiya.net/tools/rss"),
-    ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/"),
+    ("Al Arabiya English", "https://english.alarabiya.net/feed/rss2/en.xml"),
+    ("Al Arabiya Arabic", "https://www.alarabiya.net/feed/rss2/ar.xml"),
+    ("The National", "https://www.thenationalnews.com/arc/outboundfeeds/rss/category/world/?outputType=xml"),
     ("Jordan Times", "https://www.jordantimes.com/rss.xml"),
     ("Dabanga Sudan", "https://www.dabangasudan.org/en/all-news/feed"),
     ("Sudan Tribune", "https://sudantribune.com/feed/"),
@@ -103,17 +101,22 @@ RSS_FEEDS = [
     ("Darfur24", "https://darfur24.com/en/feed/"),
     ("Al Taghyeer", "https://www.altaghyeer.info/en/feed"),
     ("ReliefWeb Sudan", "https://reliefweb.int/updates/rss.xml?primary_country=220"),
-    ("ReliefWeb Sudan JSON", "https://api.reliefweb.int/v1/reports?appname=georiskglobal&filter[field]=country.name&filter[value]=Sudan&limit=20"),
     ("Middle East Monitor", "https://www.middleeastmonitor.com/feed/"),
     ("UKMTO JMIC", "https://www.ukmto.org/partner-products/jmic-products"),
     ("MOFA Japan Anzen", "https://www.anzen.mofa.go.jp/"),
-    ("Kurdistan24", "https://www.kurdistan24.net/en/rss"),
-    ("The New Region", "https://thenewregion.com/feed"),
-    ("ISW", "https://www.understandingwar.org/rss.xml"),
+    ("Kurdistan24", "https://www.kurdistan24.net/en/rss.xml"),
     ("Militia Spotlight", "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed"),
     ("Bellingcat", "https://www.bellingcat.com/feed/"),
-    ("Syriac Press", "https://syriacpress.com/feed/"),
 ]
+# Kept, not deleted, so a later health check can turn them back on.
+DISABLED_RSS = (
+    {"name": "Al Jazeera Middle East", "url": "https://www.aljazeera.com/xml/rss/middleeast.xml", "reason": "HTTP 404 on 27 Nov 2026. The all-news RSS remains active.", "checked": "2026-11-27"},
+    {"name": "Shafaq English", "url": "https://shafaq.com/en/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "Rudaw English", "url": "https://www.rudaw.net/english/rss", "reason": "The RSS URL returned an HTML page on 27 Nov 2026. Arabic, Sorani and /feed also returned HTML on 28 Nov 2026. No replacement feed was found.", "checked": "2026-11-28"},
+    {"name": "The New Region", "url": "https://thenewregion.com/feed", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+    {"name": "ISW", "url": "https://www.understandingwar.org/rss.xml", "reason": "HTTP 403 on 27 Nov 2026. No public replacement RSS was found.", "checked": "2026-11-27"},
+    {"name": "Syriac Press", "url": "https://syriacpress.com/feed/", "reason": "HTTP 404 on 27 Nov 2026. No replacement feed was found.", "checked": "2026-11-27"},
+)
 # These two pages are notices, not always RSS. Never fetch https://mofa.go.jp itself.
 HTML_NOTICE_FEEDS = {
     "https://www.ukmto.org/partner-products/jmic-products": "UKMTO JMIC",
@@ -133,57 +136,75 @@ TELEGRAM_CHANNELS = [
     "sn4hr",
     "D24net",
     "SweidaGov1",
-    "Daraa24_News",
-    "horanfree",
-    "Suwayda24",
-    "DeirEzzor24",
-    "EuphratesPost",
-    "northpressagency",
     "damascusv011",
-    "AleppoTodayTV",
     "syrianmoi",
     "syrianinfowar",
     "OsintTv",
-    "syriahr",
     "EnabBaladi",
     "OSINTdefender",
     "osint613",
     "OsintUpdates",
     "warmonitors",
     "gulfnewsUAE",
-    "AlArabiya_Brk",
     "AsharqNewsBrk",
-    "almasirah",
     "almanarnews",
-    "SabereenNews22",
     "IranIntl_En",
-    "rudaw_english",
     "Rudaw_arabic",
-    "shafaqnews",
     "almaalomah",
-    "INA_Iraq",
-    "kurdistan24",
     "IRNA_en",
-    "Mehrnews_en",
     "presstv",
-    "alarabiya_eng",
-    "skynewsarabia_b",
     "gulfnews",
-    "KUNA_EN",
-    "BNA_EN",
-    "RoyaNews",
-    "alghadnews",
-    "PetraNewsAgency",
     "AuroraIntel",
     "ClashReport",
     "Middle_East_Spectator",
     "QudsNen",
-    "sudanwarmonitor",
-    "darfur24",
-    "sudannews24",
-    "alrakoba_sudan",
     "SudanTribune",
+    "GeneralStaffZSU",
 ]
+# No public posts on the t.me/s preview on 27 Nov 2026. Kept so they can be retried.
+TELEGRAM_DISABLED = (
+    {"channel": "Daraa24_News", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "horanfree", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "Suwayda24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "DeirEzzor24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "EuphratesPost", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "northpressagency", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "AleppoTodayTV", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "syriahr", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "AlArabiya_Brk", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "almasirah", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "SabereenNews22", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "rudaw_english", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "shafaqnews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "INA_Iraq", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "kurdistan24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "Mehrnews_en", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alarabiya_eng", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "skynewsarabia_b", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "KUNA_EN", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "BNA_EN", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "RoyaNews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alghadnews", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "PetraNewsAgency", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "sudanwarmonitor", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "darfur24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "sudannews24", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+    {"channel": "alrakoba_sudan", "reason": "No public posts on the t.me/s preview.", "checked": "2026-11-27"},
+)
+# Still polled. Last public post was before October 2026.
+TELEGRAM_STALE = (
+    {"channel": "hawran_osint", "last_post": "2026-02-26", "reason": "Last public post was before October 2026."},
+    {"channel": "SyrianArabNewsAgency", "last_post": "2025-07-01", "reason": "Last public post was before October 2026."},
+    {"channel": "syrianinfowar", "last_post": "2025-11-12", "reason": "Last public post was before October 2026."},
+    {"channel": "OsintTv", "last_post": "2026-05-31", "reason": "Last public post was before October 2026."},
+    {"channel": "OsintUpdates", "last_post": "2025-08-06", "reason": "Last public post was before October 2026."},
+    {"channel": "AsharqNewsBrk", "last_post": "2024-12-25", "reason": "Last public post was before October 2026."},
+    {"channel": "IranIntl_En", "last_post": "2023-10-31", "reason": "Last public post was before October 2026."},
+    {"channel": "Rudaw_arabic", "last_post": "2026-08-14", "reason": "Last public post was before October 2026."},
+    {"channel": "gulfnews", "last_post": "2024-09-09", "reason": "Last public post was before October 2026."},
+    {"channel": "AuroraIntel", "last_post": "2025-06-15", "reason": "Last public post was before October 2026."},
+    {"channel": "SudanTribune", "last_post": "2025-11-24", "reason": "Last public post was before October 2026."},
+)
 # Hyper-local Syrian channels. Their posts stay Syria unless the text names another country.
 SYRIA_LOCAL_CHANNELS = {
     "daraa24_news",
@@ -206,7 +227,7 @@ _X_HANDLE_GROUPS = [
     [
         "CJFCSpox", "SaudiDCD", "kbsalsaud", "FaisalbinFarhan", "KKIASA", "ksagaca", "Spa_Eng", "SPAregions",
         "SaudiNews50", "saudiexpat", "KSAMOFA", "modgovksa", "MOISaudiArabia", "AlArabiya_Brk",
-        "AlArabiya_Eng", "AsharqNewsBrk", "ArabNews", "Yah_Saree", "MMY1444", "FaresALhemyari",
+        "AlArabiya", "AlArabiya_Eng", "AsharqNewsBrk", "ArabNews", "Yah_Saree", "MMY1444", "FaresALhemyari",
         "abda_sharif", "Yemen_PM",
     ],
     [
@@ -232,6 +253,7 @@ _X_HANDLE_GROUPS = [
         "faytuksnetwork", "MenchOsint", "DefenceGeek", "WSJ", "uniindianews", "AlarabyTV", "AlHadath",
         "Reuters", "araReuters", "AFPar", "BBCArabic", "AP", "anadoluagency", "BBCWorld", "CNN",
         "SkyNews", "AJEnglish", "aawsat_News", "timesofisrael", "Jerusalem_Post", "ynetnews",
+        "Alhadath_Brk",
         "criticalthreats", "ACLEDINFO", "bellingcat", "ELINTNews", "Conflicts", "Osint613",
         "ReutersWorld", "UNDSS",
     ],
@@ -250,6 +272,12 @@ _X_HANDLE_GROUPS = [
         "SUNA_AGENCY_EN", "SUNA_AGENCY",
         "SudanWarMonitor",
         "DabangaSudan", "SudanTribune_EN", "PatrickHeinisc1", "vista_sudan",
+        "AmharaWarUpdate", "AAA_Amhara", "BaidoaOnline", "NHMPofficial",
+        "Exilenova_plus", "AMK_Mapping_", "YWNReporter", "rudaw_arabic", "ShahidHussainJM",
+        "rizwanghilzai", "standardkenya", "khitrafficpol", "HalabTodayTV", "shaheryarhassan",
+        "DailyQudrat", "sargodhapolice", "thekenyatimes", "qudsn", "yaffa_ps", "ALJADEEDNEWS",
+        "SawtBeirut", "mezopotamyatrk4", "DropSiteNews", "Annahar", "ekathimerini", "24tvua",
+        "echofm_online", "cgtnenespanol", "citizentvkenya", "VoiceofHorn", "cairo24_", "LOrientToday",
     ],
 ]
 EXCLUDED_SOURCE_HANDLES = {"sepah_news1", "yahya_saree", "tasnimnews_en", "irantimes72", "afp"}
@@ -445,20 +473,29 @@ _HANDLE_COUNTRY = {
     "qudsnen": "Palestine",
     "iomchad": "Chad",
     "usainksa": "Saudi Arabia",
+    "nhmpofficial": "Pakistan",
+    "shahidhussainjm": "Pakistan",
+    "dailyqudrat": "Pakistan",
+    "sargodhapolice": "Pakistan",
 }
 _RSS_DESK = {
     "https://english.enabbaladi.net/feed/": "Syria",
     "https://syriadirect.org/feed/": "Syria",
+    "https://syriadirect.org/feed": "Syria",
     "https://syriacpress.com/feed/": "Syria",
     "https://shafaq.com/en/rss": "Iraq",
     "https://www.iraqinews.com/feed/": "Iraq",
     "https://www.rudaw.net/english/rss": "Iraq",
     "https://www.kurdistan24.net/en/rss": "Iraq",
+    "https://www.kurdistan24.net/en/rss.xml": "Iraq",
     "https://thenewregion.com/feed": "Iraq",
     "https://www.washingtoninstitute.org/policy-analysis/series/militia-spotlight/feed": "Iraq",
     "https://www.iranintl.com/en/rss": "Iran",
+    "https://www.iranintl.com/feed/": "Iran",
     "https://www.arabnews.com/rss.xml": "Saudi Arabia",
     "https://english.alarabiya.net/tools/rss": "Saudi Arabia",
+    "https://english.alarabiya.net/feed/rss2/en.xml": "Saudi Arabia",
+    "https://www.alarabiya.net/feed/rss2/ar.xml": "Saudi Arabia",
     "https://www.dabangasudan.org/en/all-news/feed": "Sudan & Chad",
     "https://www.dabangasudan.org/en/feed": "Sudan & Chad",
     "https://sudantribune.com/feed/": "Sudan & Chad",
@@ -469,6 +506,7 @@ _RSS_DESK = {
     "https://khartoumerr.org/feed/": "Sudan & Chad",
     "https://khartoumerr.org/": "Sudan & Chad",
     "https://www.thenationalnews.com/arc/outboundfeeds/rss/": "Gulf States",
+    "https://www.thenationalnews.com/arc/outboundfeeds/rss/category/world/?outputType=xml": "Gulf States",
     "https://www.jordantimes.com/rss.xml": "Neighbor States",
     "https://www.ukmto.org/partner-products/jmic-products": "Maritime & Chokepoints",
     "https://www.aljazeera.com/xml/rss/middleeast.xml": "Cross-Cutting Wires",
@@ -585,14 +623,19 @@ COUNTRY_CENTERS = {
     "Red Sea / Maritime": (20.0, 38.5),
     "Strait of Hormuz / Gulf": (26.5667, 56.2667),
     "Other": (26.5, 47.0),
+    "Ethiopia": (9.03, 38.74),
+    "Pakistan": (30.38, 69.35),
+    "Somalia": (2.05, 45.32),
+    "South Africa": (-30.56, 22.94),
 }
 _SEA_COUNTRY_NAMES = frozenset({"Red Sea / Maritime", "Strait of Hormuz / Gulf", "Maritime"})
-# First HTTP 200 with valid RSS wins. A dead or rate-limited mirror tries the next one.
-X_FEED_URLS = [
-    "https://xcancel.com/{handle}/rss",
-    "https://nitter.poast.org/{handle}/rss",
-    "https://nitter.privacydev.net/{handle}/rss",
-]
+# Nitter and xcancel were dead on 27 Nov 2026. The fetch code stays; these URLs are not called.
+DISABLED_X_MIRRORS = (
+    {"url": "https://xcancel.com/{handle}/rss", "reason": "xcancel stand-in was dead on 27 Nov 2026."},
+    {"url": "https://nitter.poast.org/{handle}/rss", "reason": "Nitter stand-in was dead on 27 Nov 2026."},
+    {"url": "https://nitter.privacydev.net/{handle}/rss", "reason": "Nitter stand-in was dead on 27 Nov 2026."},
+)
+X_FEED_URLS: list[str] = []
 X_MIRROR_TIMEOUT = 10
 BROWSER_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -1196,7 +1239,7 @@ _WIRE_NAMES = {
 }
 _OFFICIAL_HANDLES = {
     "moi_bahrain", "bdf_bahrain", "kuwaitarmyghq", "moinformation", "mofaqatar_en", "uk_mto",
-    "alsakaniali", "cjfcspox", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
+    "alsakaniali", "saudidcd", "kbsalsaud", "faisalbinfarhan", "kkiasa", "ksagaca",
     "ksamofa", "modgovksa", "moisaudiarabia",
     "yemen_pm", "mkhamenei_ir", "drpezeshkian", "mb_ghalibaf", "ejei_org", "araghchi", "irimfa_spox",
     "ir_rezaee", "mmohammadii61", "hatami_org", "gharibabadi", "iran_in_kuwait", "iraqipmo",
@@ -1292,6 +1335,48 @@ _CLAIM_HANDLES = {
     "iraqiagency", "iraqipmo", "ikrpresident", "suna_agency_en", "suna_agency",
 }
 _CAUTION_HANDLES = {"syriahr", "iranintl_en"}
+_ESTABLISHED_BREAKING = {"alhadath_brk"}
+_PARTISAN_HANDLES = {"amharawarupdate", "aaa_amhara"}
+_GAZA_PARTISAN = {"qudsn", "yaffa_ps"}
+_ALJADEED = {"aljadeednews"}
+_SAWT_BEIRUT = {"sawtbeirut"}
+# Paid blue check, not a government-verified badge. Official status is unconfirmed.
+_COALITION_SPOX = {"cjfcspox"}
+_HOUTHI_CLAIM = {"yah_saree", "mmy1444"}
+CJFC_NOTE = "Paid blue check, not a government-verified badge. Official status unconfirmed."
+# Handle taken from the site header social link, not guessed.
+_MEZOPOTAMYA = {"mezopotamyatrk4"}
+MEZOPOTAMYA_TIER = "partisan (pro-Kurdish, DEM-aligned; Turkish authorities regard it as PKK-linked)"
+# Pro-Ukrainian advocacy accounts. The trailing underscore is part of the X handle.
+_PRO_UA_HANDLES = {"exilenova_plus", "amk_mapping", "amk_mapping_"}
+# Left out on purpose. They repost other accounts' video and are not sources.
+SKIPPED_X_HANDLES = {
+    "theosintbr1": "About 160 followers, and a late quote-reposter of other accounts' video.",
+    "worldsource24": "Generic headline aggregator that reposts other accounts' video.",
+    "officialshehr": "Individual account. Not added.",
+    "sherazi_silmian": "Individual account. Not added.",
+}
+_OSINT_ANALYST_HANDLES = {"afrimeosint"}
+_LOCAL_OUTLET_X = {"baidoaonline"}
+_NHMP_HANDLES = {"nhmpofficial"}
+_YWN_HANDLES = {"ywnreporter"}
+_RUDAW_ARABIC = {"rudaw_arabic"}
+# Handle only. The personal name is not stored.
+_SHAHID_HANDLES = {"shahidhussainjm"}
+_RIZWAN_HANDLES = {"rizwanghilzai"}
+_SHAHERYAR_HANDLES = {"shaheryarhassan"}
+_STANDARD_KENYA = {"standardkenya"}
+_KENYA_TIMES = {"thekenyatimes"}
+_KHIT_HANDLES = {"khitrafficpol"}
+_HALAB_HANDLES = {"halabtodaytv"}
+_DAILY_QUDRAT = {"dailyqudrat"}
+_SARGODHA_POLICE = {"sargodhapolice"}
+# Long-standing Karachi Traffic Police account. The X profile has no verification badge.
+KHIT_NOTE = "X account not verified-badged; long-standing account"
+_ALARABIYA_HANDLES = {"alarabiya", "alarabiya_eng"}
+# Al Arabiya and Al Hadath are one MBC network. They do not corroborate each other.
+_MBC_FAMILY = {"alarabiya", "alarabiya_eng", "alarabiya_brk", "alhadath", "alhadath_brk"}
+ALARABIYA_TIER = "Regional broadcaster / Saudi state-aligned"
 _SOHR_PHRASE = "according to SOHR, figures unverified"
 _CASUALTY_WORDS = re.compile(
     r"\b(?:killed|killing|dead|deaths|death toll|wounded|casualt(?:y|ies))\b",
@@ -1302,6 +1387,91 @@ _CASUALTY_WORDS = re.compile(
 def source_tier_for(kind: str = "", name: str = "", url: str = "") -> str:
     """Official, State Media, Lead, or Wire. OSINT and Regional Media are the leftovers."""
     raw, tokens, compact = _identity_parts(kind, name, url)
+    if _token_named(tokens, _COALITION_SPOX) or _token_named(tokens, _HOUTHI_CLAIM):
+        return "Party claim"
+    if _token_named(tokens, _NHMP_HANDLES):
+        return osint.NHMP_TIER
+    if _token_named(tokens, _YWN_HANDLES):
+        return "Journalist / Social-unverified"
+    if _token_named(tokens, _SHAHID_HANDLES) or _token_named(tokens, _RIZWAN_HANDLES) or _token_named(tokens, _SHAHERYAR_HANDLES):
+        return "Social-unverified"
+    if _token_named(tokens, _KHIT_HANDLES) or _token_named(tokens, _SARGODHA_POLICE):
+        return "Official Source"
+    if _token_named(tokens, _DAILY_QUDRAT) or "dailyqudrat.pk" in raw:
+        return "National/regional outlet"
+    if _token_named(tokens, _STANDARD_KENYA) or "standardmedia.co.ke" in raw:
+        return "National outlet"
+    if _token_named(tokens, _KENYA_TIMES) or "thekenyatimes.com" in raw:
+        return "Secondary national outlet"
+    if _token_named(tokens, {"qudsn"}) or "qudsn.co" in raw:
+        return "partisan (Hamas-leaning)"
+    if _token_named(tokens, {"yaffa_ps"}):
+        return "Social-unverified/partisan"
+    if _token_named(tokens, _ALJADEED) or "aljadeed.tv" in raw:
+        return "National outlet"
+    if _token_named(tokens, _SAWT_BEIRUT) or "sawtbeirut.com" in raw:
+        return "partisan (sovereigntist/anti-Hezbollah lean)"
+    if _token_named(tokens, _MEZOPOTAMYA) or "mezopotamyaajansi" in raw:
+        return MEZOPOTAMYA_TIER
+    if _token_named(tokens, _HALAB_HANDLES) or "halabtodaytv.net" in raw:
+        return "National/regional outlet / pro-government (post-2024)"
+    if _token_named(tokens, _RUDAW_ARABIC):
+        return "Regional outlet / Kurdish-aligned"
+    if _token_named(tokens, _PRO_UA_HANDLES):
+        return "Social-unverified / partisan (pro-UA)"
+    if _token_named(tokens, _PARTISAN_HANDLES):
+        return "Social-unverified / partisan"
+    if _token_named(tokens, _OSINT_ANALYST_HANDLES):
+        return "OSINT analyst / Social-unverified"
+    if _token_named(tokens, _LOCAL_OUTLET_X) or "baidoaonline.com" in raw:
+        return "Local outlet"
+    if _token_named(tokens, _ESTABLISHED_BREAKING):
+        return "Established national / breaking news"
+    if _token_named(tokens, _ALARABIYA_HANDLES) or "alarabiya.net" in raw:
+        return ALARABIYA_TIER
+    if "aljazeera.com" in raw or _token_named(tokens, {"ajenglish"}):
+        return "Qatar state-funded"
+    if "dropsitenews.com" in raw or _token_named(tokens, {"dropsitenews"}):
+        return "Independent investigative / advocacy-leaning"
+    if "annahar.com" in raw or _token_named(tokens, {"annahar"}):
+        return "National outlet"
+    if "ekathimerini.com" in raw or _token_named(tokens, {"ekathimerini"}):
+        return "Independent national outlet"
+    if "svoboda.org" in raw:
+        return "US-govt-funded"
+    if "24tv.ua" in raw or _token_named(tokens, {"24tvua"}):
+        return "National outlet"
+    if "kyivindependent.com" in raw:
+        return "Independent national outlet"
+    if _token_named(tokens, {"echofm_online"}):
+        return "Exile media"
+    if _token_named(tokens, {"cgtnenespanol"}):
+        return "Chinese state media"
+    if _token_named(tokens, {"citizentvkenya"}) or "citizen.digital" in raw:
+        return "National broadcaster"
+    if _token_named(tokens, {"voiceofhorn"}):
+        return "Unverified aggregator"
+    if _token_named(tokens, {"cairo24_"}) or "cairo24.com" in raw:
+        return "Private outlet / generally pro-government"
+    if _token_named(tokens, {"lorienttoday", "lorientlejour"}) or "lorientlejour.com" in raw:
+        return "Independent national outlet"
+    if "news24.com" in raw or "feeds.news24.com" in raw:
+        return "Established national"
+    if "ahram.org.eg" in raw:
+        return "State Media"
+    if any(host in raw for host in (
+        "nashaniva.com", "operativmm.az", "bianet.org", "korrespondent.net", "k.img.com.ua",
+        "dailyurdu.net", "haberturk.com", "lb.ua", "pravda.com.ua", "vot-tak.tv",
+    )):
+        return "National outlet"
+    if "ura.news" in raw:
+        return "Regional outlet / Russian state-aligned media"
+    if "rosbalt.ru" in raw:
+        return "Russian media (Kremlin-permitted)"
+    if "bbci.co.uk/turkce" in raw:
+        return "Established national"
+    if any(host in raw for host in ("haberdairesi.com", "inform.zp.ua", "theyeshivaworld.com", "transparency.news")):
+        return "Local outlet"
     if _token_named(tokens, _CAUTION_HANDLES):
         return "Single-Source / Opposition Caution"
     if _token_named(tokens, _CLAIM_HANDLES):
@@ -1761,6 +1931,38 @@ def same_channel(item: dict, row: sqlite3.Row) -> bool:
     return incoming.casefold() == stored.casefold()
 
 
+def partisan_source(*parts: object) -> bool:
+    blob = " ".join(str(part or "") for part in parts).lower()
+    tokens = set(re.findall(r"[a-z0-9_]+", blob))
+    return bool(tokens & (_PARTISAN_HANDLES | _PRO_UA_HANDLES | _GAZA_PARTISAN | _SAWT_BEIRUT | _MEZOPOTAMYA)) or (
+        "partisan" in blob and "nonpartisan" not in blob
+    )
+
+
+def both_partisan(item: dict, row: sqlite3.Row) -> bool:
+    """Two advocacy accounts do not count as independent corroboration."""
+    return partisan_source(item.get("source_name"), item.get("source_url"), item.get("source_tier")) and partisan_source(
+        row["source_name"]
+    )
+
+
+def _mbc_family(*parts: object) -> bool:
+    tokens = set()
+    for part in parts:
+        tokens.update(re.findall(r"[a-z0-9_]+", str(part or "").lower()))
+    if tokens & _MBC_FAMILY:
+        return True
+    blob = " ".join(str(part or "") for part in parts).lower()
+    return "alarabiya.net" in blob
+
+
+def same_mbc_network(item: dict, row: sqlite3.Row) -> bool:
+    """Al Arabiya and Al Hadath are sister channels, not two independent sources."""
+    return _mbc_family(item.get("source_name"), item.get("source_url"), item.get("source_tier")) and _mbc_family(
+        row["source_name"], row["source_url"] if "source_url" in row.keys() else ""
+    )
+
+
 def seen_url(conn: sqlite3.Connection, source_url: str) -> bool:
     row = conn.execute(
         "SELECT 1 FROM items WHERE source_url = ? OR url_hash = ? LIMIT 1",
@@ -1819,6 +2021,37 @@ def near_identical_text(left: object, right: object) -> bool:
     ):
         return True
     return SequenceMatcher(None, folded_left, folded_right).ratio() >= 0.92
+
+
+def shared_clip_original(conn: sqlite3.Connection, item: dict):
+    """A recent pin that already carries the same video or post URL, if any.
+
+    A later account that republishes that clip is amplification, not a second source.
+    """
+    import confidence_scoring
+
+    clips = confidence_scoring.media_fingerprints(
+        " ".join((story_text(item), str(item.get("source_url") or "")))
+    )
+    if not clips:
+        return None
+    moment = parse_when(item.get("published_at")) or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(timezone.utc)
+    cutoff = (moment - timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = conn.execute(
+        "SELECT id, title, summary, original_text, source_url, published_at, ingested_at FROM items "
+        "WHERE COALESCE(published_at, ingested_at, '') >= ? ORDER BY id DESC LIMIT 80",
+        (cutoff,),
+    ).fetchall()
+    for row in rows:
+        other = confidence_scoring.media_fingerprints(
+            " ".join((story_text(row), str(row["source_url"] or "")))
+        )
+        if clips & other:
+            return row
+    return None
 
 
 def amplification_original(conn: sqlite3.Connection, item: dict):
@@ -2209,6 +2442,10 @@ def fetch_rss_feed(name: str, url: str) -> list[dict]:
             response = requests.get(url, timeout=FEED_TIMEOUT, headers=headers)
         else:
             response = paced_get(url)
+        if response.status_code == 403:
+            print(f"RSS {name} access denied (HTTP 403). The feed stays configured and will be retried.")
+            note_feed("rss", name, False, "HTTP 403")
+            return []
         response.raise_for_status()
         content = response.content or b""
     except Exception as exc:
@@ -2516,12 +2753,41 @@ def poll_aljazeera_liveblog() -> list[dict]:
     return kept
 
 
+_reliefweb_noted = False
+
+
+def reliefweb_reports_url() -> str:
+    """ReliefWeb API v2. Skipped cleanly when RELIEFWEB_APPNAME is unset."""
+    global _reliefweb_noted
+    appname = (os.environ.get("RELIEFWEB_APPNAME") or "").strip()
+    if not appname:
+        if not _reliefweb_noted:
+            print("ReliefWeb API skipped: RELIEFWEB_APPNAME is not set.")
+            _reliefweb_noted = True
+        return ""
+    from urllib.parse import quote
+    safe = quote(appname, safe="")
+    return (
+        "https://api.reliefweb.int/v2/reports?appname=" + safe
+        + "&preset=latest&limit=20&filter[field]=country.name&filter[value]=Sudan"
+    )
+
+
+def active_rss_feeds() -> list[tuple[str, str]]:
+    feeds = list(RSS_FEEDS)
+    url = reliefweb_reports_url()
+    if url:
+        feeds.append(("ReliefWeb Sudan JSON", url))
+    return feeds
+
+
 def fetch_rss_candidates() -> list[dict]:
     found = []
-    with ThreadPoolExecutor(max_workers=len(RSS_FEEDS) or 1) as pool:
+    catalog = active_rss_feeds()
+    with ThreadPoolExecutor(max_workers=len(catalog) or 1) as pool:
         futures = {
             pool.submit(fetch_rss_feed, name, url): name
-            for name, url in RSS_FEEDS
+            for name, url in catalog
         }
         for future, name in futures.items():
             try:
@@ -2649,7 +2915,230 @@ def keep_x_post(handle: str, text: str) -> bool:
         return True
     if lowered in SAUDI_MEDIA_X and (saudi_mention(text) or mentions_broad_theater(text)):
         return True
+    if lowered in _PARTISAN_HANDLES and mentions_ethiopia_region(text):
+        return True
+    if lowered in _OSINT_ANALYST_HANDLES and (mentions_ethiopia_region(text) or mentions_horn_or_east_africa(text)):
+        return True
+    if lowered in _LOCAL_OUTLET_X and mentions_somalia(text):
+        return True
+    if lowered in _NHMP_HANDLES:
+        return True
+    if lowered in _PRO_UA_HANDLES and mentions_russia_ukraine(text):
+        return True
+    if lowered in _YWN_HANDLES and mentions_ywn_beat(text):
+        return True
+    if lowered in _RUDAW_ARABIC and mentions_rudaw_beat(text):
+        return True
+    if lowered in _SHAHID_HANDLES and mentions_sindh(text):
+        return True
+    if lowered in (_RIZWAN_HANDLES | _SHAHERYAR_HANDLES) and mentions_pakistan(text):
+        return True
+    if lowered in _KHIT_HANDLES or lowered in _SARGODHA_POLICE:
+        return True
+    if lowered in _DAILY_QUDRAT and mentions_pakistan(text):
+        return True
+    if lowered in (_STANDARD_KENYA | _KENYA_TIMES) and mentions_kenya(text):
+        return True
+    if lowered in _GAZA_PARTISAN and mentions_palestine(text):
+        return True
+    if lowered == "dropsitenews" and mentions_palestine(text):
+        return True
+    if lowered == "annahar" and (mentions_lebanon(text) or mentions_palestine(text)):
+        return True
+    if lowered == "ekathimerini" and mentions_greece(text):
+        return True
+    if lowered == "24tvua" and mentions_russia_ukraine(text):
+        return True
+    if lowered == "echofm_online" and mentions_russia_ukraine(text):
+        return True
+    if lowered == "cgtnenespanol":
+        return True
+    if lowered in {"citizentvkenya", "voiceofhorn"} and mentions_kenya(text):
+        return True
+    if lowered == "cairo24_" and any(term in str(text or "").lower() for term in ("egypt", "aswan", "abu simbel", "cairo")):
+        return True
+    if lowered == "lorienttoday" and mentions_lebanon(text):
+        return True
+    if lowered in _COALITION_SPOX or lowered in _HOUTHI_CLAIM:
+        return True
+    if lowered in _ALJADEED and (mentions_syria_or_middle_east(text) or mentions_lebanon(text)):
+        return True
+    if lowered in _SAWT_BEIRUT and mentions_lebanon(text):
+        return True
+    if lowered in _MEZOPOTAMYA and mentions_mezopotamya_beat(text):
+        return True
+    if lowered in _HALAB_HANDLES and mentions_halab_beat(text):
+        return True
     return lowered in BROAD_X_HANDLES and mentions_broad_theater(text)
+
+
+def mentions_pakistan(text: str) -> bool:
+    """Pakistan and its highways. Handles are stored without personal names."""
+    if mentions_sindh(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "pakistan", "peshawar", "quetta", "lahore", "islamabad", "motorway",
+        "indus highway", "karakoram", "torkham", "chaman", "bhera", "kot momin",
+        "jui", "highway", "nhmp", "sargodha", "punjab", "dhori", "mandi bahauddin",
+    )) or any(term in str(text or "") for term in ("پاکستان", "احتجاج", "سڑک", "موٹروے", "سرگودھا"))
+
+
+def mentions_greece(text: str) -> bool:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("greece", "greek", "athens", "thessaloniki", "piraeus")):
+        return True
+    return any(term in str(text or "") for term in ("Ελλάδα", "Αθήνα", "απεργ"))
+
+
+def mentions_mezopotamya_beat(text: str) -> bool:
+    """Turkey, Syria, Iraq and Iran. Used for the outlet account found on its site."""
+    if mentions_syria_or_middle_east(text) or iraq_mention(text):
+        return True
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "turkey", "türkiye", "turkiye", "kurd", "kurdistan", "rojava", "iran", "tehran",
+        "diyarbakir", "diyarbakır", "hakkari", "mardin", "van ", "qamishli",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("تركيا", "كرد", "إيران", "ايران", "العراق"))
+
+
+def mentions_lebanon(text: str) -> bool:
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("lebanon", "lebanese", "beirut", "al jadeed", "hadatha", "south lebanon")):
+        return True
+    return any(term in str(text or "") for term in ("لبنان", "بيروت"))
+
+
+def governorate_media_citation(text: object) -> str:
+    """Official body named as the source. A person's name is not stored."""
+    sample = str(text or "")
+    lowered = sample.lower()
+    hasakah = "hasakah" in lowered or "الحسكة" in sample or "الحسكه" in sample
+    media = any(term in lowered for term in ("governorate media", "media directorate")) or "إعلام" in sample
+    if hasakah and media:
+        return "Hasakah Governorate Media Directorate"
+    return ""
+
+
+def suicide_attack_text(text: object) -> bool:
+    sample = str(text or "")
+    lowered = sample.lower()
+    if any(term in lowered for term in ("suicide", "blew themselves", "blew himself", "blew herself")):
+        return True
+    return any(term in sample for term in ("انتحار", "أنفسهم", "انفسهم"))
+
+
+def mentions_palestine(text: str) -> bool:
+    """Gaza and the West Bank. Used for the partisan Gaza accounts."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("gaza", "palestine", "west bank", "al-shati", "al shati", "shifa", "rafah", "khan yunis", "jenin", "nablus", "ramallah")):
+        return True
+    return any(term in str(text or "") for term in ("غزة", "فلسطين", "الضفة", "الشاطئ", "الشفاء"))
+
+
+def mentions_kenya(text: str) -> bool:
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in ("kenya", "kenyan", "kisumu", "nairobi", "mombasa"))
+
+
+def mentions_halab_beat(text: str) -> bool:
+    if mentions_syria_or_middle_east(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in ("safita", "tartus", "tartous", "aleppo", "halab"))
+
+
+def party_claim_text(text: str) -> bool:
+    """A relayed party statement, not an independent report."""
+    lowered = str(text or "").lower()
+    party = any(term in lowered for term in ("jui", "jamiat", "party"))
+    relay = any(term in lowered for term in ("spokesperson", "statement", "said", "claims", "according to"))
+    return party and relay
+
+
+def relays_named_source(text: str, other: str) -> bool:
+    """True when the text credits another handle, such as 'Via @NHMPofficial'."""
+    sample = str(text or "").lower()
+    identity = str(other or "").lower()
+    for handle in re.findall(r"\bvia\b[:\s@]*@?([a-z0-9_]{4,})", sample):
+        if handle and handle in identity:
+            return True
+    return False
+
+
+def mentions_sindh(text: str) -> bool:
+    """Pakistan, Sindh and Karachi. Used for the gated handle, which is stored without a personal name."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "pakistan", "sindh", "karachi", "hub river", "jui", "jamiat",
+    ))
+
+
+def mentions_ywn_beat(text: str) -> bool:
+    """Israel, the Middle East, and the New York tri-state area. The handle is stored, not a person's name."""
+    if mentions_syria_or_middle_east(text):
+        return True
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "new york", "new jersey", "connecticut", "nyc", "brooklyn", "manhattan",
+        "queens", "bronx", "staten island", "newark", "ben gurion", "haredi",
+        "tri-state", "tristate",
+    ))
+
+
+def mentions_rudaw_beat(text: str) -> bool:
+    """Iraq, the Kurdistan Region, Syria, and the border crossings Rudaw Arabic covers."""
+    if mentions_syria_or_middle_east(text) or iraq_mention(text):
+        return True
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "kurdistan", "erbil", "kurd", "al-walid", "al walid", "al-waleed", "waleed",
+        "suwaydiya", "suwaydiyah", "border", "crossing",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("الوليد", "السويدية", "كردستان", "أربيل", "اربيل"))
+
+
+def mentions_russia_ukraine(text: str) -> bool:
+    """Russia, Ukraine, and places those accounts report, including Tula and Efremov."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in (
+        "russia", "russian", "ukraine", "ukrainian", "kyiv", "kiev", "kharkiv",
+        "odesa", "odessa", "donetsk", "luhansk", "donbas", "crimea", "kherson",
+        "zaporizhzhia", "mariupol", "sevastopol", "belgorod", "kursk", "bryansk",
+        "moscow", "tula", "efremov", "yefremov", "oblast",
+    )):
+        return True
+    return any(term in str(text or "") for term in ("тула", "ефремов", "єфремов", "україн", "росі"))
+
+
+def mentions_ethiopia_region(text: str) -> bool:
+    """Amhara, Tigray, and the rest of Ethiopia, including Amharic names."""
+    lowered = str(text or "").lower()
+    if any(term in lowered for term in ("ethiopia", "ethiopian", "amhara", "tigray", "tigrayan", "addis", "mekelle", "gondar", "bahir dar")):
+        return True
+    return any(term in str(text or "") for term in ("ኢትዮጵያ", "አማራ", "ትግራይ"))
+
+
+def mentions_somalia(text: str) -> bool:
+    """Somalia and its federal states. Used for the Baidoa Online account."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "somalia", "somali", "baidoa", "mogadishu", "hirshabelle", "galmudug",
+        "puntland", "jubaland", "jubbaland", "kismayo", "beledweyne", "jowhar",
+        "dhuusamareeb", "south west state", "southwest state",
+    ))
+
+
+def mentions_horn_or_east_africa(text: str) -> bool:
+    """Horn and East Africa places used by regional OSINT accounts."""
+    lowered = str(text or "").lower()
+    return any(term in lowered for term in (
+        "horn of africa", "east africa", "eritrea", "somalia", "somali", "djibouti",
+        "kenya", "mogadishu", "hargeisa", "juba", "south sudan", "sudan",
+    ))
 
 
 def canonical_x_url(handle: str, link: str, guid: str) -> str:
@@ -2661,7 +3150,12 @@ def canonical_x_url(handle: str, link: str, guid: str) -> str:
 
 
 def fetch_x_handle(handle: str) -> list[dict]:
-    """Try X mirrors in order. Only the final result is recorded as online or failing."""
+    """Try X mirrors in order. Only the final result is recorded as online or failing.
+
+    Disabled unless ENABLE_X_FEEDS is set. Dead Nitter and xcancel mirrors are not called.
+    """
+    if not osint.x_feeds_enabled():
+        return []
     last_error = "no entries"
     for template in X_FEED_URLS:
         url = template.format(handle=handle)
@@ -3011,10 +3505,13 @@ def classify_and_translate_event(item: dict, placed: dict | None = None) -> dict
     title = _english_sentence(located.get("title"), 240)
     summary = _english_sentence(located.get("summary"), 500)
     key = get_xai_api_key()
-    if not key:
+    if not key or not osint.background_xai_enabled():
         global _translation_key_noted
         if not _translation_key_noted:
-            print("XAI_API_KEY is missing. Non-English text uses the public translation fallback.")
+            if key:
+                print("Background translation is off. Non-English text uses the public translation fallback. No model call was made.")
+            else:
+                print("XAI_API_KEY is missing. Non-English text uses the public translation fallback.")
             _translation_key_noted = True
         try:
             import feed_quality
@@ -3325,6 +3822,29 @@ _COUNTRY_NAME_ORDER = tuple(sorted((
     ("الكويت", "Kuwait"),
     ("قطر", "Qatar"),
     ("عمان", "Oman"),
+    ("pakistan", "Pakistan"),
+    ("lahore", "Pakistan"),
+    ("islamabad", "Pakistan"),
+    ("peshawar", "Pakistan"),
+    ("faisalabad", "Pakistan"),
+    ("multan", "Pakistan"),
+    ("sialkot", "Pakistan"),
+    ("somalia", "Somalia"),
+    ("somali", "Somalia"),
+    ("baidoa", "Somalia"),
+    ("mogadishu", "Somalia"),
+    ("hirshabelle", "Somalia"),
+    ("galmudug", "Somalia"),
+    ("ethiopia", "Ethiopia"),
+    ("ethiopian", "Ethiopia"),
+    ("amhara", "Ethiopia"),
+    ("tigray", "Ethiopia"),
+    ("tigrayan", "Ethiopia"),
+    ("addis ababa", "Ethiopia"),
+    ("mekelle", "Ethiopia"),
+    ("ኢትዮጵያ", "Ethiopia"),
+    ("አማራ", "Ethiopia"),
+    ("ትግራይ", "Ethiopia"),
     ("الإمارات", "UAE"),
     ("الامارات", "UAE"),
 ), key=lambda item: len(item[0]), reverse=True))
@@ -3372,7 +3892,7 @@ def incident_country(text: str) -> str:
     padded = f" {geo_blob(raw)} "
     tokens = set(padded.split())
     for keyword, country in _COUNTRY_NAME_ORDER:
-        if _arabic_keyword(keyword):
+        if _arabic_keyword(keyword) or any(ord(char) > 127 for char in keyword):
             if keyword in raw:
                 return country
             continue
@@ -3598,6 +4118,66 @@ def placed_coordinates(item: dict, placed: dict) -> tuple[float | None, float | 
 
     The third value is a geo_precision label when GEO_FALLBACKS assigned the point.
     """
+    raw_blob_early = " ".join(
+        str(part or "")
+        for part in (
+            placed.get("location_name"),
+            item.get("title"),
+            item.get("summary"),
+            item.get("original_text"),
+        )
+    )
+    if channel_handle(item).lower() in _NHMP_HANDLES:
+        road = osint.pakistan_motorway(raw_blob_early)
+        if road:
+            label, lat, lng = road
+            placed["location_name"] = label
+            placed["country"] = "Pakistan"
+            placed["coord_origin"] = "region"
+            return lat, lng, "Regional / Country"
+    if channel_handle(item).lower() in _SHAHID_HANDLES and "hub river" in raw_blob_early.lower():
+        placed["location_name"] = "Hub River Road"
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "region"
+        return 24.905, 66.95, "Regional / Country"
+    handle = channel_handle(item).lower()
+    road_text = raw_blob_early.lower()
+    if handle in _SHAHERYAR_HANDLES or handle in _NHMP_HANDLES:
+        for needle, label, lat, lng in (
+            ("kot momin", "Kot Momin interchange", 32.19, 73.02),
+            ("bhera", "M-2 at Bhera", 32.48, 72.91),
+            ("salam interchange", "Salam interchange", 32.42, 72.95),
+        ):
+            if needle in road_text:
+                placed["location_name"] = label
+                placed["country"] = "Pakistan"
+                placed["coord_origin"] = "region"
+                return lat, lng, "Regional / Country"
+    if handle in _COALITION_SPOX and any(term in road_text for term in ("eastern province", "الشرقية", "intercept", "اعتراض")):
+        placed["location_name"] = "Eastern Province"
+        placed["country"] = "Saudi Arabia"
+        placed["coord_origin"] = "region"
+        return 26.4207, 50.0888, "Regional / Country"
+    if handle in _ALJADEED and any(term in road_text for term in ("mushayrifa", "مشيرفة", "المشيرفة")):
+        placed["location_name"] = "Mushayrifa district, Hasakah"
+        placed["country"] = "Syria"
+        placed["coord_origin"] = "admin"
+        return 36.48, 40.76, "District"
+    if handle in _SARGODHA_POLICE and ("dhori" in road_text or "mandi bahauddin" in road_text):
+        placed["location_name"] = "Sargodha–Mandi Bahauddin road at Dhori"
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "region"
+        return 32.33, 73.05, "Regional / Country"
+    if handle in _KHIT_HANDLES and ("lucky pahari" in road_text or "hub river" in road_text or "ٹریفک" in raw_blob_early):
+        if "lucky pahari" in road_text:
+            placed["location_name"] = "Lucky Pahari"
+            point = (24.89, 66.97)
+        else:
+            placed["location_name"] = "Hub River Road"
+            point = (24.905, 66.95)
+        placed["country"] = "Pakistan"
+        placed["coord_origin"] = "place"
+        return point[0], point[1], "City / Area"
     coords = osint.valid_coord(placed.get("lng"), placed.get("lat"))
     raw_blob = " ".join(
         str(part or "")
@@ -3679,7 +4259,7 @@ def country_centroid_point(text: str, event_id: object) -> tuple[float, float, s
         named = "Red Sea / Maritime"
     if not named:
         return None
-    country = canonical_country(named)
+    country = canonical_country(named) or (named if named in COUNTRY_CENTERS else "")
     if not country or country == "Other":
         return None
     if named in COUNTRY_CENTERS:
@@ -4418,6 +4998,8 @@ def backfill_actor_system() -> int:
 
 
 def insert_item(item: dict, placed: dict, now: datetime) -> bool:
+    if "instagram.com" in str(item.get("source_url") or "").lower():
+        return False
     if is_excluded_source(item.get("source_name"), item.get("source_url"), item.get("source_kind")):
         return False
     if is_spam_post(spam_post_text(item.get("title"), item.get("summary"), item.get("original_text"), item.get("source_url"))):
@@ -4460,7 +5042,40 @@ def insert_item(item: dict, placed: dict, now: datetime) -> bool:
         print(f"Dropped spam before insert: {str(item.get('title') or '')[:80]}")
         return False
     threat_code, threat_label = assigned_threat(blob, item.get("category") or placed.get("category"))
-    placed["category"] = threat_label
+    if channel_handle(item).lower() in _NHMP_HANDLES:
+        placed["category"] = osint.NHMP_CATEGORY
+    elif channel_handle(item).lower() in _SHAHID_HANDLES and mentions_sindh(blob) and any(
+        term in blob.lower() for term in ("protest", "sit-in", "sit in", "block", "jui", "road")
+    ):
+        placed["category"] = "Protest / transport disruption"
+    elif channel_handle(item).lower() in _RIZWAN_HANDLES and party_claim_text(blob):
+        placed["category"] = "Party claim"
+    elif channel_handle(item).lower() in _KHIT_HANDLES:
+        placed["category"] = "Travel / transport disruption"
+    elif channel_handle(item).lower() in _SARGODHA_POLICE and any(
+        term in blob.lower() for term in ("road", "motorway", "container", "closed", "closure", "dhori")
+    ):
+        placed["category"] = "Travel / transport disruption"
+    elif channel_handle(item).lower() in _SHAHERYAR_HANDLES and relays_named_source(blob, "nhmpofficial"):
+        placed["category"] = "Repost"
+    elif channel_handle(item).lower() in _ALJADEED and suicide_attack_text(blob):
+        placed["category"] = "Suicide attack"
+    elif channel_handle(item).lower() in _COALITION_SPOX or channel_handle(item).lower() in _HOUTHI_CLAIM:
+        placed["category"] = "Party claim"
+    elif channel_handle(item).lower() == "ekathimerini":
+        import global_feeds
+        category, severity = global_feeds.greek_strike_level(blob)
+        if category:
+            placed["category"] = category
+            placed["severity"] = severity
+    else:
+        placed["category"] = threat_label
+    if channel_handle(item).lower() in _ALJADEED:
+        cited = governorate_media_citation(blob)
+        if cited:
+            note = "Cited source: " + cited + "."
+            if note not in item["summary"]:
+                item["summary"] = (str(item.get("summary") or "") + " " + note).strip()
     placed["threat_code"] = threat_code
     if _syria_row_scope(item, placed.get("country") or ""):
         resolved = resolve_syria_governorate({
@@ -4553,15 +5168,28 @@ def save_classified_item(item: dict, now: datetime) -> bool:
                 conn.commit()
                 print(f"Amplified story {echo['id']} inside 30 minutes: {str(item.get('title') or '')[:80]}")
                 return False
+            clip = shared_clip_original(conn, item)
+            if clip is not None:
+                bump_amplification(conn, clip["id"])
+                conn.commit()
+                print(f"Same video as story {clip['id']}, not a second source: {str(item.get('title') or '')[:80]}")
+                return False
             match = best_title_match(item["title"], recent_story_rows(conn))
             if match is not None:
-                if same_channel(item, match):
+                other_name = f"{match['source_name'] or ''} {match['source_url'] if 'source_url' in match.keys() else ''}"
+                incoming = story_text(item)
+                claim = party_claim_text(incoming) or "party claim" in str(item.get("category") or "").lower()
+                relay = relays_named_source(incoming, other_name) or relays_named_source(story_text(match), item.get("source_name") or "")
+                if claim or relay:
+                    print(f"Not corroboration: {str(item.get('title') or '')[:80]}")
+                elif same_channel(item, match) or both_partisan(item, match) or same_mbc_network(item, match):
                     print(f"Skipped near-duplicate before classify: {item['title'][:80]}")
+                    return False
                 else:
                     bump_corroboration(conn, match["id"])
                     conn.commit()
                     print(f"Corroborated story {match['id']} from another channel: {item['title'][:80]}")
-                return False
+                    return False
         finally:
             conn.close()
     if item.get("source_kind") == "x" and not keep_x_post(
@@ -4653,8 +5281,10 @@ def ingest_feeds() -> dict:
                 finally:
                     conn.close()
             telegram = rotate_slice(TELEGRAM_CHANNELS, batch_index, BATCH_SIZE)
-            handles = rotate_slice(X_HANDLES, x_index, X_BATCH_SIZE)
-            feeds = rotate_slice(RSS_FEEDS, rss_index, RSS_BATCH_SIZE)
+            x_on = osint.x_feeds_enabled()
+            handles = rotate_slice(X_HANDLES, x_index, X_BATCH_SIZE) if x_on else []
+            rss_catalog = active_rss_feeds()
+            feeds = rotate_slice(rss_catalog, rss_index, RSS_BATCH_SIZE)
             checked = len(telegram)
             total_batches = max(1, math.ceil(len(TELEGRAM_CHANNELS) / BATCH_SIZE))
             batch_no = (batch_index // BATCH_SIZE) % total_batches + 1
@@ -4706,7 +5336,7 @@ def ingest_feeds() -> dict:
             stamp = osint.format_timestamp(now)
             next_batch = (batch_index + BATCH_SIZE) % len(TELEGRAM_CHANNELS) if TELEGRAM_CHANNELS else 0
             next_x = (x_index + X_BATCH_SIZE) % len(X_HANDLES) if X_HANDLES else 0
-            next_rss = (rss_index + RSS_BATCH_SIZE) % len(RSS_FEEDS) if RSS_FEEDS else 0
+            next_rss = (rss_index + RSS_BATCH_SIZE) % len(rss_catalog) if rss_catalog else 0
             with _db_lock:
                 conn = db_connect()
                 try:
@@ -4894,6 +5524,11 @@ def sweep_item(event: dict, now: datetime) -> dict | None:
 def run_grok_sweep() -> int:
     """One Syria and Iraq sweep. A missing key skips the call and does not delete rows."""
     global _sweep_key_noted
+    if not osint.background_xai_enabled():
+        if not _sweep_key_noted:
+            print("Background Grok sweep is off. Set ENABLE_BACKGROUND_XAI=true to allow it. No API call was made.")
+            _sweep_key_noted = True
+        return 0
     key = get_xai_api_key()
     if not key:
         if not _sweep_key_noted:
@@ -5591,7 +6226,7 @@ def _summary_payload(record: dict) -> dict:
     }
 
 
-def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None) -> dict:
+def generate_geopolitical_summary(view: str = "completed", force: bool = False, now: datetime | None = None, allow_model: bool = False) -> dict:
     """Summarize stored SQLite events. completed is the official 07:00 window. rolling is the last 24 hours."""
     requested = str(view or "").strip().lower()
     kind = "rolling" if requested == "rolling" else ("active" if requested == "active" else "completed")
@@ -5610,11 +6245,15 @@ def generate_geopolitical_summary(view: str = "completed", force: bool = False, 
         stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         key = get_xai_api_key()
         fallback = False
-        if not key:
-            print(
-                "XAI_API_KEY is missing. Filled the geopolitical summary from stored events. "
-                "hotspots.json was not changed."
-            )
+        use_model = bool(key) and (allow_model or osint.background_xai_enabled())
+        if not use_model:
+            if key and not allow_model:
+                print("Geopolitical summary used stored events. Background model calls are off. No API call was made.")
+            else:
+                print(
+                    "XAI_API_KEY is missing. Filled the geopolitical summary from stored events. "
+                    "hotspots.json was not changed."
+                )
             overall, regions = deterministic_window_summary(records, start, end)
             fallback = True
         else:
@@ -6194,7 +6833,7 @@ def call_summary(client, prompt: str, now: datetime) -> dict:
 
 
 def refresh_summary() -> dict:
-    return generate_geopolitical_summary("completed", force=True)
+    return generate_geopolitical_summary("completed", force=True, allow_model=True)
 
 
 def blocked_static(name: str) -> bool:

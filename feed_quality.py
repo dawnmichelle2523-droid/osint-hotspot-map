@@ -1,8 +1,7 @@
 """Spam filtering, English translation, and place resolution for OSINT items.
 
-Translation uses Grok only when XAI_API_KEY is set on the server. Otherwise it
-tries a public translation endpoint and keeps the original text if that is
-offline. Results are cached by a hash of the source text.
+Translation uses a public endpoint during ingest. Grok is not called unless
+ENABLE_BACKGROUND_XAI is set. Results are cached by a hash of the source text.
 """
 
 from __future__ import annotations
@@ -71,9 +70,15 @@ _PLACES = [
     (("basra", "البصرة"), 30.5081, 47.7835, "Iraq", "Basra"),
     (("kirkuk", "كركوك"), 35.4681, 44.3922, "Iraq", "Kirkuk"),
     (("beirut", "بيروت"), 33.8938, 35.5018, "Lebanon", "Beirut"),
+    (("al-shati", "al shati", "مخيم الشاطئ"), 31.531, 34.445, "Palestine", "al-Shati camp"),
     (("gaza", "غزة"), 31.5017, 34.4668, "Palestine", "Gaza"),
     (("ramallah", "رام الله"), 31.9038, 35.2034, "Palestine", "Ramallah"),
     (("jerusalem", "القدس"), 31.7683, 35.2137, "Israel", "Jerusalem"),
+    (("ben gurion", "ben-gurion"), 32.0005, 34.8708, "Israel", "Ben Gurion Airport"),
+    (("hadatha", "حداتا", "حداثا"), 33.17, 35.38, "Lebanon", "Hadatha"),
+    (("baalbek", "بعلبك"), 34.0058, 36.2181, "Lebanon", "Baalbek"),
+    (("hermel", "الهرمل"), 34.395, 36.385, "Lebanon", "Hermel"),
+    (("al-walid", "al walid", "al-waleed", "al waleed", "suwaydiya", "al-suwaydiya", "معبر الوليد"), 33.40, 38.99, "Iraq", "Al-Walid crossing"),
     (("tel aviv", "تل أبيب"), 32.0853, 34.7818, "Israel", "Tel Aviv"),
     (("amman", "عمّان", "عمان"), 31.9454, 35.9284, "Jordan", "Amman"),
     (("sanaa", "sana'a", "صنعاء"), 15.3694, 44.191, "Yemen", "Sanaa"),
@@ -102,6 +107,7 @@ _PLACES = [
     (("alaska",), 64.2, -149.49, "United States", "Alaska"),
     (("hawaii",), 19.9, -155.58, "United States", "Hawaii"),
     (("new york",), 40.7128, -74.006, "United States", "New York"),
+    (("brooklyn",), 40.6782, -73.9442, "United States", "Brooklyn"),
     (("los angeles",), 34.0522, -118.2437, "United States", "Los Angeles"),
     (("chicago",), 41.8781, -87.6298, "United States", "Chicago"),
     (("houston",), 29.7604, -95.3698, "United States", "Houston"),
@@ -157,7 +163,9 @@ _PLACES = [
     (("herat", "هرات"), 34.3529, 62.204, "Afghanistan", "Herat"),
     (("mazar-i-sharif", "mazar i sharif"), 36.708, 67.1109, "Afghanistan", "Mazar-i-Sharif"),
     (("jalalabad",), 34.4415, 70.4361, "Afghanistan", "Jalalabad"),
-    (("kyiv", "kiev", "київ", "киев"), 50.4501, 30.5234, "Ukraine", "Kyiv"),
+    (("kyiv", "kiev", "київ", "києву", "києві", "киев"), 50.4501, 30.5234, "Ukraine", "Kyiv"),
+    (("malyn", "малин"), 50.769, 29.239, "Ukraine", "Malyn hromada"),
+    (("chornomorsk", "чорноморськ"), 46.301, 30.656, "Ukraine", "Chornomorsk port"),
     (("kharkiv", "харків"), 49.9935, 36.2304, "Ukraine", "Kharkiv"),
     (("odesa", "odessa"), 46.4825, 30.7233, "Ukraine", "Odesa"),
     (("donetsk", "донецк"), 48.0159, 37.8028, "Ukraine", "Donetsk"),
@@ -174,13 +182,18 @@ _PLACES = [
     (("madrid",), 40.4168, -3.7038, "Spain", "Madrid"),
     (("warsaw",), 52.2297, 21.0122, "Poland", "Warsaw"),
     (("athens",), 37.9838, 23.7275, "Greece", "Athens"),
+    (("piraeus", "πειραι"), 37.943, 23.647, "Greece", "Piraeus"),
+    (("patras", "πάτρ"), 38.2466, 21.7346, "Greece", "Patras"),
+    (("igoumenitsa", "ηγουμενίτσ"), 39.503, 20.265, "Greece", "Igoumenitsa"),
     (("istanbul",), 41.0082, 28.9784, "Turkey", "Istanbul"),
     (("ankara",), 39.9334, 32.8597, "Turkey", "Ankara"),
     (("cairo", "القاهرة"), 30.0444, 31.2357, "Egypt", "Cairo"),
+    (("abu simbel", "أبو سمبل"), 22.4, 31.7, "Egypt", "Abu Simbel tourist road"),
     (("tripoli", "طرابلس"), 32.8872, 13.1913, "Libya", "Tripoli"),
     (("tunis",), 36.8065, 10.1815, "Tunisia", "Tunis"),
     (("algiers",), 36.7538, 3.0588, "Algeria", "Algiers"),
     (("lagos",), 6.5244, 3.3792, "Nigeria", "Lagos"),
+    (("kenyatta national hospital",), -1.3012, 36.8073, "Kenya", "Kenyatta National Hospital"),
     (("nairobi",), -1.2921, 36.8219, "Kenya", "Nairobi"),
     (("addis ababa",), 9.032, 38.7469, "Ethiopia", "Addis Ababa"),
     (("mogadishu",), 2.0469, 45.3182, "Somalia", "Mogadishu"),
@@ -270,8 +283,16 @@ _PLACES = [
     (("bengaluru", "bangalore"), 12.9716, 77.5946, "India", "Bengaluru"),
     (("hyderabad",), 17.385, 78.4867, "India", "Hyderabad"),
     (("karachi",), 24.8607, 67.0011, "Pakistan", "Karachi"),
+    (("sargodha",), 32.0836, 72.6711, "Pakistan", "Sargodha"),
+    (("mandi bahauddin",), 32.5839, 73.4844, "Pakistan", "Mandi Bahauddin"),
+    (("hub river road", "hub river"), 24.905, 66.95, "Pakistan", "Hub River Road"),
     (("lahore",), 31.5204, 74.3587, "Pakistan", "Lahore"),
     (("islamabad",), 33.6844, 73.0479, "Pakistan", "Islamabad"),
+    (("efremov", "yefremov", "ефремов", "єфремов"), 53.149, 38.082, "Russia", "Efremov"),
+    (("dniprohes", "дніпрогес", "днепрогэс"), 47.867, 35.085, "Ukraine", "DniproHES"),
+    (("zaporizhzhia", "zaporizhia", "zaporozhye", "запоріжжя", "запорожье"), 47.8388, 35.1396, "Ukraine", "Zaporizhzhia"),
+    (("tula", "тула", "тульськ"), 54.196, 37.618, "Russia", "Tula"),
+    (("baku",), 40.4093, 49.8671, "Azerbaijan", "Baku"),
     (("dhaka",), 23.8103, 90.4125, "Bangladesh", "Dhaka"),
     (("chittagong", "chattogram"), 22.3569, 91.7832, "Bangladesh", "Chittagong"),
     (("kathmandu",), 27.7172, 85.324, "Nepal", "Kathmandu"),
@@ -345,10 +366,18 @@ COUNTRIES = {
     "turkey": (38.96, 35.24, "Turkey"),
     "egypt": (26.82, 30.8, "Egypt"),
     "libya": (26.34, 17.23, "Libya"),
+    "haiti": (18.97, -72.29, "Haiti"),
+    "mexico": (23.63, -102.55, "Mexico"),
+    "myanmar": (21.91, 95.96, "Myanmar"),
+    "burkina faso": (12.24, -1.56, "Burkina Faso"),
+    "south sudan": (6.88, 31.31, "South Sudan"),
+    "cuba": (21.52, -77.78, "Cuba"),
     "somalia": (5.15, 46.2, "Somalia"),
     "nigeria": (9.08, 8.68, "Nigeria"),
     "kenya": (0.02, 37.91, "Kenya"),
     "ethiopia": (9.15, 40.49, "Ethiopia"),
+    "belarus": (53.71, 27.95, "Belarus"),
+    "azerbaijan": (40.14, 47.58, "Azerbaijan"),
     "south africa": (-30.56, 22.94, "South Africa"),
     "mali": (17.57, -4.0, "Mali"),
     "ghana": (7.95, -1.02, "Ghana"),
@@ -384,6 +413,7 @@ THEATRE = {
     "Singapore": "APAC", "Malaysia": "APAC",
     "Australia": "Australia", "Afghanistan": "Afghanistan",
     "Ukraine": "Russia & Ukraine", "Russia": "Russia & Ukraine",
+    "Azerbaijan": "Caucasus",
     "United Kingdom": "UK & Europe", "Ireland": "UK & Europe", "France": "UK & Europe",
     "Germany": "UK & Europe", "Italy": "UK & Europe", "Spain": "UK & Europe",
     "Poland": "UK & Europe", "Greece": "UK & Europe", "Norway": "UK & Europe",
@@ -552,15 +582,31 @@ def enrich_event(event: dict, live_translation: bool = True, ingest: bool = Fals
         item.get("lng"),
         item.get("id") or item.get("source") or original_title,
     )
+    stored_origin = " ".join(str(item.get("coord_origin") or "").split()).lower()
+    stored_precision = " ".join(str(item.get("geo_precision") or "").split())
     item["lat"] = geo["lat"]
     item["lng"] = geo["lng"]
     if geo.get("country"):
         item["country"] = geo["country"]
-    if geo.get("area"):
-        item["area"] = geo["area"]
-        item["location_name"] = geo["area"]
-    if geo.get("geo_precision"):
-        item["geo_precision"] = geo["geo_precision"]
+    # A country centroid already has coordinates. Do not relabel it as an exact site.
+    if stored_origin in {"centroid", "country", "region", "admin", "sea", "fallback"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "Country"
+    elif stored_origin in {"place", "city", "district", "geocode", "locality", "area"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or "City / Area"
+        if geo.get("area"):
+            item["area"] = geo["area"]
+            item["location_name"] = geo["area"]
+    elif stored_origin in {"feed-point", "site", "facility", "event", "epicentre", "epicenter"}:
+        item["coord_origin"] = stored_origin
+        item["geo_precision"] = stored_precision or geo.get("geo_precision") or "Exact"
+    else:
+        if geo.get("area"):
+            item["area"] = geo["area"]
+            item["location_name"] = geo["area"]
+        if geo.get("geo_precision"):
+            item["geo_precision"] = geo["geo_precision"]
     if not item.get("region") or item.get("region") == "Global":
         item["region"] = theatre_for(item.get("country"))
     return item
@@ -592,6 +638,7 @@ def annotate_feature(feature: dict) -> dict | None:
         "area": enriched.get("area") or props.get("area") or "",
         "location_name": enriched.get("location_name") or props.get("location_name") or enriched.get("area") or "",
         "geo_precision": enriched.get("geo_precision") or props.get("geo_precision") or "",
+        "coord_origin": enriched.get("coord_origin") or props.get("coord_origin") or "",
         "original_text": enriched.get("original_text") or props.get("original_text") or "",
     })
     if enriched.get("lat") is not None and enriched.get("lng") is not None:
@@ -614,7 +661,7 @@ def _match_place(text: str, prefer_country: str = ""):
             if len(alias) < 4:
                 continue
             if any("\u0600" <= ch <= "\u06FF" or "\u0400" <= ch <= "\u04FF" for ch in alias):
-                found = alias in text
+                found = alias.casefold() in text.casefold()
             else:
                 found = re.search(r"(?<![a-z0-9])" + re.escape(alias) + r"(?![a-z0-9])", lowered) is not None
             if not found:
@@ -727,6 +774,14 @@ def _api_key() -> str:
 
 
 def _grok_translate(text: str) -> str:
+    """Paid translation stays off unless a background model call is explicitly enabled."""
+    try:
+        import fetch_x_osint as osint
+
+        if not osint.background_xai_enabled():
+            return ""
+    except Exception:
+        return ""
     key = _api_key()
     if not key:
         return ""
